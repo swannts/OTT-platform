@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:streamit_laravel/components/blurhash_placeholder.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:streamit_laravel/main.dart';
@@ -89,7 +90,8 @@ class AppNoDataWidget extends StatelessWidget {
               onTap: onRetry,
               text: retryText ?? locale.value.reload,
               textColor: retryButtonTextColor ?? white,
-              padding: buttonPadding ?? EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+              padding: buttonPadding ??
+                  EdgeInsets.symmetric(horizontal: 16, vertical: 2),
               color: context.primaryColor,
             ),
         ],
@@ -103,8 +105,8 @@ class AppNoDataWidget extends StatelessWidget {
     if (image.validate().isEmpty) return Offstage();
 
     if (image.validate().startsWith('http')) {
-      return Image.network(
-        image!,
+      return BlurHashNetworkImage(
+        url: image!,
         height: imageSize != null ? (imageSize!.height) : 200,
         width: imageSize != null ? (imageSize!.width) : 200,
         fit: fit,

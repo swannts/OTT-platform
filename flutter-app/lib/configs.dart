@@ -18,7 +18,7 @@ const LIVE_AUTO_SLIDER_SECOND = 5;
 const API_VERSION = 3;
 
 ///DO NOT ADD SLASH HERE
-String DOMAIN_URL = "YOUR_DOMAIN_URL";
+String DOMAIN_URL = const String.fromEnvironment('DOMAIN_URL', defaultValue: "YOUR_DOMAIN_URL");
 
 bool isInReview = false;
 

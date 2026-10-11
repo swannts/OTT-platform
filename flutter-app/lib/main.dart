@@ -132,13 +132,15 @@ Future<void> main() async {
   MediaKit.ensureInitialized();
   setupGlobalFontConfig();
 
-  await Firebase.initializeApp().then((value) {
-    if (kReleaseMode) {
-      FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
-    }
-    NotificationService().init();
-  }).catchError(onError);
-  await initConfig();
+  if (!kIsWeb) {
+    await Firebase.initializeApp().then((value) {
+      if (kReleaseMode) {
+        FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+      }
+      NotificationService().init();
+    }).catchError(onError);
+    await initConfig();
+  }
 // Initialize encryption service
   await EncryptionService.initialize();
 
@@ -187,7 +189,7 @@ Future<void> main() async {
     ),
   );
 
-  MobileAds.instance.initialize();
+  if (!kIsWeb) MobileAds.instance.initialize();
 
   runApp(const MyApp());
 }

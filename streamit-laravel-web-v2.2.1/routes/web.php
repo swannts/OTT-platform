@@ -12,6 +12,7 @@ use App\Http\Controllers\RolePermission;
 use App\Http\Controllers\SearchController;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Artisan;
 use App\Http\Controllers\Backend\MobileSettingController;
 use Modules\Setting\Http\Controllers\Backend\SettingsController;
 use App\Http\Controllers\Backend\ShortDramaPluginInstallerController;
@@ -166,8 +167,8 @@ Route::group(['prefix' => 'app', ['middleware' => ['auth','admin']]], function (
 
     Route::group(['as' => 'backend.', 'middleware' => ['auth', 'admin']], function () {
         Route::post('/clear-cache-config', function () {
-            \Artisan::call('config:clear');
-            \Artisan::call('cache:clear');
+            Artisan::call('config:clear');
+            Artisan::call('cache:clear');
             return response()->json(['message' => 'Cache and Config cleared']);
         })->name('config_clear');
     });

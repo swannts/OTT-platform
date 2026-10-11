@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nb_utils/nb_utils.dart';
+import 'package:streamit_laravel/components/blurhash_placeholder.dart';
 import 'package:streamit_laravel/utils/common_functions.dart';
 
 import '../configs.dart';
@@ -12,18 +13,17 @@ class AppMinLogoWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return appConfigs.value.appMiniLogo.isNotEmpty && appConfigs.value.appMiniLogo.validateURL()
-        ? Image.network(
-            appConfigs.value.appMiniLogo,
+    return appConfigs.value.appMiniLogo.isNotEmpty &&
+            appConfigs.value.appMiniLogo.validateURL()
+        ? BlurHashNetworkImage(
+            url: appConfigs.value.appMiniLogo,
             height: size?.height ?? Constants.appLogoSize,
             width: size?.width ?? Constants.appLogoSize,
-            errorBuilder: (context, error, stackTrace) {
-              return Image.asset(
-                APP_MINI_LOGO_URL,
-                height: size?.height ?? Constants.appLogoSize,
-                width: size?.width ?? Constants.appLogoSize,
-              );
-            },
+            errorWidget: Image.asset(
+              APP_MINI_LOGO_URL,
+              height: size?.height ?? Constants.appLogoSize,
+              width: size?.width ?? Constants.appLogoSize,
+            ),
           )
         : Image.asset(
             APP_MINI_LOGO_URL,
@@ -41,18 +41,17 @@ class AppLogoWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return appConfigs.value.appLogo.isNotEmpty && appConfigs.value.appLogo.validateURL()
-        ? Image.network(
-            appConfigs.value.appLogo,
+    return appConfigs.value.appLogo.isNotEmpty &&
+            appConfigs.value.appLogo.validateURL()
+        ? BlurHashNetworkImage(
+            url: appConfigs.value.appLogo,
             height: size?.height ?? Constants.appLogoSize,
             width: size?.width ?? Constants.appLogoSize,
-            errorBuilder: (context, error, stackTrace) {
-              return Image.asset(
-                assetLogo ?? APP_LOGO_URL,
-                height: size?.height ?? Constants.appLogoSize,
-                width: size?.width ?? Constants.appLogoSize,
-              );
-            },
+            errorWidget: Image.asset(
+              assetLogo ?? APP_LOGO_URL,
+              height: size?.height ?? Constants.appLogoSize,
+              width: size?.width ?? Constants.appLogoSize,
+            ),
           )
         : Image.asset(
             assetLogo ?? APP_LOGO_URL,
@@ -69,18 +68,17 @@ class AppLoaderWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return appConfigs.value.appLoader.isNotEmpty && appConfigs.value.appLoader.validateURL()
-        ? Image.network(
-            appConfigs.value.appLoader,
+    return appConfigs.value.appLoader.isNotEmpty &&
+            appConfigs.value.appLoader.validateURL()
+        ? BlurHashNetworkImage(
+            url: appConfigs.value.appLoader,
             height: size?.height ?? Constants.appLogoSize,
             width: size?.width ?? Constants.appLogoSize,
-            errorBuilder: (context, error, stackTrace) {
-              return Image.asset(
-                APP_LOGO_URL,
-                height: size?.height ?? Constants.appLogoSize,
-                width: size?.width ?? Constants.appLogoSize,
-              );
-            },
+            errorWidget: Image.asset(
+              APP_LOGO_URL,
+              height: size?.height ?? Constants.appLogoSize,
+              width: size?.width ?? Constants.appLogoSize,
+            ),
           )
         : Image.asset(
             APP_LOGO_URL,

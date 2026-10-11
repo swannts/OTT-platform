@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\API\AuthController;
 use App\Http\Controllers\Backend\API\DashboardController;
 use App\Http\Controllers\Backend\API\NotificationsController;
 use App\Http\Controllers\Backend\API\InvoiceController;
+use App\Http\Controllers\Backend\API\ImageBlurHashController;
 
 use App\Http\Controllers\Backend\API\SettingController as APISettingController;
 use Modules\Frontend\Http\Controllers\PerviewPaymentController;
@@ -56,6 +57,9 @@ Route::post('check-mobile-exists', [OTPController::class, 'checkMobileExists'])-
 Route::post('/store-access-token', [SettingController::class, 'storeToken']);
 Route::post('/token-revoke', [SettingController::class, 'revokeToken']);
 Route::get('get-tranding-data', [DashboardController::class, 'getTrandingData']);
+Route::get('v3/image-blurhash', [ImageBlurHashController::class, 'show'])
+    ->withoutMiddleware('throttle:api')
+    ->middleware('throttle:300,1');
 
 Route::get('v2/dashboard-detail-data', [DashboardController::class, 'DashboardDetailDataV2']);
 Route::get('v2/dashboard-detail', [DashboardController::class, 'DashboardDetailV2']);

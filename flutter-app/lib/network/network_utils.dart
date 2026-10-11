@@ -101,6 +101,8 @@ Map<String, String> buildHeaderForFlutterWave(String flutterWaveSecretKey) {
 }
 
 String getUserAgent() {
+  if (kIsWeb) return 'FlutterWebApp/1.0';
+
   switch (Platform.operatingSystem) {
     case 'android':
       return 'FlutterAndroidApp/1.0 (Android)';

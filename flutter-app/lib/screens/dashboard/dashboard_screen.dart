@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -55,6 +56,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void init() async {
     if(isNotificationRead) return;
     isNotificationRead = true;
+    if (kIsWeb) return;
     final notification = await FirebaseMessaging.instance.getInitialMessage();
     if (notification != null) {
       final data = parseAdditionalData(notification.data);

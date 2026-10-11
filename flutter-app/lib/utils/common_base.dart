@@ -1,7 +1,7 @@
-import 'dart:async';
 import 'dart:io';
-
+import 'dart:async';
 import 'package:country_picker/country_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -142,12 +142,12 @@ class ResponsiveSize {
     getDeviceType();
     switch (deviceType) {
       case DeviceType.mobile:
-        baseWidth = Platform.isIOS ? 375.0 : 411.0;
-        baseHeight = Platform.isIOS ? 812.0 : 823.0;
+        baseWidth = defaultTargetPlatform == TargetPlatform.iOS ? 375.0 : 411.0;
+        baseHeight = defaultTargetPlatform == TargetPlatform.iOS ? 812.0 : 823.0;
         break;
       case DeviceType.tablet:
-        baseWidth = Platform.isIOS ? 768.0 : 800.0;
-        baseHeight = Platform.isIOS ? 1024.0 : 1280.0;
+        baseWidth = defaultTargetPlatform == TargetPlatform.iOS ? 768.0 : 800.0;
+        baseHeight = defaultTargetPlatform == TargetPlatform.iOS ? 1024.0 : 1280.0;
         break;
       case DeviceType.desktop:
         baseWidth = 1366.0;
@@ -1067,7 +1067,11 @@ Future<void> showAppUpdateDialog(BuildContext context) async {
             },
             onCancel: () async {
               if (getIfForceUpdate(packageInfo.versionName.validate())) {
-                exit(0);
+                if (kIsWeb) {
+                  Get.back();
+                } else {
+                  exit(0);
+                }
               } else {
                 Get.back();
               }

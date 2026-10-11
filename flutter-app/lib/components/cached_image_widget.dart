@@ -1,9 +1,11 @@
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:nb_utils/nb_utils.dart';
+import 'package:streamit_laravel/components/blurhash_placeholder.dart';
 import 'package:streamit_laravel/components/shimmer_widget.dart';
 
 class CachedImageWidget extends StatelessWidget {
@@ -69,25 +71,43 @@ class CachedImageWidget extends StatelessWidget {
     if (url.validate().isEmpty) {
       return _buildPlaceholder();
     } else if (url.startsWith('http')) {
+      if (kIsWeb) {
+        return BlurHashNetworkImage(
+          url: url,
+          height: height,
+          width: width,
+          fit: fit ?? BoxFit.cover,
+          color: color,
+          alignment: alignment,
+          errorWidget: _buildPlaceholder(),
+        );
+      }
+
       if (url.endsWith('svg')) {
         return SvgPicture.network(
           url,
           height: height,
           width: width,
           fit: fit ?? BoxFit.cover,
-          colorFilter: color != null ? ColorFilter.mode(color ?? Colors.transparent, BlendMode.srcIn) : null,
+          colorFilter: color != null
+              ? ColorFilter.mode(color ?? Colors.transparent, BlendMode.srcIn)
+              : null,
           alignment: alignment as Alignment? ?? Alignment.center,
           errorBuilder: (_, __, ___) {
-            return Image.network(
-              url,
+            return BlurHashNetworkImage(
+              url: url,
               height: height,
               width: width,
               fit: fit ?? BoxFit.cover,
-              errorBuilder: (_, __, ___) => _buildPlaceholder(),
+              errorWidget: _buildPlaceholder(),
             );
           },
           placeholderBuilder: (BuildContext context) {
-            return _buildPlaceholder();
+            return BlurHashPlaceholder(
+                imageUrl: url,
+                height: height,
+                width: width,
+                fallback: _buildPlaceholder());
           },
         );
       }
@@ -98,14 +118,18 @@ class CachedImageWidget extends StatelessWidget {
         fit: fit ?? BoxFit.cover,
         color: color,
         alignment: alignment as Alignment? ?? Alignment.center,
-        placeholder: (_, __) => _buildPlaceholder(),
+        placeholder: (_, __) => BlurHashPlaceholder(
+            imageUrl: url,
+            height: height,
+            width: width,
+            fallback: _buildPlaceholder()),
         errorWidget: (_, __, ___) {
-          return Image.network(
-            url,
+          return BlurHashNetworkImage(
+            url: url,
             height: height,
             width: width,
             fit: fit ?? BoxFit.cover,
-            errorBuilder: (_, __, ___) => _buildPlaceholder(),
+            errorWidget: _buildPlaceholder(),
           );
         },
       );
@@ -116,7 +140,9 @@ class CachedImageWidget extends StatelessWidget {
           height: height,
           width: width,
           fit: fit ?? BoxFit.cover,
-          colorFilter: color != null ? ColorFilter.mode(color ?? Colors.transparent, BlendMode.srcIn) : null,
+          colorFilter: color != null
+              ? ColorFilter.mode(color ?? Colors.transparent, BlendMode.srcIn)
+              : null,
           alignment: alignment as Alignment? ?? Alignment.center,
           errorBuilder: (context, error, stackTrace) {
             return _buildPlaceholder();
@@ -160,7 +186,10 @@ class CachedImageWidget extends StatelessWidget {
         borderRadius: BorderRadius.circular(radius!),
         child: imageWidget,
       );
-    } else if (topLeftRadius > 0 || topRightRadius > 0 || bottomLeftRadius > 0 || bottomRightRadius > 0) {
+    } else if (topLeftRadius > 0 ||
+        topRightRadius > 0 ||
+        bottomLeftRadius > 0 ||
+        bottomRightRadius > 0) {
       return ClipRRect(
         borderRadius: BorderRadiusDirectional.only(
           topStart: Radius.circular(topLeftRadius.toDouble()),

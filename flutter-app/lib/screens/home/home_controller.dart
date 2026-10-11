@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:nb_utils/nb_utils.dart';
@@ -39,7 +40,7 @@ class HomeController extends BaseController {
     init(showLoader: true);
     initScrollListener(onNextPage: onNextPage);
     ShortDramaBridge.initHomeFeature(this);
-    if(Platform.isAndroid) {
+    if(!kIsWeb && Platform.isAndroid) {
       showAppUpdateDialog(Get.context!);
     }
     super.onInit();
@@ -53,7 +54,7 @@ class HomeController extends BaseController {
     isLastPage(false);
     getAppConfigurations(forceConfigSync);
 
-    if (appConfigs.value.enableAds.getBoolInt()) bannerLoad();
+    if (!kIsWeb && appConfigs.value.enableAds.getBoolInt()) bannerLoad();
     await Future.wait(
       [
         getNotificationCount(),
