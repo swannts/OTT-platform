@@ -1,5 +1,5 @@
-import 'package:streamit_laravel/screens/device/model/device_model.dart';
-import 'package:streamit_laravel/screens/subscription/model/subscription_plan_model.dart';
+import 'package:swann_ott/screens/device/model/device_model.dart';
+import 'package:swann_ott/screens/subscription/model/subscription_plan_model.dart';
 
 class AccountSettingResponse {
   bool status;

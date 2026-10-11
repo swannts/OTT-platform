@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/models/base_response_model.dart';
-import 'package:streamit_laravel/screens/content/content_list_screen.dart';
-import 'package:streamit_laravel/screens/content/filtered_content_list_screen.dart';
-import 'package:streamit_laravel/screens/content/model/content_model.dart';
-import 'package:streamit_laravel/screens/home/model/dashboard_res_model.dart';
-import 'package:streamit_laravel/screens/rented_content/rental_list_screen.dart';
-import 'package:streamit_laravel/screens/watch_list/watch_list_screen.dart';
-import 'package:streamit_laravel/utils/api_end_points.dart';
-import 'package:streamit_laravel/utils/common_base.dart';
+import 'package:swann_ott/models/base_response_model.dart';
+import 'package:swann_ott/screens/content/content_list_screen.dart';
+import 'package:swann_ott/screens/content/filtered_content_list_screen.dart';
+import 'package:swann_ott/screens/content/model/content_model.dart';
+import 'package:swann_ott/screens/home/model/dashboard_res_model.dart';
+import 'package:swann_ott/screens/rented_content/rental_list_screen.dart';
+import 'package:swann_ott/screens/watch_list/watch_list_screen.dart';
+import 'package:swann_ott/utils/api_end_points.dart';
+import 'package:swann_ott/utils/common_base.dart';
 
 import '../../../utils/constants.dart';
 import '../../channel_list/channel_list_screen.dart';

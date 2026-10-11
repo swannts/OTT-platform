@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:streamit_laravel/controllers/base_controller.dart';
-import 'package:streamit_laravel/services/local_storage_service.dart';
-import 'package:streamit_laravel/utils/api_end_points.dart';
-import 'package:streamit_laravel/utils/common_base.dart';
+import 'package:swann_ott/controllers/base_controller.dart';
+import 'package:swann_ott/services/local_storage_service.dart';
+import 'package:swann_ott/utils/api_end_points.dart';
+import 'package:swann_ott/utils/common_base.dart';
 
 import '../../../network/auth_apis.dart';
 import '../../../utils/common_functions.dart';

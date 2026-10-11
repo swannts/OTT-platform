@@ -1,9 +1,9 @@
 import 'package:intl/intl.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/generated/assets.dart';
-import 'package:streamit_laravel/main.dart';
-import 'package:streamit_laravel/utils/api_end_points.dart';
-import 'package:streamit_laravel/utils/extension/date_time_extension.dart' show DateExtension;
+import 'package:swann_ott/generated/assets.dart';
+import 'package:swann_ott/main.dart';
+import 'package:swann_ott/utils/api_end_points.dart';
+import 'package:swann_ott/utils/extension/date_time_extension.dart' show DateExtension;
 
 import '../constants.dart';
 

@@ -2,10 +2,10 @@ import 'dart:io';
 
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/main.dart';
-import 'package:streamit_laravel/screens/downloads/models/hive_content_model.dart';
-import 'package:streamit_laravel/screens/downloads/models/hive_poster_model.dart';
-import 'package:streamit_laravel/utils/constants.dart';
+import 'package:swann_ott/main.dart';
+import 'package:swann_ott/screens/downloads/models/hive_content_model.dart';
+import 'package:swann_ott/screens/downloads/models/hive_poster_model.dart';
+import 'package:swann_ott/utils/constants.dart';
 
 class HiveService {
   static const String contentBoxName = 'contentBox';

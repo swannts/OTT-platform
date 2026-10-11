@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/components/app_dialog_widget.dart';
-import 'package:streamit_laravel/generated/assets.dart';
-import 'package:streamit_laravel/main.dart';
-import 'package:streamit_laravel/screens/content/components/download_quality_selection_component.dart';
-import 'package:streamit_laravel/screens/content/content_details_controller.dart';
-import 'package:streamit_laravel/screens/downloads/download_screen.dart';
-import 'package:streamit_laravel/screens/content/model/content_model.dart';
-import 'package:streamit_laravel/services/download_control_service.dart';
-import 'package:streamit_laravel/utils/colors.dart';
-import 'package:streamit_laravel/utils/common_base.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
-import 'package:streamit_laravel/utils/constants.dart';
+import 'package:swann_ott/components/app_dialog_widget.dart';
+import 'package:swann_ott/generated/assets.dart';
+import 'package:swann_ott/main.dart';
+import 'package:swann_ott/screens/content/components/download_quality_selection_component.dart';
+import 'package:swann_ott/screens/content/content_details_controller.dart';
+import 'package:swann_ott/screens/downloads/download_screen.dart';
+import 'package:swann_ott/screens/content/model/content_model.dart';
+import 'package:swann_ott/services/download_control_service.dart';
+import 'package:swann_ott/utils/colors.dart';
+import 'package:swann_ott/utils/common_base.dart';
+import 'package:swann_ott/utils/common_functions.dart';
+import 'package:swann_ott/utils/constants.dart';
 
 class DownloadActionButton extends StatelessWidget {
   final ContentDetailsController controller;

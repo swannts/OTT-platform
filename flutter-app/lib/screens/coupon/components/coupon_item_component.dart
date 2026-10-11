@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/main.dart';
-import 'package:streamit_laravel/utils/common_base.dart';
-import 'package:streamit_laravel/utils/price_widget.dart';
-import 'package:streamit_laravel/utils/shimmer/shimmer.dart';
+import 'package:swann_ott/main.dart';
+import 'package:swann_ott/utils/common_base.dart';
+import 'package:swann_ott/utils/price_widget.dart';
+import 'package:swann_ott/utils/shimmer/shimmer.dart';
 
 import '../../../components/cached_image_widget.dart';
 import '../../../generated/assets.dart';

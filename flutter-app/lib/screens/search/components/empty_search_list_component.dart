@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/screens/content/components/content_poster_component.dart';
+import 'package:swann_ott/screens/content/components/content_poster_component.dart';
 
 import '../../../main.dart';
 import '../../home/model/dashboard_res_model.dart';

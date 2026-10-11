@@ -1,5 +1,5 @@
-import 'package:streamit_laravel/screens/content/model/content_model.dart';
-import 'package:streamit_laravel/screens/watch_list/model/watch_list_resp.dart';
+import 'package:swann_ott/screens/content/model/content_model.dart';
+import 'package:swann_ott/screens/watch_list/model/watch_list_resp.dart';
 
 import '../../genres/model/genres_model.dart';
 import '../../person/model/person_model.dart';

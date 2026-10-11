@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_chrome_cast/lib.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/components/app_no_data_widget.dart';
-import 'package:streamit_laravel/components/loader_widget.dart';
-import 'package:streamit_laravel/generated/assets.dart';
-import 'package:streamit_laravel/utils/colors.dart';
-import 'package:streamit_laravel/utils/common_base.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
+import 'package:swann_ott/components/app_no_data_widget.dart';
+import 'package:swann_ott/components/loader_widget.dart';
+import 'package:swann_ott/generated/assets.dart';
+import 'package:swann_ott/utils/colors.dart';
+import 'package:swann_ott/utils/common_base.dart';
+import 'package:swann_ott/utils/common_functions.dart';
 
 import '../../main.dart';
 import '../empty_error_state_widget.dart';
@@ -93,7 +93,7 @@ class _AvailableDevicesForCastState extends State<AvailableDevicesForCast> {
                 children: [
                   IconWidget(imgPath: Assets.iconsScreencastFill, color: rentedColor),
                   16.width,
-                  Text("Connected", style: boldTextStyle()).expand(),
+                  Text(locale.value.connected, style: boldTextStyle()).expand(),
                   AppButton(
                     text: locale.value.disconnect,
                     color: redColor,

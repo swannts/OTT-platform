@@ -1,10 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/components/shimmer_widget.dart';
-import 'package:streamit_laravel/utils/colors.dart';
-import 'package:streamit_laravel/utils/common_base.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
+import 'package:swann_ott/components/shimmer_widget.dart';
+import 'package:swann_ott/utils/colors.dart';
+import 'package:swann_ott/utils/common_base.dart';
+import 'package:swann_ott/utils/common_functions.dart';
 
 import '../../../utils/constants.dart';
 

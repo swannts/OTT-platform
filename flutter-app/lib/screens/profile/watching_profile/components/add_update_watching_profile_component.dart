@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/components/app_toggle_widget.dart';
-import 'package:streamit_laravel/components/cached_image_widget.dart';
-import 'package:streamit_laravel/components/loader_widget.dart';
-import 'package:streamit_laravel/generated/assets.dart';
-import 'package:streamit_laravel/main.dart';
-import 'package:streamit_laravel/screens/profile/watching_profile/components/add_update_watching_profile_controller.dart';
-import 'package:streamit_laravel/utils/colors.dart';
-import 'package:streamit_laravel/utils/common_base.dart';
-import 'package:streamit_laravel/utils/constants.dart';
+import 'package:swann_ott/components/app_toggle_widget.dart';
+import 'package:swann_ott/components/cached_image_widget.dart';
+import 'package:swann_ott/components/loader_widget.dart';
+import 'package:swann_ott/generated/assets.dart';
+import 'package:swann_ott/main.dart';
+import 'package:swann_ott/screens/profile/watching_profile/components/add_update_watching_profile_controller.dart';
+import 'package:swann_ott/utils/colors.dart';
+import 'package:swann_ott/utils/common_base.dart';
+import 'package:swann_ott/utils/constants.dart';
 
 class AddUpdateProfileComponent extends StatelessWidget {
   final VoidCallback? onRefreshCallback;

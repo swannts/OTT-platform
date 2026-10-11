@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/ads/ads_helper.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
+import 'package:swann_ott/ads/ads_helper.dart';
+import 'package:swann_ott/utils/common_functions.dart';
 
 class AdComponent extends StatefulWidget {
   const AdComponent({super.key});

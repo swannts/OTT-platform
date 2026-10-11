@@ -1,16 +1,16 @@
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/controllers/base_controller.dart';
-import 'package:streamit_laravel/main.dart';
-import 'package:streamit_laravel/network/auth_apis.dart';
-import 'package:streamit_laravel/screens/auth/model/login_response.dart';
-import 'package:streamit_laravel/screens/home/home_controller.dart';
-import 'package:streamit_laravel/screens/profile/model/profile_detail_resp.dart';
-import 'package:streamit_laravel/screens/subscription/model/subscription_plan_model.dart';
-import 'package:streamit_laravel/services/local_storage_service.dart';
-import 'package:streamit_laravel/utils/api_end_points.dart';
-import 'package:streamit_laravel/utils/common_base.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
+import 'package:swann_ott/controllers/base_controller.dart';
+import 'package:swann_ott/main.dart';
+import 'package:swann_ott/network/auth_apis.dart';
+import 'package:swann_ott/screens/auth/model/login_response.dart';
+import 'package:swann_ott/screens/home/home_controller.dart';
+import 'package:swann_ott/screens/profile/model/profile_detail_resp.dart';
+import 'package:swann_ott/screens/subscription/model/subscription_plan_model.dart';
+import 'package:swann_ott/services/local_storage_service.dart';
+import 'package:swann_ott/utils/api_end_points.dart';
+import 'package:swann_ott/utils/common_base.dart';
+import 'package:swann_ott/utils/common_functions.dart';
 
 import '../../network/core_api.dart';
 import '../../utils/constants.dart';

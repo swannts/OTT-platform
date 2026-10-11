@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/components/app_no_data_widget.dart';
-import 'package:streamit_laravel/main.dart';
-import 'package:streamit_laravel/screens/coming_soon/coming_soon_detail_screen.dart';
-import 'package:streamit_laravel/screens/coming_soon/model/coming_soon_response.dart';
-import 'package:streamit_laravel/screens/content/components/content_poster_component.dart';
-import 'package:streamit_laravel/screens/content/content_details_screen.dart';
-import 'package:streamit_laravel/screens/content/content_list_shimmer.dart';
-import 'package:streamit_laravel/screens/content/model/content_model.dart';
-import 'package:streamit_laravel/screens/home/components/person_component/person_card.dart';
-import 'package:streamit_laravel/screens/live_tv/live_tv_details/live_tv_details_screen.dart';
-import 'package:streamit_laravel/screens/search/search_controller.dart';
-import 'package:streamit_laravel/utils/common_base.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
-import 'package:streamit_laravel/utils/constants.dart';
-import 'package:streamit_laravel/utils/empty_error_state_widget.dart';
+import 'package:swann_ott/components/app_no_data_widget.dart';
+import 'package:swann_ott/main.dart';
+import 'package:swann_ott/screens/coming_soon/coming_soon_detail_screen.dart';
+import 'package:swann_ott/screens/coming_soon/model/coming_soon_response.dart';
+import 'package:swann_ott/screens/content/components/content_poster_component.dart';
+import 'package:swann_ott/screens/content/content_details_screen.dart';
+import 'package:swann_ott/screens/content/content_list_shimmer.dart';
+import 'package:swann_ott/screens/content/model/content_model.dart';
+import 'package:swann_ott/screens/home/components/person_component/person_card.dart';
+import 'package:swann_ott/screens/live_tv/live_tv_details/live_tv_details_screen.dart';
+import 'package:swann_ott/screens/search/search_controller.dart';
+import 'package:swann_ott/utils/common_base.dart';
+import 'package:swann_ott/utils/common_functions.dart';
+import 'package:swann_ott/utils/constants.dart';
+import 'package:swann_ott/utils/empty_error_state_widget.dart';
 
 class SearchComponent extends StatelessWidget {
   SearchComponent({super.key, required this.searchController});

@@ -1,5 +1,5 @@
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/controllers/base_controller.dart';
+import 'package:swann_ott/controllers/base_controller.dart';
 
 import '../../../network/core_api.dart';
 import '../../../utils/common_functions.dart';

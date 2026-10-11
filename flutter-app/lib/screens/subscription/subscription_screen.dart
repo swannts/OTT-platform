@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/components/app_no_data_widget.dart';
-import 'package:streamit_laravel/screens/content/model/content_model.dart';
-import 'package:streamit_laravel/screens/subscription/components/subscription_price_component.dart';
-import 'package:streamit_laravel/screens/subscription/subscription_controller.dart';
-import 'package:streamit_laravel/screens/subscription/subscription_list_shimmer.dart';
-import 'package:streamit_laravel/utils/colors.dart';
+import 'package:swann_ott/components/app_no_data_widget.dart';
+import 'package:swann_ott/screens/content/model/content_model.dart';
+import 'package:swann_ott/screens/subscription/components/subscription_price_component.dart';
+import 'package:swann_ott/screens/subscription/subscription_controller.dart';
+import 'package:swann_ott/screens/subscription/subscription_list_shimmer.dart';
+import 'package:swann_ott/utils/colors.dart';
 
 import '../../components/app_scaffold.dart';
 import '../../main.dart';

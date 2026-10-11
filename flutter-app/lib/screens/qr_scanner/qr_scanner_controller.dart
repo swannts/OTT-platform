@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:get/get.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:streamit_laravel/controllers/base_controller.dart';
-import 'package:streamit_laravel/utils/api_end_points.dart';
+import 'package:swann_ott/controllers/base_controller.dart';
+import 'package:swann_ott/utils/api_end_points.dart';
 
 import '../../network/core_api.dart';
 import '../../utils/common_base.dart';

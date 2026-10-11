@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:streamit_laravel/components/blurhash_placeholder.dart';
+import 'package:swann_ott/components/blurhash_placeholder.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/main.dart';
-import 'package:streamit_laravel/utils/common_base.dart';
+import 'package:swann_ott/main.dart';
+import 'package:swann_ott/utils/common_base.dart';
 
 class AppNoDataWidget extends StatelessWidget {
   /// The URL or asset path of the image to display.

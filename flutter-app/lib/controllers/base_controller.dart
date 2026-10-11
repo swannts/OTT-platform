@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/main.dart';
-import 'package:streamit_laravel/utils/common_base.dart';
+import 'package:swann_ott/main.dart';
+import 'package:swann_ott/utils/common_base.dart';
 
 /// Base controller with common functionality
 

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:streamit_laravel/ads/managers/ad_manager.dart';
-import 'package:streamit_laravel/ads/video_player_ads/mid_roll_ad_widget.dart';
-import 'package:streamit_laravel/ads/video_player_ads/overlay_ad_widget.dart';
-import 'package:streamit_laravel/utils/colors.dart';
+import 'package:swann_ott/ads/managers/ad_manager.dart';
+import 'package:swann_ott/ads/video_player_ads/mid_roll_ad_widget.dart';
+import 'package:swann_ott/ads/video_player_ads/overlay_ad_widget.dart';
+import 'package:swann_ott/utils/colors.dart';
 
 class PlayerAdStack extends StatelessWidget {
   final Widget content;

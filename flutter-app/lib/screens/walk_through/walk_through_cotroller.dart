@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:streamit_laravel/controllers/base_controller.dart';
+import 'package:swann_ott/controllers/base_controller.dart';
 
 class WalkThroughController extends BaseController {
   RxInt currentPosition = 0.obs;

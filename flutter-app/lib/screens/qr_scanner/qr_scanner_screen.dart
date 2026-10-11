@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:streamit_laravel/components/app_no_data_widget.dart';
-import 'package:streamit_laravel/generated/assets.dart';
-import 'package:streamit_laravel/main.dart';
-import 'package:streamit_laravel/screens/qr_scanner/qr_scanner_controller.dart';
-import 'package:streamit_laravel/utils/colors.dart';
-import 'package:streamit_laravel/utils/empty_error_state_widget.dart';
+import 'package:swann_ott/components/app_no_data_widget.dart';
+import 'package:swann_ott/generated/assets.dart';
+import 'package:swann_ott/main.dart';
+import 'package:swann_ott/screens/qr_scanner/qr_scanner_controller.dart';
+import 'package:swann_ott/utils/colors.dart';
+import 'package:swann_ott/utils/empty_error_state_widget.dart';
 
 import '../../components/app_scaffold.dart';
 

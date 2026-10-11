@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/components/loader_widget.dart';
-import 'package:streamit_laravel/utils/colors.dart';
-import 'package:streamit_laravel/utils/constants.dart';
+import 'package:swann_ott/components/loader_widget.dart';
+import 'package:swann_ott/utils/colors.dart';
+import 'package:swann_ott/utils/constants.dart';
 
 import '../utils/common_base.dart';
 import 'body_widget.dart';

@@ -4,14 +4,14 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/components/app_logo_widget.dart';
-import 'package:streamit_laravel/components/app_scaffold.dart';
-import 'package:streamit_laravel/generated/assets.dart';
-import 'package:streamit_laravel/main.dart';
-import 'package:streamit_laravel/screens/profile/watching_profile/watching_profile_screen.dart';
-import 'package:streamit_laravel/utils/colors.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
-import 'package:streamit_laravel/utils/extension/string_extension.dart';
+import 'package:swann_ott/components/app_logo_widget.dart';
+import 'package:swann_ott/components/app_scaffold.dart';
+import 'package:swann_ott/generated/assets.dart';
+import 'package:swann_ott/main.dart';
+import 'package:swann_ott/screens/profile/watching_profile/watching_profile_screen.dart';
+import 'package:swann_ott/utils/colors.dart';
+import 'package:swann_ott/utils/common_functions.dart';
+import 'package:swann_ott/utils/extension/string_extension.dart';
 
 import '../../../utils/common_base.dart';
 import '../forgot_password/forgot_password_screen.dart';
@@ -48,7 +48,7 @@ class SignInScreen extends StatelessWidget {
               child: Column(
                 children: [
                   const AppLogoWidget(),
-                  Text(locale.value.welcomeBackToStreamIt, style: boldTextStyle(size: ResponsiveSize.getFontSize(20))),
+                  Text(locale.value.welcomeBackToSwann, style: boldTextStyle(size: ResponsiveSize.getFontSize(20))),
                   8.height,
                   Text(title ?? locale.value.weHaveEagerlyAwaitedYourReturn, style: commonSecondaryTextStyle(color: title != null ? appColorPrimary : null, size: title != null ? 15 : null), textAlign: TextAlign.center),
                   48.height,

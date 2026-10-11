@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/models/base_response_model.dart';
-import 'package:streamit_laravel/screens/genres/genres_details/genres_details_screen.dart';
-import 'package:streamit_laravel/utils/api_end_points.dart';
+import 'package:swann_ott/models/base_response_model.dart';
+import 'package:swann_ott/screens/genres/genres_details/genres_details_screen.dart';
+import 'package:swann_ott/utils/api_end_points.dart';
 
 import '../../../../components/cached_image_widget.dart';
 import '../../../genres/model/genres_model.dart';

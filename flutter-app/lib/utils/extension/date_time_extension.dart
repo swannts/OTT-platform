@@ -1,6 +1,6 @@
 import 'package:intl/intl.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
-import 'package:streamit_laravel/utils/extension/string_extension.dart';
+import 'package:swann_ott/utils/common_functions.dart';
+import 'package:swann_ott/utils/extension/string_extension.dart';
 
 import '../constants.dart';
 

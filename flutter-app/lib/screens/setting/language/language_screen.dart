@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/generated/assets.dart';
-import 'package:streamit_laravel/screens/dashboard/dashboard_controller.dart';
-import 'package:streamit_laravel/screens/setting/help_and_support/help_and_support_controller.dart';
-import 'package:streamit_laravel/services/local_storage_service.dart';
-import 'package:streamit_laravel/utils/common_base.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
+import 'package:swann_ott/generated/assets.dart';
+import 'package:swann_ott/screens/dashboard/dashboard_controller.dart';
+import 'package:swann_ott/screens/setting/help_and_support/help_and_support_controller.dart';
+import 'package:swann_ott/services/local_storage_service.dart';
+import 'package:swann_ott/utils/common_base.dart';
+import 'package:swann_ott/utils/common_functions.dart';
 
 import '../../../components/app_scaffold.dart';
 import '../../../locale/app_localizations.dart';
@@ -39,7 +39,9 @@ class LanguageScreen extends StatelessWidget {
             subTitle: data.subTitle,
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
             titleTextStyle: commonPrimaryTextStyle(),
-            leading: IconWidget(imgPath: data.flag.validate()),
+            leading: data.flag.validate().isEmpty
+                ? const Text('🇧🇩', style: TextStyle(fontSize: 22))
+                : IconWidget(imgPath: data.flag.validate()),
             trailing: Obx(
               () => Container(
                 padding: const EdgeInsets.all(2),

@@ -1,6 +1,6 @@
 // ignore_for_file: deprecated_member_use
 import 'package:get/get.dart';
-import 'package:streamit_laravel/controllers/base_controller.dart';
+import 'package:swann_ott/controllers/base_controller.dart';
 
 class FloatingController extends BaseController {
   RxBool isExpanded = false.obs;

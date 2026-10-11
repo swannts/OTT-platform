@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/screens/content/model/content_model.dart';
-import 'package:streamit_laravel/screens/home/model/dashboard_res_model.dart';
-import 'package:streamit_laravel/utils/common_base.dart';
+import 'package:swann_ott/screens/content/model/content_model.dart';
+import 'package:swann_ott/screens/home/model/dashboard_res_model.dart';
+import 'package:swann_ott/utils/common_base.dart';
 
 import '../../../../components/shimmer_widget.dart';
 import '../../../person/person_list/person_list_screen.dart';

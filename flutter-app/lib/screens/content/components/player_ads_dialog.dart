@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/ads/custom_ads/custom_ads.dart';
-import 'package:streamit_laravel/ads/managers/player_ads_manager.dart';
-import 'package:streamit_laravel/ads/video_player_ads/custom_ad_widget.dart';
-import 'package:streamit_laravel/main.dart';
-import 'package:streamit_laravel/screens/content/model/content_model.dart' as model;
-import 'package:streamit_laravel/utils/colors.dart';
-import 'package:streamit_laravel/utils/common_base.dart';
+import 'package:swann_ott/ads/custom_ads/custom_ads.dart';
+import 'package:swann_ott/ads/managers/player_ads_manager.dart';
+import 'package:swann_ott/ads/video_player_ads/custom_ad_widget.dart';
+import 'package:swann_ott/main.dart';
+import 'package:swann_ott/screens/content/model/content_model.dart' as model;
+import 'package:swann_ott/utils/colors.dart';
+import 'package:swann_ott/utils/common_base.dart';
 
 class PlayerAdsDialog extends StatefulWidget {
   final List<model.CustomAds> ads;

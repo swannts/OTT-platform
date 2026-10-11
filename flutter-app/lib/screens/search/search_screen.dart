@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/components/app_scaffold.dart';
-import 'package:streamit_laravel/components/loader_widget.dart';
-import 'package:streamit_laravel/main.dart';
-import 'package:streamit_laravel/screens/search/components/categories_chips_list.dart';
-import 'package:streamit_laravel/screens/search/components/genre_chips_list.dart';
-import 'package:streamit_laravel/screens/search/components/search_text_field.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
+import 'package:swann_ott/components/app_scaffold.dart';
+import 'package:swann_ott/components/loader_widget.dart';
+import 'package:swann_ott/main.dart';
+import 'package:swann_ott/screens/search/components/categories_chips_list.dart';
+import 'package:swann_ott/screens/search/components/genre_chips_list.dart';
+import 'package:swann_ott/screens/search/components/search_text_field.dart';
+import 'package:swann_ott/utils/common_functions.dart';
 
 import 'components/empty_search_list_component.dart';
 import 'components/popular_searches_component.dart';

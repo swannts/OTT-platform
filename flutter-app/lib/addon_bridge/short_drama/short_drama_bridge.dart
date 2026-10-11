@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:streamit_laravel/screens/home/home_controller.dart';
+import 'package:swann_ott/screens/home/home_controller.dart';
 
 /// Delegate interface that the Short Drama add-on implements.
 abstract class ShortDramaDelegate {

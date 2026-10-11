@@ -6,7 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/main.dart';
+import 'package:swann_ott/main.dart';
 
 import '../../../configs.dart';
 import '../../../network/network_utils.dart';

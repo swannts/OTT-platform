@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/components/cached_image_widget.dart';
-import 'package:streamit_laravel/screens/payment/model/payment_model.dart';
-import 'package:streamit_laravel/utils/colors.dart';
-import 'package:streamit_laravel/utils/common_base.dart';
-import 'package:streamit_laravel/utils/extension/string_extension.dart';
+import 'package:swann_ott/components/cached_image_widget.dart';
+import 'package:swann_ott/screens/payment/model/payment_model.dart';
+import 'package:swann_ott/utils/colors.dart';
+import 'package:swann_ott/utils/common_base.dart';
+import 'package:swann_ott/utils/extension/string_extension.dart';
 
 import '../payment_controller.dart';
 

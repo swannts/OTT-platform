@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:get/get.dart';
-import 'package:streamit_laravel/controllers/base_controller.dart';
-import 'package:streamit_laravel/screens/content/model/content_model.dart';
-import 'package:streamit_laravel/screens/home/home_controller.dart';
-import 'package:streamit_laravel/utils/common_base.dart';
+import 'package:swann_ott/controllers/base_controller.dart';
+import 'package:swann_ott/screens/content/model/content_model.dart';
+import 'package:swann_ott/screens/home/home_controller.dart';
+import 'package:swann_ott/utils/common_base.dart';
 
 import '../../main.dart';
 import '../../network/core_api.dart';

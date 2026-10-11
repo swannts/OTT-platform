@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/components/loader_widget.dart';
-import 'package:streamit_laravel/screens/auth/sign_in/sign_in_controller.dart';
-import 'package:streamit_laravel/utils/colors.dart';
+import 'package:swann_ott/components/loader_widget.dart';
+import 'package:swann_ott/screens/auth/sign_in/sign_in_controller.dart';
+import 'package:swann_ott/utils/colors.dart';
 
 import '../../../main.dart';
 import '../../../utils/common_base.dart';

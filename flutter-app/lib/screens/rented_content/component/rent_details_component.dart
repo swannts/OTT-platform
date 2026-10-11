@@ -2,11 +2,11 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/screens/content/model/content_model.dart';
-import 'package:streamit_laravel/screens/payment/payment_screen.dart';
-import 'package:streamit_laravel/utils/colors.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
-import 'package:streamit_laravel/video_players/component/common/rent_detail_bottomsheet_controller.dart';
+import 'package:swann_ott/screens/content/model/content_model.dart';
+import 'package:swann_ott/screens/payment/payment_screen.dart';
+import 'package:swann_ott/utils/colors.dart';
+import 'package:swann_ott/utils/common_functions.dart';
+import 'package:swann_ott/video_players/component/common/rent_detail_bottomsheet_controller.dart';
 
 import '../../../main.dart';
 import '../../../screens/auth/model/about_page_res.dart';

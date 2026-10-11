@@ -1,11 +1,11 @@
 import 'dart:async';
 
 import 'package:get/get.dart';
-import 'package:streamit_laravel/controllers/base_controller.dart';
-import 'package:streamit_laravel/screens/content/model/content_model.dart';
-import 'package:streamit_laravel/utils/api_end_points.dart';
-import 'package:streamit_laravel/utils/common_functions.dart' show appConfigs;
-import 'package:streamit_laravel/utils/constants.dart' show VideoType;
+import 'package:swann_ott/controllers/base_controller.dart';
+import 'package:swann_ott/screens/content/model/content_model.dart';
+import 'package:swann_ott/utils/api_end_points.dart';
+import 'package:swann_ott/utils/common_functions.dart' show appConfigs;
+import 'package:swann_ott/utils/constants.dart' show VideoType;
 
 import '../../network/core_api.dart';
 

@@ -1,10 +1,19 @@
-import 'package:streamit_laravel/configs.dart';
+import 'package:swann_ott/configs.dart';
 
 import 'languages.dart';
 
 class LanguageEn extends BaseLanguage {
   @override
   String get language => 'Language';
+
+  @override
+  String get connected => 'Connected';
+
+  @override
+  String get restartApp => 'Restart App';
+
+  @override
+  String get videoTitle => 'Video';
 
   @override
   String get badRequest => 'Bad Request';
@@ -197,7 +206,7 @@ class LanguageEn extends BaseLanguage {
       'Explore curated shows across genres tailored to suit your viewing preferences.';
 
   @override
-  String get welcomeBackToStreamIt => 'Welcome Back to $APP_NAME!';
+  String get welcomeBackToSwann => 'Welcome Back to $APP_NAME!';
 
   @override
   String get weHaveEagerlyAwaitedYourReturn =>
@@ -777,8 +786,8 @@ class LanguageEn extends BaseLanguage {
   String get whatYourMobileNo => "What's Your Mobile Number";
 
   @override
-  String get withAValidMobileNumberYouCanConnectWithStreamit =>
-      'With a valid mobile number you can connect with Streamit';
+  String get withAValidMobileNumberYouCanConnectWithSwann =>
+      'With a valid mobile number you can connect with Swann';
 
   @override
   String get otpSentToYourSMS => 'OTP Sent To Your SMS!';
@@ -824,6 +833,7 @@ class LanguageEn extends BaseLanguage {
   String doYouWantToCancelDownloading(String name, String type) =>
       'Do you want to cancel downloading $name ($type)?';
 
+  @override
   String get doYouConfirmThisPlan => 'Do you confirm this subscription plan ';
 
   @override

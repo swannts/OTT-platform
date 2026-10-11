@@ -3,13 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:get/get.dart';
-import 'package:streamit_laravel/ads/custom_ads/ad_player.dart';
-import 'package:streamit_laravel/ads/models/overlay_ad.dart';
-import 'package:streamit_laravel/components/cached_image_widget.dart';
-import 'package:streamit_laravel/generated/assets.dart';
-import 'package:streamit_laravel/main.dart';
-import 'package:streamit_laravel/utils/colors.dart';
-import 'package:streamit_laravel/utils/common_base.dart';
+import 'package:swann_ott/ads/custom_ads/ad_player.dart';
+import 'package:swann_ott/ads/models/overlay_ad.dart';
+import 'package:swann_ott/components/cached_image_widget.dart';
+import 'package:swann_ott/generated/assets.dart';
+import 'package:swann_ott/main.dart';
+import 'package:swann_ott/utils/colors.dart';
+import 'package:swann_ott/utils/common_base.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class OverlayAdWidget extends StatefulWidget {

@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/generated/assets.dart';
-import 'package:streamit_laravel/main.dart';
-import 'package:streamit_laravel/models/base_response_model.dart';
-import 'package:streamit_laravel/screens/content/content_details_controller.dart';
-import 'package:streamit_laravel/screens/review/components/review_card.dart';
-import 'package:streamit_laravel/screens/review/review_list_screen.dart';
-import 'package:streamit_laravel/utils/colors.dart';
-import 'package:streamit_laravel/utils/common_base.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
-import 'package:streamit_laravel/utils/constants.dart';
-import 'package:streamit_laravel/utils/extension/string_extension.dart';
+import 'package:swann_ott/generated/assets.dart';
+import 'package:swann_ott/main.dart';
+import 'package:swann_ott/models/base_response_model.dart';
+import 'package:swann_ott/screens/content/content_details_controller.dart';
+import 'package:swann_ott/screens/review/components/review_card.dart';
+import 'package:swann_ott/screens/review/review_list_screen.dart';
+import 'package:swann_ott/utils/colors.dart';
+import 'package:swann_ott/utils/common_base.dart';
+import 'package:swann_ott/utils/common_functions.dart';
+import 'package:swann_ott/utils/constants.dart';
+import 'package:swann_ott/utils/extension/string_extension.dart';
 
 class ReviewComponent extends StatelessWidget {
   final ContentDetailsController controller;

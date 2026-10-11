@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/models/base_response_model.dart';
-import 'package:streamit_laravel/screens/content/components/content_poster_component.dart';
-import 'package:streamit_laravel/screens/content/model/content_model.dart';
-import 'package:streamit_laravel/screens/live_tv/model/live_tv_dashboard_response.dart';
-import 'package:streamit_laravel/utils/common_base.dart';
+import 'package:swann_ott/models/base_response_model.dart';
+import 'package:swann_ott/screens/content/components/content_poster_component.dart';
+import 'package:swann_ott/screens/content/model/content_model.dart';
+import 'package:swann_ott/screens/live_tv/model/live_tv_dashboard_response.dart';
+import 'package:swann_ott/utils/common_base.dart';
 
 import '../../channel_list/channel_list_screen.dart';
 

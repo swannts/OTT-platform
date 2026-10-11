@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:streamit_laravel/screens/content/model/content_model.dart';
-import 'package:streamit_laravel/video_players/video_player.dart';
-import 'package:streamit_laravel/video_players/video_player_controller.dart';
+import 'package:swann_ott/screens/content/model/content_model.dart';
+import 'package:swann_ott/video_players/video_player.dart';
+import 'package:swann_ott/video_players/video_player_controller.dart';
 
 class VideoScreen extends StatelessWidget {
   final bool isFromDownloads;

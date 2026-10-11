@@ -1,4 +1,4 @@
-import 'package:streamit_laravel/screens/content/model/content_model.dart';
+import 'package:swann_ott/screens/content/model/content_model.dart';
 
 class RentedContent {
   bool status;

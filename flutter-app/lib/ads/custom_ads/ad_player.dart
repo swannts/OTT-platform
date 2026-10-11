@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/ads/custom_ads/ad_player_controller.dart';
-import 'package:streamit_laravel/generated/assets.dart';
-import 'package:streamit_laravel/utils/common_base.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
+import 'package:swann_ott/ads/custom_ads/ad_player_controller.dart';
+import 'package:swann_ott/generated/assets.dart';
+import 'package:swann_ott/utils/common_base.dart';
+import 'package:swann_ott/utils/common_functions.dart';
 
 import '../../components/loader_widget.dart';
 import '../../main.dart';

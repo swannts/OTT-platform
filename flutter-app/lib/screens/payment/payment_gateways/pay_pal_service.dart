@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_paypal_checkout/flutter_paypal_checkout.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/configs.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
+import 'package:swann_ott/configs.dart';
+import 'package:swann_ott/utils/common_functions.dart';
 
 import '../../../main.dart';
 

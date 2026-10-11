@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/components/app_no_data_widget.dart';
-import 'package:streamit_laravel/screens/account_setting/account_setting_controller.dart';
-import 'package:streamit_laravel/screens/device/device_component.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
-import 'package:streamit_laravel/utils/constants.dart';
-import 'package:streamit_laravel/utils/empty_error_state_widget.dart';
+import 'package:swann_ott/components/app_no_data_widget.dart';
+import 'package:swann_ott/screens/account_setting/account_setting_controller.dart';
+import 'package:swann_ott/screens/device/device_component.dart';
+import 'package:swann_ott/utils/common_functions.dart';
+import 'package:swann_ott/utils/constants.dart';
+import 'package:swann_ott/utils/empty_error_state_widget.dart';
 
 import '../../../components/app_scaffold.dart';
 import '../../../main.dart';

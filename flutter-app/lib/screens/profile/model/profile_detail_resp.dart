@@ -1,4 +1,4 @@
-import 'package:streamit_laravel/screens/profile/watching_profile/model/profile_watching_model.dart';
+import 'package:swann_ott/screens/profile/watching_profile/model/profile_watching_model.dart';
 
 import '../../subscription/model/subscription_plan_model.dart';
 

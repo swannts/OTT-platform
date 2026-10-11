@@ -10,15 +10,15 @@ import 'package:nb_utils/nb_utils.dart';
 import 'package:playx_version_update/playx_version_update.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:slugify/slugify.dart';
-import 'package:streamit_laravel/components/app_dialog_widget.dart';
-import 'package:streamit_laravel/components/cached_image_widget.dart';
-import 'package:streamit_laravel/components/new_update_dialog.dart';
-import 'package:streamit_laravel/components/u_l_widget.dart';
-import 'package:streamit_laravel/generated/assets.dart';
-import 'package:streamit_laravel/screens/account_setting/components/logout_account_component.dart';
-import 'package:streamit_laravel/screens/subscription/model/subscription_plan_model.dart';
-import 'package:streamit_laravel/services/local_storage_service.dart';
-import 'package:streamit_laravel/utils/extension/get_x_extension.dart';
+import 'package:swann_ott/components/app_dialog_widget.dart';
+import 'package:swann_ott/components/cached_image_widget.dart';
+import 'package:swann_ott/components/new_update_dialog.dart';
+import 'package:swann_ott/components/u_l_widget.dart';
+import 'package:swann_ott/generated/assets.dart';
+import 'package:swann_ott/screens/account_setting/components/logout_account_component.dart';
+import 'package:swann_ott/screens/subscription/model/subscription_plan_model.dart';
+import 'package:swann_ott/services/local_storage_service.dart';
+import 'package:swann_ott/utils/extension/get_x_extension.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../configs.dart';
@@ -80,31 +80,9 @@ List<LanguageDataModel> languageList() {
     ),
     LanguageDataModel(
       id: 2,
-      name: 'Greek',
-      languageCode: 'el',
-      fullLanguageCode: 'el-EL',
-      flag: Assets.flagsIcGreece,
-    ),
-    LanguageDataModel(
-      id: 3,
-      name: locale.value.arabic,
-      languageCode: 'ar',
-      fullLanguageCode: 'ar-AR',
-      flag: Assets.flagsIcAr,
-    ),
-    LanguageDataModel(
-      id: 4,
-      name: locale.value.french,
-      languageCode: 'fr',
-      fullLanguageCode: 'fr-FR',
-      flag: Assets.flagsIcFr,
-    ),
-    LanguageDataModel(
-      id: 4,
-      name: locale.value.german,
-      languageCode: 'de',
-      fullLanguageCode: 'de-DE',
-      flag: Assets.flagsIcDe,
+      name: 'বাংলা',
+      languageCode: 'bn',
+      fullLanguageCode: 'bn-BD',
     ),
   ];
 }
@@ -143,11 +121,13 @@ class ResponsiveSize {
     switch (deviceType) {
       case DeviceType.mobile:
         baseWidth = defaultTargetPlatform == TargetPlatform.iOS ? 375.0 : 411.0;
-        baseHeight = defaultTargetPlatform == TargetPlatform.iOS ? 812.0 : 823.0;
+        baseHeight =
+            defaultTargetPlatform == TargetPlatform.iOS ? 812.0 : 823.0;
         break;
       case DeviceType.tablet:
         baseWidth = defaultTargetPlatform == TargetPlatform.iOS ? 768.0 : 800.0;
-        baseHeight = defaultTargetPlatform == TargetPlatform.iOS ? 1024.0 : 1280.0;
+        baseHeight =
+            defaultTargetPlatform == TargetPlatform.iOS ? 1024.0 : 1280.0;
         break;
       case DeviceType.desktop:
         baseWidth = 1366.0;
@@ -887,7 +867,8 @@ Rect? getSharePositionOrigin(BuildContext? context) {
     if (ctx != null) {
       final size = MediaQuery.of(ctx).size;
       if (size.width > 0 && size.height > 0) {
-        return Rect.fromLTWH(size.width / 2 - 50, size.height / 2 - 50, 100, 100);
+        return Rect.fromLTWH(
+            size.width / 2 - 50, size.height / 2 - 50, 100, 100);
       }
     }
   } catch (_) {}
@@ -899,7 +880,9 @@ Future<void> safeShare(ShareParams params) async {
   try {
     await SharePlus.instance.share(params);
   } on PlatformException catch (e) {
-    if (e.message?.contains("sharePositionOrigin") == true || e.details?.toString().contains("sharePositionOrigin") == true || e.toString().contains("sharePositionOrigin")) {
+    if (e.message?.contains("sharePositionOrigin") == true ||
+        e.details?.toString().contains("sharePositionOrigin") == true ||
+        e.toString().contains("sharePositionOrigin")) {
       try {
         final fallbackParams = ShareParams(
           text: params.text,
@@ -926,7 +909,8 @@ Future<void> safeShare(ShareParams params) async {
   }
 }
 
-void shareVideo({required String type, required String name, BuildContext? context}) async {
+void shareVideo(
+    {required String type, required String name, BuildContext? context}) async {
   String shareURL = "";
 
   String slug = slugify(name);
@@ -1143,7 +1127,7 @@ Future<void> _promptToCompleteFlexibleUpdate(BuildContext context) async {
           },
         );
       },
-      child: Text('Restart App',
+      child: Text(locale.value.restartApp,
           style: boldTextStyle(
               size: ResponsiveSize.getFontSize(14), color: darkGreen)),
     ),

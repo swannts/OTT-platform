@@ -1,4 +1,4 @@
-import 'package:streamit_laravel/screens/subscription/model/subscription_plan_model.dart';
+import 'package:swann_ott/screens/subscription/model/subscription_plan_model.dart';
 
 class SubscriptionResponseModel {
   bool status;

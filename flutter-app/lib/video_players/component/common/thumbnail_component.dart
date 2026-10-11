@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/components/cached_image_widget.dart';
-import 'package:streamit_laravel/utils/colors.dart';
+import 'package:swann_ott/components/cached_image_widget.dart';
+import 'package:swann_ott/utils/colors.dart';
 
 class ThumbnailComponent extends StatelessWidget {
   final String thumbnailImage;

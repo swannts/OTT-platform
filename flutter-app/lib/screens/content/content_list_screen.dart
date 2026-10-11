@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:streamit_laravel/components/app_no_data_widget.dart';
-import 'package:streamit_laravel/components/app_scaffold.dart';
-import 'package:streamit_laravel/main.dart';
-import 'package:streamit_laravel/routes/app_routes.dart';
-import 'package:streamit_laravel/screens/content/components/content_poster_component.dart';
-import 'package:streamit_laravel/screens/content/content_list_controller.dart';
-import 'package:streamit_laravel/screens/content/content_list_shimmer.dart';
-import 'package:streamit_laravel/screens/content/model/content_model.dart';
-import 'package:streamit_laravel/screens/slider/banner_widget.dart';
-import 'package:streamit_laravel/utils/common_base.dart';
-import 'package:streamit_laravel/utils/empty_error_state_widget.dart';
-import 'package:streamit_laravel/utils/extension/string_extension.dart';
+import 'package:swann_ott/components/app_no_data_widget.dart';
+import 'package:swann_ott/components/app_scaffold.dart';
+import 'package:swann_ott/main.dart';
+import 'package:swann_ott/routes/app_routes.dart';
+import 'package:swann_ott/screens/content/components/content_poster_component.dart';
+import 'package:swann_ott/screens/content/content_list_controller.dart';
+import 'package:swann_ott/screens/content/content_list_shimmer.dart';
+import 'package:swann_ott/screens/content/model/content_model.dart';
+import 'package:swann_ott/screens/slider/banner_widget.dart';
+import 'package:swann_ott/utils/common_base.dart';
+import 'package:swann_ott/utils/empty_error_state_widget.dart';
+import 'package:swann_ott/utils/extension/string_extension.dart';
 
 class ContentListScreen extends StatelessWidget {
   final String? title;

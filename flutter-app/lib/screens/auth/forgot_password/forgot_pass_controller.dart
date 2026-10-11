@@ -5,9 +5,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/controllers/base_controller.dart';
-import 'package:streamit_laravel/network/auth_apis.dart';
-import 'package:streamit_laravel/utils/api_end_points.dart';
+import 'package:swann_ott/controllers/base_controller.dart';
+import 'package:swann_ott/network/auth_apis.dart';
+import 'package:swann_ott/utils/api_end_points.dart';
 
 import '../../../utils/common_base.dart';
 

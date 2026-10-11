@@ -1,7 +1,7 @@
 // ignore_for_file: invalid_use_of_protected_member
 
 import 'package:get/get.dart';
-import 'package:streamit_laravel/generated/assets.dart';
+import 'package:swann_ott/generated/assets.dart';
 
 import '../../main.dart';
 import '../../utils/common_functions.dart';

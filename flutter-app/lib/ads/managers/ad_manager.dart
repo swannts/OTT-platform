@@ -4,11 +4,11 @@ import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/ads/models/ad_config.dart';
-import 'package:streamit_laravel/ads/models/overlay_ad.dart';
-import 'package:streamit_laravel/ads/vast/vast_parser.dart';
-import 'package:streamit_laravel/screens/content/model/content_model.dart';
-import 'package:streamit_laravel/video_players/helper/player_manager.dart';
+import 'package:swann_ott/ads/models/ad_config.dart';
+import 'package:swann_ott/ads/models/overlay_ad.dart';
+import 'package:swann_ott/ads/vast/vast_parser.dart';
+import 'package:swann_ott/screens/content/model/content_model.dart';
+import 'package:swann_ott/video_players/helper/player_manager.dart';
 
 enum AdSlotType { preRoll, midRoll, postRoll, banner, player }
 

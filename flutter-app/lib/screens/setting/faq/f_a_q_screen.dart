@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/components/app_no_data_widget.dart';
-import 'package:streamit_laravel/components/app_scaffold.dart';
-import 'package:streamit_laravel/components/shimmer_widget.dart';
-import 'package:streamit_laravel/screens/setting/faq/components/f_a_q_card.dart';
-import 'package:streamit_laravel/screens/setting/faq/faq_list_controller.dart';
-import 'package:streamit_laravel/utils/constants.dart';
+import 'package:swann_ott/components/app_no_data_widget.dart';
+import 'package:swann_ott/components/app_scaffold.dart';
+import 'package:swann_ott/components/shimmer_widget.dart';
+import 'package:swann_ott/screens/setting/faq/components/f_a_q_card.dart';
+import 'package:swann_ott/screens/setting/faq/faq_list_controller.dart';
+import 'package:swann_ott/utils/constants.dart';
 
 import '../../../main.dart';
 import '../../../utils/colors.dart';

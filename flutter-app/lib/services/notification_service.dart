@@ -9,17 +9,17 @@ import 'package:get/get.dart';
 import 'package:http/http.dart' show get;
 import 'package:nb_utils/nb_utils.dart' show IntExtensions;
 import 'package:path_provider/path_provider.dart' show getTemporaryDirectory;
-import 'package:streamit_laravel/screens/auth/other/notification_screen.dart';
-import 'package:streamit_laravel/screens/coming_soon/coming_soon_detail_screen.dart';
-import 'package:streamit_laravel/screens/coming_soon/model/coming_soon_response.dart';
-import 'package:streamit_laravel/screens/content/content_details_screen.dart';
-import 'package:streamit_laravel/screens/content/model/content_model.dart';
-import 'package:streamit_laravel/screens/subscription/subscription_history/rental_history_screen.dart';
-import 'package:streamit_laravel/screens/subscription/subscription_history/subscription_history_screen.dart';
-import 'package:streamit_laravel/screens/subscription/subscription_screen.dart';
-import 'package:streamit_laravel/utils/colors.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
-import 'package:streamit_laravel/utils/constants.dart';
+import 'package:swann_ott/screens/auth/other/notification_screen.dart';
+import 'package:swann_ott/screens/coming_soon/coming_soon_detail_screen.dart';
+import 'package:swann_ott/screens/coming_soon/model/coming_soon_response.dart';
+import 'package:swann_ott/screens/content/content_details_screen.dart';
+import 'package:swann_ott/screens/content/model/content_model.dart';
+import 'package:swann_ott/screens/subscription/subscription_history/rental_history_screen.dart';
+import 'package:swann_ott/screens/subscription/subscription_history/subscription_history_screen.dart';
+import 'package:swann_ott/screens/subscription/subscription_screen.dart';
+import 'package:swann_ott/utils/colors.dart';
+import 'package:swann_ott/utils/common_functions.dart';
+import 'package:swann_ott/utils/constants.dart';
 
 /// Handle background notification when app is not running
 ///
@@ -50,7 +50,7 @@ class NotificationService {
     'notification',
     'Notification',
     description:
-        'Get alerts for transactions, offers, and important updates from Streamit.',
+        'Get alerts for transactions, offers, and important updates from Swann.',
     importance: Importance.high,
   );
 

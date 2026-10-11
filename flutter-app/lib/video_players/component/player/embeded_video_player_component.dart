@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:streamit_laravel/video_players/helper/player_manager.dart';
+import 'package:swann_ott/video_players/helper/player_manager.dart';
 
 class EmbeddedVideoPlayer extends StatelessWidget {
   final PlayerManager? playerManager;

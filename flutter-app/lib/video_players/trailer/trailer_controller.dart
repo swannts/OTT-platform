@@ -5,10 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/screens/content/model/content_model.dart';
-import 'package:streamit_laravel/utils/colors.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
-import 'package:streamit_laravel/video_players/helper/player_manager.dart';
+import 'package:swann_ott/screens/content/model/content_model.dart';
+import 'package:swann_ott/utils/colors.dart';
+import 'package:swann_ott/utils/common_functions.dart';
+import 'package:swann_ott/video_players/helper/player_manager.dart';
 
 class TrailerController extends GetxController with WidgetsBindingObserver {
   bool isFullScreenEnable;

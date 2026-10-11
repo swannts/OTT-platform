@@ -1,7 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:streamit_laravel/utils/colors.dart';
+import 'package:swann_ott/utils/colors.dart';
 
 class AppPageTransitionsBuilder extends PageTransitionsBuilder {
   @override

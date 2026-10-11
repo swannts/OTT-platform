@@ -1,4 +1,4 @@
-import 'package:streamit_laravel/utils/extension/string_extension.dart';
+import 'package:swann_ott/utils/extension/string_extension.dart';
 
 class EmbeddedPlayerHelper {
   /// ======================================================

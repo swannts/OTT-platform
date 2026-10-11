@@ -1,10 +1,10 @@
 import 'package:get/get.dart';
-import 'package:streamit_laravel/controllers/base_controller.dart';
-import 'package:streamit_laravel/models/base_response_model.dart';
-import 'package:streamit_laravel/network/core_api.dart';
-import 'package:streamit_laravel/screens/content/model/content_model.dart';
-import 'package:streamit_laravel/screens/slider/slider_controller.dart';
-import 'package:streamit_laravel/utils/api_end_points.dart';
+import 'package:swann_ott/controllers/base_controller.dart';
+import 'package:swann_ott/models/base_response_model.dart';
+import 'package:swann_ott/network/core_api.dart';
+import 'package:swann_ott/screens/content/model/content_model.dart';
+import 'package:swann_ott/screens/slider/slider_controller.dart';
+import 'package:swann_ott/utils/api_end_points.dart';
 
 class ContentListController extends BaseListController<PosterDataModel> {
   SliderController sliderController = SliderController();

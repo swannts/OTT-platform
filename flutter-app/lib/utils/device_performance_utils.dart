@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/widgets.dart';
-import 'package:streamit_laravel/utils/constants.dart';
+import 'package:swann_ott/utils/constants.dart';
 
 enum DevicePerformanceClass { low, mid, high }
 

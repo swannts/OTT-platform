@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/components/cached_image_widget.dart';
-import 'package:streamit_laravel/screens/profile/edit_profile/edit_profile_screen.dart';
-import 'package:streamit_laravel/screens/profile/model/profile_detail_resp.dart';
-import 'package:streamit_laravel/screens/profile/profile_controller.dart';
-import 'package:streamit_laravel/utils/colors.dart';
-import 'package:streamit_laravel/utils/common_base.dart';
+import 'package:swann_ott/components/cached_image_widget.dart';
+import 'package:swann_ott/screens/profile/edit_profile/edit_profile_screen.dart';
+import 'package:swann_ott/screens/profile/model/profile_detail_resp.dart';
+import 'package:swann_ott/screens/profile/profile_controller.dart';
+import 'package:swann_ott/utils/colors.dart';
+import 'package:swann_ott/utils/common_base.dart';
 
 import '../../../generated/assets.dart';
 

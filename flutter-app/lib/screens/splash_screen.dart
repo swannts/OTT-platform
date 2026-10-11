@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/components/app_logo_widget.dart';
-import 'package:streamit_laravel/components/no_internet_widget.dart';
-import 'package:streamit_laravel/controllers/connectivity_controller.dart';
-import 'package:streamit_laravel/main.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
+import 'package:swann_ott/components/app_logo_widget.dart';
+import 'package:swann_ott/components/no_internet_widget.dart';
+import 'package:swann_ott/controllers/connectivity_controller.dart';
+import 'package:swann_ott/main.dart';
+import 'package:swann_ott/utils/common_functions.dart';
 
 import '../components/app_scaffold.dart';
 import '../utils/colors.dart';

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/screens/profile/profile_controller.dart';
+import 'package:swann_ott/screens/profile/profile_controller.dart';
 
 import '../../../main.dart';
 import '../../../utils/colors.dart';
-import 'package:streamit_laravel/generated/assets.dart';
-import 'package:streamit_laravel/components/app_dialog_widget.dart';
+import 'package:swann_ott/generated/assets.dart';
+import 'package:swann_ott/components/app_dialog_widget.dart';
 
 class CancelButton extends StatelessWidget {
   const CancelButton({super.key});

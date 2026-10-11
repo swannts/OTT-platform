@@ -3,9 +3,9 @@
 import 'dart:io';
 
 import 'package:country_picker/country_picker.dart';
-import 'package:streamit_laravel/generated/assets.dart';
+import 'package:swann_ott/generated/assets.dart';
 
-const APP_NAME = 'Streamit';
+const APP_NAME = 'Swann';
 const APP_MINI_LOGO_URL = Assets.assetsAppMiniLogo;
 const APP_LOGO_URL = Assets.assetsAppLoader;
 const APP_FONT_FAMILY = 'Roboto';
@@ -27,10 +27,10 @@ String get baseUrlKeyName => Platform.isAndroid ? 'developingBaseUrl' : 'develop
 String get BASE_URL => '$DOMAIN_URL/api/';
 
 const APP_APPSTORE_URL = '';
-const APP_PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.iqonic.streamitlaravel';
+const APP_PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.swann.ott';
 
 ///LOCAL VIDEO TYPE URL
-String get LOCAL_VIDEO_DOMAIN_URL => '$DOMAIN_URL/storage/streamit-laravel/';
+String get LOCAL_VIDEO_DOMAIN_URL => '$DOMAIN_URL/storage/swann-laravel/';
 
 //Note: For FIREBASE_CLIENT_ID ---> Go to android/app/google-services.json
 // - Find press ctrl+F and look for "client_type": 3

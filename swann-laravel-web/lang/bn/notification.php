@@ -1,0 +1,27 @@
+<?php
+
+return [
+    'title' => 'নোটিফিকেশন',
+    'lbl_text' => 'পাঠ্য',
+    'lbl_module' => 'মডিউল',
+    'lbl_update' => 'আপডেটের সময়',
+    'title_template' => 'বিজ্ঞপ্তি টেমপ্লেট',
+    'edit_title_template' => 'বিজ্ঞপ্তি টেমপ্লেট সম্পাদনা করুন',
+    'lbl_id' => 'ID',
+    'lbl_label' => 'টেমপ্লেট নাম',
+    'type' => 'ধরন',
+    'lbl_type' => 'ধরন',
+    'lbl_customer' => 'ব্যবহারকারী',
+    'lbl_status' => 'অবস্থা',
+    'lbl_action' => 'কার্যক্রম',
+    'lbl_to' => 'প্রতি',
+    'lbl_bcc' => 'Bcc',
+    'lbl_cc' => 'Cc',
+    'parameters' => 'বিজ্ঞপ্তি পরামিতি',
+    'template' => 'টেমপ্লেট',
+    'notification_deleted' => 'বিজ্ঞপ্তি সফলভাবে মুছে ফেলা হয়েছে!',
+    'lbl_user_type' => 'ব্যবহারকারীর প্রকার',
+    'notification_template' => 'বিজ্ঞপ্তি টেমপ্লেট',
+    'email_template' => 'ই-মেইল টেমপ্লেট',
+    'edit' => 'সম্পাদনা',
+];

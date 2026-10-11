@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/ads/components/banner_ad_component.dart';
-import 'package:streamit_laravel/screens/content/model/content_model.dart';
-import 'package:streamit_laravel/screens/home/components/continue_watch_component.dart';
-import 'package:streamit_laravel/screens/home/components/person_component/person_component.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
-import 'package:streamit_laravel/utils/constants.dart';
+import 'package:swann_ott/ads/components/banner_ad_component.dart';
+import 'package:swann_ott/screens/content/model/content_model.dart';
+import 'package:swann_ott/screens/home/components/continue_watch_component.dart';
+import 'package:swann_ott/screens/home/components/person_component/person_component.dart';
+import 'package:swann_ott/utils/common_functions.dart';
+import 'package:swann_ott/utils/constants.dart';
 
 import '../../../../../utils/common_base.dart';
 import '../../content/components/auto_slider_component.dart';

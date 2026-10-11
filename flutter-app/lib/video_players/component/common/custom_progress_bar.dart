@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:streamit_laravel/utils/colors.dart';
+import 'package:swann_ott/utils/colors.dart';
 
 class CustomProgressBar extends StatelessWidget {
   final Duration position;

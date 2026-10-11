@@ -1,0 +1,26 @@
+<?php
+
+return [
+    'title' => 'ব্যবহারকারী',
+    'lbl_profile_image' => 'প্রোফাইল ছবি',
+    'lbl_first_name' => 'প্রথম নাম',
+    'lbl_last_name' => 'শেষ নাম',
+    'lbl_Email' => 'ইমেল',
+    'lbl_phone_number' => 'ফোন নম্বর',
+    'lbl_gender' => 'লিঙ্গ',
+    'lbl_status' => 'অবস্থা',
+    'lbl_verification_status' => 'যাচাই স্থিতি',
+    'lbl_blocked' => 'অবরুদ্ধ',
+    'msg_verified' => 'যাচাইকৃত',
+    'msg_unverified' => 'যাচাই করতে হবে',
+    'lbl_action' => 'কার্যক্রম',
+    'lbl_date_of_birth' => 'জন্মতারিখ',
+    'lbl_name' => 'নাম',
+    'about' => 'সম্পর্কে',
+    'total_reviews' => 'মোট পর্যালোচনা',
+    'other_details' => 'অন্যান্য বিবরণ',
+    'reviews' => 'পর্যালোচনা',
+    'data_not_found' => 'ডেটা পাওয়া যায়নি',
+    'view_all' => 'সব দেখুন',
+    'email_sent' => 'ইমেল সফলভাবে পাঠান!',
+];

@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/configs.dart';
+import 'package:swann_ott/configs.dart';
 
 class ConnectivityController extends GetxController {
   static ConnectivityController get instance => Get.find();

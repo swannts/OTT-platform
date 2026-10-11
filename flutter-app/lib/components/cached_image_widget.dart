@@ -5,8 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/components/blurhash_placeholder.dart';
-import 'package:streamit_laravel/components/shimmer_widget.dart';
+import 'package:swann_ott/components/blurhash_placeholder.dart';
+import 'package:swann_ott/components/shimmer_widget.dart';
 
 class CachedImageWidget extends StatelessWidget {
   final String url;

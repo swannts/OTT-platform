@@ -1,4 +1,4 @@
-import 'package:streamit_laravel/configs.dart';
+import 'package:swann_ott/configs.dart';
 
 import 'languages.dart';
 
@@ -198,7 +198,7 @@ class LanguageFr extends BaseLanguage {
       'Explorez des émissions sélectionnées dans tous les genres, adaptées à vos préférences de visionnage.';
 
   @override
-  String get welcomeBackToStreamIt => 'Bienvenue sur $APP_NAME!';
+  String get welcomeBackToSwann => 'Bienvenue sur $APP_NAME!';
 
   @override
   String get weHaveEagerlyAwaitedYourReturn =>
@@ -788,8 +788,8 @@ class LanguageFr extends BaseLanguage {
   String get whatYourMobileNo => 'Quel est votre numéro de portable';
 
   @override
-  String get withAValidMobileNumberYouCanConnectWithStreamit =>
-      'Avec un numéro de mobile valide, vous pouvez vous connecter avec streamit';
+  String get withAValidMobileNumberYouCanConnectWithSwann =>
+      'Avec un numéro de mobile valide, vous pouvez vous connecter avec swann';
 
   @override
   String get otpSentToYourSMS => 'OTP envoyé à votre SMS !';

@@ -1,4 +1,4 @@
-import 'package:streamit_laravel/configs.dart';
+import 'package:swann_ott/configs.dart';
 
 class ReviewResponse {
   bool status;

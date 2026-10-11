@@ -1,0 +1,28 @@
+<?php
+
+return [
+    'lbl_language' => 'ভাষার বিকল্প',
+    'lbl_file' => 'অনুবাদ করার জন্য ফাইল নির্বাচন করুন',
+    'lbl_key' => 'কী',
+    'lbl_value' => 'মান',
+    'lbl_timezone' => 'সময় অঞ্চল',
+    'lbl_data_table_limit' => 'ডেটা টেবিল সীমা',
+    'lbl_date_format' => 'তারিখ বিন্যাস',
+    'lbl_time_format' => 'সময়ের বিন্যাস',
+    'lbl_currency' => 'মুদ্রা সেটিং',
+    'soon' => '#',
+    'lbl_body_chart' => 'বডি চার্ট',
+    'lbl_theme_mode' => 'থিম মোড',
+    'Menubar_position' => 'মেনুবার অবস্থান',
+    'lbl_image_handling' => 'ছবির হ্যান্ডেল',
+    'lbl_menu_items' => 'মেনু',
+    'btn_add_new_images' => 'নতুন ছবি যোগ করুন',
+    'tbl_header_name' => 'নাম',
+    'tbl_header_image' => 'ছবি',
+    'tbl_header_default' => 'ডিফল্ট',
+    'tbl_header_action' => 'কার্যক্রম',
+    'image_template_section_title' => 'ছবির টেমপ্লেট',
+    'lbl_default' => 'ডিফল্ট',
+    'btn_remove' => 'মুছুন',
+    'lbl_storage_options' => 'স্টোরেজ অপশন',
+];

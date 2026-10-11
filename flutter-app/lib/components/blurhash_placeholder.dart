@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_blurhash/flutter_blurhash.dart';
 import 'package:http/http.dart' as http;
-import 'package:streamit_laravel/configs.dart';
-import 'package:streamit_laravel/components/shimmer_widget.dart';
+import 'package:swann_ott/configs.dart';
+import 'package:swann_ott/components/shimmer_widget.dart';
 
 class ImageBlurHashCache {
   ImageBlurHashCache._();

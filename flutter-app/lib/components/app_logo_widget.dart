@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/components/blurhash_placeholder.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
+import 'package:swann_ott/components/blurhash_placeholder.dart';
+import 'package:swann_ott/utils/common_functions.dart';
 
 import '../configs.dart';
 import '../utils/constants.dart';

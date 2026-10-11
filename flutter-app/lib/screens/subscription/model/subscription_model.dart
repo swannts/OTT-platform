@@ -1,5 +1,5 @@
-import 'package:streamit_laravel/screens/content/model/content_model.dart';
-import 'package:streamit_laravel/screens/subscription/model/subscription_plan_model.dart';
+import 'package:swann_ott/screens/content/model/content_model.dart';
+import 'package:swann_ott/screens/subscription/model/subscription_plan_model.dart';
 
 class SubscriptionResponse {
   bool status;

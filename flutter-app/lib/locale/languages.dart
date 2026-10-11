@@ -6,6 +6,12 @@ abstract class BaseLanguage {
 
   String get language;
 
+  String get connected;
+
+  String get restartApp;
+
+  String get videoTitle;
+
   String get badRequest;
 
   String get forbidden;
@@ -124,7 +130,7 @@ abstract class BaseLanguage {
 
   String get optionDesp;
 
-  String get welcomeBackToStreamIt;
+  String get welcomeBackToSwann;
 
   String get weHaveEagerlyAwaitedYourReturn;
 
@@ -493,7 +499,7 @@ abstract class BaseLanguage {
 
   String get whatYourMobileNo;
 
-  String get withAValidMobileNumberYouCanConnectWithStreamit;
+  String get withAValidMobileNumberYouCanConnectWithSwann;
 
   String get otpSentToYourSMS;
 

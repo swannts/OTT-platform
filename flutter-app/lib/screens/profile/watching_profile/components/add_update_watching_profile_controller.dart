@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/controllers/base_controller.dart';
-import 'package:streamit_laravel/main.dart';
-import 'package:streamit_laravel/network/core_api.dart';
-import 'package:streamit_laravel/screens/profile/watching_profile/model/profile_watching_model.dart';
-import 'package:streamit_laravel/screens/profile/watching_profile/watching_profile_screen.dart';
-import 'package:streamit_laravel/screens/subscription/subscription_screen.dart';
-import 'package:streamit_laravel/utils/api_end_points.dart';
-import 'package:streamit_laravel/utils/common_base.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
-import 'package:streamit_laravel/utils/constants.dart';
+import 'package:swann_ott/controllers/base_controller.dart';
+import 'package:swann_ott/main.dart';
+import 'package:swann_ott/network/core_api.dart';
+import 'package:swann_ott/screens/profile/watching_profile/model/profile_watching_model.dart';
+import 'package:swann_ott/screens/profile/watching_profile/watching_profile_screen.dart';
+import 'package:swann_ott/screens/subscription/subscription_screen.dart';
+import 'package:swann_ott/utils/api_end_points.dart';
+import 'package:swann_ott/utils/common_base.dart';
+import 'package:swann_ott/utils/common_functions.dart';
+import 'package:swann_ott/utils/constants.dart';
 
 class AddUpdateWatchingProfileController extends BaseController {
   RxBool isEdit = false.obs;

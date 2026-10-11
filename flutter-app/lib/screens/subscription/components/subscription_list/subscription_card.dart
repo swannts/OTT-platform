@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/utils/colors.dart';
-import 'package:streamit_laravel/utils/common_base.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
-import 'package:streamit_laravel/utils/extension/string_extension.dart';
-import 'package:streamit_laravel/utils/price_widget.dart';
-import 'package:streamit_laravel/utils/shimmer/shimmer.dart';
+import 'package:swann_ott/utils/colors.dart';
+import 'package:swann_ott/utils/common_base.dart';
+import 'package:swann_ott/utils/common_functions.dart';
+import 'package:swann_ott/utils/extension/string_extension.dart';
+import 'package:swann_ott/utils/price_widget.dart';
+import 'package:swann_ott/utils/shimmer/shimmer.dart';
 
 import '../../../../main.dart';
 import '../../model/subscription_plan_model.dart';

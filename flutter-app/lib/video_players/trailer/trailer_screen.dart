@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:streamit_laravel/screens/content/model/content_model.dart';
-import 'package:streamit_laravel/video_players/trailer/trailer_controller.dart';
-import 'package:streamit_laravel/video_players/trailer/trailer_widget.dart';
+import 'package:swann_ott/screens/content/model/content_model.dart';
+import 'package:swann_ott/video_players/trailer/trailer_controller.dart';
+import 'package:swann_ott/video_players/trailer/trailer_widget.dart';
 
 class TrailerScreen extends StatefulWidget {
   final String title;

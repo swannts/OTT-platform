@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:path/path.dart';
-import 'package:streamit_laravel/screens/downloads/models/hive_content_model.dart';
+import 'package:swann_ott/screens/downloads/models/hive_content_model.dart';
 
 import 'download_service.dart';
 

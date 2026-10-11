@@ -11,17 +11,17 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:pod_player/pod_player.dart';
-import 'package:streamit_laravel/ads/models/ad_config.dart';
-import 'package:streamit_laravel/components/app_dialog_widget.dart';
-import 'package:streamit_laravel/configs.dart';
-import 'package:streamit_laravel/network/network_utils.dart';
-import 'package:streamit_laravel/utils/cast/available_devices_for_cast.dart';
-import 'package:streamit_laravel/utils/cast/controller/fc_cast_controller.dart';
-import 'package:streamit_laravel/utils/cast/flutter_chrome_cast_widget.dart';
-import 'package:streamit_laravel/utils/colors.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
-import 'package:streamit_laravel/utils/constants.dart';
-import 'package:streamit_laravel/video_players/helper/embedded_player_helper.dart';
+import 'package:swann_ott/ads/models/ad_config.dart';
+import 'package:swann_ott/components/app_dialog_widget.dart';
+import 'package:swann_ott/configs.dart';
+import 'package:swann_ott/network/network_utils.dart';
+import 'package:swann_ott/utils/cast/available_devices_for_cast.dart';
+import 'package:swann_ott/utils/cast/controller/fc_cast_controller.dart';
+import 'package:swann_ott/utils/cast/flutter_chrome_cast_widget.dart';
+import 'package:swann_ott/utils/colors.dart';
+import 'package:swann_ott/utils/common_functions.dart';
+import 'package:swann_ott/utils/constants.dart';
+import 'package:swann_ott/video_players/helper/embedded_player_helper.dart';
 
 class PlayerManager {
   // --- Controllers ---

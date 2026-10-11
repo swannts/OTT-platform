@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:streamit_laravel/components/app_no_data_widget.dart';
-import 'package:streamit_laravel/components/cached_image_widget.dart';
-import 'package:streamit_laravel/models/base_response_model.dart';
-import 'package:streamit_laravel/screens/content/filtered_content_list_screen.dart';
-import 'package:streamit_laravel/screens/home/model/dashboard_res_model.dart';
-import 'package:streamit_laravel/utils/api_end_points.dart';
-import 'package:streamit_laravel/utils/colors.dart';
+import 'package:swann_ott/components/app_no_data_widget.dart';
+import 'package:swann_ott/components/cached_image_widget.dart';
+import 'package:swann_ott/models/base_response_model.dart';
+import 'package:swann_ott/screens/content/filtered_content_list_screen.dart';
+import 'package:swann_ott/screens/home/model/dashboard_res_model.dart';
+import 'package:swann_ott/utils/api_end_points.dart';
+import 'package:swann_ott/utils/colors.dart';
 
 import '../../../../components/app_scaffold.dart';
 import '../../../../main.dart';

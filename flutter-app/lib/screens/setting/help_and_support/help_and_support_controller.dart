@@ -1,10 +1,10 @@
-import 'package:streamit_laravel/controllers/base_controller.dart';
-import 'package:streamit_laravel/main.dart';
-import 'package:streamit_laravel/network/core_api.dart';
-import 'package:streamit_laravel/screens/auth/model/about_page_res.dart';
-import 'package:streamit_laravel/services/local_storage_service.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
-import 'package:streamit_laravel/utils/constants.dart';
+import 'package:swann_ott/controllers/base_controller.dart';
+import 'package:swann_ott/main.dart';
+import 'package:swann_ott/network/core_api.dart';
+import 'package:swann_ott/screens/auth/model/about_page_res.dart';
+import 'package:swann_ott/services/local_storage_service.dart';
+import 'package:swann_ott/utils/common_functions.dart';
+import 'package:swann_ott/utils/constants.dart';
 
 class HelpAndSupportController extends BaseListController<AboutDataModel> {
   @override

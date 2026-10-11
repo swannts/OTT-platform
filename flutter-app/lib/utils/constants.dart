@@ -2,7 +2,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:streamit_laravel/generated/assets.dart';
+import 'package:swann_ott/generated/assets.dart';
 
 class Constants {
   static const DEFAULT_EMAIL = 'john@gmail.com';

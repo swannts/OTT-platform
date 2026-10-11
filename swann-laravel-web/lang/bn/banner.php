@@ -1,0 +1,26 @@
+<?php
+
+return [
+    'title' => 'অ্যাপ ব্যানার',
+    'add_title' => 'নতুন অ্যাপ ব্যানার',
+    'edit_title' => 'অ্যাপ ব্যানার সম্পাদনা করুন',
+    'lbl_image' => 'ছবি',
+    'lbl_title' => 'শিরোনাম',
+    'lbl_select' => 'নির্বাচন করুন',
+    'lbl_type' => 'ধরন',
+    'lbl_name' => 'নাম',
+    'lbl_status' => 'অবস্থা',
+    'lbl_update_at' => 'আপডেটের সময়',
+    'lbl_action' => 'কার্যক্রম',
+    'status_update' => 'স্থিতি সফলভাবে আপডেট হয়েছে!',
+    'lbl_banner_for' => 'ব্যানারের জন্য',
+    'lbl_web_banner' => 'ওয়েব ব্যানার',
+    'lbl_tv_banner' => 'টিভি ব্যানার',
+    'lbl_mobile_banner' => 'মোবাইল ব্যানার',
+    'lbl_description' => 'বিবরণ',
+    'lbl_home' => 'বাড়ি',
+    'lbl_movie' => 'মুভি',
+    'lbl_tv_show' => 'টিভি শো',
+    'lbl_video' => 'ভিডিও',
+    'lbl_promotional' => 'প্রচারমূলক',
+];

@@ -8,10 +8,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:streamit_laravel/network/auth_apis.dart';
-import 'package:streamit_laravel/screens/auth/model/login_response.dart';
-import 'package:streamit_laravel/services/local_storage_service.dart';
-import 'package:streamit_laravel/utils/common_base.dart';
+import 'package:swann_ott/network/auth_apis.dart';
+import 'package:swann_ott/screens/auth/model/login_response.dart';
+import 'package:swann_ott/services/local_storage_service.dart';
+import 'package:swann_ott/utils/common_base.dart';
 
 import '../configs.dart';
 import '../main.dart';

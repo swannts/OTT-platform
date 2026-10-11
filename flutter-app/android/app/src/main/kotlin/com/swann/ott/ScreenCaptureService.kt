@@ -1,4 +1,4 @@
-package com.iqonic.streamitlaravel
+package com.swann.ott
 
 import android.app.Notification
 import android.app.NotificationChannel

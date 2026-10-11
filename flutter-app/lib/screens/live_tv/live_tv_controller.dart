@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:get/get.dart';
-import 'package:streamit_laravel/controllers/base_controller.dart';
-import 'package:streamit_laravel/screens/live_tv/model/live_tv_dashboard_response.dart';
+import 'package:swann_ott/controllers/base_controller.dart';
+import 'package:swann_ott/screens/live_tv/model/live_tv_dashboard_response.dart';
 
 import '../../network/core_api.dart';
 

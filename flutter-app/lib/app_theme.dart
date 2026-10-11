@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/configs.dart';
-import 'package:streamit_laravel/utils/common_base.dart';
-import 'package:streamit_laravel/utils/page_transition_builder.dart';
+import 'package:swann_ott/configs.dart';
+import 'package:swann_ott/utils/common_base.dart';
+import 'package:swann_ott/utils/page_transition_builder.dart';
 
 import '../utils/colors.dart';
 

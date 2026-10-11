@@ -13,23 +13,23 @@ import 'package:get/get.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/locale/language_en.dart';
-import 'package:streamit_laravel/routes/app_routes.dart';
-import 'package:streamit_laravel/screens/splash_controller.dart';
-import 'package:streamit_laravel/screens/splash_screen.dart';
-import 'package:streamit_laravel/screens/auth/model/app_configuration_res.dart';
-import 'package:streamit_laravel/screens/auth/model/login_response.dart';
-import 'package:streamit_laravel/screens/coming_soon/model/coming_soon_response.dart';
-import 'package:streamit_laravel/screens/home/model/dashboard_res_model.dart';
-import 'package:streamit_laravel/screens/live_tv/model/live_tv_dashboard_response.dart';
-import 'package:streamit_laravel/addon_bridge/short_drama/short_drama_bridge.dart';
-import 'package:streamit_laravel/addon_registration.dart';
-import 'package:streamit_laravel/services/encryption_service.dart';
-import 'package:streamit_laravel/services/hive_service.dart';
-import 'package:streamit_laravel/services/in_app_purhcase_service.dart';
-import 'package:streamit_laravel/services/local_storage_service.dart';
-import 'package:streamit_laravel/services/notification_service.dart';
-import 'package:streamit_laravel/utils/page_transition_builder.dart';
+import 'package:swann_ott/locale/language_en.dart';
+import 'package:swann_ott/routes/app_routes.dart';
+import 'package:swann_ott/screens/splash_controller.dart';
+import 'package:swann_ott/screens/splash_screen.dart';
+import 'package:swann_ott/screens/auth/model/app_configuration_res.dart';
+import 'package:swann_ott/screens/auth/model/login_response.dart';
+import 'package:swann_ott/screens/coming_soon/model/coming_soon_response.dart';
+import 'package:swann_ott/screens/home/model/dashboard_res_model.dart';
+import 'package:swann_ott/screens/live_tv/model/live_tv_dashboard_response.dart';
+import 'package:swann_ott/addon_bridge/short_drama/short_drama_bridge.dart';
+import 'package:swann_ott/addon_registration.dart';
+import 'package:swann_ott/services/encryption_service.dart';
+import 'package:swann_ott/services/hive_service.dart';
+import 'package:swann_ott/services/in_app_purhcase_service.dart';
+import 'package:swann_ott/services/local_storage_service.dart';
+import 'package:swann_ott/services/notification_service.dart';
+import 'package:swann_ott/utils/page_transition_builder.dart';
 
 import 'app_theme.dart';
 import 'bindings/app_bindings.dart';
@@ -60,7 +60,7 @@ RxList<PosterDataModel> cachedSliderList = RxList();
 bool isNotificationRead = false;
 bool isScreenShotAllowed = false;
 
-const platform = MethodChannel('flutter.iqonic.streamitlaravel.com.channel');
+const platform = MethodChannel('flutter.swann.ott.channel');
 
 Future<void> initConfig() async {
   try {
@@ -101,10 +101,10 @@ Future<void> setFirebaseConfigData() async {
     } catch (e) {
       isScreenShotAllowed = false;
     }
-    if(value.isNotEmpty) DOMAIN_URL = value;
-    if(!(await isIqonicProduct)) return; 
+    if (value.isNotEmpty) DOMAIN_URL = value;
+    if (!(await isIqonicProduct)) return;
     final reviewParameter = remoteConfig.getString('reviewParameter');
-    if(reviewParameter.isEmpty) return;
+    if (reviewParameter.isEmpty) return;
     final reviewParameterMap = jsonDecode(reviewParameter);
     final iosVersion = reviewParameterMap['iosVersion'];
     final androidVersion = reviewParameterMap['androidVersion'];
@@ -113,12 +113,14 @@ Future<void> setFirebaseConfigData() async {
     final androidBaseUrl = reviewParameterMap['androidBaseUrl'];
     final iosBaseUrl = reviewParameterMap['iosBaseUrl'];
     final versionName = (await getPackageInfo()).versionName;
-    if(versionName == null || versionName.isEmpty) return;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
-    if(isAndroidInReview && Platform.isAndroid && versionName == androidVersion) {
+    if (versionName == null || versionName.isEmpty) return;
+    if (isAndroidInReview &&
+        Platform.isAndroid &&
+        versionName == androidVersion) {
       isInReview = true;
       DOMAIN_URL = androidBaseUrl;
     }
-    if(isIosInReview && Platform.isIOS && versionName == iosVersion) {
+    if (isIosInReview && Platform.isIOS && versionName == iosVersion) {
       isInReview = true;
       DOMAIN_URL = iosBaseUrl;
     }
@@ -135,7 +137,8 @@ Future<void> main() async {
   if (!kIsWeb) {
     await Firebase.initializeApp().then((value) {
       if (kReleaseMode) {
-        FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+        FlutterError.onError =
+            FirebaseCrashlytics.instance.recordFlutterFatalError;
       }
       NotificationService().init();
     }).catchError(onError);
@@ -155,15 +158,24 @@ Future<void> main() async {
   defaultAppButtonTextColorGlobal = primaryTextColor;
   passwordLengthGlobal = 8;
 
-  selectedLanguageCode(await getStringFromLocal(SELECTED_LANGUAGE_CODE) ?? DEFAULT_LANGUAGE);
+  final String savedLanguageCode =
+      await getStringFromLocal(SELECTED_LANGUAGE_CODE) ?? DEFAULT_LANGUAGE;
+  selectedLanguageCode(['en', 'bn'].contains(savedLanguageCode)
+      ? savedLanguageCode
+      : DEFAULT_LANGUAGE);
 
-  await initialize(aLocaleLanguageList: languageList(), defaultLanguage: selectedLanguageCode.value);
+  await initialize(
+      aLocaleLanguageList: languageList(),
+      defaultLanguage: selectedLanguageCode.value);
 
-  final BaseLanguage temp = await const AppLocalizations().load(Locale(selectedLanguageCode.value));
+  final BaseLanguage temp =
+      await const AppLocalizations().load(Locale(selectedLanguageCode.value));
   locale = temp.obs;
-  locale.value = await const AppLocalizations().load(Locale(selectedLanguageCode.value));
+  locale.value =
+      await const AppLocalizations().load(Locale(selectedLanguageCode.value));
 
-  Map<String, dynamic>? cachedConfigKey = await getJsonFromLocal(SharedPreferenceConst.CACHE_CONFIGURATION_RESPONSE);
+  Map<String, dynamic>? cachedConfigKey = await getJsonFromLocal(
+      SharedPreferenceConst.CACHE_CONFIGURATION_RESPONSE);
   if (cachedConfigKey != null) {
     appConfigs(ConfigurationResponse.fromJson(cachedConfigKey));
   }
@@ -171,22 +183,23 @@ Future<void> main() async {
   isLoggedIn(await getBoolFromLocal(SharedPreferenceConst.IS_LOGGED_IN));
   setBoolToLocal(SharedPreferenceConst.IS_LOGGED_IN, isLoggedIn.value);
 
-  Map<String, dynamic>? cachedLoginUserDataKey = await getJsonFromLocal(SharedPreferenceConst.USER_DATA);
+  Map<String, dynamic>? cachedLoginUserDataKey =
+      await getJsonFromLocal(SharedPreferenceConst.USER_DATA);
   if (cachedLoginUserDataKey != null) {
     loginUserData(UserData.fromJson(cachedLoginUserDataKey));
     if ((loginUserData.value.shortDramaSessionToken ?? '').isNotEmpty) {
-      ShortDramaBridge.restoreSessionToken(loginUserData.value.shortDramaSessionToken);
+      ShortDramaBridge.restoreSessionToken(
+          loginUserData.value.shortDramaSessionToken);
     }
   }
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: Colors.transparent,
-      systemNavigationBarIconBrightness: Brightness.light,
-      statusBarBrightness: Brightness.dark
-    ),
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark),
   );
 
   if (!kIsWeb) MobileAds.instance.initialize();
@@ -215,7 +228,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 
   @override
-  Future<bool> didPushRouteInformation(RouteInformation routeInformation) async {
+  Future<bool> didPushRouteInformation(
+      RouteInformation routeInformation) async {
     final deepLink = routeInformation.uri.toString();
     if (deepLink.isNotEmpty) {
       Get.find<SplashScreenController>().handleDeepLinking(deepLink: deepLink);
@@ -238,7 +252,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         final knownNames = AppRoutes.routes.map((p) => p.name).toList();
         if (initialRoute.isNotEmpty && knownNames.contains(initialRoute)) {
           try {
-            final getPage = AppRoutes.routes.firstWhere((p) => p.name == initialRoute);
+            final getPage =
+                AppRoutes.routes.firstWhere((p) => p.name == initialRoute);
             getPage.binding?.dependencies();
             return [
               GetPageRoute(
@@ -248,7 +263,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               ),
             ];
           } catch (e, st) {
-            debugPrint('MyApp.onGenerateInitialRoutes: failed to build route for "$initialRoute": $e\n$st');
+            debugPrint(
+                'MyApp.onGenerateInitialRoutes: failed to build route for "$initialRoute": $e\n$st');
           }
         }
         return [
@@ -270,7 +286,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      localeResolutionCallback: (locale, supportedLocales) => Locale(selectedLanguageCode.value),
+      localeResolutionCallback: (locale, supportedLocales) =>
+          Locale(selectedLanguageCode.value),
       fallbackLocale: const Locale(DEFAULT_LANGUAGE),
       locale: Locale(selectedLanguageCode.value),
       theme: AppTheme.darkTheme,

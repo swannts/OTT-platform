@@ -1,0 +1,28 @@
+<?php
+
+return [
+    'main' => 'প্রধান',
+    'dashboard' => 'ড্যাশবোর্ড',
+    'calendar_booking' => 'ক্যালেন্ডার বুকিং',
+    'service_provider' => 'পরিষেবা প্রদানকারী',
+    'booking' => 'বুকিং',
+    'service' => 'সেবা',
+    'list' => 'লিস্ট',
+    'category' => 'বিভাগ',
+    'sub_category' => 'সাব ক্যাটাগরি',
+    'user' => 'ব্যবহারকারী',
+    'employee' => 'স্টাফ',
+    'finance' => 'অর্থব্যবস্থা',
+    'tax' => 'ট্যাক্স',
+    'staff_earning' => 'স্টাফ আর্নিং',
+    'reports' => 'রিপোর্ট',
+    'daily_booking_report' => 'দৈনিক বুকিং',
+    'overall_booking_report' => 'সামগ্রিক বুকিং',
+    'payout_report' => 'পেআউট',
+    'employee_report' => 'স্টাফ রিপোর্ট',
+    'system' => 'সিস্টেম',
+    'settings' => 'সেটিংস',
+    'notification_list' => 'বিজ্ঞপ্তি তালিকা',
+    'notification_template' => 'বিজ্ঞপ্তি টেমপ্লেট',
+    'app_banner' => 'অ্যাপ ব্যানার',
+];

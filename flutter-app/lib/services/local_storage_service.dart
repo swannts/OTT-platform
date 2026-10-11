@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/services/encryption_service.dart';
+import 'package:swann_ott/services/encryption_service.dart';
 
 /// Enhanced local storage service with optional encryption support.
 ///

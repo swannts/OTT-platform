@@ -2,18 +2,18 @@ import 'dart:async';
 
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/components/app_dialog_widget.dart';
-import 'package:streamit_laravel/controllers/base_controller.dart';
-import 'package:streamit_laravel/main.dart';
-import 'package:streamit_laravel/network/auth_apis.dart';
-import 'package:streamit_laravel/network/core_api.dart';
-import 'package:streamit_laravel/screens/account_setting/components/otp_verification_bottom_sheet.dart';
-import 'package:streamit_laravel/screens/account_setting/model/account_setting_response.dart';
-import 'package:streamit_laravel/services/local_storage_service.dart';
-import 'package:streamit_laravel/utils/api_end_points.dart';
-import 'package:streamit_laravel/utils/common_base.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
-import 'package:streamit_laravel/utils/constants.dart';
+import 'package:swann_ott/components/app_dialog_widget.dart';
+import 'package:swann_ott/controllers/base_controller.dart';
+import 'package:swann_ott/main.dart';
+import 'package:swann_ott/network/auth_apis.dart';
+import 'package:swann_ott/network/core_api.dart';
+import 'package:swann_ott/screens/account_setting/components/otp_verification_bottom_sheet.dart';
+import 'package:swann_ott/screens/account_setting/model/account_setting_response.dart';
+import 'package:swann_ott/services/local_storage_service.dart';
+import 'package:swann_ott/utils/api_end_points.dart';
+import 'package:swann_ott/utils/common_base.dart';
+import 'package:swann_ott/utils/common_functions.dart';
+import 'package:swann_ott/utils/constants.dart';
 
 import 'components/parental_lock_pin_component.dart';
 

@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/main.dart';
+import 'package:swann_ott/main.dart';
 
 import '../utils/colors.dart';
 import '../utils/common_base.dart';

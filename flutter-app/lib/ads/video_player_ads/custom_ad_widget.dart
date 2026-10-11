@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/ads/custom_ads/ad_player.dart';
-import 'package:streamit_laravel/ads/custom_ads/custom_ads.dart';
-import 'package:streamit_laravel/components/cached_image_widget.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
+import 'package:swann_ott/ads/custom_ads/ad_player.dart';
+import 'package:swann_ott/ads/custom_ads/custom_ads.dart';
+import 'package:swann_ott/components/cached_image_widget.dart';
+import 'package:swann_ott/utils/common_functions.dart';
 
 /// Widget that displays a custom video ad.
 class CustomAdWidget extends StatelessWidget {

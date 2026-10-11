@@ -1,7 +1,7 @@
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/screens/profile/model/profile_detail_resp.dart';
-import 'package:streamit_laravel/services/local_storage_service.dart';
-import 'package:streamit_laravel/utils/common_base.dart';
+import 'package:swann_ott/screens/profile/model/profile_detail_resp.dart';
+import 'package:swann_ott/services/local_storage_service.dart';
+import 'package:swann_ott/utils/common_base.dart';
 
 import '../models/base_response_model.dart';
 import '../screens/auth/model/change_password_res.dart';

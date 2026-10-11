@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
-import 'package:streamit_laravel/ads/vast/vast_parser.dart';
+import 'package:swann_ott/ads/vast/vast_parser.dart';
 
 class AdPlayerController extends GetxController with WidgetsBindingObserver {
   final String videoUrl;

@@ -1,4 +1,4 @@
-import 'package:streamit_laravel/screens/device/model/device_model.dart';
+import 'package:swann_ott/screens/device/model/device_model.dart';
 
 class ErrorModel {
   int statusCode;

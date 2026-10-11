@@ -2,9 +2,9 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_paystack/flutter_paystack.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/configs.dart';
-import 'package:streamit_laravel/main.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
+import 'package:swann_ott/configs.dart';
+import 'package:swann_ott/main.dart';
+import 'package:swann_ott/utils/common_functions.dart';
 
 import '../../../utils/colors.dart';
 

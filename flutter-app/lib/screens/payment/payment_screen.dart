@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/components/app_no_data_widget.dart';
-import 'package:streamit_laravel/components/successfull_dialogbox.dart';
-import 'package:streamit_laravel/screens/auth/sign_in/sign_in_screen.dart';
-import 'package:streamit_laravel/screens/coupon/coupan_list_component.dart';
-import 'package:streamit_laravel/screens/dashboard/dashboard_controller.dart';
-import 'package:streamit_laravel/screens/home/home_controller.dart';
-import 'package:streamit_laravel/screens/payment/components/payment_card_component.dart';
-import 'package:streamit_laravel/screens/payment/payment_controller.dart';
-import 'package:streamit_laravel/utils/colors.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
-import 'package:streamit_laravel/utils/constants.dart' show BannerType, SubscriptionTitle;
+import 'package:swann_ott/components/app_no_data_widget.dart';
+import 'package:swann_ott/components/successfull_dialogbox.dart';
+import 'package:swann_ott/screens/auth/sign_in/sign_in_screen.dart';
+import 'package:swann_ott/screens/coupon/coupan_list_component.dart';
+import 'package:swann_ott/screens/dashboard/dashboard_controller.dart';
+import 'package:swann_ott/screens/home/home_controller.dart';
+import 'package:swann_ott/screens/payment/components/payment_card_component.dart';
+import 'package:swann_ott/screens/payment/payment_controller.dart';
+import 'package:swann_ott/utils/colors.dart';
+import 'package:swann_ott/utils/common_functions.dart';
+import 'package:swann_ott/utils/constants.dart' show BannerType, SubscriptionTitle;
 
 import '../../components/app_scaffold.dart';
 import '../../components/loader_widget.dart';

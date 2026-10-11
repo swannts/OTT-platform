@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/utils/colors.dart';
+import 'package:swann_ott/utils/colors.dart';
 
 enum AppShaderMode {
   primary,

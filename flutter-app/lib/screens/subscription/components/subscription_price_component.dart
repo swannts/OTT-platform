@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/components/app_dialog_widget.dart';
-import 'package:streamit_laravel/generated/assets.dart';
-import 'package:streamit_laravel/screens/content/model/content_model.dart';
-import 'package:streamit_laravel/screens/payment/payment_screen.dart';
-import 'package:streamit_laravel/screens/profile/watching_profile/components/profile_component.dart';
-import 'package:streamit_laravel/screens/profile/watching_profile/model/profile_watching_model.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
-import 'package:streamit_laravel/utils/constants.dart';
-import 'package:streamit_laravel/utils/shimmer/shimmer.dart';
+import 'package:swann_ott/components/app_dialog_widget.dart';
+import 'package:swann_ott/generated/assets.dart';
+import 'package:swann_ott/screens/content/model/content_model.dart';
+import 'package:swann_ott/screens/payment/payment_screen.dart';
+import 'package:swann_ott/screens/profile/watching_profile/components/profile_component.dart';
+import 'package:swann_ott/screens/profile/watching_profile/model/profile_watching_model.dart';
+import 'package:swann_ott/utils/common_functions.dart';
+import 'package:swann_ott/utils/constants.dart';
+import 'package:swann_ott/utils/shimmer/shimmer.dart';
 
 import '../../../components/cached_image_widget.dart';
 import '../../../main.dart';

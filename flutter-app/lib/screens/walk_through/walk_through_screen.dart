@@ -3,14 +3,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/components/app_scaffold.dart';
-import 'package:streamit_laravel/components/cached_image_widget.dart';
-import 'package:streamit_laravel/components/new_update_dialog.dart';
-import 'package:streamit_laravel/routes/app_routes.dart';
-import 'package:streamit_laravel/screens/dashboard/dashboard_screen.dart';
-import 'package:streamit_laravel/screens/walk_through/model/walkthrough_model.dart';
-import 'package:streamit_laravel/utils/colors.dart';
-import 'package:streamit_laravel/utils/common_base.dart';
+import 'package:swann_ott/components/app_scaffold.dart';
+import 'package:swann_ott/components/cached_image_widget.dart';
+import 'package:swann_ott/components/new_update_dialog.dart';
+import 'package:swann_ott/routes/app_routes.dart';
+import 'package:swann_ott/screens/dashboard/dashboard_screen.dart';
+import 'package:swann_ott/screens/walk_through/model/walkthrough_model.dart';
+import 'package:swann_ott/utils/colors.dart';
+import 'package:swann_ott/utils/common_base.dart';
 
 import '../../main.dart';
 import 'walk_through_cotroller.dart';

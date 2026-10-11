@@ -3,11 +3,11 @@ import 'package:flutterwave_standard/core/flutterwave.dart';
 import 'package:flutterwave_standard/models/requests/customer.dart';
 import 'package:flutterwave_standard/models/requests/customizations.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/configs.dart';
-import 'package:streamit_laravel/main.dart';
-import 'package:streamit_laravel/network/network_utils.dart';
-import 'package:streamit_laravel/utils/common_functions.dart';
-import 'package:streamit_laravel/utils/constants.dart';
+import 'package:swann_ott/configs.dart';
+import 'package:swann_ott/main.dart';
+import 'package:swann_ott/network/network_utils.dart';
+import 'package:swann_ott/utils/common_functions.dart';
+import 'package:swann_ott/utils/constants.dart';
 import 'package:uuid/uuid.dart';
 
 class FlutterWaveService {

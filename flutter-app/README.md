@@ -1,7 +1,7 @@
-# Streamit - Laravel Flutter Platform
+# swann - Laravel Flutter Platform
 
 ## About The Project
-Streamit is a powerful video streaming application built with Flutter, designed to offer a seamless and immersive entertainment experience. It supports movies, TV shows, and videos with a rich set of features including casting, downloading, and multiple payment gateways.
+swann is a powerful video streaming application built with Flutter, designed to offer a seamless and immersive entertainment experience. It supports movies, TV shows, and videos with a rich set of features including casting, downloading, and multiple payment gateways.
 
 ## Features
 - **Cross-Platform**: Supports Android and iOS.
@@ -98,7 +98,7 @@ To customize the application for your environment, please follow these configura
 ### 5. Push Notifications
 - Ensure Firebase Messaging is set up correctly as per step 4.
 - Logic is handled in `lib/services/push_notification_service.dart`.
-- **Topic Subscription**: The app subscribes to an app-wide topic `streamit_laravel` and user-specific topics.
+- **Topic Subscription**: The app subscribes to an app-wide topic `swann_ott` and user-specific topics.
 - **Notification Icon**: Ensure you have generated a notification icon named `ic_stat_ic_notification` and placed it in the `android/app/src/main/res/drawable` folders. This is required for the status bar icon to display correctly on Android.
 
 ### 6. Platform Specifics
@@ -161,5 +161,5 @@ A Postman collection is included to help you test and understand the API endpoin
     1. Open [Postman](https://www.postman.com/).
     2. Click on **Import**.
     3. Drag and drop the files from the `postman/` folder into Postman or select the folder.
-    4. You will see a new collection named **Streamit** (or similar) with organized folders for different modules (Auth, Dashboard, Content, etc.).
+    4. You will see a new collection named **swann** (or similar) with organized folders for different modules (Auth, Dashboard, Content, etc.).
     5. Configure the environment variables (like `base_url`, `api_token`) in Postman to match your local or staging server.

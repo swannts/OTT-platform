@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:streamit_laravel/components/app_logo_widget.dart';
-import 'package:streamit_laravel/components/app_scaffold.dart';
-import 'package:streamit_laravel/utils/extension/string_extension.dart';
+import 'package:swann_ott/components/app_logo_widget.dart';
+import 'package:swann_ott/components/app_scaffold.dart';
+import 'package:swann_ott/utils/extension/string_extension.dart';
 
 import '../../../generated/assets.dart';
 import '../../../main.dart';
