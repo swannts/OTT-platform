@@ -17,6 +17,7 @@
 **/.phpunit.result.cache
 **/storage/logs/*.log
 **/debug.log
+**/storage/installed
 
 # Flutter / Dart generated files and build output
 **/.dart_tool/

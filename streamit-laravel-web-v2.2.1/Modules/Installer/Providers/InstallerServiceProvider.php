@@ -35,16 +35,6 @@ class InstallerServiceProvider extends ServiceProvider
     }
 
     /**
-     * Register the service provider.
-     *
-     * @return void
-     */
-    public function register()
-    {
-        $this->app->register(RouteServiceProvider::class);
-    }
-
-    /**
      * Register config.
      *
      * @return void

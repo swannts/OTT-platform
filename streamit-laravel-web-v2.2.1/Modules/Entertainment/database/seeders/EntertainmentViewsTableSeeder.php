@@ -380,7 +380,7 @@ class EntertainmentViewsTableSeeder extends Seeder
         // Restrict max day if month == today's month
         $maxDay = ($year == $today->year && $month == $today->month)
             ? $today->day
-            : cal_days_in_month(CAL_GREGORIAN, $month, $year);
+            : Carbon::createFromDate($year, $month, 1)->daysInMonth;
 
         $day = rand(1, $maxDay);
 

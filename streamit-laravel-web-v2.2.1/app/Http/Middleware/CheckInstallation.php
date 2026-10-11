@@ -32,14 +32,11 @@ class CheckInstallation
 
                 return $next($request);
             } else {
-
-                return redirect()->route('install.index');
-
+                abort(503, 'Application is not initialized. Configure the environment, run database migrations and seeders, then create storage/installed.');
             }
         } catch (QueryException $e) {
             if (str_contains($e->getMessage(), 'Access denied for user')) {
-
-                return redirect()->route('install.index');
+                abort(503, 'Database access is not configured. Update the application environment and retry manual setup.');
             }
 
             throw $e;
