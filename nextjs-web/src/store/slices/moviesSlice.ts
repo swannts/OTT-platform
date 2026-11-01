@@ -91,5 +91,14 @@ export const moviesSlice = createSlice({
 });
 
 export const { setPage, clearCurrentMovie, setInitialMovies } = moviesSlice.actions;
+
+// Selectors
+export const selectMoviesState = (state: { movies: MoviesState }) => state.movies;
+export const selectMovies = (state: { movies: MoviesState }) => state.movies.movies;
+export const selectMoviesLoading = (state: { movies: MoviesState }) => state.movies.isLoading;
+export const selectMoviesPage = (state: { movies: MoviesState }) => state.movies.page;
+export const selectCurrentMovie = (state: { movies: MoviesState }) => state.movies.currentMovie;
+export const selectMoviesError = (state: { movies: MoviesState }) => state.movies.error;
+
 export default moviesSlice.reducer;
 

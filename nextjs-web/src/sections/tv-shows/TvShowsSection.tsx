@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { setInitialShows, fetchTvShowsList } from '@/store/slices/tvShowsSlice';
+import { setInitialShows, fetchTvShowsList, selectTvShowsState } from '@/store/slices/tvShowsSlice';
 import MediaCard from '@/components/media/MediaCard';
 import { Tv, Sparkles, Filter } from 'lucide-react';
 import { MediaItem } from '@/types';
@@ -15,7 +15,7 @@ interface TvShowsSectionProps {
 
 export default function TvShowsSection({ initialShows }: TvShowsSectionProps) {
   const dispatch = useAppDispatch();
-  const { shows: reduxShows, isLoading, page } = useAppSelector((state) => state.tvShows);
+  const { shows: reduxShows, isLoading, page } = useAppSelector(selectTvShowsState);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   useEffect(() => {

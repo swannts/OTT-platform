@@ -5,6 +5,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
   setSelectedChannel,
   setInitialLiveTvData,
+  selectLiveTvState,
 } from '@/store/slices/liveTvSlice';
 import VideoPlayer from '@/components/player/VideoPlayer';
 import { Radio, Tv } from 'lucide-react';
@@ -16,9 +17,7 @@ interface LiveTvSectionProps {
 
 export default function LiveTvSection({ initialChannels }: LiveTvSectionProps) {
   const dispatch = useAppDispatch();
-  const { channels: reduxChannels, selectedChannel } = useAppSelector(
-    (state) => state.liveTv
-  );
+  const { channels: reduxChannels, selectedChannel } = useAppSelector(selectLiveTvState);
 
   useEffect(() => {
     if (initialChannels.length > 0) {

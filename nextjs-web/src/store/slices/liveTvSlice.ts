@@ -106,5 +106,14 @@ export const liveTvSlice = createSlice({
 });
 
 export const { setSelectedChannel, setInitialLiveTvData } = liveTvSlice.actions;
+
+// Selectors
+export const selectLiveTvState = (state: { liveTv: LiveTvState }) => state.liveTv;
+export const selectLiveTvChannels = (state: { liveTv: LiveTvState }) => state.liveTv.channels;
+export const selectSelectedChannel = (state: { liveTv: LiveTvState }) => state.liveTv.selectedChannel;
+export const selectLiveTvCategories = (state: { liveTv: LiveTvState }) => state.liveTv.categories;
+export const selectLiveTvLoading = (state: { liveTv: LiveTvState }) => state.liveTv.isLoading;
+export const selectLiveTvError = (state: { liveTv: LiveTvState }) => state.liveTv.error;
+
 export default liveTvSlice.reducer;
 

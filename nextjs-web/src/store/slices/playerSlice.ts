@@ -109,5 +109,14 @@ export const {
   toggleMute,
 } = playerSlice.actions;
 
+// Selectors
+export const selectPlayerState = (state: { player: PlayerState }) => state.player;
+export const selectActiveItem = (state: { player: PlayerState }) => state.player.activeItem;
+export const selectIsPlaying = (state: { player: PlayerState }) => state.player.isPlaying;
+export const selectPlayerProgress = (state: { player: PlayerState }) => state.player.progress;
+export const selectPlayerVolume = (state: { player: PlayerState }) => state.player.volume;
+export const selectIsMuted = (state: { player: PlayerState }) => state.player.isMuted;
+export const selectPlayerLoading = (state: { player: PlayerState }) => state.player.isLoading;
+
 export default playerSlice.reducer;
 

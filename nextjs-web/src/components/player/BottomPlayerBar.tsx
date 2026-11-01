@@ -9,6 +9,7 @@ import {
   toggleMute,
   setProgress,
   setVolume,
+  selectPlayerState,
 } from '@/store/slices/playerSlice';
 import {
   Play,
@@ -26,9 +27,7 @@ import {
 
 export default function BottomPlayerBar() {
   const dispatch = useAppDispatch();
-  const { activeItem, isPlaying, progress, volume, isMuted } = useAppSelector(
-    (state) => state.player
-  );
+  const { activeItem, isPlaying, progress, volume, isMuted } = useAppSelector(selectPlayerState);
 
   const [isMinimized, setIsMinimized] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);

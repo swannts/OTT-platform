@@ -111,5 +111,15 @@ export const tvShowsSlice = createSlice({
 });
 
 export const { setPage, clearCurrentShow, setInitialShows } = tvShowsSlice.actions;
+
+// Selectors
+export const selectTvShowsState = (state: { tvShows: TvShowsState }) => state.tvShows;
+export const selectTvShows = (state: { tvShows: TvShowsState }) => state.tvShows.shows;
+export const selectTvShowsLoading = (state: { tvShows: TvShowsState }) => state.tvShows.isLoading;
+export const selectTvShowsPage = (state: { tvShows: TvShowsState }) => state.tvShows.page;
+export const selectCurrentTvShow = (state: { tvShows: TvShowsState }) => state.tvShows.currentShow;
+export const selectTvShowEpisodes = (state: { tvShows: TvShowsState }) => state.tvShows.episodes;
+export const selectTvShowsError = (state: { tvShows: TvShowsState }) => state.tvShows.error;
+
 export default tvShowsSlice.reducer;
 

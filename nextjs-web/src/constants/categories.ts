@@ -56,3 +56,4 @@ export const MOVIE_CATEGORIES: ContentCategory[] = [
     keywords: ['ramadan', 'quran', 'fasting', 'reflections'],
   },
 ];
+

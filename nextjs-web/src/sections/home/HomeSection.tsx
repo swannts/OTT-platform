@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { setInitialHomeData, fetchContinueWatching, fetchDashboardData } from '@/store/slices/homeSlice';
+import { setInitialHomeData, fetchContinueWatching, fetchDashboardData, selectHomeState } from '@/store/slices/homeSlice';
 import HeroBanner from './HeroBanner';
 import MediaRow from '@/components/media/MediaRow';
 import LiveNowSection from './LiveNowSection';
@@ -30,7 +30,7 @@ export default function HomeSection({
 }: HomeSectionProps) {
   const dispatch = useAppDispatch();
   const { user } = useAuth();
-  const state = useAppSelector((s) => s.home);
+  const state = useAppSelector(selectHomeState);
 
   useEffect(() => {
     dispatch(

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { setInitialMovies, fetchMoviesList } from '@/store/slices/moviesSlice';
+import { setInitialMovies, fetchMoviesList, selectMoviesState } from '@/store/slices/moviesSlice';
 import MediaCard from '@/components/media/MediaCard';
 import { Film, Sparkles, Filter } from 'lucide-react';
 import { MediaItem } from '@/types';
@@ -15,7 +15,7 @@ interface MoviesSectionProps {
 
 export default function MoviesSection({ initialMovies }: MoviesSectionProps) {
   const dispatch = useAppDispatch();
-  const { movies: reduxMovies, isLoading, page } = useAppSelector((state) => state.movies);
+  const { movies: reduxMovies, isLoading, page } = useAppSelector(selectMoviesState);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   useEffect(() => {

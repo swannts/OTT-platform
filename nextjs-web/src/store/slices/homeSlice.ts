@@ -214,5 +214,19 @@ export const homeSlice = createSlice({
 });
 
 export const { clearHomeError, setInitialHomeData } = homeSlice.actions;
+
+// Selectors
+export const selectHomeState = (state: { home: HomeState }) => state.home;
+export const selectHomeBanners = (state: { home: HomeState }) => state.home.banners;
+export const selectHomeTop10 = (state: { home: HomeState }) => state.home.top10;
+export const selectHomeLatestMovies = (state: { home: HomeState }) => state.home.latestMovies;
+export const selectHomePopularMovies = (state: { home: HomeState }) => state.home.popularMovies;
+export const selectHomePayPerView = (state: { home: HomeState }) => state.home.payPerView;
+export const selectHomeTvShows = (state: { home: HomeState }) => state.home.tvShows;
+export const selectHomeLiveChannels = (state: { home: HomeState }) => state.home.liveChannels;
+export const selectHomeContinueWatching = (state: { home: HomeState }) => state.home.continueWatching;
+export const selectHomeLoading = (state: { home: HomeState }) => state.home.isLoading;
+export const selectHomeError = (state: { home: HomeState }) => state.home.error;
+
 export default homeSlice.reducer;
 
