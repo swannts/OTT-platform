@@ -229,4 +229,13 @@ export interface NotificationItem {
   data?: any;
 }
 
+export type {
+  BlogPost,
+  BlogCategory,
+  BlogQueryParams,
+  BlogListResponse,
+  BlogDetailResponse,
+} from '@/features/blog/types/blog.types';
+
+
 

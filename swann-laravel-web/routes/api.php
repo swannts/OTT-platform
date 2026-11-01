@@ -21,6 +21,7 @@ use Modules\Frontend\Http\Controllers\Auth\OTPController;
 use App\Http\Controllers\API\ShortDramaConfigController;
 use App\Http\Controllers\API\WebPaymentApiController;
 use App\Http\Controllers\API\PageApiController;
+use App\Http\Controllers\API\BlogApiController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -36,6 +37,11 @@ use Illuminate\Support\Facades\Route;
 
 // Short Drama feature config (no auth) — core route; works without Modules/ShortDrama
 Route::get('/short-drama-config', [ShortDramaConfigController::class, 'index']);
+
+// Public Blog Articles & Categories
+Route::get('v3/blogs', [BlogApiController::class, 'index']);
+Route::get('v3/blogs/{slug}', [BlogApiController::class, 'show']);
+Route::get('v3/blog-categories', [BlogApiController::class, 'categories']);
 
 
 Route::get('user-detail', [AuthController::class, 'userDetails']);

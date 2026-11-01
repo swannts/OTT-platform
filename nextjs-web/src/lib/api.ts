@@ -7,6 +7,10 @@ import {
   PriceCalculation,
   SubscriptionStatus,
   User,
+  BlogQueryParams,
+  BlogListResponse,
+  BlogDetailResponse,
+  BlogCategory,
 } from '@/types';
 
 export function normalizeMediaItem(raw: any): MediaItem {
@@ -238,6 +242,28 @@ class ApiClient {
 
   async getVideos(page: number = 1): Promise<any> {
     return this.request<any>(`/v3/video-list?page=${page}`);
+  }
+
+  // ── Blog & Articles ────────────────────────────────────────────────────────
+  async getBlogs(params: BlogQueryParams = {}): Promise<BlogListResponse> {
+    const q = new URLSearchParams();
+    if (params.page) q.append('page', params.page.toString());
+    if (params.per_page) q.append('per_page', params.per_page.toString());
+    if (params.category && params.category !== 'all') q.append('category', params.category);
+    if (params.search) q.append('search', params.search);
+    if (params.featured) q.append('featured', '1');
+    if (params.tag) q.append('tag', params.tag);
+
+    const query = q.toString() ? `?${q.toString()}` : '';
+    return this.request<BlogListResponse>(`/v3/blogs${query}`);
+  }
+
+  async getBlogPost(slugOrId: string | number): Promise<BlogDetailResponse> {
+    return this.request<BlogDetailResponse>(`/v3/blogs/${slugOrId}`);
+  }
+
+  async getBlogCategories(): Promise<BlogCategory[]> {
+    return this.request<BlogCategory[]>('/v3/blog-categories');
   }
 
   // ── Discovery & Catalog ───────────────────────────────────────────────────

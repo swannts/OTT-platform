@@ -28,6 +28,7 @@ export default function Footer() {
               <li><Link href="/tv-shows" className="hover:text-[#E5B869] transition-colors">Prophetic Series</Link></li>
               <li><Link href="/movies" className="hover:text-[#E5B869] transition-colors">Documentaries</Link></li>
               <li><Link href="/videos" className="hover:text-[#E5B869] transition-colors">Waz & Bayan</Link></li>
+              <li><Link href="/blog" className="hover:text-[#E5B869] transition-colors">Journal & Articles</Link></li>
             </ul>
           </div>
 

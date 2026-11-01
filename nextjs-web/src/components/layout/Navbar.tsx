@@ -66,6 +66,7 @@ export default function Navbar() {
     { label: 'Live TV', href: '/live-tv', isLive: true },
     { label: 'Series', href: '/tv-shows' },
     { label: 'Documentaries', href: '/movies' },
+    { label: 'Journal', href: '/blog' },
   ];
 
   // Comprehensive categorized explore catalog
@@ -82,8 +83,8 @@ export default function Navbar() {
     {
       title: 'Knowledge & Spiritual',
       items: [
+        { label: 'Journal & Stories', href: '/blog', icon: BookOpen, desc: 'History & cinema insights' },
         { label: 'Waz & Bayan', href: '/videos', icon: Flame, desc: 'Lectures by renowned scholars' },
-        { label: 'Holy Quran Recitation', href: '/movies', icon: BookOpen, desc: 'Tajweed & translations' },
         { label: 'Podcasts & Audio', href: '/videos', icon: Radio, desc: 'Spiritual talks & discussions' },
         { label: 'Kids & Family', href: '/profiles', icon: Smile, desc: 'Safe educational cartoons' },
       ],
@@ -96,6 +97,7 @@ export default function Navbar() {
     { label: 'Live TV', href: '/live-tv' },
     { label: 'TV Series', href: '/tv-shows' },
     { label: 'Movies & Docs', href: '/movies' },
+    { label: 'Journal & Stories', href: '/blog' },
     { label: 'Lectures & Waz', href: '/videos' },
     { label: 'Subscription Plans', href: '/pricing' },
     { label: 'My Watchlist', href: '/watchlist' },
