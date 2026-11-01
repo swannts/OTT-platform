@@ -21,6 +21,12 @@ export default function SecurityPage() {
   const { user, refreshUser } = useAuth();
   const router = useRouter();
 
+  React.useEffect(() => {
+    if (!user) {
+      router.push('/login');
+    }
+  }, [user, router]);
+
   const [parentalLock, setParentalLock] = useState<boolean>(
     Boolean(user?.is_parental_lock_enable)
   );

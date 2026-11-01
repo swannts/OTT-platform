@@ -1,6 +1,7 @@
 <?php
 
 namespace Modules\Season\Models;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 use App\Models\BaseModel;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -10,6 +11,10 @@ use Modules\Subscriptions\Models\Plan;
 
 class Season extends BaseModel
 {
+    use HasUuids;
+
+    protected $keyType = 'string';
+    public $incrementing = false;
 
     use SoftDeletes;
 

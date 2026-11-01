@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "cypress:open": "env -u ELECTRON_RUN_AS_NODE cypress open",
+    "cypress:run": "env -u ELECTRON_RUN_AS_NODE cypress run",
+    "test:e2e": "env -u ELECTRON_RUN_AS_NODE cypress run",
+    "test:e2e:headless": "env -u ELECTRON_RUN_AS_NODE cypress run --headless"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.13.0",
@@ -26,6 +30,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cypress": "^16.2.1",
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
     "tailwindcss": "^4",

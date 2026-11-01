@@ -86,6 +86,7 @@ class DatabaseSeeder extends Seeder
             $this->call(\Database\Seeders\ClipsTableSeeder::class);
             $this->call(\Modules\Onboarding\database\seeders\OnboardingDatabaseSeeder::class);
             $this->call(\Modules\Coupon\database\seeders\CouponDatabaseSeeder::class);
+            $this->call(\Database\Seeders\IslamicContentSeeder::class);
             // $this->call(\Modules\Entertainment\database\seeders\BigMoviesSeeder::class);
             // $this->call(\Modules\Entertainment\database\seeders\BigTvShowsSeeder::class);
             // $this->call(\Modules\Video\database\seeders\BigVideosSeeder::class);

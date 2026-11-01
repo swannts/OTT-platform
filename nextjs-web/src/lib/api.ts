@@ -18,7 +18,7 @@ export function normalizeMediaItem(raw: any): MediaItem {
     : [];
 
   return {
-    id: Number(details.id || raw.id || raw.type_id || 0),
+    id: details.id || raw.id || raw.type_id || '',
     name: details.name || raw.name || raw.title || 'Untitled',
     title: details.name || raw.name || raw.title || 'Untitled',
     type: (details.type || raw.type || 'movie') as any,
@@ -91,6 +91,11 @@ class ApiClient {
     if (!res.ok) {
       const errorMsg = data?.message || data?.error || `Request failed with status ${res.status}`;
       throw new Error(errorMsg);
+    }
+
+    // If backend returns { status: false, message: '...' }
+    if (data && typeof data === 'object' && 'status' in data && data.status === false) {
+      throw new Error(data.message || 'Operation failed');
     }
 
     // Check for standard API response format { status: true, data: ... }
@@ -182,14 +187,14 @@ class ApiClient {
     });
   }
 
-  async deleteProfile(profileId: number): Promise<any> {
+  async deleteProfile(profileId: string | number): Promise<any> {
     return this.request('/delete-userprofile', {
       method: 'POST',
       body: JSON.stringify({ id: profileId }),
     });
   }
 
-  async selectProfile(profileId: number): Promise<any> {
+  async selectProfile(profileId: string | number): Promise<any> {
     return this.request(`/select-userprofile/${profileId}`, {
       method: 'POST',
     });
@@ -260,7 +265,7 @@ class ApiClient {
     const directors = raw?.directors || [];
 
     return {
-      id: Number(raw?.id || details?.id || id),
+      id: raw?.id || details?.id || id,
       name: details.name || raw?.name || 'Untitled',
       type: details.type || raw?.type || type,
       description: details.description || raw?.description || '',
@@ -316,14 +321,14 @@ class ApiClient {
     return this.request<MediaItem[]>('/v3/watch-list');
   }
 
-  async saveWatchlist(entertainmentId: number, type: string): Promise<any> {
+  async saveWatchlist(entertainmentId: string | number, type: string): Promise<any> {
     return this.request('/save-watchlist', {
       method: 'POST',
       body: JSON.stringify({ entertainment_id: entertainmentId, type }),
     });
   }
 
-  async removeWatchlist(entertainmentId: number): Promise<any> {
+  async removeWatchlist(entertainmentId: string | number): Promise<any> {
     return this.request('/delete-watchlist', {
       method: 'POST',
       body: JSON.stringify({ entertainment_id: entertainmentId }),
@@ -334,7 +339,7 @@ class ApiClient {
     return this.request<MediaItem[]>('/v3/continuewatch-list');
   }
 
-  async saveContinueWatching(contentId: number, type: string, watchedTime: number, totalTime?: number): Promise<any> {
+  async saveContinueWatching(contentId: string | number, type: string, watchedTime: number, totalTime?: number): Promise<any> {
     return this.request('/save-continuewatch', {
       method: 'POST',
       body: JSON.stringify({
@@ -402,7 +407,7 @@ class ApiClient {
   }
 
   // ── Pay-Per-View ──────────────────────────────────────────────────────────
-  async calculatePayPerViewPrice(contentId: number, type: string, couponCode?: string): Promise<any> {
+  async calculatePayPerViewPrice(contentId: string | number, type: string, couponCode?: string): Promise<any> {
     return this.request('/v3/pay-per-view/calculate-price', {
       method: 'POST',
       body: JSON.stringify({ movie_id: contentId, type, coupon_code: couponCode }),
@@ -410,7 +415,7 @@ class ApiClient {
   }
 
   async processPayPerViewPayment(params: {
-    movie_id: number;
+    movie_id: string | number;
     type: string;
     payment_method: string;
     redirect_url?: string;

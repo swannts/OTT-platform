@@ -40,7 +40,7 @@ export default function MediaCard({
     (type === 'tvshow' ? 'Series • 8 Episodes' : item.release_year ? `${item.release_year}` : 'Documentary');
 
   return (
-    <div className="group relative flex-none transition-all duration-300 hover:scale-[1.03] hover:z-20 select-none">
+    <div className="group relative flex-none transition-all duration-300 hover:scale-[1.03] hover:z-20 select-none cursor-pointer">
       <div
         className={`relative rounded-2xl overflow-hidden bg-[#0c1218] border border-white/5 group-hover:border-[#E5B869]/40 shadow-lg transition-all ${
           aspectRatio === 'poster'
@@ -51,7 +51,7 @@ export default function MediaCard({
         {/* Primary full-card navigation link */}
         <Link
           href={detailUrl}
-          className="absolute inset-0 z-0"
+          className="absolute inset-0 z-0 cursor-pointer"
           aria-label={item.name || item.title || 'Media Item'}
         />
 

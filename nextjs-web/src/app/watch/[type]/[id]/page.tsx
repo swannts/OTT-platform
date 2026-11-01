@@ -26,16 +26,16 @@ export default function WatchPage() {
         const data = await api.getContentDetails(id, type as any);
         setContent(data);
       } catch {
-        // Fallback demo content
+        // Islamic fallback content
         setContent({
-          id: parseInt(id) || 1,
-          name: 'Cyber Horizon 2099',
+          id: id || '01940000-0004-7000-8000-000000000009',
+          name: 'The Life of Prophet Muhammad ﷺ',
           type: type,
           description:
-            'In a neon-drenched metropolis, a rogue digital operative uncovers a conspiracy that threatens human consciousness itself.',
-          poster_image: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&auto=format&fit=crop&q=80',
-          banner_image: 'https://images.unsplash.com/photo-1578328819058-b69f3a3b0f6b?w=1600&auto=format&fit=crop&q=80',
-          access: 'paid',
+            'A journey of mercy, wisdom and guidance for all humanity. Exploring the pivotal historical moments and eternal teachings of the final Messenger.',
+          poster_image: 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=800&auto=format&fit=crop&q=85',
+          banner_image: 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=1920&auto=format&fit=crop&q=85',
+          access: 'free',
           has_content_access: true,
           video_default_quality: {
             quality: '1080p',
@@ -54,7 +54,7 @@ export default function WatchPage() {
               url_type: 'HLS',
             },
           ],
-          genre_data: ['Sci-Fi', 'Action'],
+          genre_data: ['Prophetic Biographies', 'Islamic History'],
         });
       } finally {
         setIsLoading(false);

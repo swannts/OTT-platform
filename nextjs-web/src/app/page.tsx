@@ -29,8 +29,8 @@ export default function HomePage() {
       {/* 1. Hero Billboard Banner (Direct from Backend Banners) */}
       <HeroBanner items={banners} />
 
-      {/* 2. Content Rows Container */}
-      <div className="relative -mt-10 sm:-mt-16 z-20 space-y-4">
+      {/* 2. Content Container After Slider with generous container gap */}
+      <div className="max-w-[1360px] mx-auto px-8 sm:px-12 md:px-16 lg:px-20 xl:px-24 relative z-20 pt-10 sm:pt-14 space-y-14 sm:space-y-16">
         {/* Continue Watching (from backend watch history) */}
         {continueWatching.length > 0 && (
           <MediaRow

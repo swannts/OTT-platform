@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 
 interface ProfileItem {
-  id: number;
+  id: string | number;
   name: string;
   avatar?: string;
   is_child?: boolean;
@@ -107,7 +107,7 @@ export default function ProfilesPage() {
     }
   };
 
-  const handleDeleteProfile = async (profileId: number) => {
+  const handleDeleteProfile = async (profileId: string | number) => {
     if (!confirm('Are you sure you want to delete this profile?')) return;
     try {
       await api.deleteProfile(profileId);

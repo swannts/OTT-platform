@@ -32,7 +32,7 @@ export default function TvShowDetailPage() {
       } catch {
         // Fallback demo data
         setShow({
-          id: parseInt(id) || 1,
+          id: id || '01940000-0003-7000-8000-000000000001',
           name: 'Echoes of Valhalla',
           type: 'tvshow',
           description:
@@ -48,27 +48,27 @@ export default function TvShowDetailPage() {
 
         setEpisodes([
           {
-            id: 1001,
-            name: 'Episode 1: Blood Oath',
+            id: '01940000-0006-7000-8000-000000000001',
+            name: 'Episode 1: The Year of the Elephant',
             episode_number: 1,
-            description: 'The chieftain gathers the council of nine as omens of betrayal ignite war across the fjord.',
-            duration: '52m',
+            description: 'The miraculous defense of the Holy Kaaba and the blessed birth of the Prophet Muhammad ﷺ in Mecca.',
+            duration: '45m',
             has_content_access: true,
           },
           {
-            id: 1002,
-            name: 'Episode 2: The Raven Banner',
+            id: '01940000-0006-7000-8000-000000000002',
+            name: 'Episode 2: The Cave of Hira',
             episode_number: 2,
-            description: 'A daring winter crossing tests loyalty and endurance as forces gather at the frozen pass.',
+            description: 'Solitude on Jabal al-Nour and the first revelation received through Angel Jibril: "Read in the name of your Lord."',
             duration: '48m',
             has_content_access: true,
           },
           {
-            id: 1003,
-            name: 'Episode 3: Iron & Ash',
+            id: '01940000-0006-7000-8000-000000000003',
+            name: 'Episode 3: The Call to Truth',
             episode_number: 3,
-            description: 'Siege lines tighten as the kingdom reveals a hidden alliance from beyond the western seas.',
-            duration: '55m',
+            description: 'The invitation to monotheism on Mount Safa and the steadfast patience of the early companions under adversity.',
+            duration: '52m',
             has_content_access: true,
           },
         ]);

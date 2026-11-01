@@ -27,25 +27,24 @@ export default function MovieDetailPage() {
         const data = await api.getContentDetails(id, 'movie');
         setMovie(data);
       } catch {
-        // Mock fallback for demo
+        // Islamic content fallback
         setMovie({
-          id: parseInt(id) || 1,
-          name: 'Cyber Horizon: Neon Recon',
+          id: id || '01940000-0004-7000-8000-000000000006',
+          name: 'The Holy Kaaba: Sanctuary of Monotheism',
           type: 'movie',
           description:
-            'Set in 2099 Neo-Tokyo, an augmented intelligence operative embarks on an unsanctioned mission into the forbidden subterranean network to locate the source of an existential anomaly.',
-          poster_image: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&auto=format&fit=crop&q=80',
-          banner_image: 'https://images.unsplash.com/photo-1578328819058-b69f3a3b0f6b?w=1600&auto=format&fit=crop&q=80',
+            'An evocative historical exploration of the ancient foundation by Ibrahim (AS) and Ismail (AS), the sacred architecture, Kiswah craft, and centuries of pilgrims answering the divine call.',
+          poster_image: 'https://images.unsplash.com/photo-1564769625905-50e93615e769?w=800&auto=format&fit=crop&q=80',
+          banner_image: 'https://images.unsplash.com/photo-1564769625905-50e93615e769?w=1600&auto=format&fit=crop&q=80',
           release_year: 2026,
-          duration: '2h 18m',
-          imdb_rating: 8.9,
-          access: 'paid',
+          duration: '1h 38m',
+          imdb_rating: 9.8,
+          access: 'free',
           has_content_access: true,
-          genre_data: ['Sci-Fi', 'Cyberpunk', 'Action', 'Thriller'],
+          genre_data: ['Islamic History', 'Sacred Sanctuaries', 'Documentary'],
           casts: [
-            { id: 1, name: 'Elena Rostova', role: 'Major Anya Vance' },
-            { id: 2, name: 'Kenji Takahashi', role: 'Daisuke Jin' },
-            { id: 3, name: 'Marcus Sterling', role: 'Director Vance' },
+            { id: '01940000-0002-7000-8000-000000000001', name: 'Dr. Yasir Qadhi', role: 'Lead Narrator & Historian' },
+            { id: '01940000-0002-7000-8000-000000000002', name: 'Sheikh Abdul Rahman Al-Sudais', role: 'Religious Authority' },
           ],
         });
       } finally {

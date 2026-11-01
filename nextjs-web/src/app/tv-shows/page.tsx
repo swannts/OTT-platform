@@ -19,11 +19,11 @@ export default function TvShowsPage() {
       <div className="flex items-center justify-between mb-8 border-b border-white/10 pb-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center space-x-2">
-            <Tv className="w-7 h-7 text-red-600" />
-            <span>TV Shows & Series</span>
+            <Tv className="w-7 h-7 text-[#E5B869]" />
+            <span>Islamic TV Shows & Series</span>
           </h1>
           <p className="text-sm text-gray-400 mt-1">
-            Binge-worthy original series, multi-season epics, and weekly episodic drops.
+            Inspirational Prophetic chronicles, historical educational docuseries, and faith-based family series.
           </p>
         </div>
       </div>

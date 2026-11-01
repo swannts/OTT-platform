@@ -1,6 +1,7 @@
 <?php
 
 namespace Modules\Banner\Models;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 use App\Models\BaseModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -9,6 +10,10 @@ use Modules\Entertainment\Models\Entertainment;
 
 class Banner extends BaseModel
 {
+    use HasUuids;
+
+    protected $keyType = 'string';
+    public $incrementing = false;
     use HasFactory;
     use SoftDeletes;
 

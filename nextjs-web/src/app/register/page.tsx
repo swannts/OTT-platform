@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { User, Mail, Lock, ArrowRight } from 'lucide-react';
+import Logo from '@/components/layout/Logo';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -34,11 +35,11 @@ export default function RegisterPage() {
     <div className="min-h-screen pt-24 pb-20 px-4 flex items-center justify-center">
       <div className="w-full max-w-md glass-card p-8 rounded-3xl space-y-6 border border-white/10 shadow-2xl">
         <div className="text-center space-y-2">
-          <Link href="/" className="inline-block text-3xl font-black text-red-600 tracking-wider">
-            SWANN<span className="text-white">OTT</span>
+          <Link href="/" className="inline-block">
+            <Logo />
           </Link>
           <h2 className="text-xl font-bold text-white">Create an Account</h2>
-          <p className="text-xs text-gray-400">Join millions of streamers around the world</p>
+          <p className="text-xs text-gray-400">Join NOOR for family-safe, sacred entertainment</p>
         </div>
 
         {error && (

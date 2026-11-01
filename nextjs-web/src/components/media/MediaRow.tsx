@@ -37,9 +37,9 @@ export default function MediaRow({
   if (!items || items.length === 0) return null;
 
   return (
-    <div className="relative my-7 group max-w-[1600px] mx-auto">
+    <div className="relative group w-full">
       {/* Row Header with Golden Accent Bar and View All link */}
-      <div className="flex items-center justify-between mb-2 px-4 sm:px-6 lg:px-8">
+      <div className="flex items-center justify-between mb-3.5">
         <div className="flex items-center">
           <span className="w-1 h-5 bg-[#E5B869] rounded-full inline-block mr-2.5 flex-shrink-0" />
           <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
@@ -50,7 +50,7 @@ export default function MediaRow({
         {moreHref && (
           <Link
             href={moreHref}
-            className="text-xs sm:text-sm text-[#E5B869] hover:text-[#f3cf8a] font-semibold transition-colors flex items-center space-x-1 group/btn"
+            className="text-xs sm:text-sm text-[#E5B869] hover:text-[#f3cf8a] font-semibold transition-colors flex items-center space-x-1 group/btn cursor-pointer"
           >
             <span>View All</span>
             <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover/btn:translate-x-1" />
@@ -63,7 +63,7 @@ export default function MediaRow({
         {/* Left Arrow Button */}
         <button
           onClick={() => handleScroll('left')}
-          className="absolute left-2 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full bg-black/70 hover:bg-[#E5B869] hover:text-black text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all backdrop-blur-md shadow-xl"
+          className="absolute -left-3 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full bg-black/80 hover:bg-[#E5B869] hover:text-black text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all backdrop-blur-md shadow-xl border border-white/10 cursor-pointer"
           aria-label="Scroll left"
         >
           <ChevronLeft className="w-6 h-6" />
@@ -72,7 +72,7 @@ export default function MediaRow({
         {/* Scrollable Container */}
         <div
           ref={rowRef}
-          className="flex space-x-4 sm:space-x-5 overflow-x-auto no-scrollbar py-3 px-4 sm:px-6 lg:px-8 scroll-smooth"
+          className="flex space-x-4 sm:space-x-5 overflow-x-auto no-scrollbar py-2 scroll-smooth"
         >
           {items.map((item, index) => (
             <MediaCard
@@ -87,7 +87,7 @@ export default function MediaRow({
         {/* Right Arrow Button */}
         <button
           onClick={() => handleScroll('right')}
-          className="absolute right-2 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full bg-black/70 hover:bg-[#E5B869] hover:text-black text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all backdrop-blur-md shadow-xl"
+          className="absolute -right-3 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full bg-black/80 hover:bg-[#E5B869] hover:text-black text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all backdrop-blur-md shadow-xl border border-white/10 cursor-pointer"
           aria-label="Scroll right"
         >
           <ChevronRight className="w-6 h-6" />

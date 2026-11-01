@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Lock, Mail, ArrowRight, Film } from 'lucide-react';
+import Logo from '@/components/layout/Logo';
 
 function LoginFormContent() {
   const router = useRouter();
@@ -35,11 +36,11 @@ function LoginFormContent() {
     <div className="min-h-screen pt-24 pb-20 px-4 flex items-center justify-center">
       <div className="w-full max-w-md glass-card p-8 rounded-3xl space-y-6 border border-white/10 shadow-2xl">
         <div className="text-center space-y-2">
-          <Link href="/" className="inline-block text-3xl font-black text-red-600 tracking-wider">
-            SWANN<span className="text-white">OTT</span>
+          <Link href="/" className="inline-block">
+            <Logo />
           </Link>
           <h2 className="text-xl font-bold text-white">Welcome Back</h2>
-          <p className="text-xs text-gray-400">Sign in to continue watching your favorite titles</p>
+          <p className="text-xs text-gray-400">Sign in to continue watching your sacred collections</p>
         </div>
 
         {error && (

@@ -26,7 +26,7 @@ export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
         watchUrl: `/watch/live/${channels[0].id}`,
       }
     : {
-        id: 1,
+        id: '01940000-0008-7000-8000-000000000001',
         title: 'Jumma khutba from Masjid Al-Haram',
         location: 'Makkah, Saudi Arabia',
         thumbnail:
@@ -47,14 +47,14 @@ export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
         color: ['border-blue-500/30 text-blue-400 bg-blue-900/20', 'border-amber-500/30 text-amber-400 bg-amber-900/20', 'border-emerald-500/30 text-emerald-400 bg-emerald-900/20', 'border-red-500/30 text-red-400 bg-red-900/20'][idx % 4],
       }))
     : [
-        { id: 2, name: 'Peace TV', subtitle: 'Live Channel', logo: '', color: 'border-blue-500/30 text-blue-400 bg-blue-900/20' },
-        { id: 3, name: 'Huda TV', subtitle: 'Live Channel', logo: '', color: 'border-amber-500/30 text-amber-400 bg-amber-900/20' },
-        { id: 4, name: 'iTV', subtitle: 'Live Channel', logo: '', color: 'border-emerald-500/30 text-emerald-400 bg-emerald-900/20' },
-        { id: 5, name: 'ATN Bangla', subtitle: 'Live Channel', logo: '', color: 'border-red-500/30 text-red-400 bg-red-900/20' },
+        { id: '01940000-0008-7000-8000-000000000002', name: 'Peace TV', subtitle: 'Live Channel', logo: '', color: 'border-blue-500/30 text-blue-400 bg-blue-900/20' },
+        { id: '01940000-0008-7000-8000-000000000003', name: 'Huda TV', subtitle: 'Live Channel', logo: '', color: 'border-amber-500/30 text-amber-400 bg-amber-900/20' },
+        { id: '01940000-0008-7000-8000-000000000004', name: 'iTV', subtitle: 'Live Channel', logo: '', color: 'border-emerald-500/30 text-emerald-400 bg-emerald-900/20' },
+        { id: '01940000-0008-7000-8000-000000000005', name: 'ATN Bangla', subtitle: 'Live Channel', logo: '', color: 'border-red-500/30 text-red-400 bg-red-900/20' },
       ];
 
   return (
-    <div className="my-8 max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="w-full">
       {/* Section Header with Golden Accent Bar */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center">
@@ -175,7 +175,8 @@ export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
         </div>
 
         {/* 3. Go Premium Promo Card (Luxury Golden Islamic Card) */}
-        <div className="group lg:col-span-4 relative rounded-2xl overflow-hidden border border-[#E5B869]/40 p-5 sm:p-6 flex flex-col justify-between shadow-2xl transition-all duration-300 hover:border-[#E5B869]/70 bg-gradient-to-br from-[#071c18] via-[#051411] to-[#040d0b] min-h-[160px] sm:min-h-[190px]">
+        <div className="group lg:col-span-4 relative rounded-2xl overflow-hidden border border-[#E5B869]/40 p-5 sm:p-6 flex flex-col justify-between shadow-2xl transition-all duration-300 hover:border-[#E5B869]/70 bg-gradient-to-br from-[#071c18] via-[#051411] to-[#040d0b] min-h-[160px] sm:min-h-[190px] cursor-pointer">
+          <Link href="/pricing" className="absolute inset-0 z-0 cursor-pointer" aria-label="Go Premium" />
           {/* Mosque Minarets Silhouette Overlay positioned to the right */}
           <div
             className="absolute inset-y-0 right-0 w-3/5 opacity-40 pointer-events-none bg-cover bg-center mix-blend-screen"

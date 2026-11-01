@@ -1,6 +1,7 @@
 <?php
 
 namespace Modules\CastCrew\Models;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 use App\Models\BaseModel;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -8,6 +9,10 @@ use  Modules\Entertainment\Models\EntertainmentTalentMapping;
 
 class CastCrew extends BaseModel
 {
+    use HasUuids;
+
+    protected $keyType = 'string';
+    public $incrementing = false;
     use SoftDeletes;
 
      protected $table = 'cast_crew';

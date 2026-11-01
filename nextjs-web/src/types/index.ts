@@ -1,5 +1,5 @@
 export interface User {
-  id: number;
+  id: string | number;
   name: string;
   email: string;
   user_type?: string;
@@ -13,7 +13,7 @@ export interface AuthResponse {
   status: boolean;
   message?: string;
   data?: {
-    id: number;
+    id: string | number;
     name: string;
     email: string;
     token: string;
@@ -23,7 +23,7 @@ export interface AuthResponse {
 }
 
 export interface MediaItem {
-  id: number;
+  id: string | number;
   name: string;
   title?: string;
   type: 'movie' | 'tvshow' | 'episode' | 'video';
@@ -39,7 +39,7 @@ export interface MediaItem {
   rating?: number;
   access?: 'free' | 'paid' | 'pay-per-view';
   plan_level?: number;
-  genres?: string[] | { id: number; name: string }[];
+  genres?: string[] | { id: string | number; name: string }[];
   genre_data?: string[];
   is_watchlist?: boolean;
   has_content_access?: boolean;
@@ -48,14 +48,14 @@ export interface MediaItem {
 }
 
 export interface VideoQuality {
-  id?: number;
+  id?: string | number;
   quality: string;
   url: string;
   url_type: string;
 }
 
 export interface ContentDetails {
-  id: number;
+  id: string | number;
   name: string;
   type: string;
   description: string;
@@ -80,14 +80,14 @@ export interface ContentDetails {
 }
 
 export interface SeasonItem {
-  id: number;
+  id: string | number;
   name: string;
   season_number: number;
   episodes: EpisodeItem[];
 }
 
 export interface EpisodeItem {
-  id: number;
+  id: string | number;
   name: string;
   episode_number: number;
   description?: string;
@@ -97,7 +97,7 @@ export interface EpisodeItem {
 }
 
 export interface ClipItem {
-  id: number;
+  id: string | number;
   title: string;
   url: string;
   type: string;
@@ -105,7 +105,7 @@ export interface ClipItem {
 }
 
 export interface CastMember {
-  id: number;
+  id: string | number;
   name: string;
   character_name?: string;
   role?: string;
@@ -113,7 +113,7 @@ export interface CastMember {
 }
 
 export interface LiveChannel {
-  id: number;
+  id: string | number;
   name: string;
   slug?: string;
   access?: string;

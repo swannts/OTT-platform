@@ -23,7 +23,7 @@ export default function StaticPolicyPage() {
         setPageData({
           name: slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
           description: `
-            <p>Welcome to Swann OTT. This document outlines our guidelines, privacy protections, and user agreements.</p>
+            <p>Welcome to NOOR Islamic Media Network. This document outlines our guidelines, privacy protections, and user agreements.</p>
             <br />
             <h3>1. Service Terms</h3>
             <p>By accessing or using our streaming service, you agree to abide by our platform guidelines, copyright protections, and subscription terms.</p>

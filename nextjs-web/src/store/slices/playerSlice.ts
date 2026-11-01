@@ -32,13 +32,14 @@ export const loadActiveTrack = createAsyncThunk<MediaItem | null, void>(
 
       // 2. Try dashboard top 10
       const dash = await api.getDashboard().catch(() => null);
-      if (dash?.top_10?.data && Array.isArray(dash.top_10.data) && dash.top_10.data.length > 0) {
-        return normalizeMediaItem(dash.top_10.data[0]);
+      const topList = dash?.data?.top_10?.data || dash?.top_10?.data;
+      if (topList && Array.isArray(topList) && topList.length > 0) {
+        return normalizeMediaItem(topList[0]);
       }
 
-      // 3. Fallback to default featured title
+      // 3. Fallback to default featured title with UUIDv7
       return {
-        id: 1,
+        id: '01940000-0003-7000-8000-000000000001',
         name: 'The Life of Prophet Muhammad',
         type: 'tvshow',
         description: 'A journey of mercy, wisdom and guidance for all humanity.',

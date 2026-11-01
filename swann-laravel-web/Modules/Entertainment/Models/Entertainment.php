@@ -1,6 +1,7 @@
 <?php
 
 namespace Modules\Entertainment\Models;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 use App\Models\BaseModel;
 use App\Models\Clip;
@@ -16,13 +17,18 @@ use Illuminate\Support\Facades\DB;
 
 class Entertainment extends BaseModel
 {
+    use HasUuids;
+
+    protected $keyType = 'string';
+    public $incrementing = false;
 
     use SoftDeletes;
 
     protected $table = 'entertainments';
     protected $genres;
-    public function __construct()
+    public function __construct(array $attributes = [])
     {
+        parent::__construct($attributes);
         $responseData = Cache::get('genres_v2');
         if(empty($responseData))
         {

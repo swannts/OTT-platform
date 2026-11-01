@@ -19,11 +19,11 @@ export default function MoviesPage() {
       <div className="flex items-center justify-between mb-8 border-b border-white/10 pb-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center space-x-2">
-            <Film className="w-7 h-7 text-red-600" />
-            <span>Explore Movies</span>
+            <Film className="w-7 h-7 text-[#E5B869]" />
+            <span>Islamic Movies & Documentaries</span>
           </h1>
           <p className="text-sm text-gray-400 mt-1">
-            Browse our complete library of Hollywood blockbusters, indie cinema, and 4K releases.
+            Browse our curated collection of Islamic documentaries, faith-inspired cinema, and sacred history.
           </p>
         </div>
       </div>

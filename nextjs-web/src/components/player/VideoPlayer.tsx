@@ -12,14 +12,15 @@ import {
   Minimize,
   Settings,
   Lock,
-  RotateCcw,
   Sparkles,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { VideoQuality } from '@/types';
+import { isYouTubeVideo } from '@/lib/youtube';
+import YouTubeConnector from './YouTubeConnector';
 
 interface VideoPlayerProps {
-  contentId: number;
+  contentId: string | number;
   contentType: string;
   title: string;
   videoUrl?: string;
@@ -53,12 +54,23 @@ export default function VideoPlayer({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [selectedQualityUrl, setSelectedQualityUrl] = useState<string>(videoUrl || '');
+  const [selectedQualityType, setSelectedQualityType] = useState<string>(urlType || '');
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Initialize playback & HLS
+  // Sync state if videoUrl prop updates
   useEffect(() => {
-    if (!hasAccess || !selectedQualityUrl || !videoRef.current) return;
+    if (videoUrl) {
+      setSelectedQualityUrl(videoUrl);
+      setSelectedQualityType(urlType || '');
+    }
+  }, [videoUrl, urlType]);
+
+  const isCurrentYouTube = isYouTubeVideo(selectedQualityUrl, selectedQualityType);
+
+  // Initialize playback & HLS (only if NOT YouTube)
+  useEffect(() => {
+    if (!hasAccess || !selectedQualityUrl || isCurrentYouTube || !videoRef.current) return;
 
     const video = videoRef.current;
     const isHlsStream = selectedQualityUrl.includes('.m3u8') || urlType?.toLowerCase() === 'hls';
@@ -95,18 +107,18 @@ export default function VideoPlayer({
         video.currentTime = initialTime;
       }
     }
-  }, [selectedQualityUrl, hasAccess, urlType, initialTime]);
+  }, [selectedQualityUrl, hasAccess, urlType, initialTime, isCurrentYouTube]);
 
   // Sync Continue Watching progress every 15 seconds
   useEffect(() => {
-    if (!hasAccess || !isPlaying || currentTime <= 5) return;
+    if (!hasAccess || !isPlaying || currentTime <= 5 || isCurrentYouTube) return;
 
     const syncInterval = setInterval(() => {
       api.saveContinueWatching(contentId, contentType, Math.floor(currentTime), Math.floor(duration)).catch(() => {});
     }, 15000);
 
     return () => clearInterval(syncInterval);
-  }, [contentId, contentType, currentTime, duration, isPlaying, hasAccess]);
+  }, [contentId, contentType, currentTime, duration, isPlaying, hasAccess, isCurrentYouTube]);
 
   // Handle Controls Visibility on Mouse Move
   const handleMouseMove = () => {
@@ -209,7 +221,7 @@ export default function VideoPlayer({
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
             <Link
               href="/pricing"
-              className="flex-1 bg-[#E5B869] hover:bg-[#d8a855] text-black font-bold py-3 px-6 rounded-xl transition-all shadow-lg shadow-[#E5B869]/30 flex items-center justify-center space-x-2 text-sm"
+              className="flex-1 bg-[#E5B869] hover:bg-[#d8a855] text-black font-bold py-3 px-6 rounded-xl transition-all shadow-lg shadow-[#E5B869]/30 flex items-center justify-center space-x-2 text-sm cursor-pointer"
             >
               <Sparkles className="w-4 h-4 fill-black" />
               <span>Unlock with Go Premium</span>
@@ -220,7 +232,46 @@ export default function VideoPlayer({
     );
   }
 
-  // If embedded URL (YouTube, Vimeo, etc.)
+  // 1. YouTube Connector Mode
+  if (isCurrentYouTube) {
+    return (
+      <div className="space-y-3">
+        <YouTubeConnector
+          contentId={contentId}
+          contentType={contentType}
+          title={title}
+          videoUrl={selectedQualityUrl}
+          initialTime={initialTime}
+          poster={poster}
+        />
+
+        {/* Source Switcher if multiple stream sources exist */}
+        {qualities.length > 1 && (
+          <div className="flex items-center justify-end space-x-2 text-xs pt-1">
+            <span className="text-gray-400 font-medium">Available Sources:</span>
+            {qualities.map((q, idx) => (
+              <button
+                key={idx}
+                onClick={() => {
+                  setSelectedQualityUrl(q.url);
+                  setSelectedQualityType(q.url_type || '');
+                }}
+                className={`px-3 py-1 rounded-lg border transition-all cursor-pointer ${
+                  selectedQualityUrl === q.url
+                    ? 'bg-[#E5B869] text-black border-[#E5B869] font-bold shadow-md'
+                    : 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10'
+                }`}
+              >
+                {q.quality || (isYouTubeVideo(q.url, q.url_type) ? 'YouTube HD' : `Source ${idx + 1}`)}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // 2. Generic Embedded Iframe (Vimeo, Dailymotion, etc.)
   if (urlType?.toLowerCase() === 'embedded' && videoUrl) {
     return (
       <div className="relative aspect-video w-full max-h-[85vh] bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10">
@@ -235,127 +286,153 @@ export default function VideoPlayer({
     );
   }
 
+  // 3. Native HTML5 & HLS Video Player
   return (
-    <div
-      ref={containerRef}
-      onMouseMove={handleMouseMove}
-      className="relative aspect-video w-full max-h-[85vh] bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 select-none group"
-    >
-      <video
-        ref={videoRef}
-        poster={poster}
-        onTimeUpdate={handleTimeUpdate}
-        onClick={togglePlay}
-        playsInline
-        className="w-full h-full object-contain cursor-pointer"
-      />
-
-      {/* Top Bar (Title overlay) */}
+    <div className="space-y-3">
       <div
-        className={`absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/80 via-black/40 to-transparent flex items-center justify-between transition-opacity duration-300 ${
-          showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
+        ref={containerRef}
+        onMouseMove={handleMouseMove}
+        className="relative aspect-video w-full max-h-[85vh] bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 select-none group"
       >
-        <h2 className="text-white font-bold text-base sm:text-lg drop-shadow">{title}</h2>
-      </div>
-
-      {/* Center Big Play Button (when paused) */}
-      {!isPlaying && (
-        <button
+        <video
+          ref={videoRef}
+          poster={poster}
+          onTimeUpdate={handleTimeUpdate}
           onClick={togglePlay}
-          className="absolute inset-0 m-auto w-16 h-16 rounded-full bg-[#E5B869] text-black flex items-center justify-center shadow-2xl hover:scale-110 transition-transform"
-        >
-          <Play className="w-8 h-8 fill-black ml-1" />
-        </button>
-      )}
+          playsInline
+          className="w-full h-full object-contain cursor-pointer"
+        />
 
-      {/* Bottom Controls Bar */}
-      <div
-        className={`absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/95 via-black/60 to-transparent space-y-2 transition-opacity duration-300 ${
-          showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
-      >
-        {/* Progress Timeline Slider */}
-        <div className="relative flex items-center group/slider">
-          <input
-            type="range"
-            min={0}
-            max={duration || 100}
-            value={currentTime}
-            onChange={handleSeek}
-            className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-[#E5B869] focus:outline-none"
-          />
+        {/* Top Bar (Title overlay) */}
+        <div
+          className={`absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/80 via-black/40 to-transparent flex items-center justify-between transition-opacity duration-300 ${
+            showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          }`}
+        >
+          <h2 className="text-white font-bold text-base sm:text-lg drop-shadow">{title}</h2>
         </div>
 
-        {/* Control Buttons */}
-        <div className="flex items-center justify-between text-white text-sm pt-1">
-          <div className="flex items-center space-x-4">
-            <button onClick={togglePlay} className="hover:text-[#E5B869] transition-colors">
-              {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current" />}
-            </button>
+        {/* Center Big Play Button (when paused) */}
+        {!isPlaying && (
+          <button
+            onClick={togglePlay}
+            className="absolute inset-0 m-auto w-16 h-16 rounded-full bg-[#E5B869] text-black flex items-center justify-center shadow-2xl hover:scale-110 transition-transform cursor-pointer"
+          >
+            <Play className="w-8 h-8 fill-black ml-1" />
+          </button>
+        )}
 
-            {/* Volume Control */}
-            <div className="flex items-center space-x-2">
-              <button onClick={toggleMute} className="hover:text-[#E5B869] transition-colors">
-                {isMuted || volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+        {/* Bottom Controls Bar */}
+        <div
+          className={`absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/95 via-black/60 to-transparent space-y-2 transition-opacity duration-300 ${
+            showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          }`}
+        >
+          {/* Progress Timeline Slider */}
+          <div className="relative flex items-center group/slider">
+            <input
+              type="range"
+              min={0}
+              max={duration || 100}
+              value={currentTime}
+              onChange={handleSeek}
+              className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-[#E5B869] focus:outline-none"
+            />
+          </div>
+
+          {/* Control Buttons */}
+          <div className="flex items-center justify-between text-white text-sm pt-1">
+            <div className="flex items-center space-x-4">
+              <button onClick={togglePlay} className="hover:text-[#E5B869] transition-colors cursor-pointer">
+                {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current" />}
               </button>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.05}
-                value={isMuted ? 0 : volume}
-                onChange={handleVolumeChange}
-                className="w-16 h-1 bg-white/30 rounded-lg appearance-none cursor-pointer accent-[#E5B869]"
-              />
+
+              {/* Volume Control */}
+              <div className="flex items-center space-x-2">
+                <button onClick={toggleMute} className="hover:text-[#E5B869] transition-colors cursor-pointer">
+                  {isMuted || volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                </button>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={isMuted ? 0 : volume}
+                  onChange={handleVolumeChange}
+                  className="w-16 h-1 bg-white/30 rounded-lg appearance-none cursor-pointer accent-[#E5B869]"
+                />
+              </div>
+
+              {/* Time Display */}
+              <span className="text-xs text-gray-300 font-mono">
+                {formatTime(currentTime)} / {formatTime(duration)}
+              </span>
             </div>
 
-            {/* Time Display */}
-            <span className="text-xs text-gray-300 font-mono">
-              {formatTime(currentTime)} / {formatTime(duration)}
-            </span>
-          </div>
+            <div className="flex items-center space-x-3">
+              {/* Resolution / Quality Switcher */}
+              {qualities.length > 0 && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowQualityMenu(!showQualityMenu)}
+                    className="flex items-center space-x-1 hover:text-[#E5B869] transition-colors text-xs font-semibold px-2 py-1 rounded bg-white/10 cursor-pointer"
+                  >
+                    <Settings className="w-4 h-4 mr-1" />
+                    <span>Quality</span>
+                  </button>
+                  {showQualityMenu && (
+                    <div className="absolute right-0 bottom-full mb-2 w-36 glass-card rounded-lg py-1 shadow-2xl text-xs z-50">
+                      {qualities.map((q, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            setSelectedQualityUrl(q.url);
+                            setSelectedQualityType(q.url_type || '');
+                            setShowQualityMenu(false);
+                          }}
+                          className={`w-full text-left px-3 py-1.5 hover:bg-white/10 transition-colors cursor-pointer ${
+                            selectedQualityUrl === q.url ? 'text-[#E5B869] font-bold' : 'text-gray-300'
+                          }`}
+                        >
+                          {q.quality || (isYouTubeVideo(q.url, q.url_type) ? 'YouTube HD' : `Quality ${idx + 1}`)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
-          <div className="flex items-center space-x-3">
-            {/* Resolution / Quality Switcher */}
-            {qualities.length > 0 && (
-              <div className="relative">
-                <button
-                  onClick={() => setShowQualityMenu(!showQualityMenu)}
-                  className="flex items-center space-x-1 hover:text-[#E5B869] transition-colors text-xs font-semibold px-2 py-1 rounded bg-white/10"
-                >
-                  <Settings className="w-4 h-4 mr-1" />
-                  <span>Quality</span>
-                </button>
-                {showQualityMenu && (
-                  <div className="absolute right-0 bottom-full mb-2 w-32 glass-card rounded-lg py-1 shadow-2xl text-xs z-50">
-                    {qualities.map((q, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => {
-                          setSelectedQualityUrl(q.url);
-                          setShowQualityMenu(false);
-                        }}
-                        className={`w-full text-left px-3 py-1.5 hover:bg-white/10 transition-colors ${
-                          selectedQualityUrl === q.url ? 'text-[#E5B869] font-bold' : 'text-gray-300'
-                        }`}
-                      >
-                        {q.quality || `Quality ${idx + 1}`}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Fullscreen Button */}
-            <button onClick={toggleFullscreen} className="hover:text-[#E5B869] transition-colors">
-              {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
-            </button>
+              {/* Fullscreen Button */}
+              <button onClick={toggleFullscreen} className="hover:text-[#E5B869] transition-colors cursor-pointer">
+                {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Source Switcher if multiple stream sources exist */}
+      {qualities.length > 1 && (
+        <div className="flex items-center justify-end space-x-2 text-xs pt-1">
+          <span className="text-gray-400 font-medium">Available Sources:</span>
+          {qualities.map((q, idx) => (
+            <button
+              key={idx}
+              onClick={() => {
+                setSelectedQualityUrl(q.url);
+                setSelectedQualityType(q.url_type || '');
+              }}
+              className={`px-3 py-1 rounded-lg border transition-all cursor-pointer ${
+                selectedQualityUrl === q.url
+                  ? 'bg-[#E5B869] text-black border-[#E5B869] font-bold shadow-md'
+                  : 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10'
+              }`}
+            >
+              {q.quality || (isYouTubeVideo(q.url, q.url_type) ? 'YouTube HD' : `Source ${idx + 1}`)}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
-

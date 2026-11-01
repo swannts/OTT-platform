@@ -51,7 +51,7 @@ class WebPaymentApiController extends Controller
     public function calculateSubscriptionPrice(Request $request)
     {
         $request->validate([
-            'plan_id' => 'required|exists:plans,id',
+            'plan_id' => 'required|exists:plan,id',
             'coupon_code' => 'nullable|string',
             'coupon_id' => 'nullable|integer',
         ]);
@@ -80,7 +80,7 @@ class WebPaymentApiController extends Controller
             });
 
         if ($request->filled('coupon_code')) {
-            $couponQuery->where('coupon_code', $request->coupon_code);
+            $couponQuery->where('code', $request->coupon_code);
         } elseif ($request->filled('coupon_id')) {
             $couponQuery->where('id', $request->coupon_id);
         }
@@ -94,7 +94,7 @@ class WebPaymentApiController extends Controller
             }
             $couponData = [
                 'id' => $coupon->id,
-                'coupon_code' => $coupon->coupon_code,
+                'coupon_code' => $coupon->code,
                 'discount_type' => $coupon->discount_type,
                 'discount' => $coupon->discount,
                 'discount_amount' => round($couponDiscountAmount, 2),
@@ -159,7 +159,7 @@ class WebPaymentApiController extends Controller
 
         $code = trim($request->coupon_code);
 
-        $coupon = Coupon::where('coupon_code', $code)
+        $coupon = Coupon::where('code', $code)
             ->where('status', 1)
             ->where('start_date', '<=', now())
             ->where('expire_date', '>=', now())
@@ -182,7 +182,7 @@ class WebPaymentApiController extends Controller
 
         return ApiResponse::success([
             'id' => $coupon->id,
-            'coupon_code' => $coupon->coupon_code,
+            'coupon_code' => $coupon->code,
             'discount' => (float) $coupon->discount,
             'discount_type' => $coupon->discount_type,
             'expire_date' => $coupon->expire_date,
@@ -195,7 +195,7 @@ class WebPaymentApiController extends Controller
     public function processSubscriptionPayment(Request $request)
     {
         $request->validate([
-            'plan_id' => 'required|exists:plans,id',
+            'plan_id' => 'required|exists:plan,id',
             'payment_method' => 'required|string|in:stripe,razorpay,paystack,paypal,midtrans,flutterwave,cinet,sadad,airtel,phonepe,free',
             'coupon_code' => 'nullable|string',
             'coupon_id' => 'nullable|integer',
