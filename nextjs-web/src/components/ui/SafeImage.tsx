@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { DEFAULT_FALLBACK_IMAGE } from '@/constants';
 
-export const DEFAULT_ISLAMIC_FALLBACK =
-  'https://images.unsplash.com/photo-1541432901042-2d8bd64b4a9b?w=800&auto=format&fit=crop&q=80';
+export const DEFAULT_ISLAMIC_FALLBACK = DEFAULT_FALLBACK_IMAGE;
 
 interface SafeImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src'> {
   src?: string | null;

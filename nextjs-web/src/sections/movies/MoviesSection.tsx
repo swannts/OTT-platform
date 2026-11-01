@@ -7,6 +7,7 @@ import MediaCard from '@/components/media/MediaCard';
 import { Film, Sparkles, Filter } from 'lucide-react';
 import { MediaItem } from '@/types';
 import { SectionHeader } from '@/components/ui';
+import { MOVIE_CATEGORIES } from '@/constants';
 
 interface MoviesSectionProps {
   initialMovies: MediaItem[];
@@ -25,17 +26,9 @@ export default function MoviesSection({ initialMovies }: MoviesSectionProps) {
 
   const movies = reduxMovies.length > 0 ? reduxMovies : initialMovies;
 
-  const categories = [
-    { id: 'all', label: 'All Movies' },
-    { id: 'sanctuary', label: 'Sacred Sanctuaries', keywords: ['kaaba', 'makkah', 'madinah', 'haram', 'sanctuary'] },
-    { id: 'history', label: 'Historic Epics', keywords: ['andalus', 'ottoman', 'jerusalem', 'history', 'golden'] },
-    { id: 'doc', label: 'Documentaries', keywords: ['documentary', 'chronicle', 'journey', 'life', 'science'] },
-    { id: 'ramadan', label: 'Ramadan & Worship', keywords: ['ramadan', 'quran', 'fasting', 'reflections'] },
-  ];
-
   const filteredMovies = movies.filter((movie) => {
     if (selectedCategory === 'all') return true;
-    const cat = categories.find((c) => c.id === selectedCategory);
+    const cat = MOVIE_CATEGORIES.find((c) => c.id === selectedCategory);
     if (!cat?.keywords) return true;
     const text = `${movie.name || ''} ${movie.description || ''}`.toLowerCase();
     return cat.keywords.some((kw) => text.includes(kw));
@@ -58,7 +51,7 @@ export default function MoviesSection({ initialMovies }: MoviesSectionProps) {
         {/* Category Filter Pills */}
         <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar pt-6 pb-1">
           <Filter className="w-4 h-4 text-gray-400 flex-shrink-0 mr-1" />
-          {categories.map((cat) => {
+          {MOVIE_CATEGORIES.map((cat) => {
             const isSelected = selectedCategory === cat.id;
             return (
               <button

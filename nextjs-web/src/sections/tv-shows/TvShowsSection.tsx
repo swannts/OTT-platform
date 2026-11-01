@@ -7,6 +7,7 @@ import MediaCard from '@/components/media/MediaCard';
 import { Tv, Sparkles, Filter } from 'lucide-react';
 import { MediaItem } from '@/types';
 import { SectionHeader } from '@/components/ui';
+import { TV_SERIES_CATEGORIES } from '@/constants';
 
 interface TvShowsSectionProps {
   initialShows: MediaItem[];
@@ -25,18 +26,9 @@ export default function TvShowsSection({ initialShows }: TvShowsSectionProps) {
 
   const shows = reduxShows.length > 0 ? reduxShows : initialShows;
 
-  const categories = [
-    { id: 'all', label: 'All Series' },
-    { id: 'prophetic', label: 'Prophetic Chronicles', keywords: ['prophet', 'muhammad', 'messengers', 'adam', 'ibrahim'] },
-    { id: 'history', label: 'Islamic History', keywords: ['andalus', 'ottoman', 'caliph', 'companions', 'civilization', 'women'] },
-    { id: 'quran', label: 'Quran & Hadith', keywords: ['quran', 'hadith', 'tafseer', 'yusuf', 'nawawi'] },
-    { id: 'kids', label: 'Kids & Family', keywords: ['kids', 'noor', 'bilal', 'animals', 'children'] },
-    { id: 'soul', label: 'Spiritual Wisdom', keywords: ['soul', 'akhirah', 'repentance', 'wisdom'] },
-  ];
-
   const filteredShows = shows.filter((show) => {
     if (selectedCategory === 'all') return true;
-    const cat = categories.find((c) => c.id === selectedCategory);
+    const cat = TV_SERIES_CATEGORIES.find((c) => c.id === selectedCategory);
     if (!cat?.keywords) return true;
     const text = `${show.name || ''} ${show.description || ''}`.toLowerCase();
     return cat.keywords.some((kw) => text.includes(kw));
@@ -59,7 +51,7 @@ export default function TvShowsSection({ initialShows }: TvShowsSectionProps) {
         {/* Category Filter Pills */}
         <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar pt-6 pb-1">
           <Filter className="w-4 h-4 text-gray-400 flex-shrink-0 mr-1" />
-          {categories.map((cat) => {
+          {TV_SERIES_CATEGORIES.map((cat) => {
             const isSelected = selectedCategory === cat.id;
             return (
               <button

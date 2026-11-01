@@ -7,6 +7,7 @@ import { useAppDispatch } from '@/store/hooks';
 import { setActiveItem } from '@/store/slices/playerSlice';
 import { Play } from 'lucide-react';
 import { Card, SafeImage, Badge, Heading, Text } from '@/components/ui';
+import { DEFAULT_FALLBACK_IMAGE } from '@/constants';
 
 interface MediaCardProps {
   item: MediaItem;
@@ -14,9 +15,6 @@ interface MediaCardProps {
   aspectRatio?: 'poster' | 'backdrop';
   layout?: 'grid' | 'carousel';
 }
-
-const FALLBACK_IMAGE =
-  'https://images.unsplash.com/photo-1541432901042-2d8bd64b4a9b?w=800&auto=format&fit=crop&q=80';
 
 export default function MediaCard({
   item,
@@ -31,7 +29,7 @@ export default function MediaCard({
     (item.poster_url && item.poster_url.trim()) ||
     (item.thumbnail_image && item.thumbnail_image.trim()) ||
     (item.banner_image && item.banner_image.trim()) ||
-    FALLBACK_IMAGE;
+    DEFAULT_FALLBACK_IMAGE;
 
   const type = item.type || 'movie';
   const watchUrl = `/watch/${type}/${item.id}`;
@@ -100,7 +98,7 @@ export default function MediaCard({
         <SafeImage
           src={rawImage}
           alt={item.name || item.title || 'Media Poster'}
-          fallbackSrc={FALLBACK_IMAGE}
+          fallbackSrc={DEFAULT_FALLBACK_IMAGE}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 pointer-events-none"
         />
 

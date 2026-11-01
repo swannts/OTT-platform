@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Logo from './Logo';
+import { DEFAULT_AVATAR_IMAGE } from '@/constants';
 import {
   Search,
   Bell,
@@ -287,7 +288,7 @@ export default function Navbar() {
                 aria-label="User Profile"
               >
                 <img
-                  src="https://images.unsplash.com/photo-1544717305-2782549b5136?w=100&auto=format&fit=crop&q=80"
+                  src={DEFAULT_AVATAR_IMAGE}
                   alt={user?.name || 'User Profile'}
                   className="w-full h-full object-cover"
                 />
