@@ -21,3 +21,4 @@ export async function getMovieDetailsDal(id: string | number): Promise<MediaItem
     return null;
   }
 }
+

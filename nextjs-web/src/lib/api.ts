@@ -129,8 +129,9 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify(payload),
     });
-    if (res?.token) {
-      this.setToken(res.token);
+    const token = res?.api_token || res?.token || res?.data?.api_token || res?.data?.token;
+    if (token) {
+      this.setToken(token);
       if (typeof window !== 'undefined') {
         localStorage.setItem('user', JSON.stringify(res));
       }
@@ -143,8 +144,9 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    if (res?.token) {
-      this.setToken(res.token);
+    const token = res?.api_token || res?.token || res?.data?.api_token || res?.data?.token;
+    if (token) {
+      this.setToken(token);
       if (typeof window !== 'undefined') {
         localStorage.setItem('user', JSON.stringify(res));
       }

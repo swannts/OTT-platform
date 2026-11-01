@@ -2,10 +2,12 @@ export interface User {
   id: string | number;
   name: string;
   email: string;
+  full_name?: string;
   user_type?: string;
   is_subscribe?: number;
   phone?: string;
   avatar?: string;
+  profile_image?: string;
   is_parental_lock_enable?: number;
 }
 

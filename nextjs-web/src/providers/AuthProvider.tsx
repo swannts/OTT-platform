@@ -17,6 +17,31 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function normalizeUser(raw: any): User | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const userObj = raw.data || raw;
+  const name =
+    userObj.name ||
+    userObj.full_name ||
+    [userObj.first_name, userObj.last_name].filter(Boolean).join(' ') ||
+    userObj.email?.split('@')[0] ||
+    'User';
+
+  const avatar = userObj.avatar || userObj.profile_image || userObj.file_url || '';
+
+  return {
+    id: userObj.id || 1,
+    name,
+    email: userObj.email || '',
+    avatar,
+    profile_image: avatar,
+    user_type: userObj.user_type || 'user',
+    is_subscribe: userObj.is_subscribe ?? 0,
+    phone: userObj.phone || userObj.mobile || '',
+    is_parental_lock_enable: userObj.is_parental_lock_enable ?? 0,
+  };
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null);
@@ -34,9 +59,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshUser = async () => {
     try {
       const profile = await api.getProfile();
-      setUser(profile);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('user', JSON.stringify(profile));
+      if (profile) {
+        const norm = normalizeUser(profile);
+        setUser(norm);
+        if (typeof window !== 'undefined' && norm) {
+          localStorage.setItem('user', JSON.stringify(norm));
+        }
       }
     } catch {
       // Profile fetch failure
@@ -51,13 +79,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (token) {
           if (storedUser) {
-            setUser(JSON.parse(storedUser));
+            setUser(normalizeUser(JSON.parse(storedUser)));
           }
           // Fetch live user profile and subscription status
           try {
             const profile = await api.getProfile();
-            setUser(profile);
-            localStorage.setItem('user', JSON.stringify(profile));
+            if (profile) {
+              const norm = normalizeUser(profile);
+              setUser(norm);
+              if (norm) {
+                localStorage.setItem('user', JSON.stringify(norm));
+              }
+            }
           } catch {
             // Profile fetch failure
           }
@@ -78,7 +111,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const authData = await api.login(credentials);
       if (authData) {
-        setUser(authData as unknown as User);
+        const norm = normalizeUser(authData);
+        setUser(norm);
+        if (typeof window !== 'undefined' && norm) {
+          localStorage.setItem('user', JSON.stringify(norm));
+        }
         await refreshSubscription();
       }
     } finally {
@@ -91,7 +128,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const authData = await api.register(data);
       if (authData) {
-        setUser(authData as unknown as User);
+        const norm = normalizeUser(authData);
+        setUser(norm);
+        if (typeof window !== 'undefined' && norm) {
+          localStorage.setItem('user', JSON.stringify(norm));
+        }
         await refreshSubscription();
       }
     } finally {
