@@ -77,6 +77,12 @@ export const liveTvSlice = createSlice({
     setSelectedChannel: (state, action: PayloadAction<LiveChannel | null>) => {
       state.selectedChannel = action.payload;
     },
+    setInitialLiveTvData: (state, action: PayloadAction<LiveChannel[]>) => {
+      state.channels = action.payload;
+      if (!state.selectedChannel && action.payload.length > 0) {
+        state.selectedChannel = action.payload[0];
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -99,6 +105,6 @@ export const liveTvSlice = createSlice({
   },
 });
 
-export const { setSelectedChannel } = liveTvSlice.actions;
+export const { setSelectedChannel, setInitialLiveTvData } = liveTvSlice.actions;
 export default liveTvSlice.reducer;
 

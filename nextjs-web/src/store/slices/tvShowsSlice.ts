@@ -68,6 +68,9 @@ export const tvShowsSlice = createSlice({
       state.currentShow = null;
       state.episodes = [];
     },
+    setInitialShows: (state, action: PayloadAction<MediaItem[]>) => {
+      state.shows = action.payload;
+    },
   },
   extraReducers: (builder) => {
     // fetchTvShowsList
@@ -107,6 +110,6 @@ export const tvShowsSlice = createSlice({
   },
 });
 
-export const { setPage, clearCurrentShow } = tvShowsSlice.actions;
+export const { setPage, clearCurrentShow, setInitialShows } = tvShowsSlice.actions;
 export default tvShowsSlice.reducer;
 

@@ -138,6 +138,29 @@ export const homeSlice = createSlice({
     clearHomeError: (state) => {
       state.error = null;
     },
+    setInitialHomeData: (state, action: PayloadAction<Partial<HomeState>>) => {
+      if (action.payload.banners && action.payload.banners.length > 0) {
+        state.banners = action.payload.banners;
+      }
+      if (action.payload.top10 && action.payload.top10.length > 0) {
+        state.top10 = action.payload.top10;
+      }
+      if (action.payload.latestMovies && action.payload.latestMovies.length > 0) {
+        state.latestMovies = action.payload.latestMovies;
+      }
+      if (action.payload.popularMovies && action.payload.popularMovies.length > 0) {
+        state.popularMovies = action.payload.popularMovies;
+      }
+      if (action.payload.payPerView && action.payload.payPerView.length > 0) {
+        state.payPerView = action.payload.payPerView;
+      }
+      if (action.payload.tvShows && action.payload.tvShows.length > 0) {
+        state.tvShows = action.payload.tvShows;
+      }
+      if (action.payload.liveChannels && action.payload.liveChannels.length > 0) {
+        state.liveChannels = action.payload.liveChannels;
+      }
+    },
   },
   extraReducers: (builder) => {
     // loadAllHomeContent
@@ -190,6 +213,6 @@ export const homeSlice = createSlice({
   },
 });
 
-export const { clearHomeError } = homeSlice.actions;
+export const { clearHomeError, setInitialHomeData } = homeSlice.actions;
 export default homeSlice.reducer;
 

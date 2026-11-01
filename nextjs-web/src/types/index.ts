@@ -67,6 +67,7 @@ export interface ContentDetails {
   imdb_rating?: string | number;
   access: string;
   has_content_access: boolean;
+  is_watchlist?: boolean;
   required_plan_level?: number;
   genre_data?: string[];
   casts?: CastMember[];
@@ -139,6 +140,7 @@ export interface PlanLimitation {
 
 export interface Plan {
   plan_id: number;
+  id?: number | string;
   name: string;
   identifier: string;
   price: number;

@@ -42,9 +42,21 @@ export function normalizeMediaItem(raw: any): MediaItem {
 }
 
 const getApiBaseUrl = (): string => {
-  // Server-side inside Docker network
+  // Server-side: use INTERNAL_API_URL, detect Docker container, or fallback to localhost
   if (typeof window === 'undefined') {
-    return process.env.INTERNAL_API_URL || 'http://backend:8000/api';
+    if (process.env.INTERNAL_API_URL) {
+      return process.env.INTERNAL_API_URL;
+    }
+    try {
+      // Check if running inside Docker container
+      const fs = require('fs');
+      if (fs.existsSync('/.dockerenv')) {
+        return 'http://backend:8000/api';
+      }
+    } catch {
+      // Ignore filesystem check failures
+    }
+    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
   }
   // Client-side inside user's browser
   return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';

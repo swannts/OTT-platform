@@ -53,6 +53,9 @@ export const moviesSlice = createSlice({
     clearCurrentMovie: (state) => {
       state.currentMovie = null;
     },
+    setInitialMovies: (state, action: PayloadAction<MediaItem[]>) => {
+      state.movies = action.payload;
+    },
   },
   extraReducers: (builder) => {
     // fetchMoviesList
@@ -87,6 +90,6 @@ export const moviesSlice = createSlice({
   },
 });
 
-export const { setPage, clearCurrentMovie } = moviesSlice.actions;
+export const { setPage, clearCurrentMovie, setInitialMovies } = moviesSlice.actions;
 export default moviesSlice.reducer;
 

@@ -1,63 +1,73 @@
-'use client';
-
-import React, { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import React from 'react';
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import { api } from '@/lib/api';
 
-export default function StaticPolicyPage() {
-  const params = useParams();
-  const slug = params?.slug as string;
+export const revalidate = 300; // Cache CMS pages for 5 minutes
 
-  const [pageData, setPageData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
+interface PageProps {
+  params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+}
 
-  useEffect(() => {
-    async function loadPage() {
-      if (!slug) return;
-      setIsLoading(true);
-      try {
-        const data = await api.getPage(slug);
-        setPageData(data);
-      } catch {
-        // Fallback policy content
-        setPageData({
-          name: slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-          description: `
-            <p>Welcome to NOOR Islamic Media Network. This document outlines our guidelines, privacy protections, and user agreements.</p>
-            <br />
-            <h3>1. Service Terms</h3>
-            <p>By accessing or using our streaming service, you agree to abide by our platform guidelines, copyright protections, and subscription terms.</p>
-            <br />
-            <h3>2. User Accounts</h3>
-            <p>You are responsible for maintaining the confidentiality of your account credentials and personal profile.</p>
-          `,
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    }
+async function getPageData(slug: string) {
+  try {
+    const data = await api.getPage(slug);
+    if (data && (data.name || data.title)) return data;
+  } catch (err) {
+    console.error(`Failed to fetch page ${slug} on server:`, err);
+  }
 
-    loadPage();
-  }, [slug]);
+  const cleanName = slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  return {
+    name: cleanName,
+    title: cleanName,
+    description: `
+      <p>Welcome to <strong>NOOR Islamic Cinema</strong>. This policy document outlines our service standards, ethical broadcasting values, halal content curation principles, and user agreements.</p>
+      <br />
+      <h3>1. Halal Content & Family Safety Guarantee</h3>
+      <p>NOOR is committed to providing 100% halal, family-safe Islamic streaming content free from inappropriate imagery, profanity, or harmful values.</p>
+      <br />
+      <h3>2. Privacy & Data Integrity</h3>
+      <p>We respect the sacred privacy of our subscribers. We do not sell or monetize personal data or viewing habits to third-party ad networks.</p>
+      <br />
+      <h3>3. Subscription Terms & Cancellations</h3>
+      <p>Subscribers may manage or cancel their VIP subscriptions anytime through their account dashboard with zero hidden penalties.</p>
+    `,
+  };
+}
 
-  if (isLoading || !pageData) {
-    return (
-      <div className="min-h-screen pt-32 max-w-4xl mx-auto px-4 text-center text-gray-400">
-        Loading page...
-      </div>
-    );
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const page = await getPageData(slug);
+  const title = `${page.name || page.title || 'Page'} | NOOR Islamic Cinema`;
+
+  return {
+    title,
+    description: `Read the ${page.name || page.title} policy and guidelines for NOOR Islamic Cinema.`,
+    alternates: {
+      canonical: `/pages/${slug}`,
+    },
+  };
+}
+
+export default async function StaticPolicyPage({ params }: PageProps) {
+  const { slug } = await params;
+  const page = await getPageData(slug);
+
+  if (!page) {
+    notFound();
   }
 
   return (
-    <div className="min-h-screen pt-28 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto pb-24 text-gray-300">
-      <h1 className="text-3xl sm:text-4xl font-extrabold text-white mb-6">
-        {pageData.name || pageData.title}
+    <div className="min-h-screen pt-28 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto pb-24 text-gray-300 select-none">
+      <h1 className="text-3xl sm:text-4xl font-extrabold text-white mb-6 tracking-tight drop-shadow-md">
+        {page.name || page.title}
       </h1>
       <div
-        className="prose prose-invert max-w-none text-sm leading-relaxed glass-card p-6 sm:p-10 rounded-3xl"
-        dangerouslySetInnerHTML={{ __html: pageData.description || '' }}
+        className="prose prose-invert max-w-none text-sm leading-relaxed bg-[#0c1218] border border-white/10 p-6 sm:p-10 rounded-3xl shadow-xl"
+        dangerouslySetInnerHTML={{ __html: page.description || '' }}
       />
     </div>
   );
 }
-

@@ -1,172 +1,134 @@
-'use client';
-
-import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
+import React from 'react';
+import type { Metadata } from 'next';
 import { api } from '@/lib/api';
 import { Plan } from '@/types';
-import { Crown, Check, Zap, Sparkles } from 'lucide-react';
+import PricingClient from '@/components/pricing/PricingClient';
 
-export default function PricingPage() {
-  const [plans, setPlans] = useState<Plan[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export const revalidate = 300; // Cache pricing for 5 minutes
 
-  useEffect(() => {
-    async function loadPlans() {
-      setIsLoading(true);
-      try {
-        const res = await api.getPlans();
-        if (res && Array.isArray(res)) {
-          setPlans(res);
-        }
-      } catch {
-        // Fallback plans
-        setPlans([
-          {
-            plan_id: 1,
-            name: 'Basic Stream',
-            identifier: 'basic',
-            price: 4.99,
-            total_price: 4.99,
-            level: 1,
-            duration: 'month',
-            duration_value: 1,
-            description: 'Essential entertainment on mobile & desktop in 1080p HD.',
-            plan_type: [
-              { id: 1, limitation_title: 'Simultaneous Devices', limitation_value: 1, slug: 'device-limit' },
-              { id: 2, limitation_title: 'HD 1080p Quality', limitation_value: true, slug: 'video-quality' },
-              { id: 3, limitation_title: 'Ad-Supported', limitation_value: true, slug: 'ads' },
-            ],
-          },
-          {
-            plan_id: 2,
-            name: 'Premium VIP',
-            identifier: 'premium',
-            price: 9.99,
-            total_price: 9.99,
-            level: 2,
-            duration: 'month',
-            duration_value: 1,
-            description: 'Ultra 4K HDR streaming with 4 simultaneous screens, ad-free experience, and offline downloads.',
-            plan_type: [
-              { id: 1, limitation_title: '4 Simultaneous Devices', limitation_value: 4, slug: 'device-limit' },
-              { id: 2, limitation_title: '4K Ultra HD + HDR', limitation_value: true, slug: 'video-quality' },
-              { id: 3, limitation_title: '100% Ad-Free', limitation_value: false, slug: 'ads' },
-              { id: 4, limitation_title: 'Offline Video Downloads', limitation_value: true, slug: 'download-status' },
-            ],
-          },
-          {
-            plan_id: 3,
-            name: 'Annual VIP Pass',
-            identifier: 'annual',
-            price: 89.99,
-            discount_percentage: 25,
-            total_price: 89.99,
-            level: 3,
-            duration: 'year',
-            duration_value: 1,
-            description: 'Full year of unlimited VIP streaming across all devices with 25% annual discount.',
-            plan_type: [
-              { id: 1, limitation_title: 'Unlimited Simultaneous Devices', limitation_value: 6, slug: 'device-limit' },
-              { id: 2, limitation_title: 'Dolby Atmos & 4K Vision', limitation_value: true, slug: 'video-quality' },
-              { id: 3, limitation_title: '100% Ad-Free Experience', limitation_value: false, slug: 'ads' },
-              { id: 4, limitation_title: 'Early Access to New Releases', limitation_value: true, slug: 'early-access' },
-            ],
-          },
-        ]);
-      } finally {
-        setIsLoading(false);
-      }
+export const metadata: Metadata = {
+  title: 'Subscription Plans & VIP Membership | NOOR Islamic Cinema',
+  description:
+    'Join NOOR VIP for unlimited 4K Ultra HD streaming of Islamic movies, sacred series, and live Holy Mosque broadcasts. Ad-free, cancel anytime.',
+  keywords: [
+    'NOOR subscription',
+    'VIP Islamic streaming',
+    'Halal cinema subscription',
+    'Islamic TV plans',
+    '4K Islamic streaming',
+    'NOOR Islamic Cinema',
+  ],
+  openGraph: {
+    title: 'Subscription Plans & VIP Membership | NOOR Islamic Cinema',
+    description:
+      'Join NOOR VIP for unlimited 4K Ultra HD streaming of Islamic movies, sacred series, and live Holy Mosque broadcasts.',
+    url: 'https://noorcinema.com/pricing',
+    siteName: 'NOOR Islamic Cinema',
+    type: 'website',
+  },
+  alternates: {
+    canonical: '/pricing',
+  },
+};
+
+export default async function PricingPage() {
+  let plans: Plan[] = [];
+
+  try {
+    const res = await api.getPlans();
+    if (Array.isArray(res) && res.length > 0) {
+      plans = res;
     }
+  } catch (err) {
+    console.error('Failed to fetch pricing plans on server:', err);
+  }
 
-    loadPlans();
-  }, []);
+  if (plans.length === 0) {
+    plans = [
+      {
+        plan_id: 1,
+        name: 'Basic Stream',
+        identifier: 'basic',
+        price: 4.99,
+        total_price: 4.99,
+        level: 1,
+        duration: 'month',
+        duration_value: 1,
+        description: 'Essential entertainment on mobile & desktop in 1080p HD.',
+        plan_type: [
+          { id: 1, limitation_title: '1 Simultaneous Device', limitation_value: 1, slug: 'device-limit' },
+          { id: 2, limitation_title: 'HD 1080p Quality', limitation_value: true, slug: 'video-quality' },
+          { id: 3, limitation_title: 'Ad-Supported', limitation_value: true, slug: 'ads' },
+        ],
+      },
+      {
+        plan_id: 2,
+        name: 'Premium VIP',
+        identifier: 'premium',
+        price: 9.99,
+        total_price: 9.99,
+        level: 2,
+        duration: 'month',
+        duration_value: 1,
+        description: 'Ultra 4K HDR streaming with 4 simultaneous screens, ad-free experience, and offline downloads.',
+        plan_type: [
+          { id: 1, limitation_title: '4 Simultaneous Devices', limitation_value: 4, slug: 'device-limit' },
+          { id: 2, limitation_title: '4K Ultra HD + HDR', limitation_value: true, slug: 'video-quality' },
+          { id: 3, limitation_title: '100% Ad-Free Experience', limitation_value: false, slug: 'ads' },
+          { id: 4, limitation_title: 'Offline Video Downloads', limitation_value: true, slug: 'download-status' },
+        ],
+      },
+      {
+        plan_id: 3,
+        name: 'Annual VIP Pass',
+        identifier: 'annual',
+        price: 89.99,
+        discount_percentage: 25,
+        total_price: 89.99,
+        level: 3,
+        duration: 'year',
+        duration_value: 1,
+        description: 'Full year of unlimited VIP streaming across all devices with 25% annual discount.',
+        plan_type: [
+          { id: 1, limitation_title: '6 Simultaneous Devices', limitation_value: 6, slug: 'device-limit' },
+          { id: 2, limitation_title: 'Dolby Atmos & 4K Vision', limitation_value: true, slug: 'video-quality' },
+          { id: 3, limitation_title: '100% Ad-Free Experience', limitation_value: false, slug: 'ads' },
+          { id: 4, limitation_title: 'Early Access to New Releases', limitation_value: true, slug: 'early-access' },
+        ],
+      },
+    ];
+  }
+
+  // Schema.org PriceSpecification OfferCatalog
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: 'NOOR VIP Membership',
+    description: 'Ad-free unlimited streaming of Islamic movies, sacred series, and live Holy Mosque broadcasts.',
+    offers: {
+      '@type': 'AggregateOffer',
+      priceCurrency: 'USD',
+      lowPrice: '4.99',
+      highPrice: '89.99',
+      offerCount: plans.length,
+      offers: plans.map((p) => ({
+        '@type': 'Offer',
+        name: p.name,
+        price: p.price,
+        priceCurrency: 'USD',
+        description: p.description,
+        url: `https://noorcinema.com/pricing`,
+      })),
+    },
+  };
 
   return (
-    <div className="min-h-screen pt-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pb-24">
-      {/* Header */}
-      <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-        <div className="inline-flex items-center space-x-2 bg-[#E5B869]/10 border border-[#E5B869]/30 text-[#E5B869] text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-          <Sparkles className="w-3.5 h-3.5 fill-[#E5B869]" />
-          <span>Go Premium Membership</span>
-        </div>
-        <h1 className="font-serif-title text-3xl sm:text-5xl font-black text-white tracking-tight">
-          Choose the Perfect Plan for Sacred Entertainment
-        </h1>
-        <p className="text-sm sm:text-base text-gray-400">
-          Cancel anytime. No lock-in contracts. Stream spiritual series and live sacred broadcasts in 4K.
-        </p>
-      </div>
-
-      {/* Plan Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
-        {plans.map((plan, idx) => {
-          const isFeatured = idx === 1 || plan.level === 2;
-          return (
-            <div
-              key={plan.plan_id}
-              className={`relative rounded-3xl p-8 flex flex-col justify-between transition-all duration-300 ${
-                isFeatured
-                  ? 'bg-gradient-to-b from-[#0c1f19] via-neutral-900 to-[#070a0e] border-2 border-[#E5B869]/70 shadow-2xl shadow-[#E5B869]/20 md:-translate-y-4'
-                  : 'glass-card border-white/10 hover:border-white/20'
-              }`}
-            >
-              {isFeatured && (
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#E5B869] text-black font-extrabold text-[11px] uppercase tracking-wider px-4 py-1 rounded-full shadow-lg">
-                  Most Popular
-                </div>
-              )}
-
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xl font-bold text-white">{plan.name}</h3>
-                  <Crown
-                    className={`w-6 h-6 ${isFeatured ? 'text-amber-400' : 'text-gray-400'}`}
-                  />
-                </div>
-
-                <div className="mb-6">
-                  <span className="text-4xl sm:text-5xl font-black text-white">
-                    ${plan.price}
-                  </span>
-                  <span className="text-xs text-gray-400 font-semibold uppercase ml-1.5">
-                    / {plan.duration}
-                  </span>
-                </div>
-
-                {plan.description && (
-                  <p className="text-xs text-gray-400 leading-relaxed mb-6">
-                    {plan.description}
-                  </p>
-                )}
-
-                {/* Features List */}
-                <div className="space-y-3 pt-4 border-t border-white/10 mb-8">
-                  {plan.plan_type?.map((lim, i) => (
-                    <div key={i} className="flex items-center space-x-2.5 text-xs text-gray-200">
-                      <div className="w-4 h-4 rounded-full bg-[#E5B869]/20 text-[#E5B869] flex items-center justify-center flex-shrink-0">
-                        <Check className="w-2.5 h-2.5 stroke-[3]" />
-                      </div>
-                      <span>{lim.limitation_title}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <Link
-                href={`/checkout/${plan.plan_id}`}
-                className={`w-full text-center py-3.5 px-6 rounded-xl font-bold text-sm transition-all shadow-lg active:scale-95 ${
-                  isFeatured
-                    ? 'bg-[#E5B869] hover:bg-[#f3cf8a] text-black shadow-[#E5B869]/30'
-                    : 'bg-white/10 hover:bg-white/20 text-white border border-white/10'
-                }`}
-              >
-                Choose {plan.name}
-              </Link>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <PricingClient initialPlans={plans} />
+    </>
   );
 }
-
