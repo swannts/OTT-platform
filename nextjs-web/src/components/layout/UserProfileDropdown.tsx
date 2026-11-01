@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/providers';
+import { DEFAULT_AVATAR_IMAGE } from '@/constants';
 import {
   User as UserIcon,
   LogOut,
@@ -78,66 +79,38 @@ export default function UserProfileDropdown() {
     return name.slice(0, 2).toUpperCase();
   };
 
-  const avatarUrl = user?.avatar || user?.profile_image;
+  const avatarDisplayUrl = user?.avatar || user?.profile_image || DEFAULT_AVATAR_IMAGE;
 
   return (
-    <div className="relative" ref={dropdownRef}>
-      {/* Profile Trigger Button */}
-      {user ? (
-        <button
-          type="button"
-          onClick={() => setIsOpen(!isOpen)}
-          className={`relative w-9 h-9 rounded-full overflow-hidden transition-all flex items-center justify-center cursor-pointer active:scale-95 ${
-            isOpen
-              ? 'ring-2 ring-[#E5B869] shadow-[0_0_12px_rgba(229,184,105,0.4)]'
-              : 'ring-2 ring-white/15 hover:ring-[#E5B869]/70'
-          }`}
-          aria-label="User Profile"
-          aria-expanded={isOpen}
-        >
-          {avatarUrl && !imgError ? (
-            <img
-              src={avatarUrl}
-              alt={user.name || 'User Profile'}
-              onError={() => setImgError(true)}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-tr from-[#99732e] to-[#E5B869] text-black font-bold text-xs flex items-center justify-center">
-              {getInitials(user.name)}
-            </div>
-          )}
+    <div className="relative flex-shrink-0" ref={dropdownRef}>
+      {/* Profile Avatar Trigger Button */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`relative w-9 h-9 rounded-full overflow-hidden transition-all flex items-center justify-center cursor-pointer active:scale-95 flex-shrink-0 ${
+          isOpen
+            ? 'ring-2 ring-[#E5B869] shadow-[0_0_12px_rgba(229,184,105,0.4)]'
+            : 'ring-2 ring-white/15 hover:ring-[#E5B869]/70'
+        }`}
+        aria-label="User Profile"
+        aria-expanded={isOpen}
+      >
+        {!imgError ? (
+          <img
+            src={avatarDisplayUrl}
+            alt={user?.name || 'User Profile'}
+            onError={() => setImgError(true)}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-tr from-[#99732e] to-[#E5B869] text-black font-bold text-xs flex items-center justify-center">
+            {user ? getInitials(user.name) : 'U'}
+          </div>
+        )}
 
-          {/* Genuine Online Green Indicator Dot for Authenticated User */}
-          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#070a0e] pointer-events-none" />
-        </button>
-      ) : (
-        <div className="flex items-center space-x-2 flex-shrink-0">
-          {/* Guest Sign-in Quick Pill for Desktop */}
-          <Link
-            href="/login"
-            className="hidden sm:inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-[#E5B869] hover:bg-[#f3cf8a] text-black text-xs font-bold transition-all shadow-md active:scale-95 whitespace-nowrap flex-shrink-0"
-          >
-            <LogIn className="w-3.5 h-3.5 flex-shrink-0" />
-            <span className="whitespace-nowrap">Sign In</span>
-          </Link>
-
-          {/* Guest Account Icon Button */}
-          <button
-            type="button"
-            onClick={() => setIsOpen(!isOpen)}
-            className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-95 flex-shrink-0 ${
-              isOpen
-                ? 'bg-[#E5B869]/20 border border-[#E5B869]/60 text-[#E5B869]'
-                : 'bg-white/[0.04] hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white'
-            }`}
-            aria-label="Guest Menu"
-            aria-expanded={isOpen}
-          >
-            <UserIcon className="w-4 h-4" />
-          </button>
-        </div>
-      )}
+        {/* Genuine Online Green Indicator Dot */}
+        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#070a0e] pointer-events-none" />
+      </button>
 
       {/* Dropdown Menu */}
       {isOpen && (
@@ -148,9 +121,9 @@ export default function UserProfileDropdown() {
               <div className="px-4 py-3 border-b border-white/10 bg-white/[0.02]">
                 <div className="flex items-center space-x-3 mb-2">
                   <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center ring-2 ring-[#E5B869]/50 flex-shrink-0 bg-[#E5B869]/20">
-                    {avatarUrl && !imgError ? (
+                    {!imgError ? (
                       <img
-                        src={avatarUrl}
+                        src={avatarDisplayUrl}
                         alt={user.name}
                         onError={() => setImgError(true)}
                         className="w-full h-full object-cover"
