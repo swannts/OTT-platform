@@ -3,6 +3,8 @@
 import React from 'react';
 import Link from 'next/link';
 import { MediaItem } from '@/types';
+import { useAppDispatch } from '@/store/hooks';
+import { setActiveItem } from '@/store/slices/playerSlice';
 import { Play, Star } from 'lucide-react';
 
 interface MediaCardProps {
@@ -16,6 +18,7 @@ export default function MediaCard({
   rank,
   aspectRatio = 'backdrop',
 }: MediaCardProps) {
+  const dispatch = useAppDispatch();
   const imageUrl =
     (item.poster_image && item.poster_image.trim()) ||
     (item.poster_url && item.poster_url.trim()) ||
@@ -84,13 +87,13 @@ export default function MediaCard({
 
         {/* Hover Center Play Button */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-10">
-          <Link
-            href={watchUrl}
+          <button
+            onClick={() => dispatch(setActiveItem(item))}
             className="pointer-events-auto w-12 h-12 rounded-full bg-[#E5B869] hover:bg-[#f3cf8a] text-black flex items-center justify-center shadow-xl shadow-[#E5B869]/30 transform group-hover:scale-105 transition-all"
             aria-label={`Play ${item.name || item.title}`}
           >
             <Play className="w-5 h-5 fill-black text-black ml-0.5" />
-          </Link>
+          </button>
         </div>
 
         {/* Card Metadata (Bottom Content) */}

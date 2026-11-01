@@ -1,34 +1,18 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { api, normalizeMediaItem } from '@/lib/api';
-import { MediaItem } from '@/types';
+import React, { useEffect } from 'react';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchMoviesList } from '@/store/slices/moviesSlice';
 import MediaCard from '@/components/media/MediaCard';
-import { Film, Filter } from 'lucide-react';
+import { Film } from 'lucide-react';
 
 export default function MoviesPage() {
-  const [movies, setMovies] = useState<MediaItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [page, setPage] = useState(1);
+  const dispatch = useAppDispatch();
+  const { movies, isLoading, page } = useAppSelector((state) => state.movies);
 
   useEffect(() => {
-    async function fetchMovies() {
-      setIsLoading(true);
-      try {
-        const res = await api.getMovies({ page });
-        const list = Array.isArray(res) ? res : res?.data || [];
-        if (Array.isArray(list) && list.length > 0) {
-          setMovies(list.map(normalizeMediaItem));
-        }
-      } catch (err) {
-        console.error('Failed to load movies from backend', err);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchMovies();
-  }, [page]);
+    dispatch(fetchMoviesList({ page }));
+  }, [dispatch, page]);
 
   return (
     <div className="min-h-screen pt-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pb-16">

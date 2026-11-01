@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { MediaItem } from '@/types';
+import { useAppDispatch } from '@/store/hooks';
+import { setActiveItem } from '@/store/slices/playerSlice';
 import { Play, Info, ChevronLeft, ChevronRight, Star } from 'lucide-react';
 
 interface HeroBannerProps {
@@ -10,6 +12,7 @@ interface HeroBannerProps {
 }
 
 export default function HeroBanner({ items }: HeroBannerProps) {
+  const dispatch = useAppDispatch();
   const [currentIndex, setCurrentIndex] = useState(0);
 
   // Fallback slides in case backend is loading
@@ -122,6 +125,7 @@ export default function HeroBanner({ items }: HeroBannerProps) {
           <div className="flex items-center space-x-3.5 pt-3">
             <Link
               href={watchUrl}
+              onClick={() => dispatch(setActiveItem(current))}
               className="flex items-center space-x-2 bg-[#E5B869] hover:bg-[#d8a855] text-black font-bold text-sm px-7 py-3 rounded-full shadow-lg shadow-[#E5B869]/25 transition-all transform active:scale-95"
             >
               <Play className="w-4 h-4 fill-black text-black ml-0.5" />

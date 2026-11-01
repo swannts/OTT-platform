@@ -123,7 +123,7 @@ export default function Navbar() {
                 return (
                   <Link
                     key={link.label}
-                    href={link.href}
+                    href={link.href || '/'}
                     className={`transition-all py-1 font-medium ${
                       isActive
                         ? 'text-[#E5B869] font-semibold border-b-2 border-[#E5B869]'

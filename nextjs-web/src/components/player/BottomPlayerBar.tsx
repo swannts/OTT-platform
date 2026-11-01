@@ -1,9 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
-import { api, normalizeMediaItem } from '@/lib/api';
-import { MediaItem } from '@/types';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import {
+  loadActiveTrack,
+  togglePlay,
+  toggleMute,
+  setProgress,
+} from '@/store/slices/playerSlice';
 import {
   Play,
   Pause,
@@ -17,31 +22,16 @@ import {
 } from 'lucide-react';
 
 export default function BottomPlayerBar() {
-  const [activeItem, setActiveItem] = useState<MediaItem | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [progress, setProgress] = useState(24);
-  const [volume, setVolume] = useState(80);
-  const [isMuted, setIsMuted] = useState(false);
+  const dispatch = useAppDispatch();
+  const { activeItem, isPlaying, progress, isMuted } = useAppSelector(
+    (state) => state.player
+  );
 
   useEffect(() => {
-    async function loadActiveTrack() {
-      try {
-        const cw = await api.getContinueWatching().catch(() => null);
-        if (cw && Array.isArray(cw) && cw.length > 0) {
-          setActiveItem(normalizeMediaItem(cw[0]));
-          return;
-        }
-
-        const dash = await api.getDashboard().catch(() => null);
-        if (dash?.top_10?.data && Array.isArray(dash.top_10.data) && dash.top_10.data.length > 0) {
-          setActiveItem(normalizeMediaItem(dash.top_10.data[0]));
-        }
-      } catch {
-        // Ignore
-      }
+    if (!activeItem) {
+      dispatch(loadActiveTrack());
     }
-    loadActiveTrack();
-  }, []);
+  }, [dispatch, activeItem]);
 
   if (!activeItem) return null;
 
@@ -133,7 +123,7 @@ export default function BottomPlayerBar() {
 
           {/* Play / Pause in Gold Circle */}
           <button
-            onClick={() => setIsPlaying(!isPlaying)}
+            onClick={() => dispatch(togglePlay())}
             className="w-9 h-9 rounded-full bg-[#E5B869] hover:bg-[#f3cf8a] text-black flex items-center justify-center shadow-lg shadow-[#E5B869]/25 transition-transform active:scale-95"
             aria-label={isPlaying ? 'Pause' : 'Play'}
           >
@@ -154,7 +144,7 @@ export default function BottomPlayerBar() {
 
           {/* Volume */}
           <button
-            onClick={() => setIsMuted(!isMuted)}
+            onClick={() => dispatch(toggleMute())}
             className="text-gray-400 hover:text-white p-1.5 transition-colors hidden lg:block"
             aria-label="Volume"
           >

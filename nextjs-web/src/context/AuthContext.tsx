@@ -12,6 +12,7 @@ interface AuthContextType {
   register: (data: { name: string; email: string; password?: string }) => Promise<void>;
   logout: () => Promise<void>;
   refreshSubscription: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,6 +28,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSubscription(sub);
     } catch {
       setSubscription(null);
+    }
+  };
+
+  const refreshUser = async () => {
+    try {
+      const profile = await api.getProfile();
+      setUser(profile);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('user', JSON.stringify(profile));
+      }
+    } catch {
+      // Profile fetch failure
     }
   };
 
@@ -107,6 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         register,
         logout,
         refreshSubscription,
+        refreshUser,
       }}
     >
       {children}

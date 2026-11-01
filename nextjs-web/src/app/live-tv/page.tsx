@@ -1,50 +1,23 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { api } from '@/lib/api';
-import { LiveChannel } from '@/types';
+import React, { useEffect } from 'react';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import {
+  fetchLiveTvDashboard,
+  setSelectedChannel,
+} from '@/store/slices/liveTvSlice';
 import VideoPlayer from '@/components/player/VideoPlayer';
 import { Radio, Tv, Sparkles } from 'lucide-react';
 
 export default function LiveTvPage() {
-  const [channels, setChannels] = useState<LiveChannel[]>([]);
-  const [selectedChannel, setSelectedChannel] = useState<LiveChannel | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const dispatch = useAppDispatch();
+  const { channels, selectedChannel, isLoading } = useAppSelector(
+    (state) => state.liveTv
+  );
 
   useEffect(() => {
-    async function loadLiveTv() {
-      setIsLoading(true);
-      try {
-        const data = await api.getLiveTvDashboard();
-        const list = [
-          ...(data?.slider || []),
-          ...(data?.category_data?.flatMap((c: any) => c.channel_data || []) || []),
-        ];
-        const unique = Array.from(new Map(list.map((c: any) => [c.id, c])).values()).map((c: any) => ({
-          id: c.id,
-          name: c.details?.name || c.name || `Live Channel ${c.id}`,
-          category: c.details?.category || c.category || 'Live Stream',
-          description: c.details?.description || c.description || 'Live broadcast from sacred shrines and news studios.',
-          poster_image: c.poster_image || c.poster_tv_image || c.thumbnail_image,
-          thumbnail_image: c.poster_tv_image || c.thumbnail_image || c.poster_image,
-          stream_type: c.stream_type || 'HLS',
-          server_url: c.server_url || c.server_url1 || 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
-          has_content_access: Boolean(c.details?.has_content_access ?? c.has_content_access ?? true),
-        }));
-
-        if (unique.length > 0) {
-          setChannels(unique);
-          setSelectedChannel(unique[0]);
-        }
-      } catch (err) {
-        console.error('Failed to load live TV channels from backend', err);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    loadLiveTv();
-  }, []);
+    dispatch(fetchLiveTvDashboard());
+  }, [dispatch]);
 
   return (
     <div className="min-h-screen pt-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pb-20">
@@ -114,7 +87,7 @@ export default function LiveTvPage() {
               return (
                 <button
                   key={channel.id}
-                  onClick={() => setSelectedChannel(channel)}
+                  onClick={() => dispatch(setSelectedChannel(channel))}
                   className={`w-full text-left p-3 rounded-xl transition-all flex items-center space-x-3.5 border ${
                     isSelected
                       ? 'bg-red-600/20 border-red-500/50 shadow-lg'
