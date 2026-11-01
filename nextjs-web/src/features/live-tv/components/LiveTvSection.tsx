@@ -7,7 +7,7 @@ import {
   setInitialLiveTvData,
   selectLiveTvState,
 } from '@/store/slices/liveTvSlice';
-import VideoPlayer from '@/components/player/VideoPlayer';
+import { VideoPlayer } from '@/features/player';
 import { Radio, Tv } from 'lucide-react';
 import { LiveChannel } from '@/types';
 

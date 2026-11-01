@@ -5,8 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { ContentDetails } from '@/types';
-import VideoPlayer from '@/components/player/VideoPlayer';
-import MediaRow from '@/components/media/MediaRow';
+import { VideoPlayer } from '@/features/player';
+import { MediaRow } from '@/components/shared';
 import { ArrowLeft, Star, Clock, Calendar } from 'lucide-react';
 
 export default function WatchPage() {

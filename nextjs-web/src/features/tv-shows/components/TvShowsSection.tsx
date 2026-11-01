@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setInitialShows, fetchTvShowsList, selectTvShowsState } from '@/store/slices/tvShowsSlice';
-import MediaGrid from '@/components/media/MediaGrid';
+import { MediaGrid } from '@/components/shared';
 import { Tv, Sparkles, Filter } from 'lucide-react';
 import { MediaItem } from '@/types';
 import { SectionHeader, EmptyState } from '@/components/ui';

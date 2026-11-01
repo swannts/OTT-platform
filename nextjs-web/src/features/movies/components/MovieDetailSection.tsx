@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { ContentDetails } from '@/types';
 import { Play, Plus, Check, Star, Clock, Calendar } from 'lucide-react';
-import MediaRow from '@/components/media/MediaRow';
+import { MediaRow } from '@/components/shared';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 

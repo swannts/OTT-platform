@@ -1,8 +1,7 @@
 import React from 'react';
 import type { Metadata } from 'next';
-import { api, normalizeMediaItem } from '@/lib/api';
-import { MediaItem } from '@/types';
-import MoviesSection from '@/sections/movies/MoviesSection';
+import { getMoviesDal } from '@/server/dal';
+import { MoviesSection } from '@/features/movies';
 
 export const revalidate = 60; // ISR cache for 60 seconds
 
@@ -48,15 +47,7 @@ export const metadata: Metadata = {
 };
 
 export default async function MoviesPage() {
-  let movies: MediaItem[] = [];
-
-  try {
-    const res = await api.getMovies({ page: 1 });
-    const list = Array.isArray(res) ? res : res?.data || [];
-    movies = Array.isArray(list) ? list.map(normalizeMediaItem) : [];
-  } catch (err) {
-    console.error('Failed to fetch movies on server:', err);
-  }
+  const movies = await getMoviesDal({ page: 1 });
 
   // Schema.org CollectionPage
   const jsonLd = {

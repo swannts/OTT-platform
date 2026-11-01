@@ -1,11 +1,10 @@
 import type { Metadata } from 'next';
 import { Playfair_Display, Inter } from 'next/font/google';
 import './globals.css';
-import { AuthProvider } from '@/context/AuthContext';
-import StoreProvider from '@/store/StoreProvider';
+import { AuthProvider, StoreProvider } from '@/providers';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
-import BottomPlayerBar from '@/components/player/BottomPlayerBar';
+import { BottomPlayerBar } from '@/features/player';
 
 const playfair = Playfair_Display({
   subsets: ['latin'],

@@ -1,8 +1,7 @@
 import React from 'react';
 import type { Metadata } from 'next';
-import { api } from '@/lib/api';
-import { LiveChannel } from '@/types';
-import LiveTvSection from '@/sections/live-tv/LiveTvSection';
+import { getLiveTvChannelsDal } from '@/server/dal';
+import { LiveTvSection } from '@/features/live-tv';
 
 export const revalidate = 60; // ISR cache for 60 seconds
 
@@ -49,42 +48,7 @@ export const metadata: Metadata = {
 };
 
 export default async function LiveTvPage() {
-  let channels: LiveChannel[] = [];
-
-  try {
-    const res = await api.getLiveTvDashboard();
-    const rawChannels: any[] = [];
-
-    if (res?.slider && Array.isArray(res.slider)) {
-      rawChannels.push(...res.slider);
-    }
-    if (res?.category_data && Array.isArray(res.category_data)) {
-      res.category_data.forEach((cat: any) => {
-        if (cat.channel_data && Array.isArray(cat.channel_data)) {
-          rawChannels.push(...cat.channel_data);
-        }
-      });
-    }
-
-    const seen = new Set();
-    for (const c of rawChannels) {
-      if (!c || seen.has(c.id)) continue;
-      seen.add(c.id);
-      channels.push({
-        id: c.id,
-        name: c.details?.name || c.name || `Live Channel ${c.id}`,
-        category: c.details?.category || c.category || 'Live Stream',
-        poster_image: c.poster_image || c.thumbnail_image,
-        thumbnail_image: c.thumbnail_image || c.poster_image,
-        server_url: c.server_url || c.server_url1 || 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
-        stream_type: c.stream_type || 'HLS',
-        has_content_access: Boolean(c.details?.has_content_access ?? c.has_content_access ?? true),
-        description: c.details?.description || c.description,
-      });
-    }
-  } catch (err) {
-    console.error('Failed to fetch live channels on server:', err);
-  }
+  const channels = await getLiveTvChannelsDal();
 
   // Schema.org BroadcastService
   const jsonLd = {

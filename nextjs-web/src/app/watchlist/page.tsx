@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { MediaItem } from '@/types';
-import MediaGrid from '@/components/media/MediaGrid';
+import { MediaGrid } from '@/components/shared';
 import { EmptyState } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { Heart, Plus } from 'lucide-react';

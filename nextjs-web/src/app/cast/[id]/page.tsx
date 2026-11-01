@@ -2,7 +2,7 @@ import React from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { api, normalizeMediaItem } from '@/lib/api';
-import MediaGrid from '@/components/media/MediaGrid';
+import { MediaGrid } from '@/components/shared';
 import { Award, ArrowLeft, BookOpen } from 'lucide-react';
 import { notFound } from 'next/navigation';
 

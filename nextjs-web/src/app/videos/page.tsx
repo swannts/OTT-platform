@@ -1,8 +1,7 @@
 import React from 'react';
 import type { Metadata } from 'next';
-import { api, normalizeMediaItem } from '@/lib/api';
-import { MediaItem } from '@/types';
-import VideosSection from '@/sections/videos/VideosSection';
+import { getVideosDal } from '@/server/dal';
+import { VideosSection } from '@/features/videos';
 
 export const revalidate = 60; // ISR cache for 60 seconds
 
@@ -48,15 +47,7 @@ export const metadata: Metadata = {
 };
 
 export default async function VideosPage() {
-  let videos: MediaItem[] = [];
-
-  try {
-    const res = await api.getVideos(1);
-    const list = Array.isArray(res) ? res : res?.data || [];
-    videos = Array.isArray(list) ? list.map(normalizeMediaItem) : [];
-  } catch (err) {
-    console.error('Failed to fetch videos on server:', err);
-  }
+  const videos = await getVideosDal(1);
 
   // Schema.org CollectionPage
   const jsonLd = {

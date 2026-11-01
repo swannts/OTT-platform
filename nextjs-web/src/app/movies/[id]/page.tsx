@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { api } from '@/lib/api';
 import { ContentDetails } from '@/types';
-import MovieDetailSection from '@/sections/movies/MovieDetailSection';
+import { MovieDetailSection } from '@/features/movies';
 
 export const revalidate = 60; // ISR cache for 60 seconds
 

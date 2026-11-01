@@ -4,7 +4,7 @@ import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { MediaItem } from '@/types';
-import MediaGrid from '@/components/media/MediaGrid';
+import { MediaGrid } from '@/components/shared';
 import { EmptyState } from '@/components/ui';
 import { Search } from 'lucide-react';
 

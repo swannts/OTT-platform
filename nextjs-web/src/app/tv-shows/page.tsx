@@ -1,8 +1,7 @@
 import React from 'react';
 import type { Metadata } from 'next';
-import { api, normalizeMediaItem } from '@/lib/api';
-import { MediaItem } from '@/types';
-import TvShowsSection from '@/sections/tv-shows/TvShowsSection';
+import { getTvShowsDal } from '@/server/dal';
+import { TvShowsSection } from '@/features/tv-shows';
 
 export const revalidate = 60; // ISR cache for 60 seconds
 
@@ -48,15 +47,7 @@ export const metadata: Metadata = {
 };
 
 export default async function TvShowsPage() {
-  let shows: MediaItem[] = [];
-
-  try {
-    const res = await api.getTvShows({ page: 1 });
-    const list = Array.isArray(res) ? res : res?.data || [];
-    shows = Array.isArray(list) ? list.map(normalizeMediaItem) : [];
-  } catch (err) {
-    console.error('Failed to fetch tv shows on server:', err);
-  }
+  const shows = await getTvShowsDal({ page: 1 });
 
   // Schema.org CollectionPage
   const jsonLd = {

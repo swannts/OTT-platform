@@ -4,7 +4,7 @@ import React, { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setInitialHomeData, fetchContinueWatching, fetchDashboardData, selectHomeState } from '@/store/slices/homeSlice';
 import HeroBanner from './HeroBanner';
-import MediaRow from '@/components/media/MediaRow';
+import { MediaRow } from '@/components/shared';
 import LiveNowSection from './LiveNowSection';
 import { MediaItem, LiveChannel } from '@/types';
 import { useAuth } from '@/context/AuthContext';

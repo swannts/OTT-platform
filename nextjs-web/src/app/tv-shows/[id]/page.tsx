@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { api } from '@/lib/api';
 import { ContentDetails, EpisodeItem } from '@/types';
-import TvShowDetailSection from '@/sections/tv-shows/TvShowDetailSection';
+import { TvShowDetailSection } from '@/features/tv-shows';
 
 export const revalidate = 60; // ISR cache for 60 seconds
 

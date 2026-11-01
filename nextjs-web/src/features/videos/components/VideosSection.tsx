@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import MediaGrid from '@/components/media/MediaGrid';
+import { MediaGrid } from '@/components/shared';
 import { Sparkles, Flame } from 'lucide-react';
 import { MediaItem } from '@/types';
 import { SectionHeader, EmptyState } from '@/components/ui';
