@@ -15,6 +15,8 @@
   "dependencies": {
     "@reduxjs/toolkit": "^2.13.0",
     "@tailwindcss/postcss": "^4.3.3",
+    "@videojs/hlsjs-video": "^10.2.0",
+    "@videojs/react": "^10.2.0",
     "clsx": "^2.1.1",
     "hls.js": "^1.7.4",
     "lucide-react": "^1.66.0",
@@ -23,7 +25,8 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-redux": "^9.3.1",
-    "tailwind-merge": "^3.7.0"
+    "tailwind-merge": "^3.7.0",
+    "video.js": "^10.2.0"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",

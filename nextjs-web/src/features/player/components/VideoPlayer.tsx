@@ -2,18 +2,10 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import Hls from 'hls.js';
-import {
-  Play,
-  Pause,
-  Volume2,
-  VolumeX,
-  Maximize,
-  Minimize,
-  Settings,
-  Lock,
-  Sparkles,
-} from 'lucide-react';
+import '@videojs/react/video/skin.css';
+import { VideoPlayer as VjsPlayer, VideoSkin, Video } from '@videojs/react/video';
+import { HlsJsVideo } from '@videojs/react/media/hlsjs-video';
+import { Lock, Sparkles, Layers } from 'lucide-react';
 import { api } from '@/lib/api';
 import { VideoQuality } from '@/types';
 import { isYouTubeVideo } from '@/lib/youtube';
@@ -38,163 +30,61 @@ export default function VideoPlayer({
   videoUrl,
   urlType = 'URL',
   qualities = [],
-  hasAccess = true,
+  hasAccess = false,
   initialTime = 0,
   poster,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const hlsRef = useRef<Hls | null>(null);
-
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(1);
-  const [isMuted, setIsMuted] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showControls, setShowControls] = useState(true);
   const [selectedQualityUrl, setSelectedQualityUrl] = useState<string>(videoUrl || '');
   const [selectedQualityType, setSelectedQualityType] = useState<string>(urlType || '');
-  const [showQualityMenu, setShowQualityMenu] = useState(false);
-  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Sync state if videoUrl prop updates
-  useEffect(() => {
-    if (videoUrl) {
-      setSelectedQualityUrl(videoUrl);
-      setSelectedQualityType(urlType || '');
-    }
-  }, [videoUrl, urlType]);
+  const [hasAppliedInitialTime, setHasAppliedInitialTime] = useState(false);
 
   const isCurrentYouTube = isYouTubeVideo(selectedQualityUrl, selectedQualityType);
+  const isHls =
+    selectedQualityUrl.includes('.m3u8') ||
+    selectedQualityType?.toLowerCase() === 'hls' ||
+    urlType?.toLowerCase() === 'hls';
 
-  // Initialize playback & HLS (only if NOT YouTube)
+  // Apply initial resume timestamp once video metadata is ready
   useEffect(() => {
-    if (!hasAccess || !selectedQualityUrl || isCurrentYouTube || !videoRef.current) return;
-
-    const video = videoRef.current;
-    const isHlsStream = selectedQualityUrl.includes('.m3u8') || urlType?.toLowerCase() === 'hls';
-
-    if (isHlsStream) {
-      if (Hls.isSupported()) {
-        const hls = new Hls({
-          enableWorker: true,
-          lowLatencyMode: true,
-        });
-        hls.loadSource(selectedQualityUrl);
-        hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          if (initialTime > 0) {
-            video.currentTime = initialTime;
-          }
-        });
-        hlsRef.current = hls;
-
-        return () => {
-          hls.destroy();
-          hlsRef.current = null;
-        };
-      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        // Safari native HLS
-        video.src = selectedQualityUrl;
-        if (initialTime > 0) {
-          video.currentTime = initialTime;
+    if (!hasAppliedInitialTime && initialTime > 0 && videoRef.current) {
+      const handleLoadedMetadata = () => {
+        if (videoRef.current && initialTime > 0) {
+          videoRef.current.currentTime = initialTime;
+          setHasAppliedInitialTime(true);
         }
-      }
-    } else {
-      video.src = selectedQualityUrl;
-      if (initialTime > 0) {
-        video.currentTime = initialTime;
-      }
+      };
+
+      const video = videoRef.current;
+      video.addEventListener('loadedmetadata', handleLoadedMetadata);
+      return () => video.removeEventListener('loadedmetadata', handleLoadedMetadata);
     }
-  }, [selectedQualityUrl, hasAccess, urlType, initialTime, isCurrentYouTube]);
+  }, [initialTime, hasAppliedInitialTime]);
 
   // Sync Continue Watching progress every 15 seconds
   useEffect(() => {
     if (!hasAccess || !isPlaying || currentTime <= 5 || isCurrentYouTube) return;
 
     const syncInterval = setInterval(() => {
-      api.saveContinueWatching(contentId, contentType, Math.floor(currentTime), Math.floor(duration)).catch(() => {});
+      api.saveContinueWatching(
+        contentId,
+        contentType,
+        Math.floor(currentTime),
+        Math.floor(duration)
+      ).catch(() => {});
     }, 15000);
 
     return () => clearInterval(syncInterval);
   }, [contentId, contentType, currentTime, duration, isPlaying, hasAccess, isCurrentYouTube]);
-
-  // Handle Controls Visibility on Mouse Move
-  const handleMouseMove = () => {
-    setShowControls(true);
-    if (controlsTimeoutRef.current) {
-      clearTimeout(controlsTimeoutRef.current);
-    }
-    controlsTimeoutRef.current = setTimeout(() => {
-      if (isPlaying) {
-        setShowControls(false);
-      }
-    }, 3500);
-  };
-
-  const togglePlay = () => {
-    if (!videoRef.current) return;
-    if (isPlaying) {
-      videoRef.current.pause();
-    } else {
-      videoRef.current.play();
-    }
-    setIsPlaying(!isPlaying);
-  };
 
   const handleTimeUpdate = () => {
     if (videoRef.current) {
       setCurrentTime(videoRef.current.currentTime);
       setDuration(videoRef.current.duration || 0);
     }
-  };
-
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const time = parseFloat(e.target.value);
-    if (videoRef.current) {
-      videoRef.current.currentTime = time;
-      setCurrentTime(time);
-    }
-  };
-
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseFloat(e.target.value);
-    setVolume(val);
-    if (videoRef.current) {
-      videoRef.current.volume = val;
-      videoRef.current.muted = val === 0;
-      setIsMuted(val === 0);
-    }
-  };
-
-  const toggleMute = () => {
-    if (!videoRef.current) return;
-    const nextMuted = !isMuted;
-    setIsMuted(nextMuted);
-    videoRef.current.muted = nextMuted;
-    if (!nextMuted && volume === 0) {
-      setVolume(0.5);
-      videoRef.current.volume = 0.5;
-    }
-  };
-
-  const toggleFullscreen = () => {
-    if (!containerRef.current) return;
-    if (!document.fullscreenElement) {
-      containerRef.current.requestFullscreen().catch(() => {});
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen().catch(() => {});
-      setIsFullscreen(false);
-    }
-  };
-
-  const formatTime = (seconds: number) => {
-    if (isNaN(seconds)) return '00:00';
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
   // If user has no access, render the Lock / Subscription Prompt
@@ -252,6 +142,7 @@ export default function VideoPlayer({
             {qualities.map((q, idx) => (
               <button
                 key={idx}
+                type="button"
                 onClick={() => {
                   setSelectedQualityUrl(q.url);
                   setSelectedQualityType(q.url_type || '');
@@ -286,138 +177,75 @@ export default function VideoPlayer({
     );
   }
 
-  // 3. Native HTML5 & HLS Video Player
+  // 3. Video.js 10 Enterprise Media Player
+  const videoJsSkinStyle: React.CSSProperties = {
+    width: '100%',
+    aspectRatio: '16 / 9',
+    maxHeight: '85vh',
+    '--media-accent-color': '#E5B869',
+    '--media-accent-text-color': '#000000',
+    '--media-border-color': 'rgba(255, 255, 255, 0.1)',
+    '--media-border-radius': '1rem',
+    '--media-font-family': 'var(--font-sans), sans-serif',
+  } as React.CSSProperties;
+
   return (
     <div className="space-y-3">
-      <div
-        ref={containerRef}
-        onMouseMove={handleMouseMove}
-        className="relative aspect-video w-full max-h-[85vh] bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 select-none group"
-      >
-        <video
-          ref={videoRef}
-          poster={poster}
-          onTimeUpdate={handleTimeUpdate}
-          onClick={togglePlay}
-          playsInline
-          className="w-full h-full object-contain cursor-pointer"
-        />
+      {/* Video.js 10 Container with NOOR Cinema Styling */}
+      <div className="relative aspect-video w-full max-h-[85vh] bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 group">
+        <VjsPlayer>
+          <VideoSkin style={videoJsSkinStyle}>
+            {isHls ? (
+              <HlsJsVideo
+                ref={videoRef}
+                src={selectedQualityUrl}
+                poster={poster}
+                playsInline
+                onTimeUpdate={handleTimeUpdate}
+                onPlay={() => setIsPlaying(true)}
+                onPause={() => setIsPlaying(false)}
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <Video
+                ref={videoRef}
+                src={selectedQualityUrl}
+                poster={poster}
+                playsInline
+                onTimeUpdate={handleTimeUpdate}
+                onPlay={() => setIsPlaying(true)}
+                onPause={() => setIsPlaying(false)}
+                className="w-full h-full object-contain"
+              />
+            )}
+          </VideoSkin>
+        </VjsPlayer>
 
-        {/* Top Bar (Title overlay) */}
-        <div
-          className={`absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/80 via-black/40 to-transparent flex items-center justify-between transition-opacity duration-300 ${
-            showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
-          }`}
-        >
-          <h2 className="text-white font-bold text-base sm:text-lg drop-shadow">{title}</h2>
-        </div>
-
-        {/* Center Big Play Button (when paused) */}
-        {!isPlaying && (
-          <button
-            onClick={togglePlay}
-            className="absolute inset-0 m-auto w-16 h-16 rounded-full bg-[#E5B869] text-black flex items-center justify-center shadow-2xl hover:scale-110 transition-transform cursor-pointer"
-          >
-            <Play className="w-8 h-8 fill-black ml-1" />
-          </button>
-        )}
-
-        {/* Bottom Controls Bar */}
-        <div
-          className={`absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/95 via-black/60 to-transparent space-y-2 transition-opacity duration-300 ${
-            showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
-          }`}
-        >
-          {/* Progress Timeline Slider */}
-          <div className="relative flex items-center group/slider">
-            <input
-              type="range"
-              min={0}
-              max={duration || 100}
-              value={currentTime}
-              onChange={handleSeek}
-              className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-[#E5B869] focus:outline-none"
-            />
+        {/* Cinematic Title Overlay (shows on top when hovering) */}
+        <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/80 via-black/30 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-30 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <span className="w-2 h-2 rounded-full bg-[#E5B869] shadow-[0_0_8px_#E5B869]" />
+            <h2 className="text-white font-bold text-sm sm:text-base drop-shadow-md truncate max-w-lg">
+              {title}
+            </h2>
           </div>
-
-          {/* Control Buttons */}
-          <div className="flex items-center justify-between text-white text-sm pt-1">
-            <div className="flex items-center space-x-4">
-              <button onClick={togglePlay} className="hover:text-[#E5B869] transition-colors cursor-pointer">
-                {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current" />}
-              </button>
-
-              {/* Volume Control */}
-              <div className="flex items-center space-x-2">
-                <button onClick={toggleMute} className="hover:text-[#E5B869] transition-colors cursor-pointer">
-                  {isMuted || volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-                </button>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  value={isMuted ? 0 : volume}
-                  onChange={handleVolumeChange}
-                  className="w-16 h-1 bg-white/30 rounded-lg appearance-none cursor-pointer accent-[#E5B869]"
-                />
-              </div>
-
-              {/* Time Display */}
-              <span className="text-xs text-gray-300 font-mono">
-                {formatTime(currentTime)} / {formatTime(duration)}
-              </span>
-            </div>
-
-            <div className="flex items-center space-x-3">
-              {/* Resolution / Quality Switcher */}
-              {qualities.length > 0 && (
-                <div className="relative">
-                  <button
-                    onClick={() => setShowQualityMenu(!showQualityMenu)}
-                    className="flex items-center space-x-1 hover:text-[#E5B869] transition-colors text-xs font-semibold px-2 py-1 rounded bg-white/10 cursor-pointer"
-                  >
-                    <Settings className="w-4 h-4 mr-1" />
-                    <span>Quality</span>
-                  </button>
-                  {showQualityMenu && (
-                    <div className="absolute right-0 bottom-full mb-2 w-36 glass-card rounded-lg py-1 shadow-2xl text-xs z-50">
-                      {qualities.map((q, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => {
-                            setSelectedQualityUrl(q.url);
-                            setSelectedQualityType(q.url_type || '');
-                            setShowQualityMenu(false);
-                          }}
-                          className={`w-full text-left px-3 py-1.5 hover:bg-white/10 transition-colors cursor-pointer ${
-                            selectedQualityUrl === q.url ? 'text-[#E5B869] font-bold' : 'text-gray-300'
-                          }`}
-                        >
-                          {q.quality || (isYouTubeVideo(q.url, q.url_type) ? 'YouTube HD' : `Quality ${idx + 1}`)}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Fullscreen Button */}
-              <button onClick={toggleFullscreen} className="hover:text-[#E5B869] transition-colors cursor-pointer">
-                {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
-              </button>
-            </div>
+          <div className="flex items-center space-x-2">
+            <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-bold bg-[#E5B869]/20 text-[#E5B869] border border-[#E5B869]/40 backdrop-blur-md">
+              <Layers className="w-3 h-3" />
+              <span>Video.js 10 Engine</span>
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Source Switcher if multiple stream sources exist */}
+      {/* Available Stream Sources / Renditions */}
       {qualities.length > 1 && (
         <div className="flex items-center justify-end space-x-2 text-xs pt-1">
           <span className="text-gray-400 font-medium">Available Sources:</span>
           {qualities.map((q, idx) => (
             <button
               key={idx}
+              type="button"
               onClick={() => {
                 setSelectedQualityUrl(q.url);
                 setSelectedQualityType(q.url_type || '');
