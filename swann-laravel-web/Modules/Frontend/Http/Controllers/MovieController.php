@@ -107,7 +107,7 @@ public function moviesListBylanguage(string $language)
         $user_id = Auth::id();
         $cacheKey = "movie_details_{$id}_user_{$user_id}";
 
-        $movieGuard = Entertainment::where('slug', $id)->first();
+        $movieGuard = Entertainment::where('slug', $id)->orWhere('id', $id)->first();
 
         if (empty($movieGuard) || (int) ($movieGuard->status) !== 1 || $movieGuard->deleted_at !== null) {
             return redirect()->route('user.login');
@@ -268,7 +268,7 @@ public function moviesListBylanguage(string $language)
         $userId = Auth::id();
 
         // Check if channel exists and is active
-        $livetvGuard = LiveTvChannel::where('slug', $livetvId)->first();
+        $livetvGuard = LiveTvChannel::where('slug', $livetvId)->orWhere('id', $livetvId)->first();
         if (empty($livetvGuard) || (int) ($livetvGuard->status) !== 1 || $livetvGuard->deleted_at !== null) {
             return redirect()->route('user.login');
         }

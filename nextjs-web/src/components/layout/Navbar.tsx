@@ -63,7 +63,7 @@ export default function Navbar() {
     }, 150);
   };
 
-  // Primary curated desktop navigation links (no awkward wrapping!)
+  // Primary curated desktop navigation links
   const primaryDesktopLinks = [
     { label: 'Home', href: '/' },
     { label: 'Live TV', href: '/live-tv', isLive: true },
@@ -135,9 +135,9 @@ export default function Navbar() {
                   <Link
                     key={link.label}
                     href={link.href}
-                    className={`relative px-3.5 py-1.5 font-medium rounded-full transition-all duration-200 whitespace-nowrap cursor-pointer flex items-center space-x-1.5 ${
+                    className={`relative px-3.5 py-1.5 font-medium rounded-full transition-all duration-200 whitespace-nowrap cursor-pointer flex items-center space-x-1.5 outline-none focus:outline-none focus:ring-0 active:outline-none select-none ${
                       isActive
-                        ? 'text-[#E5B869] font-semibold bg-white/[0.06]'
+                        ? 'text-[#E5B869] font-semibold bg-white/[0.06] border border-[#E5B869]/40'
                         : 'text-gray-300 hover:text-white hover:bg-white/[0.04]'
                     }`}
                   >
@@ -287,7 +287,7 @@ export default function Navbar() {
                 aria-label="User Profile"
               >
                 <img
-                  src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80"
+                  src="https://images.unsplash.com/photo-1544717305-2782549b5136?w=100&auto=format&fit=crop&q=80"
                   alt={user?.name || 'User Profile'}
                   className="w-full h-full object-cover"
                 />

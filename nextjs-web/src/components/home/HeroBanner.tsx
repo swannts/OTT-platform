@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { MediaItem } from '@/types';
 import { useAppDispatch } from '@/store/hooks';
 import { setActiveItem } from '@/store/slices/playerSlice';
-import { Play, Info, ChevronLeft, ChevronRight, Star, Clock, Calendar } from 'lucide-react';
+import { Play, Info, ChevronLeft, ChevronRight, Star, Clock } from 'lucide-react';
 
 interface HeroBannerProps {
   items: MediaItem[];
@@ -14,9 +14,11 @@ interface HeroBannerProps {
 export default function HeroBanner({ items }: HeroBannerProps) {
   const dispatch = useAppDispatch();
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [fadeState, setFadeState] = useState<'visible' | 'fading'>('visible');
   const [isPaused, setIsPaused] = useState(false);
+  const fadeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Fallback slides in case backend is loading
+  // Fallback high-definition slides with verified working URLs
   const fallbackSlides: MediaItem[] = [
     {
       id: '01940000-0003-7000-8000-000000000001',
@@ -35,31 +37,70 @@ export default function HeroBanner({ items }: HeroBannerProps) {
       type: 'movie',
       description: 'The profound architectural and spiritual chronicle of the Holy Kaaba and Masjid Al-Haram.',
       banner_image:
-        'https://images.unsplash.com/photo-1564769625905-50e93615e769?w=1920&auto=format&fit=crop&q=85',
+        'https://images.unsplash.com/photo-1578328819058-b69f3a3b0f6b?w=1920&auto=format&fit=crop&q=85',
       access: 'paid',
       imdb_rating: 9.6,
       duration: '1h 50m',
+    },
+    {
+      id: '01940000-0003-7000-8000-000000000003',
+      name: 'The Golden Age of Islamic Civilization',
+      type: 'tvshow',
+      description: 'Exploring the House of Wisdom in Baghdad, Cordoba libraries, and breakthroughs in astronomy and medicine.',
+      banner_image:
+        'https://images.unsplash.com/photo-1541432901042-2d8bd64b4a9b?w=1920&auto=format&fit=crop&q=85',
+      access: 'paid',
+      imdb_rating: 9.8,
+      duration: '52:10',
     },
   ];
 
   const slides = items && items.length > 0 ? items : fallbackSlides;
 
+  // Smooth fade transition handler
+  const transitionToSlide = useCallback(
+    (nextIdx: number) => {
+      if (nextIdx === currentIndex) return;
+      if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current);
+
+      // 1. Begin fade-out of current slide content
+      setFadeState('fading');
+
+      // 2. Switch slide index and trigger fade-in after fade-out duration
+      fadeTimeoutRef.current = setTimeout(() => {
+        setCurrentIndex(nextIdx);
+        setFadeState('visible');
+      }, 350);
+    },
+    [currentIndex]
+  );
+
   const handleNext = useCallback(() => {
-    setCurrentIndex((prev) => (prev + 1) % slides.length);
-  }, [slides.length]);
+    const next = (currentIndex + 1) % slides.length;
+    transitionToSlide(next);
+  }, [currentIndex, slides.length, transitionToSlide]);
 
   const handlePrev = useCallback(() => {
-    setCurrentIndex((prev) => (prev - 1 + slides.length) % slides.length);
-  }, [slides.length]);
+    const prev = (currentIndex - 1 + slides.length) % slides.length;
+    transitionToSlide(prev);
+  }, [currentIndex, slides.length, transitionToSlide]);
+
+  // Clean up timers on unmount
+  useEffect(() => {
+    return () => {
+      if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current);
+    };
+  }, []);
 
   // Auto-advance carousel with pause-on-hover
   useEffect(() => {
     if (slides.length <= 1 || isPaused) return;
     const timer = setInterval(() => {
-      handleNext();
+      const next = (currentIndex + 1) % slides.length;
+      transitionToSlide(next);
     }, 8500);
     return () => clearInterval(timer);
-  }, [slides.length, isPaused, handleNext]);
+  }, [slides.length, isPaused, currentIndex, transitionToSlide]);
 
   // Keyboard navigation support
   useEffect(() => {
@@ -81,11 +122,11 @@ export default function HeroBanner({ items }: HeroBannerProps) {
 
   return (
     <div
-      className="relative w-full h-[78vh] sm:h-[84vh] md:h-[90vh] overflow-hidden select-none"
+      className="relative w-full h-[78vh] sm:h-[84vh] md:h-[90vh] overflow-hidden select-none bg-[#070a0e]"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      {/* 1. Layered Cross-Fading Cinematic Backgrounds */}
+      {/* 1. Layered Cinematic Cross-Fading Background Images */}
       {slides.map((slide, idx) => {
         const isCurrent = idx === currentIndex;
         const imgUrl =
@@ -96,7 +137,7 @@ export default function HeroBanner({ items }: HeroBannerProps) {
 
         return (
           <div
-            key={`hero-slide-${slide.id ?? 'item'}-${idx}`}
+            key={`hero-slide-bg-${slide.id ?? idx}`}
             className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
               isCurrent ? 'opacity-100 z-0' : 'opacity-0 -z-10 pointer-events-none'
             }`}
@@ -123,9 +164,15 @@ export default function HeroBanner({ items }: HeroBannerProps) {
         <div className="absolute inset-0 bg-gradient-to-b from-[#070a0e]/70 via-transparent to-transparent h-32" />
       </div>
 
-      {/* 3. Hero Content Area with Staggered Keyed Animation */}
+      {/* 3. Hero Content Area with Smooth Fade & Glide Animation */}
       <div className="relative max-w-[1360px] mx-auto px-8 sm:px-12 md:px-16 lg:px-20 xl:px-24 h-full flex flex-col justify-end pb-12 sm:pb-16 z-20">
-        <div key={currentIndex} className="max-w-2xl space-y-4 animate-hero-title">
+        <div
+          className={`max-w-2xl space-y-4 transition-all ${
+            fadeState === 'visible'
+              ? 'opacity-100 translate-y-0 duration-500 ease-out'
+              : 'opacity-0 translate-y-2 duration-300 ease-in'
+          }`}
+        >
           {/* Gold Outline Badge & Metadata */}
           <div className="flex flex-wrap items-center gap-2.5">
             <div className="inline-flex items-center space-x-1.5 border border-[#E5B869]/80 bg-black/40 backdrop-blur-md px-3.5 py-1 rounded-full shadow-lg shadow-black/40">
@@ -172,15 +219,15 @@ export default function HeroBanner({ items }: HeroBannerProps) {
             )}
           </div>
 
-          {/* Subtitle / Description with Stagger */}
+          {/* Subtitle / Description */}
           {current.description && (
-            <p className="animate-hero-desc text-sm sm:text-base text-gray-300/90 font-light leading-relaxed max-w-xl drop-shadow line-clamp-3">
+            <p className="text-sm sm:text-base text-gray-300/90 font-light leading-relaxed max-w-xl drop-shadow line-clamp-3">
               {current.description}
             </p>
           )}
 
-          {/* Action Buttons with Stagger & Hover Glow */}
-          <div className="animate-hero-actions flex items-center space-x-3.5 pt-3">
+          {/* Action Buttons */}
+          <div className="flex items-center space-x-3.5 pt-3">
             <Link
               href={watchUrl}
               onClick={() => dispatch(setActiveItem(current))}
@@ -207,7 +254,7 @@ export default function HeroBanner({ items }: HeroBannerProps) {
             <div className="flex items-center space-x-3">
               <button
                 onClick={handlePrev}
-                className="w-8 h-8 rounded-full bg-black/40 hover:bg-[#E5B869] hover:text-black text-gray-300 border border-white/15 hover:border-[#E5B869] flex items-center justify-center transition-all backdrop-blur-md shadow-md active:scale-90 cursor-pointer"
+                className="w-8 h-8 rounded-full bg-black/40 hover:bg-[#E5B869] hover:text-black text-gray-300 border border-white/15 hover:border-[#E5B869] flex items-center justify-center transition-all backdrop-blur-md shadow-md active:scale-90 cursor-pointer outline-none focus:outline-none"
                 aria-label="Previous Slide"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -219,8 +266,8 @@ export default function HeroBanner({ items }: HeroBannerProps) {
                   return (
                     <button
                       key={`hero-dot-${idx}`}
-                      onClick={() => setCurrentIndex(idx)}
-                      className={`transition-all duration-500 rounded-full cursor-pointer ${
+                      onClick={() => transitionToSlide(idx)}
+                      className={`transition-all duration-500 rounded-full cursor-pointer outline-none focus:outline-none ${
                         isCurrent
                           ? 'w-7 h-2 bg-[#E5B869] shadow-lg shadow-[#E5B869]/40'
                           : 'w-2 h-2 bg-white/30 hover:bg-white/70 hover:scale-125'
@@ -235,7 +282,7 @@ export default function HeroBanner({ items }: HeroBannerProps) {
             {/* Right side: > chevron with hover feedback */}
             <button
               onClick={handleNext}
-              className="w-8 h-8 rounded-full bg-black/40 hover:bg-[#E5B869] hover:text-black text-gray-300 border border-white/15 hover:border-[#E5B869] flex items-center justify-center transition-all backdrop-blur-md shadow-md active:scale-90 cursor-pointer"
+              className="w-8 h-8 rounded-full bg-black/40 hover:bg-[#E5B869] hover:text-black text-gray-300 border border-white/15 hover:border-[#E5B869] flex items-center justify-center transition-all backdrop-blur-md shadow-md active:scale-90 cursor-pointer outline-none focus:outline-none"
               aria-label="Next Slide"
             >
               <ChevronRight className="w-4 h-4" />

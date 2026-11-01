@@ -34,8 +34,8 @@ export default function MovieDetailPage() {
           type: 'movie',
           description:
             'An evocative historical exploration of the ancient foundation by Ibrahim (AS) and Ismail (AS), the sacred architecture, Kiswah craft, and centuries of pilgrims answering the divine call.',
-          poster_image: 'https://images.unsplash.com/photo-1564769625905-50e93615e769?w=800&auto=format&fit=crop&q=80',
-          banner_image: 'https://images.unsplash.com/photo-1564769625905-50e93615e769?w=1600&auto=format&fit=crop&q=80',
+          poster_image: 'https://images.unsplash.com/photo-1541432901042-2d8bd64b4a9b?w=800&auto=format&fit=crop&q=80',
+          banner_image: 'https://images.unsplash.com/photo-1541432901042-2d8bd64b4a9b?w=1600&auto=format&fit=crop&q=80',
           release_year: 2026,
           duration: '1h 38m',
           imdb_rating: 9.8,

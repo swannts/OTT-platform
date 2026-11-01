@@ -15,8 +15,8 @@
                                 @php
                                     $isTvShow = ($data['type'] ?? '') === 'tvshow';
                                     $detailRoute = $isTvShow
-                                        ? route('tvshow-details', ['id' => $data['slug']])
-                                        : route('movie-details', ['id' => $data['slug']]);
+                                        ? route('tvshow-details', ['id' => $data['slug'] ?? $data['id'] ?? ''])
+                                        : route('movie-details', ['id' => $data['slug'] ?? $data['id'] ?? '']);
                                 @endphp
                                 <a class="overly-images" href="{{ $detailRoute }}">
                                     <img src="{{ $data['poster_image'] }}" alt="{{ $data['name'] ?? 'poster' }}"

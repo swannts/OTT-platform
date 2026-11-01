@@ -72,7 +72,7 @@ class TvShowController extends Controller
         $cacheKey = "tvshow_details_{$slug}_user_{$user_id}";
         $is_search = $request->boolean('is_search', false);
 
-        $movieGuard = Entertainment::where('slug', $slug)->first();
+        $movieGuard = Entertainment::where('slug', $slug)->orWhere('id', $slug)->first();
         if (empty($movieGuard) || (int) ($movieGuard->status) !== 1 || $movieGuard->deleted_at !== null) {
             return redirect()->route('user.login');
         }  
@@ -240,7 +240,7 @@ class TvShowController extends Controller
         $cacheKey = "episode_details_{$slug}_user_{$user_id}";
         $is_search = $request->boolean('is_search', false);
 
-        $episodeGuard = Episode::where('slug', $slug)->with('entertainmentdata')->first();
+        $episodeGuard = Episode::where('slug', $slug)->orWhere('id', $slug)->with('entertainmentdata')->first();
         if (empty($episodeGuard) || (int) ($episodeGuard->status) !== 1 || $episodeGuard->deleted_at !== null) {
             return redirect()->route('user.login');
         }

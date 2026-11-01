@@ -2,7 +2,7 @@
     $sliderCount = is_countable($data) ? count($data) : 0;
 @endphp
 
-<div class="slick-banner main-banner" data-speed="1000" data-autoplay="true" data-center="false" data-infinite="false"
+<div class="slick-banner main-banner" data-fade="true" data-speed="1000" data-autoplay="true" data-center="false" data-infinite="false"
     data-navigation="{{ $sliderCount > 1 ? 'true' : 'false' }}"
     data-pagination="{{ $sliderCount > 1 ? 'true' : 'false' }}"
     data-spacing="0">
@@ -85,12 +85,12 @@
                                                 @endif
                                                 <div class="">
                                                     <a href="{{ $slider['type'] == 'livetv'
-                                                        ? route('livetv-details', ['id' => $data['slug']])
+                                                        ? route('livetv-details', ['id' => $data['slug'] ?? $data['id'] ?? ''])
                                                         : ($slider['type'] == 'video'
-                                                            ? route('video-details', ['id' => $data['slug']])
+                                                            ? route('video-details', ['id' => $data['slug'] ?? $data['id'] ?? ''])
                                                             : ($data['type'] == 'tvshow'
-                                                                ? route('tvshow-details', ['id' => $data['slug']])
-                                                                : route('movie-details', ['id' => $data['slug']]))) }}"
+                                                                ? route('tvshow-details', ['id' => $data['slug'] ?? $data['id'] ?? ''])
+                                                                : route('movie-details', ['id' => $data['slug'] ?? $data['id'] ?? '']))) }}"
                                                         class="btn btn-primary">
                                                         <span
                                                             class="d-flex align-items-center justify-content-center gap-2">
@@ -143,12 +143,12 @@
                                                                     </svg>
                                                                 </a>
                                                                 <a href="#" data-link="{{ $slider['type'] == 'livetv'
-                                                                    ? route('livetv-details', ['id' => $data['slug']])
+                                                                    ? route('livetv-details', ['id' => $data['slug'] ?? $data['id'] ?? ''])
                                                                     : ($slider['type'] == 'video'
-                                                                        ? route('video-details', ['id' => $data['slug']])
+                                                                        ? route('video-details', ['id' => $data['slug'] ?? $data['id'] ?? ''])
                                                                         : ($data['type'] == 'tvshow'
-                                                                            ? route('tvshow-details', ['id' => $data['slug']])
-                                                                            : route('movie-details', ['id' => $data['slug']]))) }}"
+                                                                            ? route('tvshow-details', ['id' => $data['slug'] ?? $data['id'] ?? ''])
+                                                                            : route('movie-details', ['id' => $data['slug'] ?? $data['id'] ?? '']))) }}"
                                                                     class="share-ico iq-copy-link" onclick="copyLink(this)"><i
                                                                         class="ph ph-link"></i></a>
                                                             </div>

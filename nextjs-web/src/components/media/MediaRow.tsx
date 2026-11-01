@@ -80,6 +80,7 @@ export default function MediaRow({
               item={item}
               rank={showRank ? index + 1 : undefined}
               aspectRatio={aspectRatio}
+              layout="carousel"
             />
           ))}
         </div>

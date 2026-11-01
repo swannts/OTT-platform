@@ -66,7 +66,7 @@
                                 <ul class="list-unstyled footer-menu">
                                     @foreach (isset($footerData['premiumShows']) && !empty($footerData['premiumShows']) ? $footerData['premiumShows'] : [] as $show)
                                         <li class="mb-3">
-                                            <a href="{{ route('tvshow-details', $show->slug) }}">{{ $show->name }}</a>
+                                            <a href="{{ route('tvshow-details', $show->slug ?? $show->id ?? '') }}">{{ $show->name }}</a>
                                         </li>
                                     @endforeach
                                 </ul>
@@ -80,10 +80,10 @@
                                         <li class="mb-3">
                                             @if ($movie->type == 'movie')
                                                 <a
-                                                    href="{{ route('movie-details', $movie->slug) }}">{{ $movie->name }}</a>
+                                                    href="{{ route('movie-details', $movie->slug ?? $movie->id ?? '') }}">{{ $movie->name }}</a>
                                             @else
                                                 <a
-                                                    href="{{ route('tvshow-details', $movie->slug) }}">{{ $movie->name }}</a>
+                                                    href="{{ route('tvshow-details', $movie->slug ?? $movie->id ?? '') }}">{{ $movie->name }}</a>
                                             @endif
                                         </li>
                                     @endforeach

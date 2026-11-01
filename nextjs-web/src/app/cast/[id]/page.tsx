@@ -75,7 +75,7 @@ export default function CastDetailPage() {
               src={
                 cast.image ||
                 cast.profile_image ||
-                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=80'
+                'https://images.unsplash.com/photo-1544717305-2782549b5136?w=500&auto=format&fit=crop&q=80'
               }
               alt={cast.name}
               className="w-full h-full object-cover"

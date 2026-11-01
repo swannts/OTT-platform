@@ -182,7 +182,7 @@ export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
             className="absolute inset-y-0 right-0 w-3/5 opacity-40 pointer-events-none bg-cover bg-center mix-blend-screen"
             style={{
               backgroundImage:
-                'url(https://images.unsplash.com/photo-1564769625905-50e93615e769?w=600&auto=format&fit=crop&q=80)',
+                'url(https://images.unsplash.com/photo-1518684079-3c830dcef090?w=600&auto=format&fit=crop&q=80)',
             }}
           />
           <div className="absolute inset-0 bg-gradient-to-r from-[#071c18] via-[#071c18]/80 to-transparent pointer-events-none" />

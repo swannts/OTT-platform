@@ -38,6 +38,12 @@ select:disabled,
   --border: rgba(255, 255, 255, 0.08);
 }
 
+/* Universal removal of unsightly browser default focus outlines on links and buttons */
+a:focus, button:focus, input:focus, [role="button"]:focus,
+a:focus-visible, button:focus-visible {
+  outline: none !important;
+}
+
 body {
   background-color: #070a0e;
   color: #f8fafc;
