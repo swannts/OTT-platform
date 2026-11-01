@@ -15,15 +15,17 @@ describe('Navbar and Footer E2E', () => {
       cy.contains('Search results for "Prophet"').should('be.visible');
     });
 
-    it('navigates to notifications page from the bell icon', () => {
-      cy.get('nav a[href="/notifications"]').click();
+    it('opens notification popover and navigates to notifications page', () => {
+      cy.get('button[aria-label="Notifications"]').click();
+      cy.contains('Notifications').should('be.visible');
+      cy.contains('a', 'View all notifications').click();
       cy.url().should('include', '/notifications');
     });
 
     it('renders user menu options when logged out', () => {
-      cy.get('button[aria-label="User Profile"]').click();
+      cy.get('button[aria-label="Guest Menu"]').click();
       cy.contains('Welcome to NOOR').should('be.visible');
-      cy.contains('a', 'Sign In / Register').should('be.visible');
+      cy.contains('a', 'Sign In').should('be.visible');
     });
 
     it('shows user dropdown menu when logged in', () => {
@@ -47,13 +49,13 @@ describe('Navbar and Footer E2E', () => {
       cy.get('footer a[href="/pricing"]').should('be.visible');
       cy.get('footer a[href="/pages/privacy-policy"]').should('be.visible');
       cy.get('footer a[href="/pages/terms-and-conditions"]').should('be.visible');
+      cy.get('footer a[href="/blog"]').should('be.visible');
     });
 
-    it('navigates to privacy policy page from footer link', () => {
+    it('navigates to FAQ page from footer link', () => {
       cy.scrollTo('bottom');
-      cy.get('footer a[href="/pages/privacy-policy"]').click();
-      cy.url().should('include', '/pages/privacy-policy');
-      cy.contains(/Privacy Policy/i).should('be.visible');
+      cy.get('footer a[href="/pages/faq"]').click();
+      cy.url().should('include', '/pages/faq');
     });
   });
 });

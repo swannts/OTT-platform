@@ -44,3 +44,4 @@ export interface BlogDetailResponse {
   post: BlogPost;
   related: BlogPost[];
 }
+

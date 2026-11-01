@@ -112,21 +112,21 @@ export default function UserProfileDropdown() {
           <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#070a0e] pointer-events-none" />
         </button>
       ) : (
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 flex-shrink-0">
           {/* Guest Sign-in Quick Pill for Desktop */}
           <Link
             href="/login"
-            className="hidden sm:inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-[#E5B869] hover:bg-[#f3cf8a] text-black text-xs font-bold transition-all shadow-md active:scale-95"
+            className="hidden sm:inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-[#E5B869] hover:bg-[#f3cf8a] text-black text-xs font-bold transition-all shadow-md active:scale-95 whitespace-nowrap flex-shrink-0"
           >
-            <LogIn className="w-3.5 h-3.5" />
-            <span>Sign In</span>
+            <LogIn className="w-3.5 h-3.5 flex-shrink-0" />
+            <span className="whitespace-nowrap">Sign In</span>
           </Link>
 
           {/* Guest Account Icon Button */}
           <button
             type="button"
             onClick={() => setIsOpen(!isOpen)}
-            className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-95 ${
+            className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-95 flex-shrink-0 ${
               isOpen
                 ? 'bg-[#E5B869]/20 border border-[#E5B869]/60 text-[#E5B869]'
                 : 'bg-white/[0.04] hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white'

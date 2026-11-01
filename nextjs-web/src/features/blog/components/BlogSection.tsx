@@ -48,3 +48,4 @@ export default function BlogSection({ initialPosts, categories }: BlogSectionPro
     </div>
   );
 }
+

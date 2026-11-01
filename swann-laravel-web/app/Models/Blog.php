@@ -55,3 +55,4 @@ class Blog extends Model
         return $query;
     }
 }
+

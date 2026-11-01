@@ -234,3 +234,4 @@ export async function getBlogCategoriesDal(): Promise<BlogCategory[]> {
 
   return Object.entries(counts).map(([category, count]) => ({ category, count }));
 }
+

@@ -194,7 +194,7 @@ export default function NotificationDropdown() {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-9 h-9 rounded-full flex items-center justify-center transition-all relative cursor-pointer active:scale-95 ${
+        className={`w-9 h-9 rounded-full flex items-center justify-center transition-all relative cursor-pointer active:scale-95 flex-shrink-0 ${
           isOpen
             ? 'bg-[#E5B869]/20 border border-[#E5B869]/60 text-[#E5B869]'
             : 'bg-white/[0.04] hover:bg-white/10 border border-white/10 hover:border-[#E5B869]/40 text-gray-300 hover:text-[#E5B869]'

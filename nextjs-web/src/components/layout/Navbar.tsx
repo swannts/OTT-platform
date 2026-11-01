@@ -112,35 +112,35 @@ export default function Navbar() {
           : 'bg-gradient-to-b from-[#05080c]/95 via-[#05080c]/60 to-transparent py-4'
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-10">
         <div className="flex items-center justify-between">
           {/* Left: Brand Identity + Main Navigation */}
-          <div className="flex items-center space-x-6 lg:space-x-8">
+          <div className="flex items-center space-x-5 lg:space-x-7 flex-shrink-0">
             <Link href="/" className="flex-shrink-0 flex items-center group cursor-pointer">
               <Logo />
             </Link>
 
             {/* Desktop Navigation Links with Active Indicator Pill */}
-            <div className="hidden lg:flex items-center space-x-1.5 text-xs font-medium">
+            <div className="hidden lg:flex items-center space-x-1 xl:space-x-1.5 text-xs font-medium flex-shrink-0">
               {primaryDesktopLinks.map((link) => {
                 const isActive = pathname === link.href;
                 return (
                   <Link
                     key={link.label}
                     href={link.href}
-                    className={`relative px-4 py-2 rounded-full transition-all duration-200 cursor-pointer flex items-center space-x-2 ${
+                    className={`relative px-3.5 xl:px-4 py-2 rounded-full transition-all duration-200 cursor-pointer flex items-center space-x-2 whitespace-nowrap flex-shrink-0 ${
                       isActive
                         ? 'text-[#E5B869] font-bold bg-white/[0.05] shadow-inner ring-1 ring-white/10'
                         : 'text-gray-300 hover:text-white hover:bg-white/[0.04]'
                     }`}
                   >
                     {link.isLive && (
-                      <span className="relative flex h-2 w-2">
+                      <span className="relative flex h-2 w-2 flex-shrink-0">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
                       </span>
                     )}
-                    <span>{link.label}</span>
+                    <span className="whitespace-nowrap">{link.label}</span>
                     {isActive && (
                       <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-[#E5B869] rounded-full shadow-[0_0_8px_rgba(229,184,105,0.9)]" />
                     )}
@@ -150,22 +150,22 @@ export default function Navbar() {
 
               {/* Explore Mega-Menu Dropdown */}
               <div
-                className="relative"
+                className="relative flex-shrink-0"
                 onMouseEnter={handleExploreEnter}
                 onMouseLeave={handleExploreLeave}
               >
                 <button
                   type="button"
                   onClick={() => setIsExploreOpen(!isExploreOpen)}
-                  className={`flex items-center space-x-1.5 px-3.5 py-1.5 font-medium rounded-full transition-all duration-200 whitespace-nowrap cursor-pointer ${
+                  className={`flex items-center space-x-1.5 px-3.5 py-1.5 font-medium rounded-full transition-all duration-200 whitespace-nowrap cursor-pointer flex-shrink-0 ${
                     isExploreOpen
                       ? 'text-[#E5B869] bg-white/[0.06]'
                       : 'text-gray-300 hover:text-white hover:bg-white/[0.04]'
                   }`}
                 >
-                  <span>Explore</span>
+                  <span className="whitespace-nowrap">Explore</span>
                   <ChevronDown
-                    className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                    className={`w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200 ${
                       isExploreOpen ? 'rotate-180 text-[#E5B869]' : 'text-gray-400'
                     }`}
                   />
@@ -228,15 +228,15 @@ export default function Navbar() {
           </div>
 
           {/* Right: Search Pill, VIP Upgrade, Functional Notifications & Functional User Profile */}
-          <div className="flex items-center space-x-2.5 sm:space-x-3.5">
+          <div className="flex items-center space-x-2.5 sm:space-x-3.5 flex-shrink-0">
             {/* Sleek Expandable Search Input Pill */}
-            <form onSubmit={handleSearchSubmit} className="relative hidden md:block group">
+            <form onSubmit={handleSearchSubmit} className="relative hidden md:block group flex-shrink-0">
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search movies, series..."
-                className="w-44 lg:w-52 focus:w-64 bg-white/[0.06] hover:bg-white/[0.09] focus:bg-[#080d14] border border-white/10 focus:border-[#E5B869]/60 text-white placeholder-gray-400 text-xs rounded-full pl-9 pr-7 py-2 focus:outline-none transition-all duration-300 backdrop-blur-md shadow-inner"
+                className="w-44 lg:w-52 focus:w-64 bg-white/[0.06] hover:bg-white/[0.09] focus:bg-[#080d14] border border-white/10 focus:border-[#E5B869]/60 text-white placeholder-gray-400 text-xs rounded-full pl-9 pr-7 py-2 focus:outline-none transition-all duration-300 backdrop-blur-md shadow-inner whitespace-nowrap"
               />
               <Search className="w-3.5 h-3.5 text-gray-400 group-focus-within:text-[#E5B869] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none transition-colors" />
               {searchQuery && (
@@ -255,23 +255,27 @@ export default function Navbar() {
             {!subscription?.has_active_subscription && (
               <Link
                 href="/pricing"
-                className="hidden sm:inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#e5b869]/15 to-[#f3cf8a]/10 hover:from-[#e5b869]/25 hover:to-[#f3cf8a]/20 border border-[#e5b869]/30 hover:border-[#e5b869]/60 text-[#e5b869] text-xs font-semibold shadow-sm transition-all cursor-pointer hover:scale-[1.02] active:scale-95"
+                className="hidden sm:inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#e5b869]/15 to-[#f3cf8a]/10 hover:from-[#e5b869]/25 hover:to-[#f3cf8a]/20 border border-[#e5b869]/30 hover:border-[#e5b869]/60 text-[#e5b869] text-xs font-semibold shadow-sm transition-all cursor-pointer hover:scale-[1.02] active:scale-95 whitespace-nowrap flex-shrink-0"
               >
-                <Crown className="w-3.5 h-3.5 text-[#e5b869]" />
-                <span className="tracking-wide">Go VIP</span>
+                <Crown className="w-3.5 h-3.5 text-[#e5b869] flex-shrink-0" />
+                <span className="tracking-wide whitespace-nowrap">Go VIP</span>
               </Link>
             )}
 
             {/* Functional Notification Dropdown with Live Unread Tracking */}
-            <NotificationDropdown />
+            <div className="flex-shrink-0">
+              <NotificationDropdown />
+            </div>
 
             {/* Functional User Profile Dropdown with Auth Integration */}
-            <UserProfileDropdown />
+            <div className="flex-shrink-0">
+              <UserProfileDropdown />
+            </div>
 
             {/* Mobile Hamburger Button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden w-9 h-9 rounded-full flex items-center justify-center bg-white/[0.04] border border-white/10 text-gray-300 hover:text-white cursor-pointer"
+              className="lg:hidden w-9 h-9 rounded-full flex items-center justify-center bg-white/[0.04] border border-white/10 text-gray-300 hover:text-white cursor-pointer flex-shrink-0"
               aria-label="Toggle Navigation Menu"
             >
               {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}

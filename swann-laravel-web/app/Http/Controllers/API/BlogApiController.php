@@ -111,3 +111,4 @@ class BlogApiController extends Controller
         return ApiResponse::success($categories, 'Blog categories retrieved successfully');
     }
 }
+
