@@ -8,11 +8,11 @@ import MediaRow from '@/components/media/MediaRow';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 
-interface MovieDetailClientProps {
+interface MovieDetailSectionProps {
   initialMovie: ContentDetails;
 }
 
-export default function MovieDetailClient({ initialMovie }: MovieDetailClientProps) {
+export default function MovieDetailSection({ initialMovie }: MovieDetailSectionProps) {
   const { user } = useAuth();
   const [movie] = useState<ContentDetails>(initialMovie);
   const [inWatchlist, setInWatchlist] = useState<boolean>(initialMovie.is_watchlist || false);

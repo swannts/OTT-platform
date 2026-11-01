@@ -2,7 +2,7 @@ import React from 'react';
 import type { Metadata } from 'next';
 import { api, normalizeMediaItem } from '@/lib/api';
 import { MediaItem } from '@/types';
-import TvShowsClient from '@/components/media/TvShowsClient';
+import TvShowsSection from '@/sections/tv-shows/TvShowsSection';
 
 export const revalidate = 60; // ISR cache for 60 seconds
 
@@ -85,7 +85,7 @@ export default async function TvShowsPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <TvShowsClient initialShows={shows} />
+      <TvShowsSection initialShows={shows} />
     </>
   );
 }

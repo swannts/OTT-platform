@@ -2,7 +2,7 @@ import React from 'react';
 import type { Metadata } from 'next';
 import { api } from '@/lib/api';
 import { Plan } from '@/types';
-import PricingClient from '@/components/pricing/PricingClient';
+import PricingSection from '@/sections/pricing/PricingSection';
 
 export const revalidate = 300; // Cache pricing for 5 minutes
 
@@ -128,7 +128,7 @@ export default async function PricingPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <PricingClient initialPlans={plans} />
+      <PricingSection initialPlans={plans} />
     </>
   );
 }

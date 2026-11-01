@@ -7,11 +7,11 @@ import MediaCard from '@/components/media/MediaCard';
 import { Tv, Sparkles, Filter } from 'lucide-react';
 import { MediaItem } from '@/types';
 
-interface TvShowsClientProps {
+interface TvShowsSectionProps {
   initialShows: MediaItem[];
 }
 
-export default function TvShowsClient({ initialShows }: TvShowsClientProps) {
+export default function TvShowsSection({ initialShows }: TvShowsSectionProps) {
   const dispatch = useAppDispatch();
   const { shows: reduxShows, isLoading, page } = useAppSelector((state) => state.tvShows);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');

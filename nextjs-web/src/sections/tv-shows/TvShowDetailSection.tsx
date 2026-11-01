@@ -7,15 +7,15 @@ import { Play, Star, Calendar, Tv, Plus, Check } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 
-interface TvShowDetailClientProps {
+interface TvShowDetailSectionProps {
   initialShow: ContentDetails;
   initialEpisodes: EpisodeItem[];
 }
 
-export default function TvShowDetailClient({
+export default function TvShowDetailSection({
   initialShow,
   initialEpisodes,
-}: TvShowDetailClientProps) {
+}: TvShowDetailSectionProps) {
   const { user } = useAuth();
   const [show] = useState<ContentDetails>(initialShow);
   const [episodes] = useState<EpisodeItem[]>(initialEpisodes);

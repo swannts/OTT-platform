@@ -5,11 +5,11 @@ import MediaCard from '@/components/media/MediaCard';
 import { Sparkles, Flame } from 'lucide-react';
 import { MediaItem } from '@/types';
 
-interface VideosClientProps {
+interface VideosSectionProps {
   initialVideos: MediaItem[];
 }
 
-export default function VideosClient({ initialVideos }: VideosClientProps) {
+export default function VideosSection({ initialVideos }: VideosSectionProps) {
   const [videos] = useState<MediaItem[]>(initialVideos);
 
   return (

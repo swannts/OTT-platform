@@ -10,11 +10,11 @@ import VideoPlayer from '@/components/player/VideoPlayer';
 import { Radio, Tv } from 'lucide-react';
 import { LiveChannel } from '@/types';
 
-interface LiveTvClientProps {
+interface LiveTvSectionProps {
   initialChannels: LiveChannel[];
 }
 
-export default function LiveTvClient({ initialChannels }: LiveTvClientProps) {
+export default function LiveTvSection({ initialChannels }: LiveTvSectionProps) {
   const dispatch = useAppDispatch();
   const { channels: reduxChannels, selectedChannel } = useAppSelector(
     (state) => state.liveTv

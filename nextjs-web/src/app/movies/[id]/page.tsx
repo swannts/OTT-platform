@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { api } from '@/lib/api';
 import { ContentDetails } from '@/types';
-import MovieDetailClient from '@/components/media/MovieDetailClient';
+import MovieDetailSection from '@/sections/movies/MovieDetailSection';
 
 export const revalidate = 60; // ISR cache for 60 seconds
 
@@ -147,7 +147,7 @@ export default async function MovieDetailPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <MovieDetailClient initialMovie={movie} />
+      <MovieDetailSection initialMovie={movie} />
     </>
   );
 }

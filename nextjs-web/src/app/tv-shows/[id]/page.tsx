@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { api } from '@/lib/api';
 import { ContentDetails, EpisodeItem } from '@/types';
-import TvShowDetailClient from '@/components/media/TvShowDetailClient';
+import TvShowDetailSection from '@/sections/tv-shows/TvShowDetailSection';
 
 export const revalidate = 60; // ISR cache for 60 seconds
 
@@ -199,7 +199,7 @@ export default async function TvShowDetailPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <TvShowDetailClient initialShow={show} initialEpisodes={episodes} />
+      <TvShowDetailSection initialShow={show} initialEpisodes={episodes} />
     </>
   );
 }

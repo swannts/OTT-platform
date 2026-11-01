@@ -2,7 +2,7 @@ import React from 'react';
 import type { Metadata } from 'next';
 import { api, normalizeMediaItem } from '@/lib/api';
 import { MediaItem } from '@/types';
-import VideosClient from '@/components/media/VideosClient';
+import VideosSection from '@/sections/videos/VideosSection';
 
 export const revalidate = 60; // ISR cache for 60 seconds
 
@@ -78,7 +78,7 @@ export default async function VideosPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <VideosClient initialVideos={videos} />
+      <VideosSection initialVideos={videos} />
     </>
   );
 }

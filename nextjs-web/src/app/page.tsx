@@ -2,7 +2,7 @@ import React from 'react';
 import type { Metadata } from 'next';
 import { api, normalizeMediaItem } from '@/lib/api';
 import { MediaItem, LiveChannel } from '@/types';
-import HomeClient from '@/components/home/HomeClient';
+import HomeSection from '@/sections/home/HomeSection';
 
 export const revalidate = 60; // ISR revalidate every 60s for high-speed SEO caching
 
@@ -165,7 +165,7 @@ export default async function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <HomeClient
+      <HomeSection
         initialBanners={banners}
         initialTop10={top10}
         initialLatestMovies={latestMovies}

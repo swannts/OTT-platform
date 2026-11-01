@@ -7,11 +7,11 @@ import MediaCard from '@/components/media/MediaCard';
 import { Film, Sparkles, Filter } from 'lucide-react';
 import { MediaItem } from '@/types';
 
-interface MoviesClientProps {
+interface MoviesSectionProps {
   initialMovies: MediaItem[];
 }
 
-export default function MoviesClient({ initialMovies }: MoviesClientProps) {
+export default function MoviesSection({ initialMovies }: MoviesSectionProps) {
   const dispatch = useAppDispatch();
   const { movies: reduxMovies, isLoading, page } = useAppSelector((state) => state.movies);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');

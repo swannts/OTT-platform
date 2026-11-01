@@ -2,7 +2,7 @@ import React from 'react';
 import type { Metadata } from 'next';
 import { api } from '@/lib/api';
 import { LiveChannel } from '@/types';
-import LiveTvClient from '@/components/media/LiveTvClient';
+import LiveTvSection from '@/sections/live-tv/LiveTvSection';
 
 export const revalidate = 60; // ISR cache for 60 seconds
 
@@ -113,7 +113,7 @@ export default async function LiveTvPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <LiveTvClient initialChannels={channels} />
+      <LiveTvSection initialChannels={channels} />
     </>
   );
 }

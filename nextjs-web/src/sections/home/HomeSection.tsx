@@ -3,13 +3,13 @@
 import React, { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setInitialHomeData, fetchContinueWatching, fetchDashboardData } from '@/store/slices/homeSlice';
-import HeroBanner from '@/components/home/HeroBanner';
+import HeroBanner from './HeroBanner';
 import MediaRow from '@/components/media/MediaRow';
-import LiveNowSection from '@/components/home/LiveNowSection';
+import LiveNowSection from './LiveNowSection';
 import { MediaItem, LiveChannel } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 
-interface HomeClientProps {
+interface HomeSectionProps {
   initialBanners: MediaItem[];
   initialTop10: MediaItem[];
   initialLatestMovies: MediaItem[];
@@ -19,7 +19,7 @@ interface HomeClientProps {
   initialLiveChannels: LiveChannel[];
 }
 
-export default function HomeClient({
+export default function HomeSection({
   initialBanners,
   initialTop10,
   initialLatestMovies,
@@ -27,7 +27,7 @@ export default function HomeClient({
   initialPayPerView,
   initialTvShows,
   initialLiveChannels,
-}: HomeClientProps) {
+}: HomeSectionProps) {
   const dispatch = useAppDispatch();
   const { user } = useAuth();
   const state = useAppSelector((s) => s.home);

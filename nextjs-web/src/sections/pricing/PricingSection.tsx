@@ -5,11 +5,11 @@ import Link from 'next/link';
 import { Plan } from '@/types';
 import { Crown, Check, Zap, Sparkles } from 'lucide-react';
 
-interface PricingClientProps {
+interface PricingSectionProps {
   initialPlans: Plan[];
 }
 
-export default function PricingClient({ initialPlans }: PricingClientProps) {
+export default function PricingSection({ initialPlans }: PricingSectionProps) {
   const [plans] = useState<Plan[]>(initialPlans);
   const [billingCycle, setBillingCycle] = useState<'month' | 'year'>('month');
 
