@@ -16,46 +16,28 @@ export default function LiveTvPage() {
       setIsLoading(true);
       try {
         const data = await api.getLiveTvDashboard();
-        if (data?.slider && Array.isArray(data.slider) && data.slider.length > 0) {
-          setChannels(data.slider);
-          setSelectedChannel(data.slider[0]);
-        }
-      } catch {
-        // Fallback demo channels
-        const fallbackChannels: LiveChannel[] = [
-          {
-            id: 1,
-            name: 'Swann Sports 1 HD',
-            category: 'Sports',
-            description: '24/7 Live Premier League, Champions League, and World Championship coverage.',
-            poster_image: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=500&auto=format&fit=crop&q=80',
-            stream_type: 'HLS',
-            server_url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
-            has_content_access: true,
-          },
-          {
-            id: 2,
-            name: 'Global News 24',
-            category: 'News',
-            description: 'Breaking global headlines, live reports, financial analysis, and weather radar.',
-            poster_image: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=500&auto=format&fit=crop&q=80',
-            stream_type: 'HLS',
-            server_url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
-            has_content_access: true,
-          },
-          {
-            id: 3,
-            name: 'Cinema World Premiere',
-            category: 'Movies',
-            description: 'Non-stop Hollywood blockbusters, award-winning indie cinema, and classic cinema.',
-            poster_image: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&auto=format&fit=crop&q=80',
-            stream_type: 'HLS',
-            server_url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
-            has_content_access: true,
-          },
+        const list = [
+          ...(data?.slider || []),
+          ...(data?.category_data?.flatMap((c: any) => c.channel_data || []) || []),
         ];
-        setChannels(fallbackChannels);
-        setSelectedChannel(fallbackChannels[0]);
+        const unique = Array.from(new Map(list.map((c: any) => [c.id, c])).values()).map((c: any) => ({
+          id: c.id,
+          name: c.details?.name || c.name || `Live Channel ${c.id}`,
+          category: c.details?.category || c.category || 'Live Stream',
+          description: c.details?.description || c.description || 'Live broadcast from sacred shrines and news studios.',
+          poster_image: c.poster_image || c.poster_tv_image || c.thumbnail_image,
+          thumbnail_image: c.poster_tv_image || c.thumbnail_image || c.poster_image,
+          stream_type: c.stream_type || 'HLS',
+          server_url: c.server_url || c.server_url1 || 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+          has_content_access: Boolean(c.details?.has_content_access ?? c.has_content_access ?? true),
+        }));
+
+        if (unique.length > 0) {
+          setChannels(unique);
+          setSelectedChannel(unique[0]);
+        }
+      } catch (err) {
+        console.error('Failed to load live TV channels from backend', err);
       } finally {
         setIsLoading(false);
       }

@@ -3,7 +3,7 @@
 import React, { useRef } from 'react';
 import { MediaItem } from '@/types';
 import MediaCard from './MediaCard';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
 interface MediaRowProps {
@@ -14,7 +14,13 @@ interface MediaRowProps {
   aspectRatio?: 'poster' | 'backdrop';
 }
 
-export default function MediaRow({ title, items, moreHref, showRank = false, aspectRatio = 'poster' }: MediaRowProps) {
+export default function MediaRow({
+  title,
+  items,
+  moreHref,
+  showRank = false,
+  aspectRatio = 'poster',
+}: MediaRowProps) {
   const rowRef = useRef<HTMLDivElement>(null);
 
   const handleScroll = (direction: 'left' | 'right') => {
@@ -31,19 +37,23 @@ export default function MediaRow({ title, items, moreHref, showRank = false, asp
   if (!items || items.length === 0) return null;
 
   return (
-    <div className="relative my-8 group">
-      {/* Row Header */}
-      <div className="flex items-center justify-between mb-3 px-4 sm:px-6 lg:px-8">
-        <h2 className="text-lg sm:text-xl font-bold text-white tracking-wide flex items-center space-x-2">
-          <span>{title}</span>
-        </h2>
+    <div className="relative my-7 group max-w-[1600px] mx-auto">
+      {/* Row Header with Golden Accent Bar and View All link */}
+      <div className="flex items-center justify-between mb-2 px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center">
+          <span className="w-1 h-5 bg-[#E5B869] rounded-full inline-block mr-2.5 flex-shrink-0" />
+          <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+            {title}
+          </h2>
+        </div>
+
         {moreHref && (
           <Link
             href={moreHref}
-            className="text-xs text-red-500 hover:text-red-400 font-semibold transition-colors flex items-center space-x-1"
+            className="text-xs sm:text-sm text-[#E5B869] hover:text-[#f3cf8a] font-semibold transition-colors flex items-center space-x-1 group/btn"
           >
-            <span>See All</span>
-            <ChevronRight className="w-3.5 h-3.5" />
+            <span>View All</span>
+            <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover/btn:translate-x-1" />
           </Link>
         )}
       </div>
@@ -53,16 +63,16 @@ export default function MediaRow({ title, items, moreHref, showRank = false, asp
         {/* Left Arrow Button */}
         <button
           onClick={() => handleScroll('left')}
-          className="absolute left-0 top-0 bottom-0 z-30 w-12 bg-black/60 hover:bg-black/90 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm"
+          className="absolute left-2 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full bg-black/70 hover:bg-[#E5B869] hover:text-black text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all backdrop-blur-md shadow-xl"
           aria-label="Scroll left"
         >
-          <ChevronLeft className="w-7 h-7" />
+          <ChevronLeft className="w-6 h-6" />
         </button>
 
         {/* Scrollable Container */}
         <div
           ref={rowRef}
-          className="flex space-x-4 overflow-x-auto no-scrollbar py-4 px-4 sm:px-6 lg:px-8 scroll-smooth"
+          className="flex space-x-4 sm:space-x-5 overflow-x-auto no-scrollbar py-3 px-4 sm:px-6 lg:px-8 scroll-smooth"
         >
           {items.map((item, index) => (
             <MediaCard
@@ -77,13 +87,12 @@ export default function MediaRow({ title, items, moreHref, showRank = false, asp
         {/* Right Arrow Button */}
         <button
           onClick={() => handleScroll('right')}
-          className="absolute right-0 top-0 bottom-0 z-30 w-12 bg-black/60 hover:bg-black/90 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm"
+          className="absolute right-2 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full bg-black/70 hover:bg-[#E5B869] hover:text-black text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all backdrop-blur-md shadow-xl"
           aria-label="Scroll right"
         >
-          <ChevronRight className="w-7 h-7" />
+          <ChevronRight className="w-6 h-6" />
         </button>
       </div>
     </div>
   );
 }
-

@@ -197,22 +197,22 @@ export default function VideoPlayer({
           />
         )}
         <div className="relative z-10 max-w-md p-8 text-center space-y-5 glass-card rounded-2xl mx-4">
-          <div className="w-16 h-16 rounded-full bg-red-600/20 border border-red-500/40 text-red-500 flex items-center justify-center mx-auto shadow-lg">
+          <div className="w-16 h-16 rounded-full bg-[#E5B869]/20 border border-[#E5B869]/40 text-[#E5B869] flex items-center justify-center mx-auto shadow-lg">
             <Lock className="w-8 h-8" />
           </div>
           <div>
             <h3 className="text-xl font-bold text-white mb-2">Subscription Required</h3>
             <p className="text-sm text-gray-300">
-              This content is restricted to VIP subscribers or pay-per-view access.
+              This sacred broadcast or series is restricted to VIP subscribers.
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
             <Link
               href="/pricing"
-              className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-xl transition-colors shadow-lg shadow-red-600/40 flex items-center justify-center space-x-2 text-sm"
+              className="flex-1 bg-[#E5B869] hover:bg-[#d8a855] text-black font-bold py-3 px-6 rounded-xl transition-all shadow-lg shadow-[#E5B869]/30 flex items-center justify-center space-x-2 text-sm"
             >
-              <Sparkles className="w-4 h-4" />
-              <span>Unlock with VIP</span>
+              <Sparkles className="w-4 h-4 fill-black" />
+              <span>Unlock with Go Premium</span>
             </Link>
           </div>
         </div>
@@ -263,9 +263,9 @@ export default function VideoPlayer({
       {!isPlaying && (
         <button
           onClick={togglePlay}
-          className="absolute inset-0 m-auto w-16 h-16 rounded-full bg-red-600/90 text-white flex items-center justify-center shadow-2xl hover:scale-110 transition-transform"
+          className="absolute inset-0 m-auto w-16 h-16 rounded-full bg-[#E5B869] text-black flex items-center justify-center shadow-2xl hover:scale-110 transition-transform"
         >
-          <Play className="w-8 h-8 fill-current ml-1" />
+          <Play className="w-8 h-8 fill-black ml-1" />
         </button>
       )}
 
@@ -283,20 +283,20 @@ export default function VideoPlayer({
             max={duration || 100}
             value={currentTime}
             onChange={handleSeek}
-            className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-red-600 focus:outline-none"
+            className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-[#E5B869] focus:outline-none"
           />
         </div>
 
         {/* Control Buttons */}
         <div className="flex items-center justify-between text-white text-sm pt-1">
           <div className="flex items-center space-x-4">
-            <button onClick={togglePlay} className="hover:text-red-500 transition-colors">
+            <button onClick={togglePlay} className="hover:text-[#E5B869] transition-colors">
               {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current" />}
             </button>
 
             {/* Volume Control */}
             <div className="flex items-center space-x-2">
-              <button onClick={toggleMute} className="hover:text-red-500 transition-colors">
+              <button onClick={toggleMute} className="hover:text-[#E5B869] transition-colors">
                 {isMuted || volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
               </button>
               <input
@@ -306,7 +306,7 @@ export default function VideoPlayer({
                 step={0.05}
                 value={isMuted ? 0 : volume}
                 onChange={handleVolumeChange}
-                className="w-16 h-1 bg-white/30 rounded-lg appearance-none cursor-pointer accent-red-600"
+                className="w-16 h-1 bg-white/30 rounded-lg appearance-none cursor-pointer accent-[#E5B869]"
               />
             </div>
 
@@ -322,7 +322,7 @@ export default function VideoPlayer({
               <div className="relative">
                 <button
                   onClick={() => setShowQualityMenu(!showQualityMenu)}
-                  className="flex items-center space-x-1 hover:text-red-500 transition-colors text-xs font-semibold px-2 py-1 rounded bg-white/10"
+                  className="flex items-center space-x-1 hover:text-[#E5B869] transition-colors text-xs font-semibold px-2 py-1 rounded bg-white/10"
                 >
                   <Settings className="w-4 h-4 mr-1" />
                   <span>Quality</span>
@@ -337,7 +337,7 @@ export default function VideoPlayer({
                           setShowQualityMenu(false);
                         }}
                         className={`w-full text-left px-3 py-1.5 hover:bg-white/10 transition-colors ${
-                          selectedQualityUrl === q.url ? 'text-red-500 font-bold' : 'text-gray-300'
+                          selectedQualityUrl === q.url ? 'text-[#E5B869] font-bold' : 'text-gray-300'
                         }`}
                       >
                         {q.quality || `Quality ${idx + 1}`}
@@ -349,7 +349,7 @@ export default function VideoPlayer({
             )}
 
             {/* Fullscreen Button */}
-            <button onClick={toggleFullscreen} className="hover:text-red-500 transition-colors">
+            <button onClick={toggleFullscreen} className="hover:text-[#E5B869] transition-colors">
               {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
             </button>
           </div>

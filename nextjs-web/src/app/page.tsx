@@ -1,154 +1,93 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { api } from '@/lib/api';
-import { MediaItem } from '@/types';
+import { api, normalizeMediaItem } from '@/lib/api';
+import { MediaItem, LiveChannel } from '@/types';
 import HeroBanner from '@/components/home/HeroBanner';
 import MediaRow from '@/components/media/MediaRow';
-
-// High-quality fallback demo items in case backend is starting up
-const fallbackBanners: MediaItem[] = [
-  {
-    id: 1,
-    name: 'Cyber Horizon 2099',
-    type: 'movie',
-    description: 'In a neon-drenched metropolis, a rogue digital operative uncovers a conspiracy that threatens human consciousness itself.',
-    banner_image: 'https://images.unsplash.com/photo-1578328819058-b69f3a3b0f6b?w=1600&auto=format&fit=crop&q=80',
-    poster_image: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&auto=format&fit=crop&q=80',
-    imdb_rating: 8.9,
-    release_year: 2026,
-    duration: '2h 15m',
-    access: 'paid',
-  },
-  {
-    id: 2,
-    name: 'The Abyssal Realm',
-    type: 'movie',
-    description: 'A deep-sea scientific expedition discovers an ancient bioluminescent civilization beneath the oceanic crust.',
-    banner_image: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1600&auto=format&fit=crop&q=80',
-    poster_image: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&auto=format&fit=crop&q=80',
-    imdb_rating: 8.4,
-    release_year: 2025,
-    duration: '1h 58m',
-    access: 'free',
-  },
-];
-
-const fallbackTrending: MediaItem[] = [
-  {
-    id: 101,
-    name: 'Neon Dynasty',
-    type: 'movie',
-    poster_image: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=500&auto=format&fit=crop&q=80',
-    imdb_rating: 8.7,
-    release_year: 2026,
-    duration: '2h 05m',
-    access: 'paid',
-  },
-  {
-    id: 102,
-    name: 'Echoes of Valhalla',
-    type: 'tvshow',
-    poster_image: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=80',
-    imdb_rating: 9.1,
-    release_year: 2026,
-    duration: 'Season 1',
-    access: 'paid',
-  },
-  {
-    id: 103,
-    name: 'Solaris Outpost',
-    type: 'movie',
-    poster_image: 'https://images.unsplash.com/photo-1440404653325-ab127d49abc1?w=500&auto=format&fit=crop&q=80',
-    imdb_rating: 7.9,
-    release_year: 2025,
-    duration: '1h 48m',
-    access: 'free',
-  },
-  {
-    id: 104,
-    name: 'Midnight Protocol',
-    type: 'movie',
-    poster_image: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?w=500&auto=format&fit=crop&q=80',
-    imdb_rating: 8.2,
-    release_year: 2025,
-    duration: '2h 10m',
-    access: 'paid',
-  },
-  {
-    id: 105,
-    name: 'The Quantum Paradox',
-    type: 'movie',
-    poster_image: 'https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0?w=500&auto=format&fit=crop&q=80',
-    imdb_rating: 8.5,
-    release_year: 2026,
-    duration: '2h 20m',
-    access: 'pay-per-view',
-  },
-];
+import LiveNowSection from '@/components/home/LiveNowSection';
 
 export default function HomePage() {
   const [banners, setBanners] = useState<MediaItem[]>([]);
-  const [trending, setTrending] = useState<MediaItem[]>([]);
   const [top10, setTop10] = useState<MediaItem[]>([]);
+  const [latestMovies, setLatestMovies] = useState<MediaItem[]>([]);
+  const [popularMovies, setPopularMovies] = useState<MediaItem[]>([]);
+  const [payPerView, setPayPerView] = useState<MediaItem[]>([]);
+  const [tvShows, setTvShows] = useState<MediaItem[]>([]);
+  const [liveChannels, setLiveChannels] = useState<LiveChannel[]>([]);
   const [continueWatching, setContinueWatching] = useState<MediaItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    async function loadHomeData() {
+    async function loadBackendData() {
+      setIsLoading(true);
       try {
-        // Fetch Banners
-        const bannerData = await api.getBannerData().catch(() => null);
-        if (bannerData && Array.isArray(bannerData) && bannerData.length > 0) {
+        // 1. Fetch real banners from backend
+        const bannerData = await api.getBannerData('home').catch(() => []);
+        if (Array.isArray(bannerData) && bannerData.length > 0) {
           setBanners(bannerData);
-        } else {
-          setBanners(fallbackBanners);
         }
 
-        // Fetch Dashboard Data
+        // 2. Fetch main dashboard data from backend
         const dashboard = await api.getDashboard().catch(() => null);
         if (dashboard) {
-          if (Array.isArray(dashboard.trending) && dashboard.trending.length > 0) {
-            setTrending(dashboard.trending);
-          } else {
-            setTrending(fallbackTrending);
+          if (dashboard.top_10?.data && Array.isArray(dashboard.top_10.data)) {
+            setTop10(dashboard.top_10.data.map(normalizeMediaItem));
           }
-
-          if (Array.isArray(dashboard.top_10) && dashboard.top_10.length > 0) {
-            setTop10(dashboard.top_10);
-          } else {
-            setTop10(fallbackTrending.slice(0, 5));
+          if (dashboard.latest_movie?.data && Array.isArray(dashboard.latest_movie.data)) {
+            setLatestMovies(dashboard.latest_movie.data.map(normalizeMediaItem));
           }
-        } else {
-          setTrending(fallbackTrending);
-          setTop10(fallbackTrending.slice(0, 5));
+          if (dashboard.popular_movie?.data && Array.isArray(dashboard.popular_movie.data)) {
+            setPopularMovies(dashboard.popular_movie.data.map(normalizeMediaItem));
+          }
+          if (dashboard.pay_per_view?.data && Array.isArray(dashboard.pay_per_view.data)) {
+            setPayPerView(dashboard.pay_per_view.data.map(normalizeMediaItem));
+          }
         }
 
-        // Fetch Continue Watching if logged in
+        // 3. Fetch real live TV channels from backend
+        const liveTvData = await api.getLiveTvDashboard().catch(() => null);
+        if (liveTvData) {
+          const channels = liveTvData.slider || [];
+          if (Array.isArray(channels) && channels.length > 0) {
+            setLiveChannels(channels);
+          } else if (Array.isArray(liveTvData.category_data) && liveTvData.category_data.length > 0) {
+            // Flatten first category's channels
+            const flat = liveTvData.category_data.flatMap((c: any) => c.channel_data || []);
+            setLiveChannels(flat);
+          }
+        }
+
+        // 4. Fetch real TV Series from backend
+        const tvData = await api.getTvShows({ page: 1 }).catch(() => null);
+        const tvList = Array.isArray(tvData) ? tvData : tvData?.data || [];
+        if (Array.isArray(tvList) && tvList.length > 0) {
+          setTvShows(tvList.map(normalizeMediaItem));
+        }
+
+        // 5. Fetch user Continue Watching if authenticated
         const cwData = await api.getContinueWatching().catch(() => null);
-        if (cwData && Array.isArray(cwData)) {
-          setContinueWatching(cwData);
+        if (cwData && Array.isArray(cwData) && cwData.length > 0) {
+          setContinueWatching(cwData.map(normalizeMediaItem));
         }
-      } catch {
-        setBanners(fallbackBanners);
-        setTrending(fallbackTrending);
-        setTop10(fallbackTrending.slice(0, 5));
+      } catch (err) {
+        console.error('Error loading data from backend', err);
       } finally {
         setIsLoading(false);
       }
     }
 
-    loadHomeData();
+    loadBackendData();
   }, []);
 
   return (
     <div className="min-h-screen pb-16">
-      {/* Hero Billboard Banner */}
-      <HeroBanner items={banners.length > 0 ? banners : fallbackBanners} />
+      {/* 1. Hero Billboard Banner (Direct from Backend Banners) */}
+      <HeroBanner items={banners} />
 
-      {/* Rows Container with Negative Margin for Stacking Effect */}
-      <div className="relative -mt-16 sm:-mt-24 z-20 space-y-2">
-        {/* Continue Watching (for authenticated users) */}
+      {/* 2. Content Rows Container */}
+      <div className="relative -mt-10 sm:-mt-16 z-20 space-y-4">
+        {/* Continue Watching (from backend watch history) */}
         {continueWatching.length > 0 && (
           <MediaRow
             title="Continue Watching"
@@ -157,26 +96,59 @@ export default function HomePage() {
           />
         )}
 
-        {/* Top 10 Today */}
-        <MediaRow
-          title="Top 10 Today"
-          items={top10.length > 0 ? top10 : fallbackTrending.slice(0, 5)}
-          showRank={true}
-        />
+        {/* Trending / Latest Movies (from backend latest_movie) */}
+        {latestMovies.length > 0 && (
+          <MediaRow
+            title="Trending Now"
+            items={latestMovies}
+            moreHref="/movies"
+            aspectRatio="backdrop"
+          />
+        )}
 
-        {/* Trending Now */}
-        <MediaRow
-          title="Trending Now"
-          items={trending.length > 0 ? trending : fallbackTrending}
-          moreHref="/movies"
-        />
+        {/* Live Now (from backend Live TV channels) */}
+        <LiveNowSection channels={liveChannels} />
 
-        {/* Popular TV Series */}
-        <MediaRow
-          title="Popular TV Shows & Series"
-          items={fallbackTrending}
-          moreHref="/tv-shows"
-        />
+        {/* Top 10 Today (from backend top_10 with rank badges) */}
+        {top10.length > 0 && (
+          <MediaRow
+            title="Top 10 Today"
+            items={top10}
+            showRank={true}
+            aspectRatio="poster"
+            moreHref="/movies"
+          />
+        )}
+
+        {/* Featured TV Shows (from backend tvshow-list) */}
+        {tvShows.length > 0 && (
+          <MediaRow
+            title="Popular TV Shows & Series"
+            items={tvShows}
+            moreHref="/tv-shows"
+            aspectRatio="backdrop"
+          />
+        )}
+
+        {/* Popular Movies (from backend popular_movie) */}
+        {popularMovies.length > 0 && (
+          <MediaRow
+            title="Popular Movies"
+            items={popularMovies}
+            moreHref="/movies"
+            aspectRatio="backdrop"
+          />
+        )}
+
+        {/* Pay-Per-View Rentals (from backend pay_per_view) */}
+        {payPerView.length > 0 && (
+          <MediaRow
+            title="Pay-Per-View Exclusives"
+            items={payPerView}
+            moreHref="/movies"
+            aspectRatio="backdrop"
+          />
+        )}
       </div>
     </div>
   );

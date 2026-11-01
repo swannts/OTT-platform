@@ -1,12 +1,26 @@
 import type { Metadata } from 'next';
+import { Playfair_Display, Inter } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
+import BottomPlayerBar from '@/components/player/BottomPlayerBar';
+
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  variable: '--font-serif',
+  display: 'swap',
+});
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
-  title: 'Swann OTT - Stream Movies, TV Shows & Live Channels',
-  description: 'Stream unlimited movies, exclusive TV series, and live television channels in 4K HDR.',
+  title: 'NOOR - Islamic Video Streaming & Live TV',
+  description: 'Stream exclusive Islamic series, documentaries, live sacred broadcasts from Makkah and Madinah, and spiritual lectures.',
 };
 
 export default function RootLayout({
@@ -15,14 +29,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
-      <body className="bg-[#0f1015] text-[#f3f4f6] min-h-screen flex flex-col antialiased">
+    <html lang="en" suppressHydrationWarning className={`dark ${playfair.variable} ${inter.variable}`}>
+      <body suppressHydrationWarning className="bg-[#070a0e] text-[#f8fafc] font-sans min-h-screen flex flex-col antialiased selection:bg-[#e5b869]/30 selection:text-[#e5b869]">
         <AuthProvider>
           <Navbar />
-          <main className="flex-1">
+          <main className="flex-1 pb-24">
             {children}
           </main>
           <Footer />
+          <BottomPlayerBar />
         </AuthProvider>
       </body>
     </html>

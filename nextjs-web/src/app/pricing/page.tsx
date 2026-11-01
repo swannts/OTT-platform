@@ -85,15 +85,15 @@ export default function PricingPage() {
     <div className="min-h-screen pt-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pb-24">
       {/* Header */}
       <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-        <div className="inline-flex items-center space-x-2 bg-red-600/10 border border-red-500/20 text-red-400 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Flexible Streaming Plans</span>
+        <div className="inline-flex items-center space-x-2 bg-[#E5B869]/10 border border-[#E5B869]/30 text-[#E5B869] text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+          <Sparkles className="w-3.5 h-3.5 fill-[#E5B869]" />
+          <span>Go Premium Membership</span>
         </div>
-        <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
-          Choose the Perfect Plan for Unlimited Entertainment
+        <h1 className="font-serif-title text-3xl sm:text-5xl font-black text-white tracking-tight">
+          Choose the Perfect Plan for Sacred Entertainment
         </h1>
         <p className="text-sm sm:text-base text-gray-400">
-          Cancel anytime. No lock-in contracts. Stream on your phone, tablet, laptop, and TV.
+          Cancel anytime. No lock-in contracts. Stream spiritual series and live sacred broadcasts in 4K.
         </p>
       </div>
 
@@ -106,12 +106,12 @@ export default function PricingPage() {
               key={plan.plan_id}
               className={`relative rounded-3xl p-8 flex flex-col justify-between transition-all duration-300 ${
                 isFeatured
-                  ? 'bg-gradient-to-b from-red-950/40 via-neutral-900 to-black border-2 border-red-500/60 shadow-2xl shadow-red-900/30 md:-translate-y-4'
+                  ? 'bg-gradient-to-b from-[#0c1f19] via-neutral-900 to-[#070a0e] border-2 border-[#E5B869]/70 shadow-2xl shadow-[#E5B869]/20 md:-translate-y-4'
                   : 'glass-card border-white/10 hover:border-white/20'
               }`}
             >
               {isFeatured && (
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-red-600 text-white font-extrabold text-[11px] uppercase tracking-wider px-4 py-1 rounded-full shadow-lg">
+                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#E5B869] text-black font-extrabold text-[11px] uppercase tracking-wider px-4 py-1 rounded-full shadow-lg">
                   Most Popular
                 </div>
               )}
@@ -143,7 +143,7 @@ export default function PricingPage() {
                 <div className="space-y-3 pt-4 border-t border-white/10 mb-8">
                   {plan.plan_type?.map((lim, i) => (
                     <div key={i} className="flex items-center space-x-2.5 text-xs text-gray-200">
-                      <div className="w-4 h-4 rounded-full bg-red-600/20 text-red-500 flex items-center justify-center flex-shrink-0">
+                      <div className="w-4 h-4 rounded-full bg-[#E5B869]/20 text-[#E5B869] flex items-center justify-center flex-shrink-0">
                         <Check className="w-2.5 h-2.5 stroke-[3]" />
                       </div>
                       <span>{lim.limitation_title}</span>
@@ -156,7 +156,7 @@ export default function PricingPage() {
                 href={`/checkout/${plan.plan_id}`}
                 className={`w-full text-center py-3.5 px-6 rounded-xl font-bold text-sm transition-all shadow-lg active:scale-95 ${
                   isFeatured
-                    ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-600/40'
+                    ? 'bg-[#E5B869] hover:bg-[#f3cf8a] text-black shadow-[#E5B869]/30'
                     : 'bg-white/10 hover:bg-white/20 text-white border border-white/10'
                 }`}
               >

@@ -9,7 +9,46 @@ import {
   User,
 } from '@/types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+export function normalizeMediaItem(raw: any): MediaItem {
+  if (!raw) return raw;
+  const details = raw.details || {};
+  const genres = details.genres || raw.genres || raw.genre_data || [];
+  const genreList = Array.isArray(genres)
+    ? genres.map((g: any) => (typeof g === 'string' ? g : g.name || ''))
+    : [];
+
+  return {
+    id: Number(details.id || raw.id || raw.type_id || 0),
+    name: details.name || raw.name || raw.title || 'Untitled',
+    title: details.name || raw.name || raw.title || 'Untitled',
+    type: (details.type || raw.type || 'movie') as any,
+    description: details.description || raw.description || raw.short_desc || '',
+    poster_image: raw.poster_image || raw.poster_url || raw.thumbnail_image || raw.poster_tv_image,
+    thumbnail_image: raw.poster_tv_image || raw.thumbnail_image || raw.poster_image,
+    banner_image: raw.poster_tv_image || raw.poster_image || raw.banner_image,
+    duration: details.duration || raw.duration || '',
+    release_year: details.release_date
+      ? details.release_date.substring(0, 4)
+      : raw.release_date
+      ? String(raw.release_date).substring(0, 4)
+      : raw.release_year,
+    imdb_rating: details.imdb_rating || raw.imdb_rating || raw.rating,
+    access: (details.access || raw.movie_access || raw.access || 'free') as any,
+    genres: genreList,
+    genre_data: genreList,
+    has_content_access: Boolean(details.has_content_access ?? raw.has_content_access),
+    is_watchlist: Boolean(details.is_in_watchlist ?? raw.is_watch_list ?? raw.is_watchlist),
+  };
+}
+
+const getApiBaseUrl = (): string => {
+  // Server-side inside Docker network
+  if (typeof window === 'undefined') {
+    return process.env.INTERNAL_API_URL || 'http://backend:8000/api';
+  }
+  // Client-side inside user's browser
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+};
 
 class ApiClient {
   private getToken(): string | null {
@@ -31,7 +70,8 @@ class ApiClient {
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+    const baseUrl = getApiBaseUrl();
+    const url = `${baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
     const token = this.getToken();
 
     const headers: Record<string, string> = {
@@ -182,8 +222,10 @@ class ApiClient {
   }
 
   // ── Discovery & Catalog ───────────────────────────────────────────────────
-  async getBannerData(): Promise<MediaItem[]> {
-    return this.request<MediaItem[]>('/v3/banner-data');
+  async getBannerData(bannerFor: string = 'home'): Promise<MediaItem[]> {
+    const res = await this.request<any>(`/v3/banner-data?banner_for=${bannerFor}`);
+    const items = res?.slider || (Array.isArray(res) ? res : []);
+    return items.map(normalizeMediaItem);
   }
 
   async getDashboard(): Promise<any> {
@@ -211,7 +253,44 @@ class ApiClient {
   }
 
   async getContentDetails(id: number | string, type: 'movie' | 'tvshow' | 'episode' | 'video'): Promise<ContentDetails> {
-    return this.request<ContentDetails>(`/v3/content-details?id=${id}&type=${type}`);
+    const raw = await this.request<any>(`/v3/content-details?id=${id}&type=${type}`);
+    const details = raw?.details || {};
+    const more = (raw?.suggested_content || raw?.more_items || []).map(normalizeMediaItem);
+    const casts = raw?.actors || raw?.casts || [];
+    const directors = raw?.directors || [];
+
+    return {
+      id: Number(raw?.id || details?.id || id),
+      name: details.name || raw?.name || 'Untitled',
+      type: details.type || raw?.type || type,
+      description: details.description || raw?.description || '',
+      poster_image: details.poster_image || raw?.poster_image || '',
+      thumbnail_image: details.thumbnail_image || raw?.thumbnail_image || '',
+      banner_image: details.thumbnail_image || details.poster_image || raw?.poster_image || '',
+      release_year: details.release_date ? String(details.release_date).substring(0, 4) : raw?.release_year,
+      duration: details.duration || raw?.duration || '',
+      imdb_rating: details.imdb_rating || raw?.imdb_rating || '',
+      access: details.access || raw?.access || 'free',
+      has_content_access: Boolean(details.has_content_access ?? raw?.has_content_access ?? true),
+      genre_data: Array.isArray(details.genres) ? details.genres : (raw?.genre_data || []),
+      casts: casts.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        role: c.type || c.role || 'Cast',
+        profile_image: c.profile_image,
+      })),
+      directors: directors.map((d: any) => ({
+        id: d.id,
+        name: d.name,
+        role: 'Director',
+        profile_image: d.profile_image,
+      })),
+      clips: raw?.trailer_data || [],
+      more_items: more,
+      video_qualities: raw?.video_qualities || [],
+      video_default_quality: raw?.video_qualities?.[0],
+      seasons: raw?.seasons || details?.season_data || [],
+    };
   }
 
   async getEpisodes(tvShowId: number | string, seasonId?: number | string): Promise<any> {

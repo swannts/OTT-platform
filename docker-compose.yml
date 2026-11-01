@@ -11,6 +11,7 @@ services:
     environment:
       NODE_ENV: development
       NEXT_PUBLIC_API_URL: http://localhost:8000/api
+      INTERNAL_API_URL: http://backend:8000/api
       PORT: 3000
       HOSTNAME: "0.0.0.0"
       WATCHPACK_POLLING: "true"

@@ -1,21 +1,26 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0f1015;
-  --surface: #171923;
-  --surface-hover: #222533;
-  --foreground: #f3f4f6;
-  --foreground-muted: #9ca3af;
-  --primary: #e50914;
-  --primary-hover: #b80710;
-  --border: #282b3c;
+  --background: #070a0e;
+  --surface: #0e141a;
+  --surface-hover: #16202a;
+  --foreground: #f8fafc;
+  --foreground-muted: #94a3b8;
+  --gold: #e5b869;
+  --gold-hover: #f3cf8a;
+  --gold-dark: #b88a38;
+  --emerald-dark: #081210;
+  --border: rgba(255, 255, 255, 0.08);
 }
 
 body {
-  background-color: var(--background);
-  color: var(--foreground);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background-color: #070a0e;
+  color: #f8fafc;
   overflow-x: hidden;
+}
+
+.font-serif-title {
+  font-family: var(--font-serif), Georgia, Cambria, 'Times New Roman', Times, serif;
 }
 
 /* Hide scrollbar for carousels */
@@ -29,14 +34,24 @@ body {
 
 /* Glassmorphism effects */
 .glass-nav {
-  background: rgba(15, 16, 21, 0.75);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(7, 10, 14, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 .glass-card {
-  background: rgba(23, 25, 35, 0.6);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(14, 20, 26, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.gold-glow {
+  box-shadow: 0 0 25px rgba(229, 184, 105, 0.25);
+}
+
+.gold-gradient-text {
+  background: linear-gradient(135deg, #f7d794 0%, #e5b869 50%, #c4943f 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
