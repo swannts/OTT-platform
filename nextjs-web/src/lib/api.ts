@@ -2,6 +2,7 @@ import {
   AuthResponse,
   ContentDetails,
   LiveChannel,
+  LiveTvPlaybackDetails,
   MediaItem,
   Plan,
   PriceCalculation,
@@ -67,6 +68,24 @@ const getApiBaseUrl = (): string => {
 };
 
 class ApiClient {
+  private currentLocale: string = 'en';
+
+  public setLocale(locale: string) {
+    this.currentLocale = locale;
+  }
+
+  public getLocale(): string {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('noor_locale');
+        if (stored) return stored;
+      } catch {
+        // ignore
+      }
+    }
+    return this.currentLocale;
+  }
+
   private getToken(): string | null {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem('token') || null;
@@ -89,10 +108,13 @@ class ApiClient {
     const baseUrl = getApiBaseUrl();
     const url = `${baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
     const token = this.getToken();
+    const locale = this.getLocale();
 
     const headers: Record<string, string> = {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
+      'app-locale': locale,
+      'Accept-Language': locale,
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       ...((options.headers as Record<string, string>) || {}),
     };
@@ -316,7 +338,7 @@ class ApiClient {
       duration: details.duration || raw?.duration || '',
       imdb_rating: details.imdb_rating || raw?.imdb_rating || '',
       access: details.access || raw?.access || 'free',
-      has_content_access: Boolean(details.has_content_access ?? raw?.has_content_access ?? true),
+      has_content_access: Boolean(details.has_content_access ?? raw?.has_content_access ?? false),
       genre_data: Array.isArray(details.genres) ? details.genres : (raw?.genre_data || []),
       casts: casts.map((c: any) => ({
         id: c.id,
@@ -348,8 +370,8 @@ class ApiClient {
     return this.request<{ slider: LiveChannel[]; category_data: any[] }>('/v3/livetv-dashboard');
   }
 
-  async getLiveTvDetails(channelId: number | string): Promise<LiveChannel> {
-    return this.request<LiveChannel>(`/v3/livetv-details?channel_id=${channelId}`);
+  async getLiveTvDetails(channelId: number | string): Promise<LiveTvPlaybackDetails> {
+    return this.request<LiveTvPlaybackDetails>(`/v3/livetv-details?channel_id=${channelId}`);
   }
 
   async search(query: string): Promise<any> {

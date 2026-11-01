@@ -25,23 +25,36 @@ class ApiLocale
      */
     public function handle(Request $request, Closure $next)
     {
-        // Only process if the 'app-locale' header is present (Mobile App request)
+        $locale = null;
+
+        // 1. Check custom mobile / frontend headers
         if ($request->hasHeader('app-locale')) {
             $locale = strtolower(trim($request->header('app-locale')));
-            
-            // Get available locales from config
-            $availableLocales = array_keys(config('app.available_locales', ['en' => 'English (EN)']));
-            
-            // Validate locale - must be in available locales
-            if (in_array($locale, $availableLocales, true)) {
-                app()->setLocale($locale);
-            } else {
-                // Invalid locale - fallback to default 'en'
-                app()->setLocale('en');
+        } elseif ($request->hasHeader('global-localization')) {
+            $locale = strtolower(trim($request->header('global-localization')));
+        } elseif ($request->hasHeader('X-Locale')) {
+            $locale = strtolower(trim($request->header('X-Locale')));
+        } elseif ($request->has('lang') || $request->has('locale')) {
+            $locale = strtolower(trim($request->get('lang', $request->get('locale'))));
+        } elseif ($request->hasHeader('Accept-Language')) {
+            // e.g. "bn-BD,bn;q=0.9,en;q=0.8" or "bn"
+            $acceptLang = $request->header('Accept-Language');
+            $parts = explode(',', $acceptLang);
+            if (!empty($parts)) {
+                $primary = explode(';', $parts[0])[0];
+                $code = strtolower(substr(trim($primary), 0, 2));
+                if (in_array($code, ['en', 'bn'], true)) {
+                    $locale = $code;
+                }
             }
         }
-        // If no 'app-locale' header, don't change the locale
-        // This allows frontend/web to use session-based locale from SetLocale middleware
+
+        // Get available locales from config
+        $availableLocales = array_keys(config('app.available_locales', ['en' => 'English (EN)', 'bn' => 'বাংলা (BN)']));
+
+        if ($locale && in_array($locale, $availableLocales, true)) {
+            app()->setLocale($locale);
+        }
 
         return $next($request);
     }

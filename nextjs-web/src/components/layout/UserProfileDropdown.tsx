@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/providers';
+import { useAuth, useLanguage } from '@/providers';
 import { DEFAULT_AVATAR_IMAGE } from '@/constants';
 import {
   User as UserIcon,
@@ -22,6 +22,7 @@ import {
 export default function UserProfileDropdown() {
   const router = useRouter();
   const { user, subscription, login, logout, isLoading } = useAuth();
+  const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [isLoggingInDemo, setIsLoggingInDemo] = useState(false);
@@ -144,7 +145,7 @@ export default function UserProfileDropdown() {
                   <div className="inline-flex items-center space-x-1.5 px-2 py-0.5 rounded-md bg-[#E5B869]/15 border border-[#E5B869]/30 text-[10px] font-bold text-[#E5B869]">
                     <Crown className="w-3 h-3" />
                     <span>
-                      {subscription?.has_active_subscription ? 'VIP MEMBER' : 'FREE VIEWER'}
+                      {subscription?.has_active_subscription ? t('vip_member', 'VIP MEMBER') : t('free_viewer', 'FREE VIEWER')}
                     </span>
                   </div>
 
@@ -154,7 +155,7 @@ export default function UserProfileDropdown() {
                       onClick={() => setIsOpen(false)}
                       className="text-[10px] font-semibold text-[#E5B869] hover:underline"
                     >
-                      Upgrade &rarr;
+                      {t('upgrade', 'Upgrade')} &rarr;
                     </Link>
                   )}
                 </div>
@@ -168,7 +169,7 @@ export default function UserProfileDropdown() {
                   className="flex items-center space-x-2.5 px-4 py-2 text-xs text-gray-300 hover:text-[#E5B869] hover:bg-white/5 transition-colors cursor-pointer"
                 >
                   <Settings className="w-4 h-4 text-gray-400" />
-                  <span>Account Settings</span>
+                  <span>{t('account_settings', 'Account Settings')}</span>
                 </Link>
 
                 <Link
@@ -177,7 +178,7 @@ export default function UserProfileDropdown() {
                   className="flex items-center space-x-2.5 px-4 py-2 text-xs text-gray-300 hover:text-[#E5B869] hover:bg-white/5 transition-colors cursor-pointer"
                 >
                   <Heart className="w-4 h-4 text-rose-400" />
-                  <span>My Watchlist</span>
+                  <span>{t('nav_watchlist', 'My Watchlist')}</span>
                 </Link>
 
                 <Link
@@ -186,7 +187,7 @@ export default function UserProfileDropdown() {
                   className="flex items-center space-x-2.5 px-4 py-2 text-xs text-gray-300 hover:text-[#E5B869] hover:bg-white/5 transition-colors cursor-pointer"
                 >
                   <Tv className="w-4 h-4 text-gray-400" />
-                  <span>Who's Watching</span>
+                  <span>{t('who_watching', "Who's Watching")}</span>
                 </Link>
 
                 <Link
@@ -195,7 +196,7 @@ export default function UserProfileDropdown() {
                   className="flex items-center space-x-2.5 px-4 py-2 text-xs text-gray-300 hover:text-[#E5B869] hover:bg-white/5 transition-colors cursor-pointer"
                 >
                   <CreditCard className="w-4 h-4 text-[#E5B869]" />
-                  <span>Billing & Invoices</span>
+                  <span>{t('billing_invoices', 'Billing & Invoices')}</span>
                 </Link>
 
                 <Link
@@ -204,7 +205,7 @@ export default function UserProfileDropdown() {
                   className="flex items-center space-x-2.5 px-4 py-2 text-xs text-gray-300 hover:text-[#E5B869] hover:bg-white/5 transition-colors cursor-pointer"
                 >
                   <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  <span>Security & Parental Lock</span>
+                  <span>{t('security_parental', 'Security & Parental Lock')}</span>
                 </Link>
               </div>
 
@@ -216,7 +217,7 @@ export default function UserProfileDropdown() {
                   className="w-full flex items-center space-x-2.5 px-4 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" />
-                  <span>Sign Out</span>
+                  <span>{t('sign_out', 'Sign Out')}</span>
                 </button>
               </div>
             </>
@@ -225,10 +226,10 @@ export default function UserProfileDropdown() {
             <div className="p-4 space-y-3">
               <div className="flex items-center space-x-2">
                 <span className="w-2 h-2 rounded-full bg-[#E5B869]" />
-                <p className="text-xs font-semibold text-white">Welcome to NOOR</p>
+                <p className="text-xs font-semibold text-white">{t('welcome_title', 'Welcome to NOOR')}</p>
               </div>
               <p className="text-[11px] text-gray-400 leading-relaxed">
-                Sign in to sync your sacred watchlist, continue watching across devices, and unlock 4K Ultra HD.
+                {t('welcome_desc', 'Sign in to access your sacred watchlist, continue watching across devices, and unlock 4K Ultra HD.')}
               </p>
 
               <div className="space-y-2 pt-1">
@@ -238,7 +239,7 @@ export default function UserProfileDropdown() {
                   className="flex items-center justify-center space-x-2 w-full bg-[#E5B869] hover:bg-[#f3cf8a] text-black font-bold text-xs py-2.5 rounded-xl shadow-md transition-all cursor-pointer"
                 >
                   <LogIn className="w-3.5 h-3.5" />
-                  <span>Sign In</span>
+                  <span>{t('sign_in', 'Sign In')}</span>
                 </Link>
 
                 <Link
@@ -247,7 +248,7 @@ export default function UserProfileDropdown() {
                   className="flex items-center justify-center space-x-2 w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold text-xs py-2 rounded-xl transition-all cursor-pointer"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
-                  <span>Create Account</span>
+                  <span>{t('create_account', 'Create Account')}</span>
                 </Link>
 
                 <div className="pt-2 border-t border-white/10">
@@ -258,7 +259,7 @@ export default function UserProfileDropdown() {
                     className="flex items-center justify-center space-x-1.5 w-full text-[11px] text-[#E5B869] hover:text-[#f3cf8a] py-1.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
                   >
                     <Sparkles className="w-3 h-3 text-[#E5B869]" />
-                    <span>{isLoggingInDemo ? 'Signing in...' : '1-Click Demo Login (Admin)'}</span>
+                    <span>{isLoggingInDemo ? t('loading', 'Signing in...') : t('demo_login', '1-Click Demo Login (Admin)')}</span>
                   </button>
                 </div>
               </div>

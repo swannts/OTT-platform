@@ -3,10 +3,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useAuth } from '@/providers';
+import { useAuth, useLanguage } from '@/providers';
 import Logo from './Logo';
 import NotificationDropdown from './NotificationDropdown';
 import UserProfileDropdown from './UserProfileDropdown';
+import LanguageSwitcher from './LanguageSwitcher';
 import {
   Search,
   ChevronDown,
@@ -27,6 +28,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { subscription } = useAuth();
+  const { t } = useLanguage();
 
   const [isScrolled, setIsScrolled] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -62,46 +64,46 @@ export default function Navbar() {
 
   // Primary curated desktop navigation links
   const primaryDesktopLinks = [
-    { label: 'Home', href: '/' },
-    { label: 'Live TV', href: '/live-tv', isLive: true },
-    { label: 'Series', href: '/tv-shows' },
-    { label: 'Documentaries', href: '/movies' },
-    { label: 'Journal', href: '/blog' },
+    { label: t('nav_home', 'Home'), href: '/' },
+    { label: t('nav_live_tv', 'Live TV'), href: '/live-tv', isLive: true },
+    { label: t('nav_series', 'Series'), href: '/tv-shows' },
+    { label: t('nav_documentaries', 'Documentaries'), href: '/movies' },
+    { label: t('nav_journal', 'Journal'), href: '/blog' },
   ];
 
   // Comprehensive categorized explore catalog
   const exploreCategories = [
     {
-      title: 'Cinema & Series',
+      title: t('nav_curated_library', 'Cinema & Series'),
       items: [
-        { label: 'All Movies', href: '/movies', icon: Film, desc: 'Sacred features & cinema' },
-        { label: 'TV Series', href: '/tv-shows', icon: Tv, desc: 'Multi-episode drama & series' },
-        { label: 'Documentaries', href: '/movies', icon: Compass, desc: 'Historic & scientific films' },
-        { label: 'Prophetic Biographies', href: '/tv-shows', icon: Sparkles, desc: 'Seerah & companions' },
+        { label: t('nav_movies', 'All Movies'), href: '/movies', icon: Film, desc: 'Sacred features & cinema' },
+        { label: t('nav_tv_shows', 'TV Series'), href: '/tv-shows', icon: Tv, desc: 'Multi-episode drama & series' },
+        { label: t('nav_documentaries', 'Documentaries'), href: '/movies', icon: Compass, desc: 'Historic & scientific films' },
+        { label: t('prophetic_chronicles', 'Prophetic Biographies'), href: '/tv-shows', icon: Sparkles, desc: 'Seerah & companions' },
       ],
     },
     {
-      title: 'Knowledge & Spiritual',
+      title: t('spiritual_wisdom', 'Knowledge & Spiritual'),
       items: [
-        { label: 'Journal & Stories', href: '/blog', icon: BookOpen, desc: 'History & cinema insights' },
-        { label: 'Waz & Bayan', href: '/videos', icon: Flame, desc: 'Lectures by renowned scholars' },
-        { label: 'Podcasts & Audio', href: '/videos', icon: Radio, desc: 'Spiritual talks & discussions' },
-        { label: 'Kids & Family', href: '/profiles', icon: Smile, desc: 'Safe educational cartoons' },
+        { label: t('nav_journal', 'Journal & Stories'), href: '/blog', icon: BookOpen, desc: 'History & cinema insights' },
+        { label: t('nav_waz', 'Waz & Bayan'), href: '/videos', icon: Flame, desc: 'Lectures by renowned scholars' },
+        { label: t('nav_podcasts', 'Podcasts & Audio'), href: '/videos', icon: Radio, desc: 'Spiritual talks & discussions' },
+        { label: t('nav_kids', 'Kids & Family'), href: '/profiles', icon: Smile, desc: 'Safe educational cartoons' },
       ],
     },
   ];
 
   // Full flat list for mobile navigation
   const mobileNavLinks = [
-    { label: 'Home', href: '/' },
-    { label: 'Live TV', href: '/live-tv' },
-    { label: 'TV Series', href: '/tv-shows' },
-    { label: 'Movies & Docs', href: '/movies' },
-    { label: 'Journal & Stories', href: '/blog' },
-    { label: 'Lectures & Waz', href: '/videos' },
-    { label: 'Subscription Plans', href: '/pricing' },
-    { label: 'My Watchlist', href: '/watchlist' },
-    { label: 'Notifications', href: '/notifications' },
+    { label: t('nav_home', 'Home'), href: '/' },
+    { label: t('nav_live_tv', 'Live TV'), href: '/live-tv' },
+    { label: t('nav_tv_shows', 'TV Series'), href: '/tv-shows' },
+    { label: t('nav_documentaries', 'Movies & Docs'), href: '/movies' },
+    { label: t('nav_journal', 'Journal & Stories'), href: '/blog' },
+    { label: t('nav_waz', 'Lectures & Waz'), href: '/videos' },
+    { label: t('nav_pricing', 'Subscription Plans'), href: '/pricing' },
+    { label: t('nav_watchlist', 'My Watchlist'), href: '/watchlist' },
+    { label: t('notifications', 'Notifications'), href: '/notifications' },
   ];
 
   return (
@@ -163,7 +165,7 @@ export default function Navbar() {
                       : 'text-gray-300 hover:text-white hover:bg-white/[0.04]'
                   }`}
                 >
-                  <span className="whitespace-nowrap">Explore</span>
+                  <span className="whitespace-nowrap">{t('nav_explore', 'Explore')}</span>
                   <ChevronDown
                     className={`w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200 ${
                       isExploreOpen ? 'rotate-180 text-[#E5B869]' : 'text-gray-400'
@@ -177,7 +179,7 @@ export default function Navbar() {
                       <div className="flex items-center space-x-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#E5B869]" />
                         <span className="text-[11px] font-bold uppercase tracking-wider text-[#E5B869]">
-                          Curated Islamic Library
+                          {t('nav_curated_library', 'Curated Islamic Library')}
                         </span>
                       </div>
                       <Link
@@ -185,7 +187,7 @@ export default function Navbar() {
                         onClick={() => setIsExploreOpen(false)}
                         className="text-[11px] text-gray-400 hover:text-white transition-colors"
                       >
-                        Browse All &rarr;
+                        {t('nav_browse_all', 'Browse All')} &rarr;
                       </Link>
                     </div>
 
@@ -235,7 +237,7 @@ export default function Navbar() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search movies, series..."
+                placeholder={t('search_placeholder', 'Search movies, series...')}
                 className="w-44 lg:w-52 focus:w-64 bg-white/[0.06] hover:bg-white/[0.09] focus:bg-[#080d14] border border-white/10 focus:border-[#E5B869]/60 text-white placeholder-gray-400 text-xs rounded-full pl-9 pr-7 py-2 focus:outline-none transition-all duration-300 backdrop-blur-md shadow-inner whitespace-nowrap"
               />
               <Search className="w-3.5 h-3.5 text-gray-400 group-focus-within:text-[#E5B869] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none transition-colors" />
@@ -258,9 +260,12 @@ export default function Navbar() {
                 className="hidden sm:inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#e5b869]/15 to-[#f3cf8a]/10 hover:from-[#e5b869]/25 hover:to-[#f3cf8a]/20 border border-[#e5b869]/30 hover:border-[#e5b869]/60 text-[#e5b869] text-xs font-semibold shadow-sm transition-all cursor-pointer hover:scale-[1.02] active:scale-95 whitespace-nowrap flex-shrink-0"
               >
                 <Crown className="w-3.5 h-3.5 text-[#e5b869] flex-shrink-0" />
-                <span className="tracking-wide whitespace-nowrap">Go VIP</span>
+                <span className="tracking-wide whitespace-nowrap">{t('go_vip', 'Go VIP')}</span>
               </Link>
             )}
+
+            {/* Language Switcher (English / বাংলা) */}
+            <LanguageSwitcher />
 
             {/* Functional Notification Dropdown with Live Unread Tracking */}
             <div className="flex-shrink-0">
@@ -298,6 +303,11 @@ export default function Navbar() {
                 <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
               </div>
             </form>
+
+            <div className="flex items-center justify-between pb-2 border-b border-white/10 mb-2">
+              <span className="text-xs text-gray-400 font-medium">{t('language', 'Language')}</span>
+              <LanguageSwitcher variant="pill" />
+            </div>
 
             <div className="grid grid-cols-2 gap-1.5 pt-1">
               {mobileNavLinks.map((link) => (
