@@ -43,6 +43,10 @@ RUN composer install --no-interaction --prefer-dist --no-progress --no-scripts -
 COPY . .
 RUN composer dump-autoload --no-interaction --optimize
 
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
 EXPOSE 8000
 
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]

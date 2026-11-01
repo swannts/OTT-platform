@@ -8,6 +8,7 @@ graphify-out
 **/graphify-out
 # Demo media remains available through the development source mount.
 public/dummy-images
+storage/app/public/*
 storage/logs/*
 storage/framework/cache/*
 storage/framework/sessions/*

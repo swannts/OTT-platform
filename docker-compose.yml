@@ -1,0 +1,135 @@
+services:
+  frontend:
+    build:
+      context: ./nextjs-web
+      dockerfile: Dockerfile
+    image: swann-frontend:dev
+    container_name: swann-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://localhost:8000/api
+      PORT: 3000
+      HOSTNAME: "0.0.0.0"
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - ./nextjs-web:/app
+      - frontend-node-modules:/app/node_modules
+      - frontend-next:/app/.next
+    networks:
+      - ott-net
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./swann-laravel-web
+      dockerfile: Dockerfile
+    image: swann-backend:dev
+    container_name: swann-backend
+    restart: unless-stopped
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    ports:
+      - "8000:8000"
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8000
+      FRONTEND_URL: http://localhost:3000
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-swann}
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: "${DB_PASSWORD:-}"
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MEILISEARCH_HOST: http://meilisearch:7700
+    volumes:
+      - ./swann-laravel-web:/var/www/html
+      - backend-vendor:/var/www/html/vendor
+    networks:
+      - ott-net
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+
+  mysql:
+    image: mysql/mysql-server:8.0
+    container_name: swann-mysql
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_HOST: "%"
+      MYSQL_DATABASE: ${DB_DATABASE:-swann}
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - ott-net
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  redis:
+    image: redis:alpine
+    container_name: swann-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - ott-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  meilisearch:
+    image: getmeili/meilisearch:latest
+    container_name: swann-meilisearch
+    restart: unless-stopped
+    ports:
+      - "7700:7700"
+    volumes:
+      - meilisearch-data:/data.ms
+    networks:
+      - ott-net
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--spider", "http://127.0.0.1:7700/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+networks:
+  ott-net:
+    driver: bridge
+
+volumes:
+  mysql-data:
+    driver: local
+  redis-data:
+    driver: local
+  meilisearch-data:
+    driver: local
+  backend-vendor:
+    driver: local
+  frontend-node-modules:
+    driver: local
+  frontend-next:
+    driver: local
+

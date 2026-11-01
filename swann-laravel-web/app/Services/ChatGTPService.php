@@ -14,7 +14,11 @@ class ChatGTPService
 
     public function __construct()
     {
-        $this->apiKey = isenablemodule('ChatGPT_key');
+        try {
+            $this->apiKey = isenablemodule('ChatGPT_key');
+        } catch (\Throwable $e) {
+            $this->apiKey = null;
+        }
     }
 
     private function generateMessage($name, $description = '', $type = null, ?int $maxChars = null)

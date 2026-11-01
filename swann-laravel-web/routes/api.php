@@ -19,6 +19,8 @@ use App\Http\Controllers\Auth\WebQrLoginController;
 use Modules\CastCrew\Http\Controllers\API\CastCrewController;
 use Modules\Frontend\Http\Controllers\Auth\OTPController;
 use App\Http\Controllers\API\ShortDramaConfigController;
+use App\Http\Controllers\API\WebPaymentApiController;
+use App\Http\Controllers\API\PageApiController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -130,12 +132,35 @@ Route::prefix('v3')->middleware(['throttle:api'])->group(function () {
     Route::get('banner-data', [DashboardController::class, 'getEntertainmentDataV3']);
     Route::get('cast-details', [CastCrewController::class, 'castCrewDetailsV3'])->name('api.cast_crew_details_v3');
 
+    // Web & Client Subscription / Pricing APIs
+    Route::get('subscription/plans', [WebPaymentApiController::class, 'getPlans']);
+    Route::post('subscription/calculate-price', [WebPaymentApiController::class, 'calculateSubscriptionPrice']);
+    Route::post('coupon/validate', [WebPaymentApiController::class, 'validateCoupon']);
+
+    // Web & Client Pay-Per-View Pricing
+    Route::post('pay-per-view/calculate-price', [WebPaymentApiController::class, 'calculatePayPerViewPrice']);
+
+    // Pages & Policies (Terms, Privacy, About)
+    Route::get('pages/{slug}', [PageApiController::class, 'getPageDetails']);
 });
 Route::prefix('v3')->middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::get('profile-details', [UserController::class, 'profileDetailsV3'])->name('api.v3.profile-details');
     Route::get('rented-content-list', [PerviewPaymentController::class, 'allUnlockVideosV3']);
     Route::post('delete-notification', [NotificationsController::class, 'deleteNotification']);
 
+    // Authenticated User Subscription Management & Checkout
+    Route::get('user/subscription', [WebPaymentApiController::class, 'getUserSubscription']);
+    Route::get('user/billing-history', [WebPaymentApiController::class, 'getBillingHistory']);
+    Route::post('subscription/cancel', [WebPaymentApiController::class, 'cancelSubscription']);
+    Route::post('subscription/process-payment', [WebPaymentApiController::class, 'processSubscriptionPayment']);
+    Route::post('subscription/verify-payment', [WebPaymentApiController::class, 'verifySubscriptionPayment']);
+
+    // Authenticated Pay-Per-View Checkout & Verification
+    Route::post('pay-per-view/process-payment', [WebPaymentApiController::class, 'processPayPerViewPayment']);
+    Route::post('pay-per-view/verify-payment', [WebPaymentApiController::class, 'verifyPayPerViewPayment']);
+
+    // Video stream URL decryption
+    Route::post('video/decrypt-url', [WebPaymentApiController::class, 'decryptUrl']);
 });
 
 

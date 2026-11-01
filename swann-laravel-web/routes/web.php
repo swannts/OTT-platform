@@ -178,17 +178,7 @@ Route::group(['prefix' => 'app', ['middleware' => ['auth','admin']]], function (
 });
 
 Route::middleware(['web'])->group(function () {
-    // Public routes
-    Route::get('login', 'Auth\LoginController@showLoginForm')->name('login');
-    Route::post('login', 'Auth\LoginController@login');
-
-    // Protected routes with auth
-    Route::middleware(['auth'])->group(function () {
-        Route::post('logout', 'Auth\LoginController@logout')->name('logout');
-        // Other protected routes...
-    });
-
-        // ── Short Drama plugin installer (core app — runs before module is registered) ──
+    // ── Short Drama plugin installer (core app — runs before module is registered) ──
     Route::prefix('app/short-drama')
         ->middleware(['web', 'auth', 'admin'])
         ->as('backend.short-drama.')
@@ -197,6 +187,5 @@ Route::middleware(['web'])->group(function () {
             Route::post('installer/install', [ShortDramaPluginInstallerController::class, 'install'])->name('installer.install');
             Route::post('installer/uninstall', [ShortDramaPluginInstallerController::class, 'uninstall'])->name('installer.uninstall');
         });
-
 });
 

@@ -30,6 +30,10 @@
 **/ios/Flutter/Generated.xcconfig
 **/ios/Flutter/flutter_export_environment.sh
 
+# Next.js build output
+**/.next/
+**/out/
+
 # Editor and operating system files
 .idea/
 .vscode/
