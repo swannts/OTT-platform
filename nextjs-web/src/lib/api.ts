@@ -1,5 +1,6 @@
 import {
   AuthResponse,
+  LoginResponse,
   ContentDetails,
   LiveChannel,
   LiveTvPlaybackDetails,
@@ -12,54 +13,74 @@ import {
   BlogListResponse,
   BlogDetailResponse,
   BlogCategory,
+  UserMultiProfile,
+  BillingHistoryResponse,
+  CastDetails,
+  Episode,
+  LiveCategory,
+  SearchDataResult,
+  DashboardData,
+  NotificationItem,
 } from '@/types';
 
-export function normalizeMediaItem(raw: any): MediaItem {
-  if (!raw) return raw;
-  const details = raw.details || {};
-  const genres = details.genres || raw.genres || raw.genre_data || [];
+export function normalizeMediaItem(raw: unknown): MediaItem {
+  if (!raw || typeof raw !== 'object') {
+    return {
+      id: '',
+      name: 'Untitled',
+      title: 'Untitled',
+      type: 'movie',
+      access: 'free',
+    };
+  }
+  const r = raw as Record<string, unknown>;
+  const details = (r.details && typeof r.details === 'object' ? r.details : {}) as Record<string, unknown>;
+  const genres = details.genres || r.genres || r.genre_data || [];
   const genreList = Array.isArray(genres)
-    ? genres.map((g: any) => (typeof g === 'string' ? g : g.name || ''))
+    ? genres.map((g: unknown) => (typeof g === 'string' ? g : (g && typeof g === 'object' && 'name' in g ? String((g as { name: unknown }).name) : '')))
     : [];
 
+  const rawType = (details.type || r.type || 'movie') as string;
+  const validTypes = ['movie', 'tvshow', 'episode', 'video', 'livetv'] as const;
+  const resolvedType = validTypes.includes(rawType as (typeof validTypes)[number])
+    ? (rawType as (typeof validTypes)[number])
+    : 'movie';
+
+  const rawAccess = (details.access || r.movie_access || r.access || 'free') as string;
+  const validAccess = ['free', 'paid', 'unlock'] as const;
+  const resolvedAccess = validAccess.includes(rawAccess as (typeof validAccess)[number])
+    ? (rawAccess as (typeof validAccess)[number])
+    : 'free';
+
   return {
-    id: details.id || raw.id || raw.type_id || '',
-    name: details.name || raw.name || raw.title || 'Untitled',
-    title: details.name || raw.name || raw.title || 'Untitled',
-    type: (details.type || raw.type || 'movie') as any,
-    description: details.description || raw.description || raw.short_desc || '',
-    poster_image: raw.poster_image || raw.poster_url || raw.thumbnail_image || raw.poster_tv_image,
-    thumbnail_image: raw.poster_tv_image || raw.thumbnail_image || raw.poster_image,
-    banner_image: raw.poster_tv_image || raw.poster_image || raw.banner_image,
-    duration: details.duration || raw.duration || '',
+    id: (details.id as number | string) || (r.id as number | string) || (r.type_id as number | string) || '',
+    name: (details.name as string) || (r.name as string) || (r.title as string) || 'Untitled',
+    title: (details.name as string) || (r.name as string) || (r.title as string) || 'Untitled',
+    type: resolvedType,
+    description: (details.description as string) || (r.description as string) || (r.short_desc as string) || '',
+    poster_image: (r.poster_image as string) || (r.poster_url as string) || (r.thumbnail_image as string) || (r.poster_tv_image as string),
+    thumbnail_image: (r.poster_tv_image as string) || (r.thumbnail_image as string) || (r.poster_image as string),
+    banner_image: (r.poster_tv_image as string) || (r.poster_image as string) || (r.banner_image as string),
+    duration: (details.duration as string) || (r.duration as string) || '',
     release_year: details.release_date
-      ? details.release_date.substring(0, 4)
-      : raw.release_date
-      ? String(raw.release_date).substring(0, 4)
-      : raw.release_year,
-    imdb_rating: details.imdb_rating || raw.imdb_rating || raw.rating,
-    access: (details.access || raw.movie_access || raw.access || 'free') as any,
+      ? String(details.release_date).substring(0, 4)
+      : r.release_date
+      ? String(r.release_date).substring(0, 4)
+      : (r.release_year as string | number | undefined),
+    imdb_rating: (details.imdb_rating as string | number) || (r.imdb_rating as string | number) || (r.rating as string | number),
+    access: resolvedAccess,
     genres: genreList,
     genre_data: genreList,
-    has_content_access: Boolean(details.has_content_access ?? raw.has_content_access),
-    is_watchlist: Boolean(details.is_in_watchlist ?? raw.is_watch_list ?? raw.is_watchlist),
+    has_content_access: Boolean(details.has_content_access ?? r.has_content_access),
+    is_watchlist: Boolean(details.is_in_watchlist ?? r.is_watch_list ?? r.is_watchlist),
   };
 }
 
 const getApiBaseUrl = (): string => {
-  // Server-side: use INTERNAL_API_URL, detect Docker container, or fallback to localhost
+  // Server-side: use INTERNAL_API_URL or fallback to localhost
   if (typeof window === 'undefined') {
     if (process.env.INTERNAL_API_URL) {
       return process.env.INTERNAL_API_URL;
-    }
-    try {
-      // Check if running inside Docker container
-      const fs = require('fs');
-      if (fs.existsSync('/.dockerenv')) {
-        return 'http://backend:8000/api';
-      }
-    } catch {
-      // Ignore filesystem check failures
     }
     return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
   }
@@ -145,17 +166,18 @@ class ApiClient {
   }
 
   // ── Authentication & Account ───────────────────────────────────────────────
-  async login(credentials: { email_or_username?: string; email?: string; password?: string }): Promise<AuthResponse['data']> {
+  async login(credentials: { email_or_username?: string; email?: string; password?: string }): Promise<LoginResponse> {
     const payload = {
       username: credentials.email_or_username || credentials.email,
       email: credentials.email,
       password: credentials.password,
     };
-    const res = await this.request<any>('/login', {
+    const res = await this.request<LoginResponse>('/login', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
-    const token = res?.api_token || res?.token || res?.data?.api_token || res?.data?.token;
+    const dataObj = res?.data as { api_token?: string; token?: string } | undefined;
+    const token = res?.api_token || res?.token || dataObj?.api_token || dataObj?.token;
     if (token) {
       this.setToken(token);
       if (typeof window !== 'undefined') {
@@ -165,12 +187,13 @@ class ApiClient {
     return res;
   }
 
-  async register(data: { name: string; email: string; password?: string }): Promise<any> {
-    const res = await this.request<any>('/register', {
+  async register(data: { name: string; email: string; password?: string }): Promise<AuthResponse & { api_token?: string; token?: string; data?: { api_token?: string; token?: string } }> {
+    const res = await this.request<AuthResponse & { api_token?: string; token?: string; data?: { api_token?: string; token?: string } }>('/register', {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    const token = res?.api_token || res?.token || res?.data?.api_token || res?.data?.token;
+    const dataObj = res?.data as { api_token?: string; token?: string } | undefined;
+    const token = res?.api_token || res?.token || dataObj?.api_token || dataObj?.token;
     if (token) {
       this.setToken(token);
       if (typeof window !== 'undefined') {
@@ -194,76 +217,76 @@ class ApiClient {
     return this.request<User>('/v3/profile-details');
   }
 
-  async updateProfile(data: { name?: string; email?: string; phone?: string; avatar?: string }): Promise<any> {
-    return this.request('/update-profile', {
+  async updateProfile(data: { name?: string; email?: string; phone?: string; avatar?: string }): Promise<{ message?: string; user?: User }> {
+    return this.request<{ message?: string; user?: User }>('/update-profile', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async changePassword(data: { old_password: string; new_password: string }): Promise<any> {
-    return this.request('/change-password', {
+  async changePassword(data: { old_password: string; new_password: string }): Promise<{ message?: string }> {
+    return this.request<{ message?: string }>('/change-password', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async updateParentalLock(enabled: boolean, pin?: string): Promise<any> {
-    return this.request('/update-parental-lock', {
+  async updateParentalLock(enabled: boolean, pin?: string): Promise<{ message?: string }> {
+    return this.request<{ message?: string }>('/update-parental-lock', {
       method: 'POST',
       body: JSON.stringify({ is_parental_lock_enable: enabled ? 1 : 0, pin }),
     });
   }
 
   // ── Multi Profiles ─────────────────────────────────────────────────────────
-  async getProfiles(): Promise<any[]> {
-    return this.request<any[]>('/user-profile-list');
+  async getProfiles(): Promise<UserMultiProfile[]> {
+    return this.request<UserMultiProfile[]>('/user-profile-list');
   }
 
-  async createProfile(data: { name: string; is_child?: boolean; avatar?: string }): Promise<any> {
-    return this.request('/save-userprofile', {
+  async createProfile(data: { name: string; is_child?: boolean; avatar?: string }): Promise<UserMultiProfile> {
+    return this.request<UserMultiProfile>('/save-userprofile', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async deleteProfile(profileId: string | number): Promise<any> {
-    return this.request('/delete-userprofile', {
+  async deleteProfile(profileId: string | number): Promise<{ message?: string }> {
+    return this.request<{ message?: string }>('/delete-userprofile', {
       method: 'POST',
       body: JSON.stringify({ id: profileId }),
     });
   }
 
-  async selectProfile(profileId: string | number): Promise<any> {
-    return this.request(`/select-userprofile/${profileId}`, {
+  async selectProfile(profileId: string | number): Promise<{ message?: string; profile?: UserMultiProfile }> {
+    return this.request<{ message?: string; profile?: UserMultiProfile }>(`/select-userprofile/${profileId}`, {
       method: 'POST',
     });
   }
 
   // ── Billing & Invoices ────────────────────────────────────────────────────
-  async getBillingHistory(): Promise<{ subscriptions: any[]; pay_per_view: any[] }> {
-    return this.request<{ subscriptions: any[]; pay_per_view: any[] }>('/v3/user/billing-history');
+  async getBillingHistory(): Promise<BillingHistoryResponse> {
+    return this.request<BillingHistoryResponse>('/v3/user/billing-history');
   }
 
   // ── Notifications ─────────────────────────────────────────────────────────
-  async getNotifications(markRead: boolean = false): Promise<any> {
-    return this.request<any>(`/notification-list${markRead ? '?type=mark_as_read' : ''}`);
+  async getNotifications(markRead: boolean = false): Promise<{ data?: NotificationItem[]; notifications?: NotificationItem[]; notification_data?: NotificationItem[]; [key: string]: unknown }> {
+    return this.request<{ data?: NotificationItem[]; notifications?: NotificationItem[]; notification_data?: NotificationItem[]; [key: string]: unknown }>(`/notification-list${markRead ? '?type=mark_as_read' : ''}`);
   }
 
-  async deleteNotification(id: string | number): Promise<any> {
-    return this.request('/v3/delete-notification', {
+  async deleteNotification(id: string | number): Promise<{ message?: string }> {
+    return this.request<{ message?: string }>('/v3/delete-notification', {
       method: 'POST',
       body: JSON.stringify({ id }),
     });
   }
 
   // ── Cast & Crew ───────────────────────────────────────────────────────────
-  async getCastDetails(id: number | string, type: string = 'actor'): Promise<any> {
-    return this.request<any>(`/v3/cast-details?id=${id}&type=${type}`);
+  async getCastDetails(id: number | string, type: string = 'actor'): Promise<CastDetails> {
+    return this.request<CastDetails>(`/v3/cast-details?id=${id}&type=${type}`);
   }
 
-  async getVideos(page: number = 1): Promise<any> {
-    return this.request<any>(`/v3/video-list?page=${page}`);
+  async getVideos(page: number = 1): Promise<{ data?: MediaItem[]; current_page?: number; last_page?: number }> {
+    return this.request<{ data?: MediaItem[]; current_page?: number; last_page?: number }>(`/v3/video-list?page=${page}`);
   }
 
   // ── Blog & Articles ────────────────────────────────────────────────────────
@@ -290,92 +313,94 @@ class ApiClient {
 
   // ── Discovery & Catalog ───────────────────────────────────────────────────
   async getBannerData(bannerFor: string = 'home'): Promise<MediaItem[]> {
-    const res = await this.request<any>(`/v3/banner-data?banner_for=${bannerFor}`);
-    const items = res?.slider || (Array.isArray(res) ? res : []);
+    const res = await this.request<{ slider?: unknown[]; [key: string]: unknown } | unknown[]>(`/v3/banner-data?banner_for=${bannerFor}`);
+    const items = (res && !Array.isArray(res) && Array.isArray((res as { slider?: unknown[] }).slider))
+      ? (res as { slider: unknown[] }).slider
+      : (Array.isArray(res) ? res : []);
     return items.map(normalizeMediaItem);
   }
 
-  async getDashboard(): Promise<any> {
-    return this.request<any>('/v3/dashboard-detail');
+  async getDashboard(): Promise<{ data?: DashboardData } & DashboardData> {
+    return this.request<{ data?: DashboardData } & DashboardData>('/v3/dashboard-detail');
   }
 
-  async getDashboardDetailData(page: number = 1): Promise<any> {
-    return this.request<any>(`/v3/dashboard-detail-data?page=${page}`);
+  async getDashboardDetailData(page: number = 1): Promise<DashboardData> {
+    return this.request<DashboardData>(`/v3/dashboard-detail-data?page=${page}`);
   }
 
-  async getMovies(params: { page?: number; genre_id?: number; search?: string } = {}): Promise<any> {
+  async getMovies(params: { page?: number; genre_id?: number; search?: string } = {}): Promise<{ data?: MediaItem[]; [key: string]: unknown } | MediaItem[]> {
     const q = new URLSearchParams();
     if (params.page) q.append('page', params.page.toString());
     if (params.genre_id) q.append('genre_id', params.genre_id.toString());
     if (params.search) q.append('search', params.search);
-    return this.request<any>(`/v3/movie-list?${q.toString()}`);
+    return this.request<{ data?: MediaItem[]; [key: string]: unknown } | MediaItem[]>(`/v3/movie-list?${q.toString()}`);
   }
 
-  async getTvShows(params: { page?: number; genre_id?: number; search?: string } = {}): Promise<any> {
+  async getTvShows(params: { page?: number; genre_id?: number; search?: string } = {}): Promise<{ data?: MediaItem[]; [key: string]: unknown } | MediaItem[]> {
     const q = new URLSearchParams();
     if (params.page) q.append('page', params.page.toString());
     if (params.genre_id) q.append('genre_id', params.genre_id.toString());
     if (params.search) q.append('search', params.search);
-    return this.request<any>(`/v3/tvshow-list?${q.toString()}`);
+    return this.request<{ data?: MediaItem[]; [key: string]: unknown } | MediaItem[]>(`/v3/tvshow-list?${q.toString()}`);
   }
 
   async getContentDetails(id: number | string, type: 'movie' | 'tvshow' | 'episode' | 'video'): Promise<ContentDetails> {
-    const raw = await this.request<any>(`/v3/content-details?id=${id}&type=${type}`);
-    const details = raw?.details || {};
-    const more = (raw?.suggested_content || raw?.more_items || []).map(normalizeMediaItem);
-    const casts = raw?.actors || raw?.casts || [];
-    const directors = raw?.directors || [];
+    const raw = await this.request<Record<string, unknown>>(`/v3/content-details?id=${id}&type=${type}`);
+    const details = (raw?.details as Record<string, unknown>) || {};
+    const more = ((raw?.suggested_content || raw?.more_items || []) as unknown[]).map(normalizeMediaItem);
+    const casts = ((raw?.actors || raw?.casts || []) as Array<Record<string, unknown>>);
+    const directors = ((raw?.directors || []) as Array<Record<string, unknown>>);
 
     return {
-      id: raw?.id || details?.id || id,
-      name: details.name || raw?.name || 'Untitled',
-      type: details.type || raw?.type || type,
-      description: details.description || raw?.description || '',
-      poster_image: details.poster_image || raw?.poster_image || '',
-      thumbnail_image: details.thumbnail_image || raw?.thumbnail_image || '',
-      banner_image: details.thumbnail_image || details.poster_image || raw?.poster_image || '',
-      release_year: details.release_date ? String(details.release_date).substring(0, 4) : raw?.release_year,
-      duration: details.duration || raw?.duration || '',
-      imdb_rating: details.imdb_rating || raw?.imdb_rating || '',
-      access: details.access || raw?.access || 'free',
+      id: (raw?.id as string | number) || (details?.id as string | number) || id,
+      name: String(details.name || raw?.name || 'Untitled'),
+      type: String(details.type || raw?.type || type),
+      description: String(details.description || raw?.description || ''),
+      poster_image: String(details.poster_image || raw?.poster_image || ''),
+      thumbnail_image: String(details.thumbnail_image || raw?.thumbnail_image || ''),
+      banner_image: String(details.thumbnail_image || details.poster_image || raw?.poster_image || ''),
+      release_year: details.release_date ? String(details.release_date).substring(0, 4) : (raw?.release_year as string | number | undefined),
+      duration: String(details.duration || raw?.duration || ''),
+      imdb_rating: (details.imdb_rating as string | number | undefined) || (raw?.imdb_rating as string | number | undefined) || '',
+      access: String(details.access || raw?.access || 'free'),
       has_content_access: Boolean(details.has_content_access ?? raw?.has_content_access ?? false),
-      genre_data: Array.isArray(details.genres) ? details.genres : (raw?.genre_data || []),
-      casts: casts.map((c: any) => ({
-        id: c.id,
-        name: c.name,
-        role: c.type || c.role || 'Cast',
-        profile_image: c.profile_image,
+      genre_data: Array.isArray(details.genres) ? (details.genres as string[]) : ((raw?.genre_data as string[]) || []),
+      casts: casts.map((c) => ({
+        id: (c.id as string | number) || '',
+        name: String(c.name || ''),
+        role: String(c.type || c.role || 'Cast'),
+        profile_image: typeof c.profile_image === 'string' ? c.profile_image : undefined,
       })),
-      directors: directors.map((d: any) => ({
-        id: d.id,
-        name: d.name,
+      directors: directors.map((d) => ({
+        id: (d.id as string | number) || '',
+        name: String(d.name || ''),
         role: 'Director',
-        profile_image: d.profile_image,
+        profile_image: typeof d.profile_image === 'string' ? d.profile_image : undefined,
       })),
-      clips: raw?.trailer_data || [],
+      clips: (raw?.trailer_data as ContentDetails['clips']) || [],
       more_items: more,
-      video_qualities: raw?.video_qualities || [],
-      video_default_quality: raw?.video_qualities?.[0],
-      seasons: raw?.seasons || details?.season_data || [],
+      video_qualities: (raw?.video_qualities as ContentDetails['video_qualities']) || [],
+      video_default_quality: (raw?.video_qualities as ContentDetails['video_qualities'])?.[0],
+      seasons: (raw?.seasons as ContentDetails['seasons']) || (details?.season_data as ContentDetails['seasons']) || [],
     };
   }
 
-  async getEpisodes(tvShowId: number | string, seasonId?: number | string): Promise<any> {
+  async getEpisodes(tvShowId: number | string, seasonId?: number | string): Promise<{ data?: Episode[]; [key: string]: unknown } | Episode[]> {
     const q = new URLSearchParams({ tv_show_id: tvShowId.toString() });
     if (seasonId) q.append('season_id', seasonId.toString());
-    return this.request<any>(`/v3/episode-list?${q.toString()}`);
+    return this.request<{ data?: Episode[]; [key: string]: unknown } | Episode[]>(`/v3/episode-list?${q.toString()}`);
   }
 
-  async getLiveTvDashboard(): Promise<{ slider: LiveChannel[]; category_data: any[] }> {
-    return this.request<{ slider: LiveChannel[]; category_data: any[] }>('/v3/livetv-dashboard');
+  async getLiveTvDashboard(): Promise<{ slider: LiveChannel[]; category_data: LiveCategory[] }> {
+    return this.request<{ slider: LiveChannel[]; category_data: LiveCategory[] }>('/v3/livetv-dashboard');
   }
 
   async getLiveTvDetails(channelId: number | string): Promise<LiveTvPlaybackDetails> {
     return this.request<LiveTvPlaybackDetails>(`/v3/livetv-details?channel_id=${channelId}`);
   }
 
-  async search(query: string): Promise<any> {
-    return this.request<any>(`/v3/get-search-data?search=${encodeURIComponent(query)}`);
+  async search(query: string): Promise<SearchDataResult> {
+    return this.request<SearchDataResult>(`/v3/get-search-data?search=${encodeURIComponent(query)}`);
   }
 
   // ── Watchlist & Continue Watching ─────────────────────────────────────────
@@ -383,14 +408,14 @@ class ApiClient {
     return this.request<MediaItem[]>('/v3/watch-list');
   }
 
-  async saveWatchlist(entertainmentId: string | number, type: string): Promise<any> {
+  async saveWatchlist(entertainmentId: string | number, type: string): Promise<{ status: boolean; message?: string }> {
     return this.request('/save-watchlist', {
       method: 'POST',
       body: JSON.stringify({ entertainment_id: entertainmentId, type }),
     });
   }
 
-  async removeWatchlist(entertainmentId: string | number): Promise<any> {
+  async removeWatchlist(entertainmentId: string | number): Promise<{ status: boolean; message?: string }> {
     return this.request('/delete-watchlist', {
       method: 'POST',
       body: JSON.stringify({ entertainment_id: entertainmentId }),
@@ -401,7 +426,7 @@ class ApiClient {
     return this.request<MediaItem[]>('/v3/continuewatch-list');
   }
 
-  async saveContinueWatching(contentId: string | number, type: string, watchedTime: number, totalTime?: number): Promise<any> {
+  async saveContinueWatching(contentId: string | number, type: string, watchedTime: number, totalTime?: number): Promise<{ status: boolean; message?: string }> {
     return this.request('/save-continuewatch', {
       method: 'POST',
       body: JSON.stringify({
@@ -425,7 +450,7 @@ class ApiClient {
     });
   }
 
-  async validateCoupon(couponCode: string, planId?: number): Promise<any> {
+  async validateCoupon(couponCode: string, planId?: number): Promise<{ status: boolean; message?: string; data?: Record<string, unknown> }> {
     return this.request('/v3/coupon/validate', {
       method: 'POST',
       body: JSON.stringify({ coupon_code: couponCode, plan_id: planId }),
@@ -451,7 +476,7 @@ class ApiClient {
     order_id?: string;
     signature?: string;
     reference?: string;
-  }): Promise<any> {
+  }): Promise<{ status: boolean; message?: string; [key: string]: unknown }> {
     return this.request('/v3/subscription/verify-payment', {
       method: 'POST',
       body: JSON.stringify(params),
@@ -462,14 +487,20 @@ class ApiClient {
     return this.request<SubscriptionStatus>('/v3/user/subscription');
   }
 
-  async cancelSubscription(): Promise<any> {
+  async cancelSubscription(): Promise<{ status: boolean; message?: string }> {
     return this.request('/v3/subscription/cancel', {
       method: 'POST',
     });
   }
 
   // ── Pay-Per-View ──────────────────────────────────────────────────────────
-  async calculatePayPerViewPrice(contentId: string | number, type: string, couponCode?: string): Promise<any> {
+  async calculatePayPerViewPrice(contentId: string | number, type: string, couponCode?: string): Promise<{
+    price: number;
+    total_amount: number;
+    discount?: number;
+    currency?: string;
+    [key: string]: unknown;
+  }> {
     return this.request('/v3/pay-per-view/calculate-price', {
       method: 'POST',
       body: JSON.stringify({ movie_id: contentId, type, coupon_code: couponCode }),
@@ -481,14 +512,14 @@ class ApiClient {
     type: string;
     payment_method: string;
     redirect_url?: string;
-  }): Promise<any> {
+  }): Promise<{ redirect_url?: string; session_id?: string; order_id?: string; [key: string]: unknown }> {
     return this.request('/v3/pay-per-view/process-payment', {
       method: 'POST',
       body: JSON.stringify(params),
     });
   }
 
-  async verifyPayPerViewPayment(gateway: string, sessionId: string): Promise<any> {
+  async verifyPayPerViewPayment(gateway: string, sessionId: string): Promise<{ status: boolean; message?: string; [key: string]: unknown }> {
     return this.request('/v3/pay-per-view/verify-payment', {
       method: 'POST',
       body: JSON.stringify({ gateway, session_id: sessionId }),
@@ -496,12 +527,12 @@ class ApiClient {
   }
 
   // ── App Settings & Static Pages ───────────────────────────────────────────
-  async getAppConfiguration(): Promise<any> {
-    return this.request<any>('/v3/app-configuration');
+  async getAppConfiguration(): Promise<Record<string, unknown>> {
+    return this.request<Record<string, unknown>>('/v3/app-configuration');
   }
 
-  async getPage(slug: string): Promise<any> {
-    return this.request<any>(`/v3/pages/${slug}`);
+  async getPage(slug: string): Promise<{ title?: string; name?: string; description?: string; content?: string; [key: string]: unknown }> {
+    return this.request<{ title?: string; name?: string; description?: string; content?: string; [key: string]: unknown }>(`/v3/pages/${slug}`);
   }
 }
 

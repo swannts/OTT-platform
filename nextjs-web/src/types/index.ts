@@ -24,11 +24,22 @@ export interface AuthResponse {
   };
 }
 
+export interface LoginResponse extends AuthResponse {
+  api_token?: string;
+  token?: string;
+  id?: string | number;
+  name?: string;
+  email?: string;
+  user_type?: string;
+  is_subscribe?: number;
+  [key: string]: unknown;
+}
+
 export interface MediaItem {
   id: string | number;
   name: string;
   title?: string;
-  type: 'movie' | 'tvshow' | 'episode' | 'video';
+  type: 'movie' | 'tvshow' | 'episode' | 'video' | 'livetv';
   description?: string;
   poster_image?: string;
   poster_url?: string;
@@ -39,7 +50,7 @@ export interface MediaItem {
   duration?: string;
   imdb_rating?: string | number;
   rating?: number;
-  access?: 'free' | 'paid' | 'pay-per-view';
+  access?: 'free' | 'paid' | 'pay-per-view' | 'unlock';
   plan_level?: number;
   genres?: string[] | { id: string | number; name: string }[];
   genre_data?: string[];
@@ -123,12 +134,36 @@ export interface LiveChannel {
   category?: string;
   description?: string;
   poster_image?: string;
+  poster_url?: string;
+  poster_tv_image?: string;
   thumbnail_image?: string;
   stream_type?: string;
   server_url?: string;
   server_url1?: string;
+  stream_url?: string;
   embedded?: string;
   has_content_access?: boolean;
+  details?: {
+    name?: string;
+    category?: string;
+    description?: string;
+    poster_url?: string;
+    poster_tv_image?: string;
+    server_url?: string;
+    stream_url?: string;
+    has_content_access?: boolean | number;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+export interface LiveTvPlaybackDetails {
+  details: {
+    has_content_access?: boolean | number;
+    server_url?: string | null;
+    stream_type?: string | null;
+  };
+  video_qualities: VideoQuality[];
 }
 
 export interface PlanLimitation {
@@ -137,7 +172,7 @@ export interface PlanLimitation {
   limitation_value: boolean | number;
   slug: string;
   message?: string;
-  limit?: { value?: string } | any;
+  limit?: { value?: string } | Record<string, unknown>;
 }
 
 export interface Plan {
@@ -222,11 +257,114 @@ export interface UserMultiProfile {
 
 export interface NotificationItem {
   id: string;
-  title: string;
-  body: string;
-  read: boolean;
-  created_at: string;
-  data?: any;
+  title?: string;
+  body?: string;
+  description?: string;
+  read?: boolean;
+  read_at?: string | null;
+  created_at?: string;
+  data?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface Episode {
+  id: number | string;
+  name: string;
+  episode_number?: number;
+  season_id?: number | string;
+  season_number?: number;
+  tv_show_id?: number | string;
+  poster_image?: string;
+  thumbnail_image?: string;
+  description?: string;
+  duration?: string;
+  access?: 'free' | 'paid' | 'unlock';
+  has_content_access?: boolean;
+  video_url?: string;
+  stream_type?: string;
+  qualities?: VideoQuality[];
+}
+
+export interface LiveCategory {
+  id: number | string;
+  name: string;
+  channel_data?: LiveChannel[];
+  channels?: LiveChannel[];
+}
+
+export interface BillingSubscriptionRecord {
+  id: number;
+  plan_name?: string;
+  amount: number;
+  currency?: string;
+  start_date?: string;
+  end_date?: string;
+  status: string;
+  payment_type?: string;
+  invoice_id?: number;
+  [key: string]: unknown;
+}
+
+export interface BillingPayPerViewRecord {
+  id: number;
+  content_name?: string;
+  amount: number;
+  currency?: string;
+  date?: string;
+  status: string;
+  payment_type?: string;
+  invoice_id?: number;
+  [key: string]: unknown;
+}
+
+export interface BillingHistoryResponse {
+  subscriptions: BillingSubscriptionRecord[];
+  pay_per_view: BillingPayPerViewRecord[];
+}
+
+export interface CastDetails {
+  id: number | string;
+  name: string;
+  type?: string;
+  designation?: string;
+  image?: string;
+  profile_image?: string;
+  bio?: string;
+  filmography?: MediaItem[];
+  entertainments?: unknown[];
+  [key: string]: unknown;
+}
+
+export interface SearchDataResult {
+  movies?: MediaItem[];
+  tv_shows?: MediaItem[];
+  videos?: MediaItem[];
+  channels?: LiveChannel[];
+  data?: MediaItem[];
+  [key: string]: unknown;
+}
+
+export type DashboardMediaSection = { data?: MediaItem[]; [key: string]: unknown } | MediaItem[];
+
+export interface DashboardData {
+  slider?: MediaItem[];
+  banner?: MediaItem[];
+  top_10?: DashboardMediaSection;
+  latest_movie?: DashboardMediaSection;
+  popular_movie?: DashboardMediaSection;
+  pay_per_view?: DashboardMediaSection;
+  tv_show?: DashboardMediaSection;
+  latest_movies?: MediaItem[];
+  popular_movies?: MediaItem[];
+  trending_movies?: MediaItem[];
+  top_rated_movies?: MediaItem[];
+  tv_shows?: MediaItem[];
+  latest_tvshows?: MediaItem[];
+  popular_tvshows?: MediaItem[];
+  continue_watch?: MediaItem[];
+  recommended?: MediaItem[];
+  category_data?: LiveCategory[];
+  [key: string]: unknown;
 }
 
 export type {

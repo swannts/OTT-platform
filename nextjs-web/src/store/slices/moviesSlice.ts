@@ -25,8 +25,9 @@ export const fetchMoviesList = createAsyncThunk<MediaItem[], { page?: number } |
       const res = await api.getMovies(params);
       const list = Array.isArray(res) ? res : res?.data || [];
       return Array.isArray(list) ? list.map(normalizeMediaItem) : [];
-    } catch (err: any) {
-      return rejectWithValue(err.message || 'Failed to fetch movies');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch movies';
+      return rejectWithValue(message);
     }
   }
 );
@@ -37,8 +38,9 @@ export const fetchMovieDetails = createAsyncThunk<MediaItem, number | string>(
     try {
       const res = await api.getContentDetails(id, 'movie');
       return normalizeMediaItem(res);
-    } catch (err: any) {
-      return rejectWithValue(err.message || 'Failed to fetch movie details');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch movie details';
+      return rejectWithValue(message);
     }
   }
 );

@@ -15,3 +15,4 @@ export const availableLocales: { code: Locale; label: string; shortLabel: string
 
 export { en, bn };
 export type { TranslationKey };
+

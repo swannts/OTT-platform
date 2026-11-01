@@ -67,7 +67,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const moviesData = await api.getMovies({ page: 1 });
     const moviesList = Array.isArray(moviesData) ? moviesData : moviesData?.data || [];
-    movieRoutes = moviesList.map((m: any) => ({
+    movieRoutes = (moviesList as Array<{ id: string | number }>).map((m) => ({
       url: `${baseUrl}/movies/${m.id}`,
       lastModified: new Date(),
       changeFrequency: 'weekly' as const,
@@ -81,7 +81,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const tvData = await api.getTvShows({ page: 1 });
     const tvList = Array.isArray(tvData) ? tvData : tvData?.data || [];
-    tvRoutes = tvList.map((t: any) => ({
+    tvRoutes = (tvList as Array<{ id: string | number }>).map((t) => ({
       url: `${baseUrl}/tv-shows/${t.id}`,
       lastModified: new Date(),
       changeFrequency: 'weekly' as const,

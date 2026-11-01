@@ -31,9 +31,9 @@ export default function CheckoutPage() {
       if (code) {
         setAppliedCoupon(code);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (code) {
-        setCouponError(err.message || 'Invalid coupon code');
+        setCouponError(err instanceof Error ? err.message : 'Invalid coupon code');
       } else {
         // Fallback pricing simulation
         setCalculation({
@@ -94,8 +94,8 @@ export default function CheckoutPage() {
         // Redirect to external Stripe / Gateway checkout session
         window.location.href = res.redirect_url;
       }
-    } catch (err: any) {
-      alert(err.message || 'Payment initiation failed. Please try again.');
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Payment initiation failed. Please try again.');
     } finally {
       setIsProcessing(false);
     }

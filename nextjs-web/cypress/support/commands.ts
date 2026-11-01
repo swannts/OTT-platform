@@ -3,14 +3,14 @@
 
 declare namespace Cypress {
   interface Chainable {
-    getBySel(selector: string, ...args: any[]): Chainable<JQuery<HTMLElement>>;
+    getBySel(selector: string, options?: Partial<Cypress.Loggable & Cypress.Timeoutable & Cypress.Withinable & Cypress.Shadow>): Chainable<JQuery<HTMLElement>>;
     loginAsUser(customUser?: Partial<{ id: number; name: string; email: string; avatar: string }>): Chainable<void>;
     logoutUser(): Chainable<void>;
   }
 }
 
-Cypress.Commands.add('getBySel', (selector, ...args) => {
-  return cy.get(`[data-testid="${selector}"]`, ...args);
+Cypress.Commands.add('getBySel', (selector, options) => {
+  return cy.get(`[data-testid="${selector}"]`, options);
 });
 
 Cypress.Commands.add('loginAsUser', (customUser = {}) => {

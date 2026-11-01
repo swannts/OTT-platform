@@ -25,8 +25,8 @@ function LoginFormContent() {
     try {
       await login({ email, password });
       router.push(redirect);
-    } catch (err: any) {
-      setError(err.message || 'Invalid email or password.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Invalid email or password.');
     } finally {
       setIsSubmitting(false);
     }

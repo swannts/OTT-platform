@@ -27,8 +27,17 @@ async function getTvShowData(id: string): Promise<{ show: ContentDetails; episod
 
   try {
     const epData = await api.getEpisodes(id);
-    if (Array.isArray(epData) && epData.length > 0) {
-      episodes = epData;
+    const list = Array.isArray(epData) ? epData : (epData?.data || []);
+    if (Array.isArray(list) && list.length > 0) {
+      episodes = list.map((ep, idx) => ({
+        id: ep.id,
+        name: ep.name || `Episode ${idx + 1}`,
+        episode_number: typeof ep.episode_number === 'number' ? ep.episode_number : (idx + 1),
+        description: ep.description,
+        poster_image: ep.poster_image || ep.thumbnail_image,
+        duration: ep.duration,
+        has_content_access: ep.has_content_access,
+      }));
     }
   } catch (err) {
     console.error(`Failed to fetch episodes for ${id}:`, err);
@@ -46,7 +55,7 @@ async function getTvShowData(id: string): Promise<{ show: ContentDetails; episod
       release_year: '2026',
       imdb_rating: '9.9',
       access: 'free',
-      has_content_access: true,
+      has_content_access: false,
       genre_data: ['Prophetic Biographies', 'Islamic History', 'Docuseries'],
     };
   }
@@ -59,7 +68,7 @@ async function getTvShowData(id: string): Promise<{ show: ContentDetails; episod
         episode_number: 1,
         description: 'The miraculous defense of the Holy Kaaba and the blessed birth of the Prophet Muhammad ﷺ in Mecca.',
         duration: '45m',
-        has_content_access: true,
+        has_content_access: false,
       },
       {
         id: '01940000-0006-7000-8000-000000000002',
@@ -67,7 +76,7 @@ async function getTvShowData(id: string): Promise<{ show: ContentDetails; episod
         episode_number: 2,
         description: 'Solitude on Jabal al-Nour and the first revelation received through Angel Jibril: "Read in the name of your Lord."',
         duration: '48m',
-        has_content_access: true,
+        has_content_access: false,
       },
       {
         id: '01940000-0006-7000-8000-000000000003',
@@ -75,7 +84,7 @@ async function getTvShowData(id: string): Promise<{ show: ContentDetails; episod
         episode_number: 3,
         description: 'The open invitation to monotheism and the steadfast patience of the early companions under adversity.',
         duration: '52m',
-        has_content_access: true,
+        has_content_access: false,
       },
     ];
   }

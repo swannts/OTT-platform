@@ -85,3 +85,4 @@ export const bn: Record<TranslationKey, string> = {
   makkah_live: '২৪/৭ পবিত্র মক্কার লাইভ সম্প্রচার',
   madinah_live: '২৪/৭ পবিত্র মদিনার লাইভ সম্প্রচার',
 };
+

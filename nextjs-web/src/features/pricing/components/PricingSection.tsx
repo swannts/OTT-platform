@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Plan } from '@/types';
+import { Plan, PlanLimitation } from '@/types';
 import { Crown, Check, Zap, Sparkles } from 'lucide-react';
 import { Heading, Text, Badge } from '@/components/ui';
 
@@ -70,7 +70,7 @@ export default function PricingSection({ initialPlans }: PricingSectionProps) {
 
                 {/* Features List */}
                 <ul className="space-y-3.5 mb-8">
-                  {(plan.plan_type || []).map((feat: any, idx: number) => (
+                  {(plan.plan_type || []).map((feat: PlanLimitation, idx: number) => (
                     <li key={idx} className="flex items-center text-xs text-gray-300">
                       <div className="w-4 h-4 rounded-full bg-[#E5B869]/20 text-[#E5B869] flex items-center justify-center mr-3 flex-shrink-0">
                         <Check className="w-2.5 h-2.5" />

@@ -1,5 +1,5 @@
 import { api, normalizeMediaItem } from '@/lib/api';
-import { MediaItem, LiveChannel } from '@/types';
+import { MediaItem, LiveChannel, LiveCategory } from '@/types';
 
 export interface HomeInitialData {
   banners: MediaItem[];
@@ -34,11 +34,13 @@ export async function getHomeInitialDataDal(): Promise<HomeInitialData> {
     }
 
     if (dashRes.status === 'fulfilled' && dashRes.value) {
-      const d = dashRes.value?.data || dashRes.value;
-      const getList = (key: any) => {
+      const d = (dashRes.value as Record<string, unknown>)?.data as Record<string, unknown> || (dashRes.value as Record<string, unknown>);
+      const getList = (key: unknown): MediaItem[] => {
         if (!key) return [];
         if (Array.isArray(key)) return key.map(normalizeMediaItem);
-        if (Array.isArray(key?.data)) return key.data.map(normalizeMediaItem);
+        if (typeof key === 'object' && key !== null && 'data' in key && Array.isArray((key as { data: unknown[] }).data)) {
+          return (key as { data: unknown[] }).data.map(normalizeMediaItem);
+        }
         return [];
       };
 
@@ -52,7 +54,7 @@ export async function getHomeInitialDataDal(): Promise<HomeInitialData> {
       if (result.latestMovies.length === 0) {
         try {
           const mRes = await api.getMovies({ page: 1 });
-          const mList = Array.isArray(mRes) ? mRes : mRes?.data || [];
+          const mList = Array.isArray(mRes) ? mRes : (mRes as { data?: unknown[] })?.data || [];
           if (Array.isArray(mList) && mList.length > 0) {
             result.latestMovies = mList.map(normalizeMediaItem);
             if (result.top10.length === 0) {
@@ -67,10 +69,10 @@ export async function getHomeInitialDataDal(): Promise<HomeInitialData> {
 
     if (liveRes.status === 'fulfilled' && liveRes.value) {
       const res = liveRes.value;
-      const rawChannels: any[] = [];
+      const rawChannels: LiveChannel[] = [];
       if (res?.slider && Array.isArray(res.slider)) rawChannels.push(...res.slider);
       if (res?.category_data && Array.isArray(res.category_data)) {
-        res.category_data.forEach((cat: any) => {
+        res.category_data.forEach((cat: LiveCategory) => {
           if (cat.channel_data && Array.isArray(cat.channel_data)) {
             rawChannels.push(...cat.channel_data);
           }

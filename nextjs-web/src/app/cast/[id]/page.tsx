@@ -46,9 +46,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const title = `${cast.name} - Islamic Scholar & Speaker | NOOR`;
   const description =
     cast.bio || `Watch lectures, historical docuseries, and prophetic discourses featuring ${cast.name} on NOOR.`;
-  const image =
-    cast.image ||
-    cast.profile_image ||
+  const image: string =
+    (typeof cast.image === 'string' && cast.image) ||
+    (typeof cast.profile_image === 'string' && cast.profile_image) ||
     'https://images.unsplash.com/photo-1544717305-2782549b5136?w=500&auto=format&fit=crop&q=80';
 
   return {
@@ -129,8 +129,8 @@ export default async function CastDetailPage({ params }: PageProps) {
           <div className="w-48 h-64 sm:w-56 sm:h-72 rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-neutral-900">
             <img
               src={
-                cast.image ||
-                cast.profile_image ||
+                (typeof cast.image === 'string' && cast.image) ||
+                (typeof cast.profile_image === 'string' && cast.profile_image) ||
                 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=500&auto=format&fit=crop&q=80'
               }
               alt={cast.name}

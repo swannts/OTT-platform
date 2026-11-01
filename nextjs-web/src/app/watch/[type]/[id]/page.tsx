@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { api } from '@/lib/api';
 import { ContentDetails } from '@/types';
 import { VideoPlayer } from '@/features/player';
@@ -17,45 +16,21 @@ export default function WatchPage() {
 
   const [content, setContent] = useState<ContentDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     async function loadContent() {
       if (!id) return;
       setIsLoading(true);
       try {
-        const data = await api.getContentDetails(id, type as any);
+        const contentType = ['movie', 'tvshow', 'episode', 'video'].includes(type)
+          ? (type as 'movie' | 'tvshow' | 'episode' | 'video')
+          : 'movie';
+        const data = await api.getContentDetails(id, contentType);
         setContent(data);
       } catch {
-        // Islamic fallback content
-        setContent({
-          id: id || '01940000-0004-7000-8000-000000000009',
-          name: 'The Life of Prophet Muhammad ﷺ',
-          type: type,
-          description:
-            'A journey of mercy, wisdom and guidance for all humanity. Exploring the pivotal historical moments and eternal teachings of the final Messenger.',
-          poster_image: 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=800&auto=format&fit=crop&q=85',
-          banner_image: 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=1920&auto=format&fit=crop&q=85',
-          access: 'free',
-          has_content_access: true,
-          video_default_quality: {
-            quality: '1080p',
-            url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
-            url_type: 'HLS',
-          },
-          video_qualities: [
-            {
-              quality: '1080p',
-              url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
-              url_type: 'HLS',
-            },
-            {
-              quality: '720p',
-              url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
-              url_type: 'HLS',
-            },
-          ],
-          genre_data: ['Prophetic Biographies', 'Islamic History'],
-        });
+        setContent(null);
+        setLoadError(true);
       } finally {
         setIsLoading(false);
       }
@@ -67,15 +42,16 @@ export default function WatchPage() {
   if (isLoading || !content) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center text-white">
-        <div className="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin" />
+        {isLoading ? (
+          <div className="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin" />
+        ) : (
+          <p role="alert" className="text-gray-300">{loadError ? 'Unable to load this title. Please try again later.' : 'Title not found.'}</p>
+        )}
       </div>
     );
   }
 
-  const streamUrl =
-    content.video_default_quality?.url ||
-    content.video_qualities?.[0]?.url ||
-    'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
+  const streamUrl = content.video_default_quality?.url || content.video_qualities?.[0]?.url || '';
   const urlType = content.video_default_quality?.url_type || 'HLS';
 
   return (
@@ -93,13 +69,14 @@ export default function WatchPage() {
         {/* Video Player Container */}
         <div className="w-full">
           <VideoPlayer
+            key={`${type}:${content.id}`}
             contentId={content.id}
             contentType={type}
             title={content.name}
             videoUrl={streamUrl}
             urlType={urlType}
             qualities={content.video_qualities || []}
-            hasAccess={content.has_content_access !== false}
+            hasAccess={content.has_content_access === true}
             initialTime={typeof content.watched_time === 'number' ? content.watched_time : 0}
             poster={content.banner_image || content.poster_image}
           />

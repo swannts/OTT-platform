@@ -33,7 +33,7 @@ async function getMovieData(id: string): Promise<ContentDetails | null> {
     duration: '1h 38m',
     imdb_rating: '9.8',
     access: 'free',
-    has_content_access: true,
+    has_content_access: false,
     genre_data: ['Islamic History', 'Sacred Sanctuaries', 'Documentary'],
     casts: [
       { id: '01940000-0002-7000-8000-000000000001', name: 'Dr. Yasir Qadhi', role: 'Lead Narrator & Historian' },

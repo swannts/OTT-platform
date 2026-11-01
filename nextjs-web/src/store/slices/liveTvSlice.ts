@@ -1,11 +1,11 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { api } from '@/lib/api';
-import { LiveChannel } from '@/types';
+import { LiveChannel, LiveCategory } from '@/types';
 
 interface LiveTvState {
   channels: LiveChannel[];
   selectedChannel: LiveChannel | null;
-  categories: any[];
+  categories: LiveCategory[];
   isLoading: boolean;
   error: string | null;
 }
@@ -19,19 +19,19 @@ const initialState: LiveTvState = {
 };
 
 export const fetchLiveTvDashboard = createAsyncThunk<
-  { channels: LiveChannel[]; categories: any[] },
+  { channels: LiveChannel[]; categories: LiveCategory[] },
   void
 >('liveTv/fetchLiveTvDashboard', async (_, { rejectWithValue }) => {
   try {
     const res = await api.getLiveTvDashboard();
-    const rawChannels: any[] = [];
+    const rawChannels: LiveChannel[] = [];
 
     if (res?.slider && Array.isArray(res.slider)) {
       rawChannels.push(...res.slider);
     }
 
     if (res?.category_data && Array.isArray(res.category_data)) {
-      res.category_data.forEach((cat: any) => {
+      res.category_data.forEach((cat: LiveCategory) => {
         if (cat.channel_data && Array.isArray(cat.channel_data)) {
           rawChannels.push(...cat.channel_data);
         }
@@ -55,9 +55,8 @@ export const fetchLiveTvDashboard = createAsyncThunk<
         poster_image: c.poster_image || c.poster_tv_image || c.thumbnail_image,
         thumbnail_image: c.poster_tv_image || c.thumbnail_image || c.poster_image,
         stream_type: c.stream_type || 'HLS',
-        server_url:
-          c.server_url || c.server_url1 || 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
-        has_content_access: Boolean(c.details?.has_content_access ?? c.has_content_access ?? true),
+        server_url: c.server_url || c.server_url1 || '',
+        has_content_access: Boolean(c.details?.has_content_access ?? c.has_content_access ?? false),
       });
     }
 
@@ -65,8 +64,9 @@ export const fetchLiveTvDashboard = createAsyncThunk<
       channels: unique,
       categories: res?.category_data || [],
     };
-  } catch (err: any) {
-    return rejectWithValue(err.message || 'Failed to fetch live TV dashboard');
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to fetch live TV dashboard';
+    return rejectWithValue(message);
   }
 });
 

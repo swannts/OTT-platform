@@ -18,7 +18,7 @@ import {
 
 interface NotificationItem {
   id: string;
-  created_at: string;
+  created_at?: string;
   data?: {
     data?: {
       id?: number;
@@ -50,7 +50,7 @@ export default function NotificationsPage() {
     setLoading(true);
     try {
       const res = await api.getNotifications(false);
-      const items = Array.isArray(res) ? res : res?.notifications || [];
+      const items = (Array.isArray(res) ? res : res?.notifications || res?.data || []) as unknown as NotificationItem[];
       setNotifications(items);
     } catch {
       setNotifications([]);

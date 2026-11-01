@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/providers';
 import { api } from '@/lib/api';
+import { NotificationItem } from '@/types';
 import {
   Bell,
   Check,
@@ -92,15 +93,18 @@ export default function NotificationDropdown() {
         .then((res) => {
           const rawItems = res?.notification_data || res?.notifications || [];
           if (Array.isArray(rawItems) && rawItems.length > 0) {
-            const mapped: AppNotification[] = rawItems.map((n: any, idx: number) => ({
-              id: String(n.id || `api-${idx}`),
-              title: n.title || n.data?.title || 'NOOR Cinema Update',
-              message: n.description || n.data?.description || 'New content added to your library.',
-              time: 'Just now',
-              isRead: Boolean(n.read_at),
-              type: 'general',
-              href: '/notifications',
-            }));
+            const mapped: AppNotification[] = (rawItems as NotificationItem[]).map((n, idx: number) => {
+              const dataObj = typeof n.data === 'object' && n.data !== null ? n.data : {};
+              return {
+                id: String(n.id || `api-${idx}`),
+                title: String(n.title || dataObj.title || 'NOOR Cinema Update'),
+                message: String(n.description || n.body || dataObj.description || 'New content added to your library.'),
+                time: 'Just now',
+                isRead: Boolean(n.read_at || n.read),
+                type: 'general',
+                href: '/notifications',
+              };
+            });
             setNotifications(mapped);
             localStorage.setItem('noor_notifications', JSON.stringify(mapped));
             return;

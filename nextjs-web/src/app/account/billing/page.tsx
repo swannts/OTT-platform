@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
+import { BillingSubscriptionRecord, BillingPayPerViewRecord } from '@/types';
 import {
   CreditCard,
   User as UserIcon,
@@ -22,7 +23,10 @@ export default function BillingPage() {
   const { user, subscription, refreshUser } = useAuth();
   const router = useRouter();
 
-  const [history, setHistory] = useState<{ subscriptions: any[]; pay_per_view: any[] }>({
+  const [history, setHistory] = useState<{
+    subscriptions: BillingSubscriptionRecord[];
+    pay_per_view: BillingPayPerViewRecord[];
+  }>({
     subscriptions: [],
     pay_per_view: [],
   });
@@ -68,8 +72,9 @@ export default function BillingPage() {
         subscriptions: res?.subscriptions || [],
         pay_per_view: res?.pay_per_view || [],
       });
-    } catch (err: any) {
-      setCancelMessage(err?.message || 'Failed to cancel subscription.');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to cancel subscription.';
+      setCancelMessage(message);
     } finally {
       setCancelling(false);
     }
@@ -195,7 +200,7 @@ export default function BillingPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5 text-gray-300">
-                  {history.subscriptions.map((sub: any) => (
+                  {history.subscriptions.map((sub: BillingSubscriptionRecord) => (
                     <tr key={sub.id} className="hover:bg-white/5 transition-colors">
                       <td className="py-4 font-medium text-white">{sub.plan_name}</td>
                       <td className="py-4 text-xs text-gray-400">
@@ -259,7 +264,7 @@ export default function BillingPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5 text-gray-300">
-                  {history.pay_per_view.map((ppv: any) => (
+                  {history.pay_per_view.map((ppv: BillingPayPerViewRecord) => (
                     <tr key={ppv.id} className="hover:bg-white/5 transition-colors">
                       <td className="py-4 font-medium text-white">{ppv.content_name}</td>
                       <td className="py-4 text-xs text-gray-400">{ppv.date}</td>

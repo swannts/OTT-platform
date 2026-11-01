@@ -42,8 +42,8 @@ function PaymentSuccessContent() {
         });
         setSuccess(true);
         await refreshSubscription();
-      } catch (err: any) {
-        setErrorMessage(err.message || 'Payment verification failed.');
+      } catch (err: unknown) {
+        setErrorMessage(err instanceof Error ? err.message : 'Payment verification failed.');
       } finally {
         setIsVerifying(false);
       }

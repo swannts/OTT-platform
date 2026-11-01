@@ -100,8 +100,8 @@ export default function ProfilesPage() {
       setNewName('');
       setIsChild(false);
       await loadProfiles();
-    } catch (err: any) {
-      alert(err?.message || 'Failed to create profile');
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Failed to create profile');
     } finally {
       setSubmitting(false);
     }
@@ -112,8 +112,8 @@ export default function ProfilesPage() {
     try {
       await api.deleteProfile(profileId);
       await loadProfiles();
-    } catch (err: any) {
-      alert(err?.message || 'Failed to delete profile');
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Failed to delete profile');
     }
   };
 

@@ -16,12 +16,12 @@ export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
   const featured = hasBackendChannels
     ? {
         id: channels[0].id,
-        title: channels[0].name || (channels[0] as any).details?.name || 'Live Broadcast',
-        location: (channels[0] as any).details?.category || 'Live Television',
+        title: channels[0].name || channels[0].details?.name || 'Live Broadcast',
+        location: channels[0].details?.category || 'Live Television',
         thumbnail:
           channels[0].poster_image ||
           channels[0].thumbnail_image ||
-          (channels[0] as any).poster_tv_image ||
+          channels[0].poster_tv_image ||
           'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=800&auto=format&fit=crop&q=80',
         watchUrl: `/watch/live/${channels[0].id}`,
       }
@@ -37,12 +37,12 @@ export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
   const channelSlice = hasBackendChannels
     ? channels.slice(1, 5).map((ch, idx) => ({
         id: ch.id,
-        name: ch.name || (ch as any).details?.name || `Channel ${ch.id}`,
-        subtitle: (ch as any).details?.category || 'Live Channel',
+        name: ch.name || ch.details?.name || `Channel ${ch.id}`,
+        subtitle: ch.details?.category || 'Live Channel',
         logo:
           ch.poster_image ||
           ch.thumbnail_image ||
-          (ch as any).poster_tv_image ||
+          ch.poster_tv_image ||
           '',
         color: ['border-blue-500/30 text-blue-400 bg-blue-900/20', 'border-amber-500/30 text-amber-400 bg-amber-900/20', 'border-emerald-500/30 text-emerald-400 bg-emerald-900/20', 'border-red-500/30 text-red-400 bg-red-900/20'][idx % 4],
       }))

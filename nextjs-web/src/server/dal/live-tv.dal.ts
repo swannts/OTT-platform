@@ -1,17 +1,17 @@
 import { api } from '@/lib/api';
-import { LiveChannel } from '@/types';
+import { LiveChannel, LiveCategory } from '@/types';
 
 export async function getLiveTvChannelsDal(): Promise<LiveChannel[]> {
   try {
     const res = await api.getLiveTvDashboard();
-    const rawChannels: any[] = [];
+    const rawChannels: LiveChannel[] = [];
 
     if (res?.slider && Array.isArray(res.slider)) {
       rawChannels.push(...res.slider);
     }
 
     if (res?.category_data && Array.isArray(res.category_data)) {
-      res.category_data.forEach((cat: any) => {
+      res.category_data.forEach((cat: LiveCategory) => {
         if (cat.channel_data && Array.isArray(cat.channel_data)) {
           rawChannels.push(...cat.channel_data);
         }

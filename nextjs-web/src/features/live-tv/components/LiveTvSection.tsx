@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
   setSelectedChannel,
@@ -10,6 +10,7 @@ import {
 import { VideoPlayer } from '@/features/player';
 import { Radio, Tv } from 'lucide-react';
 import { LiveChannel } from '@/types';
+import { api } from '@/lib/api';
 
 interface LiveTvSectionProps {
   initialChannels: LiveChannel[];
@@ -18,6 +19,7 @@ interface LiveTvSectionProps {
 export default function LiveTvSection({ initialChannels }: LiveTvSectionProps) {
   const dispatch = useAppDispatch();
   const { channels: reduxChannels, selectedChannel } = useAppSelector(selectLiveTvState);
+  const [playback, setPlayback] = useState<{ channelId: string | number; url: string; urlType: string; hasAccess: boolean } | null>(null);
 
   useEffect(() => {
     if (initialChannels.length > 0) {
@@ -27,6 +29,30 @@ export default function LiveTvSection({ initialChannels }: LiveTvSectionProps) {
 
   const channels = reduxChannels.length > 0 ? reduxChannels : initialChannels;
   const activeChannel = selectedChannel || channels[0] || null;
+  const activeChannelId = activeChannel?.id;
+
+  useEffect(() => {
+    let cancelled = false;
+    if (activeChannelId === undefined) return;
+
+    api.getLiveTvDetails(activeChannelId)
+      .then((result) => {
+        if (cancelled) return;
+        setPlayback({
+          channelId: activeChannelId,
+          url: result.video_qualities[0]?.url || result.details.server_url || '',
+          urlType: result.video_qualities[0]?.url_type || result.details.stream_type || 'HLS',
+          hasAccess: result.details.has_content_access === true || result.details.has_content_access === 1,
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setPlayback({ channelId: activeChannelId, url: '', urlType: 'HLS', hasAccess: false });
+      });
+
+    return () => { cancelled = true; };
+  }, [activeChannelId]);
+
+  const activePlayback = playback?.channelId === activeChannel?.id ? playback : null;
 
   return (
     <div className="min-h-screen pt-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pb-20 select-none">
@@ -48,15 +74,20 @@ export default function LiveTvSection({ initialChannels }: LiveTvSectionProps) {
         <div className="lg:col-span-2 space-y-4">
           {activeChannel ? (
             <div>
-              <VideoPlayer
+              {!activePlayback ? (
+                <div className="aspect-video rounded-2xl bg-[#0c1218] flex items-center justify-center text-gray-400" role="status">
+                  Loading channel…
+                </div>
+              ) : <VideoPlayer
+                key={`livetv:${activeChannel.id}`}
                 contentId={activeChannel.id}
                 contentType="livetv"
                 title={activeChannel.name}
-                videoUrl={activeChannel.server_url || activeChannel.server_url1}
-                urlType={activeChannel.stream_type || 'HLS'}
-                hasAccess={activeChannel.has_content_access !== false}
+                videoUrl={activePlayback?.url || ''}
+                urlType={activePlayback?.urlType || 'HLS'}
+                hasAccess={activePlayback?.hasAccess === true}
                 poster={activeChannel.poster_image}
-              />
+              />}
               <div className="mt-4 bg-[#0c1218] border border-white/10 p-5 rounded-2xl space-y-2 shadow-lg">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-bold text-white flex items-center space-x-2">

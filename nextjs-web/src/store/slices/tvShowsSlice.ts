@@ -1,11 +1,11 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { api, normalizeMediaItem } from '@/lib/api';
-import { MediaItem } from '@/types';
+import { MediaItem, Episode } from '@/types';
 
 interface TvShowsState {
   shows: MediaItem[];
   currentShow: MediaItem | null;
-  episodes: any[];
+  episodes: Episode[];
   page: number;
   isLoading: boolean;
   error: string | null;
@@ -27,8 +27,9 @@ export const fetchTvShowsList = createAsyncThunk<MediaItem[], { page?: number } 
       const res = await api.getTvShows(params);
       const list = Array.isArray(res) ? res : res?.data || [];
       return Array.isArray(list) ? list.map(normalizeMediaItem) : [];
-    } catch (err: any) {
-      return rejectWithValue(err.message || 'Failed to fetch TV series');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch TV series';
+      return rejectWithValue(message);
     }
   }
 );
@@ -39,20 +40,23 @@ export const fetchTvShowDetails = createAsyncThunk<MediaItem, number | string>(
     try {
       const res = await api.getContentDetails(id, 'tvshow');
       return normalizeMediaItem(res);
-    } catch (err: any) {
-      return rejectWithValue(err.message || 'Failed to fetch TV show details');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch TV show details';
+      return rejectWithValue(message);
     }
   }
 );
 
-export const fetchTvShowEpisodes = createAsyncThunk<any[], number | string>(
+export const fetchTvShowEpisodes = createAsyncThunk<Episode[], number | string>(
   'tvShows/fetchTvShowEpisodes',
   async (id, { rejectWithValue }) => {
     try {
       const res = await api.getEpisodes(id);
-      return Array.isArray(res) ? res : res?.data || [];
-    } catch (err: any) {
-      return rejectWithValue(err.message || 'Failed to fetch episodes');
+      const list = Array.isArray(res) ? res : res?.data || [];
+      return (list as Episode[]) || [];
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch episodes';
+      return rejectWithValue(message);
     }
   }
 );
@@ -104,7 +108,7 @@ export const tvShowsSlice = createSlice({
       });
 
     // fetchTvShowEpisodes
-    builder.addCase(fetchTvShowEpisodes.fulfilled, (state, action: PayloadAction<any[]>) => {
+    builder.addCase(fetchTvShowEpisodes.fulfilled, (state, action: PayloadAction<Episode[]>) => {
       state.episodes = action.payload;
     });
   },

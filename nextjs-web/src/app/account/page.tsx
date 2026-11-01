@@ -54,8 +54,9 @@ export default function AccountPage() {
       await api.updateProfile({ name, email, phone });
       setProfileMessage({ type: 'success', text: 'Profile updated successfully.' });
       await refreshUser();
-    } catch (err: any) {
-      setProfileMessage({ type: 'error', text: err?.message || 'Failed to update profile.' });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to update profile.';
+      setProfileMessage({ type: 'error', text: message });
     } finally {
       setProfileLoading(false);
     }
@@ -80,8 +81,9 @@ export default function AccountPage() {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-    } catch (err: any) {
-      setPasswordMessage({ type: 'error', text: err?.message || 'Failed to change password.' });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to change password.';
+      setPasswordMessage({ type: 'error', text: message });
     } finally {
       setPasswordLoading(false);
     }

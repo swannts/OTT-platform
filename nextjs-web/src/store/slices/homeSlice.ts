@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { api, normalizeMediaItem } from '@/lib/api';
-import { MediaItem, LiveChannel } from '@/types';
+import { MediaItem, LiveChannel, LiveCategory } from '@/types';
 
 interface HomeState {
   banners: MediaItem[];
@@ -38,8 +38,9 @@ export const fetchHomeBanners = createAsyncThunk<MediaItem[], void>(
         return res;
       }
       return [];
-    } catch (err: any) {
-      return rejectWithValue(err.message || 'Failed to fetch home banners');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch home banners';
+      return rejectWithValue(message);
     }
   }
 );
@@ -55,22 +56,24 @@ export const fetchDashboardData = createAsyncThunk<
 >('home/fetchDashboardData', async (_, { rejectWithValue }) => {
   try {
     const dashboard = await api.getDashboard();
-    return {
-      top10: Array.isArray(dashboard?.top_10?.data)
-        ? dashboard.top_10.data.map(normalizeMediaItem)
-        : [],
-      latestMovies: Array.isArray(dashboard?.latest_movie?.data)
-        ? dashboard.latest_movie.data.map(normalizeMediaItem)
-        : [],
-      popularMovies: Array.isArray(dashboard?.popular_movie?.data)
-        ? dashboard.popular_movie.data.map(normalizeMediaItem)
-        : [],
-      payPerView: Array.isArray(dashboard?.pay_per_view?.data)
-        ? dashboard.pay_per_view.data.map(normalizeMediaItem)
-        : [],
+    const extractList = (section: unknown): unknown[] => {
+      if (!section) return [];
+      if (Array.isArray(section)) return section;
+      if (typeof section === 'object' && section !== null && 'data' in section && Array.isArray((section as { data: unknown[] }).data)) {
+        return (section as { data: unknown[] }).data;
+      }
+      return [];
     };
-  } catch (err: any) {
-    return rejectWithValue(err.message || 'Failed to fetch dashboard detail');
+
+    return {
+      top10: extractList(dashboard?.top_10).map(normalizeMediaItem),
+      latestMovies: extractList(dashboard?.latest_movie).map(normalizeMediaItem),
+      popularMovies: extractList(dashboard?.popular_movie).map(normalizeMediaItem),
+      payPerView: extractList(dashboard?.pay_per_view).map(normalizeMediaItem),
+    };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to fetch dashboard detail';
+    return rejectWithValue(message);
   }
 });
 
@@ -83,11 +86,12 @@ export const fetchLiveChannels = createAsyncThunk<LiveChannel[], void>(
         return liveData.slider;
       }
       if (Array.isArray(liveData?.category_data) && liveData.category_data.length > 0) {
-        return liveData.category_data.flatMap((c: any) => c.channel_data || []);
+        return liveData.category_data.flatMap((c: LiveCategory) => c.channel_data || []);
       }
       return [];
-    } catch (err: any) {
-      return rejectWithValue(err.message || 'Failed to fetch live tv channels');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch live tv channels';
+      return rejectWithValue(message);
     }
   }
 );
@@ -99,8 +103,9 @@ export const fetchTvShows = createAsyncThunk<MediaItem[], void>(
       const tvData = await api.getTvShows({ page: 1 });
       const tvList = Array.isArray(tvData) ? tvData : tvData?.data || [];
       return Array.isArray(tvList) ? tvList.map(normalizeMediaItem) : [];
-    } catch (err: any) {
-      return rejectWithValue(err.message || 'Failed to fetch tv shows');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch tv shows';
+      return rejectWithValue(message);
     }
   }
 );

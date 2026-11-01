@@ -17,28 +17,29 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-function normalizeUser(raw: any): User | null {
+function normalizeUser(raw: unknown): User | null {
   if (!raw || typeof raw !== 'object') return null;
-  const userObj = raw.data || raw;
+  const rawObj = raw as Record<string, unknown>;
+  const userObj = (rawObj.data && typeof rawObj.data === 'object' ? rawObj.data : rawObj) as Record<string, unknown>;
   const name =
-    userObj.name ||
-    userObj.full_name ||
-    [userObj.first_name, userObj.last_name].filter(Boolean).join(' ') ||
-    userObj.email?.split('@')[0] ||
+    (userObj.name as string) ||
+    (userObj.full_name as string) ||
+    [(userObj.first_name as string), (userObj.last_name as string)].filter(Boolean).join(' ') ||
+    (typeof userObj.email === 'string' ? userObj.email.split('@')[0] : '') ||
     'User';
 
-  const avatar = userObj.avatar || userObj.profile_image || userObj.file_url || '';
+  const avatar = (userObj.avatar as string) || (userObj.profile_image as string) || (userObj.file_url as string) || '';
 
   return {
-    id: userObj.id || 1,
+    id: (userObj.id as number | string) || 1,
     name,
-    email: userObj.email || '',
+    email: (userObj.email as string) || '',
     avatar,
     profile_image: avatar,
-    user_type: userObj.user_type || 'user',
-    is_subscribe: userObj.is_subscribe ?? 0,
-    phone: userObj.phone || userObj.mobile || '',
-    is_parental_lock_enable: userObj.is_parental_lock_enable ?? 0,
+    user_type: (userObj.user_type as string) || 'user',
+    is_subscribe: typeof userObj.is_subscribe === 'number' ? userObj.is_subscribe : 0,
+    phone: (userObj.phone as string) || (userObj.mobile as string) || '',
+    is_parental_lock_enable: typeof userObj.is_parental_lock_enable === 'number' ? userObj.is_parental_lock_enable : (userObj.is_parental_lock_enable ? 1 : 0),
   };
 }
 

@@ -57,8 +57,9 @@ export default function SecurityPage() {
           : 'Parental Lock has been disabled.',
       });
       await refreshUser();
-    } catch (err: any) {
-      setPinMessage({ type: 'error', text: err?.message || 'Failed to update parental lock.' });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to update parental lock.';
+      setPinMessage({ type: 'error', text: message });
     } finally {
       setPinLoading(false);
     }
@@ -73,8 +74,9 @@ export default function SecurityPage() {
     try {
       await api.logout();
       router.push('/login');
-    } catch (err: any) {
-      setLogoutMessage(err?.message || 'Failed to logout devices.');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to logout devices.';
+      setLogoutMessage(message);
     } finally {
       setLogoutLoading(false);
     }

@@ -32,8 +32,13 @@ export const loadActiveTrack = createAsyncThunk<MediaItem | null, void>(
 
       // 2. Try dashboard top 10
       const dash = await api.getDashboard().catch(() => null);
-      const topList = dash?.data?.top_10?.data || dash?.top_10?.data;
-      if (topList && Array.isArray(topList) && topList.length > 0) {
+      const topSection = (dash?.data?.top_10 || dash?.top_10) as unknown;
+      const topList = Array.isArray(topSection)
+        ? topSection
+        : (typeof topSection === 'object' && topSection !== null && 'data' in topSection && Array.isArray((topSection as { data: unknown[] }).data)
+            ? (topSection as { data: unknown[] }).data
+            : []);
+      if (topList.length > 0) {
         return normalizeMediaItem(topList[0]);
       }
 
@@ -50,8 +55,9 @@ export const loadActiveTrack = createAsyncThunk<MediaItem | null, void>(
         duration: '45:20',
         access: 'free',
       };
-    } catch (err: any) {
-      return rejectWithValue(err.message || 'Failed to load active track');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to load active track';
+      return rejectWithValue(message);
     }
   }
 );

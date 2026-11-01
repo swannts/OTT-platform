@@ -10,10 +10,24 @@ interface PageProps {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-async function getPageData(slug: string) {
+interface StaticPageData {
+  name?: string;
+  title?: string;
+  description?: string;
+  content?: string;
+}
+
+async function getPageData(slug: string): Promise<StaticPageData> {
   try {
     const data = await api.getPage(slug);
-    if (data && (data.name || data.title)) return data;
+    if (data && (data.name || data.title)) {
+      return {
+        name: typeof data.name === 'string' ? data.name : undefined,
+        title: typeof data.title === 'string' ? data.title : undefined,
+        description: typeof data.description === 'string' ? data.description : (typeof data.content === 'string' ? data.content : undefined),
+        content: typeof data.content === 'string' ? data.content : undefined,
+      };
+    }
   } catch (err) {
     console.error(`Failed to fetch page ${slug} on server:`, err);
   }

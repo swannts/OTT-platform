@@ -1,5 +1,5 @@
 import { api, normalizeMediaItem } from '@/lib/api';
-import { MediaItem } from '@/types';
+import { MediaItem, Episode } from '@/types';
 
 export async function getTvShowsDal(params = { page: 1 }): Promise<MediaItem[]> {
   try {
@@ -22,10 +22,11 @@ export async function getTvShowDetailsDal(id: string | number): Promise<MediaIte
   }
 }
 
-export async function getTvShowEpisodesDal(id: string | number): Promise<any[]> {
+export async function getTvShowEpisodesDal(id: string | number): Promise<Episode[]> {
   try {
     const res = await api.getEpisodes(id);
-    return Array.isArray(res) ? res : res?.data || [];
+    const list = Array.isArray(res) ? res : res?.data || [];
+    return (list as Episode[]) || [];
   } catch (error) {
     console.error(`[DAL] getTvShowEpisodesDal(${id}) error:`, error);
     return [];
