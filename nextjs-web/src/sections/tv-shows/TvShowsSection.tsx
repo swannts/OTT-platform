@@ -6,6 +6,7 @@ import { setInitialShows, fetchTvShowsList } from '@/store/slices/tvShowsSlice';
 import MediaCard from '@/components/media/MediaCard';
 import { Tv, Sparkles, Filter } from 'lucide-react';
 import { MediaItem } from '@/types';
+import { SectionHeader } from '@/components/ui';
 
 interface TvShowsSectionProps {
   initialShows: MediaItem[];
@@ -45,27 +46,15 @@ export default function TvShowsSection({ initialShows }: TvShowsSectionProps) {
     <div className="min-h-screen pt-24 sm:pt-28 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pb-20 select-none">
       {/* Page Header */}
       <div className="mb-8 border-b border-white/10 pb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-[#E5B869]/15 border border-[#E5B869]/30 text-[#E5B869] text-xs font-bold uppercase tracking-wider mb-2.5">
-              <Sparkles className="w-3.5 h-3.5 text-[#E5B869]" />
-              <span>Sacred Series & Docuseries</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white flex items-center space-x-3 tracking-tight">
-              <Tv className="w-7 h-7 sm:w-8 sm:h-8 text-[#E5B869]" />
-              <span>Islamic TV Shows & Series</span>
-            </h1>
-            <p className="text-sm text-gray-400 mt-1.5 max-w-2xl leading-relaxed">
-              Inspirational Prophetic chronicles, historical educational docuseries, and faith-based family series.
-            </p>
-          </div>
-
-          <div className="flex items-center space-x-2 text-xs text-gray-400 bg-white/[0.04] border border-white/10 px-3.5 py-1.5 rounded-full self-start sm:self-auto">
-            <span className="w-2 h-2 rounded-full bg-[#E5B869]" />
-            <span className="font-semibold text-gray-200">{filteredShows.length}</span>
-            <span>Series Available</span>
-          </div>
-        </div>
+        <SectionHeader
+          className="mb-0 border-b-0 pb-0"
+          badgeText="Sacred Series & Docuseries"
+          badgeIcon={<Sparkles className="w-3.5 h-3.5 text-[#E5B869]" />}
+          title="Islamic TV Shows & Series"
+          titleIcon={<Tv className="w-7 h-7 sm:w-8 sm:h-8" />}
+          description="Inspirational Prophetic chronicles, historical educational docuseries, and faith-based family series."
+          counterText={`${filteredShows.length} Series Available`}
+        />
 
         {/* Category Filter Pills */}
         <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar pt-6 pb-1">

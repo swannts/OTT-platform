@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { Plan } from '@/types';
 import { Crown, Check, Zap, Sparkles } from 'lucide-react';
+import { Heading, Text, Badge } from '@/components/ui';
 
 interface PricingSectionProps {
   initialPlans: Plan[];
@@ -21,12 +22,12 @@ export default function PricingSection({ initialPlans }: PricingSectionProps) {
           <Sparkles className="w-3.5 h-3.5 fill-[#E5B869]" />
           <span>VIP Halal Streaming</span>
         </div>
-        <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight drop-shadow-md">
+        <Heading as="h1" size="hero" className="tracking-tight drop-shadow-md">
           Choose Your Plan for Pure Islamic Entertainment
-        </h1>
-        <p className="text-sm sm:text-base text-gray-400">
+        </Heading>
+        <Text variant="subtitle" size="base">
           Cancel anytime. Zero lock-in contracts. Stream spiritual series and live sacred broadcasts in 4K UHD.
-        </p>
+        </Text>
       </div>
 
       {/* Plan Cards Grid */}

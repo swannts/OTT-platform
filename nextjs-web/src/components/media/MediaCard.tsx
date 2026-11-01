@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { MediaItem } from '@/types';
 import { useAppDispatch } from '@/store/hooks';
 import { setActiveItem } from '@/store/slices/playerSlice';
-import { Play, Star } from 'lucide-react';
+import { Play } from 'lucide-react';
+import { Card, SafeImage, Badge, Heading, Text } from '@/components/ui';
 
 interface MediaCardProps {
   item: MediaItem;
@@ -24,15 +25,13 @@ export default function MediaCard({
   layout = 'grid',
 }: MediaCardProps) {
   const dispatch = useAppDispatch();
-  const [imgSrc, setImgSrc] = useState<string>(() => {
-    const raw =
-      (item.poster_image && item.poster_image.trim()) ||
-      (item.poster_url && item.poster_url.trim()) ||
-      (item.thumbnail_image && item.thumbnail_image.trim()) ||
-      (item.banner_image && item.banner_image.trim()) ||
-      FALLBACK_IMAGE;
-    return raw;
-  });
+
+  const rawImage =
+    (item.poster_image && item.poster_image.trim()) ||
+    (item.poster_url && item.poster_url.trim()) ||
+    (item.thumbnail_image && item.thumbnail_image.trim()) ||
+    (item.banner_image && item.banner_image.trim()) ||
+    FALLBACK_IMAGE;
 
   const type = item.type || 'movie';
   const watchUrl = `/watch/${type}/${item.id}`;
@@ -45,7 +44,11 @@ export default function MediaCard({
 
   const subtitle =
     item.duration ||
-    (type === 'tvshow' ? 'Series • 8 Episodes' : item.release_year ? `${item.release_year}` : 'Sacred Feature');
+    (type === 'tvshow'
+      ? 'Series • 8 Episodes'
+      : item.release_year
+      ? `${item.release_year}`
+      : 'Sacred Feature');
 
   const isCarousel = layout === 'carousel';
 
@@ -55,8 +58,9 @@ export default function MediaCard({
         isCarousel ? 'flex-none' : 'w-full'
       }`}
     >
-      <div
-        className={`relative rounded-xl sm:rounded-2xl overflow-hidden bg-[#0c1218] border border-white/[0.08] group-hover:border-[#E5B869]/50 shadow-lg transition-all min-w-0 ${
+      <Card
+        variant="media"
+        className={`relative min-w-0 ${
           isCarousel
             ? aspectRatio === 'poster'
               ? 'w-[160px] sm:w-[190px] md:w-[220px] aspect-[2/3]'
@@ -82,23 +86,22 @@ export default function MediaCard({
 
         {/* Access VIP Badge */}
         {item.access === 'paid' && (
-          <div className="pointer-events-none absolute top-2.5 right-2.5 z-10 bg-[#E5B869] text-black font-extrabold text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider shadow-md">
-            VIP
+          <div className="pointer-events-none absolute top-2.5 right-2.5 z-10">
+            <Badge variant="vip" />
           </div>
         )}
         {item.access === 'pay-per-view' && (
-          <div className="pointer-events-none absolute top-2.5 right-2.5 z-10 bg-amber-600 text-white font-extrabold text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider">
-            Rent
+          <div className="pointer-events-none absolute top-2.5 right-2.5 z-10">
+            <Badge className="bg-amber-600 text-white font-extrabold">Rent</Badge>
           </div>
         )}
 
-        {/* Poster / Thumbnail Image with Fallback */}
-        <img
-          src={imgSrc}
+        {/* Standardized SafeImage */}
+        <SafeImage
+          src={rawImage}
           alt={item.name || item.title || 'Media Poster'}
-          onError={() => setImgSrc(FALLBACK_IMAGE)}
+          fallbackSrc={FALLBACK_IMAGE}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 pointer-events-none"
-          loading="lazy"
         />
 
         {/* Bottom Dark Gradient Vignette */}
@@ -107,6 +110,7 @@ export default function MediaCard({
         {/* Hover Center Play Button */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-10">
           <button
+            type="button"
             onClick={() => dispatch(setActiveItem(item))}
             className="pointer-events-auto w-10 h-10 rounded-full bg-[#E5B869] hover:bg-[#f3cf8a] text-black flex items-center justify-center shadow-xl shadow-[#E5B869]/30 transform group-hover:scale-110 active:scale-95 transition-all cursor-pointer"
             aria-label={`Play ${item.name || item.title}`}
@@ -115,26 +119,27 @@ export default function MediaCard({
           </button>
         </div>
 
-        {/* Card Metadata (Bottom Content with strict containment) */}
+        {/* Card Metadata with Strict Containment */}
         <div className="pointer-events-none absolute bottom-0 left-0 right-0 p-3 sm:p-3.5 text-white z-10 w-full min-w-0 overflow-hidden box-border">
-          <h3
-            className="font-bold text-xs sm:text-[13.5px] text-white truncate block group-hover:text-[#E5B869] transition-colors tracking-tight w-full overflow-hidden"
+          <Heading
+            as="h3"
+            size="xs"
+            className="text-white truncate block group-hover:text-[#E5B869] transition-colors tracking-tight w-full overflow-hidden"
             title={item.name || item.title}
           >
             {item.name || item.title}
-          </h3>
+          </Heading>
 
-          <div className="flex items-center justify-between text-[11px] text-gray-400 mt-1 w-full min-w-0 gap-2">
-            <span className="truncate flex-1 min-w-0">{subtitle}</span>
+          <div className="flex items-center justify-between mt-1 w-full min-w-0 gap-2">
+            <Text variant="caption" className="truncate flex-1 min-w-0">
+              {subtitle}
+            </Text>
             {(item.imdb_rating || item.rating) && (
-              <span className="flex-shrink-0 inline-flex items-center text-[#E5B869] text-[10px] font-semibold bg-black/60 px-1.5 py-0.5 rounded border border-white/10">
-                <Star className="w-2.5 h-2.5 fill-[#E5B869] text-[#E5B869] mr-0.5" />
-                <span>{item.imdb_rating || item.rating}</span>
-              </span>
+              <Badge variant="rating" rating={item.imdb_rating || item.rating} />
             )}
           </div>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

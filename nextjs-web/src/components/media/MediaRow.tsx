@@ -5,6 +5,7 @@ import { MediaItem } from '@/types';
 import MediaCard from './MediaCard';
 import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { Heading } from '@/components/ui';
 
 interface MediaRowProps {
   title: string;
@@ -42,9 +43,9 @@ export default function MediaRow({
       <div className="flex items-center justify-between mb-3.5">
         <div className="flex items-center">
           <span className="w-1 h-5 bg-[#E5B869] rounded-full inline-block mr-2.5 flex-shrink-0" />
-          <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+          <Heading as="h2" size="xl">
             {title}
-          </h2>
+          </Heading>
         </div>
 
         {moreHref && (

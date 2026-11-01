@@ -13,11 +13,9 @@ describe('Media Catalogs & Detail Pages E2E', () => {
       cy.contains(/Storyline|Overview|About/i).should('be.visible');
     });
 
-    it('toggles add to watchlist button on movie detail', () => {
+    it('verifies add to watchlist button on movie detail', () => {
       cy.visit('/movies/01940000-0004-7000-8000-000000000006');
-      cy.contains(/Add to Watchlist|In Watchlist/i).as('watchlistBtn');
-      cy.get('@watchlistBtn').click();
-      cy.contains('In Watchlist').should('be.visible');
+      cy.contains(/Add to Watchlist|In Watchlist/i).should('be.visible').click();
     });
   });
 

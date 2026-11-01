@@ -6,6 +6,7 @@ import { setInitialMovies, fetchMoviesList } from '@/store/slices/moviesSlice';
 import MediaCard from '@/components/media/MediaCard';
 import { Film, Sparkles, Filter } from 'lucide-react';
 import { MediaItem } from '@/types';
+import { SectionHeader } from '@/components/ui';
 
 interface MoviesSectionProps {
   initialMovies: MediaItem[];
@@ -44,27 +45,15 @@ export default function MoviesSection({ initialMovies }: MoviesSectionProps) {
     <div className="min-h-screen pt-24 sm:pt-28 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pb-20 select-none">
       {/* Page Header */}
       <div className="mb-8 border-b border-white/10 pb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-[#E5B869]/15 border border-[#E5B869]/30 text-[#E5B869] text-xs font-bold uppercase tracking-wider mb-2.5">
-              <Sparkles className="w-3.5 h-3.5 text-[#E5B869]" />
-              <span>Cinematic Features & Documentaries</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white flex items-center space-x-3 tracking-tight">
-              <Film className="w-7 h-7 sm:w-8 sm:h-8 text-[#E5B869]" />
-              <span>Islamic Movies & Documentaries</span>
-            </h1>
-            <p className="text-sm text-gray-400 mt-1.5 max-w-2xl leading-relaxed">
-              Browse our curated collection of Islamic documentaries, faith-inspired cinema, and sacred history.
-            </p>
-          </div>
-
-          <div className="flex items-center space-x-2 text-xs text-gray-400 bg-white/[0.04] border border-white/10 px-3.5 py-1.5 rounded-full self-start sm:self-auto">
-            <span className="w-2 h-2 rounded-full bg-[#E5B869]" />
-            <span className="font-semibold text-gray-200">{filteredMovies.length}</span>
-            <span>Titles Available</span>
-          </div>
-        </div>
+        <SectionHeader
+          className="mb-0 border-b-0 pb-0"
+          badgeText="Cinematic Features & Documentaries"
+          badgeIcon={<Sparkles className="w-3.5 h-3.5 text-[#E5B869]" />}
+          title="Islamic Movies & Documentaries"
+          titleIcon={<Film className="w-7 h-7 sm:w-8 sm:h-8" />}
+          description="Browse our curated collection of Islamic documentaries, faith-inspired cinema, and sacred history."
+          counterText={`${filteredMovies.length} Titles Available`}
+        />
 
         {/* Category Filter Pills */}
         <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar pt-6 pb-1">
