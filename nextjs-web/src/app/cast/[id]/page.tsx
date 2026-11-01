@@ -2,7 +2,7 @@ import React from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { api, normalizeMediaItem } from '@/lib/api';
-import MediaCard from '@/components/media/MediaCard';
+import MediaGrid from '@/components/media/MediaGrid';
 import { Award, ArrowLeft, BookOpen } from 'lucide-react';
 import { notFound } from 'next/navigation';
 
@@ -165,17 +165,13 @@ export default async function CastDetailPage({ params }: PageProps) {
           <span>Featured Works & Series</span>
         </h2>
 
-        {filmography.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
-            {filmography.map((work) => (
-              <div key={work.id} className="min-w-0">
-                <MediaCard item={work} layout="grid" aspectRatio="backdrop" />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-gray-500">More titles featuring this scholar are currently in production.</p>
-        )}
+        <MediaGrid
+          items={filmography}
+          aspectRatio="backdrop"
+          emptyState={
+            <p className="text-sm text-gray-500">More titles featuring this scholar are currently in production.</p>
+          }
+        />
       </div>
     </div>
   );

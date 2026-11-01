@@ -4,7 +4,8 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { MediaItem } from '@/types';
-import MediaCard from '@/components/media/MediaCard';
+import MediaGrid from '@/components/media/MediaGrid';
+import { EmptyState } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { Heart, Plus } from 'lucide-react';
 
@@ -65,30 +66,26 @@ export default function WatchlistPage() {
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {[...Array(8)].map((_, i) => (
-            <div key={i} className="aspect-[16/10] bg-white/5 rounded-2xl animate-pulse" />
-          ))}
-        </div>
-      ) : items.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {items.map((item) => (
-            <MediaCard key={item.id} item={item} layout="grid" aspectRatio="backdrop" />
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-24 text-gray-400 space-y-4">
-          <p className="text-base">Your watchlist is currently empty.</p>
-          <Link
-            href="/movies"
-            className="inline-flex items-center space-x-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-5 py-2.5 rounded-full"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Discover Titles</span>
-          </Link>
-        </div>
-      )}
+      <MediaGrid
+        items={items}
+        isLoading={isLoading}
+        aspectRatio="backdrop"
+        emptyState={
+          <EmptyState
+            title="Your watchlist is currently empty"
+            description="Explore our curated collection and save titles to watch later."
+            action={
+              <Link
+                href="/movies"
+                className="inline-flex items-center space-x-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-5 py-2.5 rounded-full"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Discover Titles</span>
+              </Link>
+            }
+          />
+        }
+      />
     </div>
   );
 }

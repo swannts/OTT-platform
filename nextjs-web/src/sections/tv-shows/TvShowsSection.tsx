@@ -3,10 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setInitialShows, fetchTvShowsList, selectTvShowsState } from '@/store/slices/tvShowsSlice';
-import MediaCard from '@/components/media/MediaCard';
+import MediaGrid from '@/components/media/MediaGrid';
 import { Tv, Sparkles, Filter } from 'lucide-react';
 import { MediaItem } from '@/types';
-import { SectionHeader } from '@/components/ui';
+import { SectionHeader, EmptyState } from '@/components/ui';
 import { TV_SERIES_CATEGORIES } from '@/constants';
 
 interface TvShowsSectionProps {
@@ -71,28 +71,19 @@ export default function TvShowsSection({ initialShows }: TvShowsSectionProps) {
         </div>
       </div>
 
-      {/* Grid of Shows (SSR pre-rendered) */}
-      {filteredShows.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-          {filteredShows.map((show) => (
-            <div key={show.id} className="min-w-0">
-              <MediaCard item={show} layout="grid" aspectRatio="backdrop" />
-            </div>
-          ))}
-        </div>
-      ) : isLoading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-          {[...Array(8)].map((_, i) => (
-            <div key={i} className="aspect-[16/10] bg-white/5 rounded-2xl animate-pulse min-w-0" />
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-20 bg-white/[0.02] border border-white/5 rounded-3xl p-8 space-y-3">
-          <Tv className="w-10 h-10 text-gray-500 mx-auto" />
-          <h3 className="text-lg font-bold text-white">No series found in this category</h3>
-          <p className="text-sm text-gray-400">Try selecting another category filter above.</p>
-        </div>
-      )}
+      {/* Grid of Shows */}
+      <MediaGrid
+        items={filteredShows}
+        isLoading={isLoading}
+        aspectRatio="backdrop"
+        emptyState={
+          <EmptyState
+            icon={<Tv className="w-10 h-10 text-gray-500" />}
+            title="No series found in this category"
+            description="Try selecting another category filter above."
+          />
+        }
+      />
     </div>
   );
 }

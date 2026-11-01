@@ -4,7 +4,8 @@ import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { MediaItem } from '@/types';
-import MediaCard from '@/components/media/MediaCard';
+import MediaGrid from '@/components/media/MediaGrid';
+import { EmptyState } from '@/components/ui';
 import { Search } from 'lucide-react';
 
 function SearchPageContent() {
@@ -70,23 +71,20 @@ function SearchPageContent() {
           {q ? `Search results for "${q}"` : 'Type in the search bar above'}
         </h2>
 
-        {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="aspect-[16/10] bg-white/5 rounded-2xl animate-pulse" />
-            ))}
-          </div>
-        ) : results.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {results.map((item) => (
-              <MediaCard key={item.id} item={item} layout="grid" aspectRatio="backdrop" />
-            ))}
-          </div>
-        ) : q ? (
-          <div className="text-center py-20 text-gray-400">
-            <p>No results found for &ldquo;{q}&rdquo;. Try another keyword or genre.</p>
-          </div>
-        ) : null}
+        <MediaGrid
+          items={results}
+          isLoading={isLoading}
+          aspectRatio="backdrop"
+          emptyState={
+            q ? (
+              <EmptyState
+                icon={<Search className="w-10 h-10 text-gray-500" />}
+                title={`No results found for "${q}"`}
+                description="Try searching with different keywords, themes, or historical topics."
+              />
+            ) : null
+          }
+        />
       </div>
     </div>
   );
