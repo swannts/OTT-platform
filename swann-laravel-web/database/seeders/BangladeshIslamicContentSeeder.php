@@ -129,6 +129,7 @@ class BangladeshIslamicContentSeeder extends Seeder
         }
         foreach ($series as $show) {
             DB::table('entertainments')->insert([
+                'id' => (string) Str::uuid(),
                 'name' => $show['name'], 'description' => $show['description'],
                 'trailer_url_type' => 'youtube', 'trailer_url' => $show['url'],
                 'type' => 'tvshow', 'movie_access' => 'free', 'language' => 'Bangla',

@@ -1,6 +1,32 @@
 import { api, normalizeMediaItem } from '@/lib/api';
 import { MediaItem, Episode } from '@/types';
 
+export interface TvShowsCursorResult {
+  items: MediaItem[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
+export async function getTvShowsCursorDal(params: {
+  cursor?: string | null;
+  per_page?: number;
+} = {}): Promise<TvShowsCursorResult> {
+  try {
+    const res = await api.getTvShows({
+      cursor: params.cursor,
+      per_page: params.per_page || 12,
+    });
+    const list = Array.isArray(res) ? res : res?.data || [];
+    const items = Array.isArray(list) ? list.map(normalizeMediaItem) : [];
+    const nextCursor = !Array.isArray(res) && typeof res?.next_cursor === 'string' ? res.next_cursor : null;
+    const hasMore = !Array.isArray(res) ? Boolean(res?.has_more ?? res?.hasMore ?? false) : false;
+    return { items, nextCursor, hasMore };
+  } catch (error) {
+    console.error('[DAL] getTvShowsCursorDal error:', error);
+    return { items: [], nextCursor: null, hasMore: false };
+  }
+}
+
 export async function getTvShowsDal(params = { page: 1 }): Promise<MediaItem[]> {
   try {
     const res = await api.getTvShows(params);
@@ -32,4 +58,3 @@ export async function getTvShowEpisodesDal(id: string | number): Promise<Episode
     return [];
   }
 }
-

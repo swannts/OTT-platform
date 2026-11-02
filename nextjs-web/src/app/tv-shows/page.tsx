@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Metadata } from 'next';
-import { getTvShowsDal } from '@/server/dal';
+import { getTvShowsCursorDal } from '@/server/dal';
 import { TvShowsSection } from '@/features/tv-shows';
 
 export const revalidate = 60; // ISR cache for 60 seconds
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
 };
 
 export default async function TvShowsPage() {
-  const shows = await getTvShowsDal({ page: 1 });
+  const { items: shows, nextCursor, hasMore } = await getTvShowsCursorDal({ per_page: 12 });
 
   // Schema.org CollectionPage
   const jsonLd = {
@@ -76,7 +76,11 @@ export default async function TvShowsPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <TvShowsSection initialShows={shows} />
+      <TvShowsSection
+        initialShows={shows}
+        initialCursor={nextCursor}
+        initialHasMore={hasMore}
+      />
     </>
   );
 }

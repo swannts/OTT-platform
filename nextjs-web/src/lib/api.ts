@@ -363,13 +363,33 @@ class ApiClient {
     return this.request<{ data?: MediaItem[]; [key: string]: unknown } | MediaItem[]>(`/v3/movie-list?${q.toString()}`);
   }
 
-  async getTvShows(params: { page?: number; genre_id?: number; search?: string } = {}): Promise<{ data?: MediaItem[]; [key: string]: unknown } | MediaItem[]> {
+  async getTvShows(params: {
+    page?: number;
+    cursor?: string | null;
+    per_page?: number;
+    genre_id?: number;
+    search?: string;
+  } = {}): Promise<{
+    data?: MediaItem[];
+    has_more?: boolean;
+    hasMore?: boolean;
+    next_cursor?: string | null;
+    [key: string]: unknown;
+  } | MediaItem[]> {
     const q = new URLSearchParams();
-    if (params.page) q.append('page', params.page.toString());
+    if (params.cursor) q.append('cursor', params.cursor);
+    else if (params.page) q.append('page', params.page.toString());
     if (params.genre_id) q.append('genre_id', params.genre_id.toString());
     if (params.search) q.append('search', params.search);
-    q.append('per_page', '100');
-    return this.request<{ data?: MediaItem[]; [key: string]: unknown } | MediaItem[]>(`/v3/tvshow-list?${q.toString()}`);
+    if (params.per_page) q.append('per_page', params.per_page.toString());
+    else q.append('per_page', '12');
+    return this.request<{
+      data?: MediaItem[];
+      has_more?: boolean;
+      hasMore?: boolean;
+      next_cursor?: string | null;
+      [key: string]: unknown;
+    } | MediaItem[]>(`/v3/tvshow-list?${q.toString()}`);
   }
 
   async getContentDetails(id: number | string, type: 'movie' | 'tvshow' | 'episode' | 'video'): Promise<ContentDetails> {

@@ -66,7 +66,6 @@ class DatabaseSeeder extends Seeder
             $this->call(\Modules\Coupon\database\seeders\CouponDatabaseSeeder::class);
             $this->call(\Database\Seeders\BlogSeeder::class);
             $this->call(\Database\Seeders\IslamicContentSeeder::class);
-            $this->call(\Database\Seeders\BangladeshIslamicContentSeeder::class);
 
             Schema::enableForeignKeyConstraints();
             \Artisan::call('cache:clear');

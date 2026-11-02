@@ -305,6 +305,12 @@ class EntertainmentsController extends Controller
         if (!empty(getCurrentProfileSession('is_child_profile'))) {
             $tvshowList->where('entertainments.is_restricted', 0);
         }
+
+        /* ---------------- CURSOR PAGINATION ---------------- */
+        $cursor = $request->input('cursor');
+        if (!empty($cursor)) {
+            $tvshowList->where('entertainments.id', '<', $cursor);
+        }
     
         /* ---------------- PAGINATION ---------------- */
         $tvshows = $tvshowList->simplePaginate($perPage);
@@ -316,10 +322,14 @@ class EntertainmentsController extends Controller
                     null,
                     __('movie.tvshow_list'),
                     200,
-                    ['html' => '', 'hasMore' => false]
+                    ['html' => '', 'hasMore' => false, 'has_more' => false, 'next_cursor' => null]
                 );
             }
-            return ApiResponse::success([], __('movie.tvshow_list'), 200);
+            return ApiResponse::success([], __('movie.tvshow_list'), 200, [
+                'has_more' => false,
+                'hasMore' => false,
+                'next_cursor' => null,
+            ]);
         }
     
         /* ---------------- WATCHLIST (NO N+1) ---------------- */
@@ -345,6 +355,14 @@ class EntertainmentsController extends Controller
     
         /* ---------------- RESPONSE ---------------- */
         $responseData = CommonContentResourceV3::collection($tvshows)->toArray($request);
+        $lastItem = $tvshows->last();
+        $nextCursor = ($tvshows->hasMorePages() && $lastItem) ? (string) $lastItem->id : null;
+        $paginationMeta = [
+            'has_more' => $tvshows->hasMorePages(),
+            'hasMore' => $tvshows->hasMorePages(),
+            'next_cursor' => $nextCursor,
+            'per_page' => (int) $perPage,
+        ];
     
         if ($request->boolean('is_ajax')) {
             $html = view('frontend::components.card.card_tvshow', [
@@ -355,14 +373,11 @@ class EntertainmentsController extends Controller
                 null,
                 __('movie.tvshow_list'),
                 200,
-                [
-                    'html'    => $html,
-                    'hasMore' => $tvshows->hasMorePages(),
-                ]
+                array_merge($paginationMeta, ['html' => $html])
             );
         }
     
-        return ApiResponse::success($responseData, __('movie.tvshow_list'), 200);
+        return ApiResponse::success($responseData, __('movie.tvshow_list'), 200, $paginationMeta);
     }
 
 
