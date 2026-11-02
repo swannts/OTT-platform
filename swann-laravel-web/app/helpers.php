@@ -1024,8 +1024,9 @@ function formatTime($date)
     }
 
     try {
-        // Handle both date (Y-m-d) and datetime (Y-m-d H:i:s) formats
-        $releaseDate = Carbon::parse($date);
+        // Handle both date (Y-m-d) and datetime (Y-m-d H:i:s) formats in Dhaka timezone
+        $timezone = Setting::where('name', 'default_time_zone')->value('val') ?? config('app.timezone', 'Asia/Dhaka');
+        $releaseDate = Carbon::parse($date)->setTimezone($timezone);
 
         $defaultFormat = Setting::where('name', 'default_time_format')->where('datatype', 'misc')->value('val');
 
@@ -1033,7 +1034,7 @@ function formatTime($date)
             return $releaseDate->format($defaultFormat);
         }
 
-        return $releaseDate->format('H:i');
+        return $releaseDate->format('h:i A');
     } catch (\Exception $e) {
         return '-';
     }
@@ -2137,9 +2138,9 @@ function formatDateTimeWithTimezone($value, $type = null)
             ->toArray();
     });
 
-    $timezone    = $settings['default_time_zone'] ?? config('app.timezone', 'UTC');
+    $timezone    = $settings['default_time_zone'] ?? config('app.timezone', 'Asia/Dhaka');
     $dateFormat  = $settings['default_date_format'] ?? 'Y-m-d';
-    $timeFormat  = $settings['default_time_format'] ?? 'H:i:s';
+    $timeFormat  = $settings['default_time_format'] ?? 'h:i A';
 
     try {
         $carbon = Carbon::parse($value)->setTimezone($timezone);

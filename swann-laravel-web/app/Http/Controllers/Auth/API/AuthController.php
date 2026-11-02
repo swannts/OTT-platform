@@ -110,7 +110,7 @@ class AuthController extends Controller
     try {
         \DB::table('sessions')
         ->whereNull('user_id')
-        ->where('last_activity', '<', now()->subMinutes(1)->timestamp)
+        ->where('last_activity', '<', now()->subMinutes(config('session.lifetime', 120))->timestamp)
         ->delete();
     } catch (\Exception $e) {
         Log::warning('Session cleanup failed during login', [

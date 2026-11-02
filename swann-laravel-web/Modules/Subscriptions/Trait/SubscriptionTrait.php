@@ -33,7 +33,7 @@ trait SubscriptionTrait
         $previous_plan_start = $old_plan->start_date;
         $previous_plan_end = new \Carbon\Carbon($old_plan->end_date);
         $new_plan_start = new \Carbon\Carbon(date('Y-m-d H:i:s'));
-        $left_days = $previous_plan_end->diffInDays($new_plan_start);
+        $left_days = (int) max(0, ceil($new_plan_start->diffInRealHours($previous_plan_end, false) / 24));
 
         return $left_days;
     }

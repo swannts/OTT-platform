@@ -845,7 +845,7 @@ class WebPaymentApiController extends Controller
 
         $now = Carbon::now();
         $endDate = Carbon::parse($subscription->end_date);
-        $daysLeft = max(0, $now->diffInDays($endDate, false));
+        $daysLeft = (int) max(0, ceil($now->diffInRealHours($endDate, false) / 24));
 
         return ApiResponse::success([
             'has_active_subscription' => true,

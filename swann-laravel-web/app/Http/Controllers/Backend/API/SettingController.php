@@ -199,6 +199,9 @@ class SettingController extends Controller
         $response['entitlement_id'] = isset($settings['iap_entitlement_id']) ? $settings['iap_entitlement_id'] : null;
         $response['banner_ad_id'] = isset($settings['banner_ad_id']) ? $settings['banner_ad_id'] : null;
         $response['ios_banner_id'] = isset($settings['ios_banner_id']) ? $settings['ios_banner_id'] : null;
+        $response['date_format'] = isset($settings['default_date_format']) ? $settings['default_date_format'] : 'Y-m-d';
+        $response['time_format'] = isset($settings['default_time_format']) ? $settings['default_time_format'] : 'h:i A';
+        $response['default_timezone'] = isset($settings['default_time_zone']) ? $settings['default_time_zone'] : 'Asia/Dhaka';
         $response['force_update'] = isset($settings['force_update']) ? (int)$settings['force_update'] : 0;
         $response['mobile_app'] = isset($settings['mobile_app']) ? $mobileAppVersion['mobile_app_versions'] ?? null : null;
         $response['tv_app'] = isset($settings['tv_app']) ? $response['tv_app_versions'] ?? null : null;
@@ -328,6 +331,9 @@ class SettingController extends Controller
         $response['app_logo'] = isset($settings['dark_logo']) ? $settings['dark_logo'] : asset('img/logo/dark_logo.png');
         $response['app_favicon'] = isset($settings['favicon']) ? $settings['favicon'] : asset('img/logo/favicon.png');
         $response['app_loader'] = isset($settings['loader_gif']) ? $settings['loader_gif'] : asset('img/logo/loader.gif');
+        $response['date_format'] = isset($settings['default_date_format']) ? $settings['default_date_format'] : 'Y-m-d';
+        $response['time_format'] = isset($settings['default_time_format']) ? $settings['default_time_format'] : 'h:i A';
+        $response['default_timezone'] = isset($settings['default_time_zone']) ? $settings['default_time_zone'] : 'Asia/Dhaka';
         $response['force_update'] = isset($settings['force_update']) ? (int)$settings['force_update'] : 0;
         $response['mobile_app'] = isset($settings['mobile_app']) ? $mobileAppVersion['mobile_app_versions'] ?? null : null;
         $response['tv_app'] = isset($settings['tv_app']) ? $response['tv_app_versions'] ?? null : null;
@@ -335,8 +341,8 @@ class SettingController extends Controller
         $response['video_forward_seek_seconds'] = isset($settings['forward_seconds']) ? (int)$settings['forward_seconds'] : 0;
         $response['video_backward_seek_seconds'] = isset($settings['backward_seconds']) ? (int)$settings['backward_seconds'] : 0;
         $response['date_format'] = isset($settings['default_date_format']) ? $settings['default_date_format'] : 'Y-m-d';
-        $response['time_format'] = isset($settings['default_time_format']) ? $settings['default_time_format'] : 'H:i:s';
-        $response['default_timezone'] = isset($settings['default_time_zone']) ? $settings['default_time_zone'] : 'UTC';
+        $response['time_format'] = isset($settings['default_time_format']) ? $settings['default_time_format'] : 'h:i A';
+        $response['default_timezone'] = isset($settings['default_time_zone']) ? $settings['default_time_zone'] : 'Asia/Dhaka';
         if ($authenticatedUserId && $request->filled('device_id')) {
             $device = Device::where('user_id', $authenticatedUserId)
                 ->where('device_id', $request->device_id)
