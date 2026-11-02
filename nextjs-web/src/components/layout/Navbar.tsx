@@ -258,9 +258,9 @@ export default function Navbar() {
             {!subscription?.has_active_subscription && (
               <Link
                 href="/pricing"
-                className="hidden sm:inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#e5b869]/15 to-[#f3cf8a]/10 hover:from-[#e5b869]/25 hover:to-[#f3cf8a]/20 border border-[#e5b869]/30 hover:border-[#e5b869]/60 text-[#e5b869] text-xs font-semibold shadow-sm transition-all cursor-pointer hover:scale-[1.02] active:scale-95 whitespace-nowrap flex-shrink-0"
+                className="hidden sm:inline-flex items-center space-x-2 h-9 px-4 rounded-full bg-[#16120c]/80 hover:bg-[#201a12] border border-[#d4a853]/60 hover:border-[#d4a853] text-[#E5B869] text-xs sm:text-[13px] font-medium backdrop-blur-md shadow-sm transition-all cursor-pointer hover:scale-[1.02] active:scale-95 whitespace-nowrap flex-shrink-0"
               >
-                <Crown className="w-3.5 h-3.5 text-[#e5b869] flex-shrink-0" />
+                <Crown className="w-4 h-4 text-[#E5B869] flex-shrink-0" strokeWidth={2} />
                 <span className="tracking-wide whitespace-nowrap">{t('go_vip', 'Go VIP')}</span>
               </Link>
             )}
@@ -273,21 +273,20 @@ export default function Navbar() {
               <NotificationDropdown />
             </div>
 
-            {/* Quick Sign In Button for Guests */}
-            {!user && (
+            {/* Functional User Profile Dropdown when authenticated, or sleek Sign In when guest */}
+            {user ? (
+              <div className="flex-shrink-0">
+                <UserProfileDropdown />
+              </div>
+            ) : (
               <Link
                 href="/login"
-                className="hidden sm:inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-[#E5B869] hover:bg-[#f3cf8a] text-black text-xs font-bold shadow-md shadow-[#E5B869]/20 transition-all cursor-pointer hover:scale-[1.02] active:scale-95 whitespace-nowrap flex-shrink-0"
+                className="inline-flex items-center space-x-1.5 h-9 px-4 rounded-full bg-[#E5B869] hover:bg-[#f3cf8a] text-black text-xs sm:text-[13px] font-bold shadow-md shadow-[#E5B869]/20 transition-all cursor-pointer hover:scale-[1.02] active:scale-95 whitespace-nowrap flex-shrink-0"
               >
-                <LogIn className="w-3.5 h-3.5 text-black flex-shrink-0" />
+                <LogIn className="w-4 h-4 text-black flex-shrink-0" />
                 <span className="whitespace-nowrap">{t('sign_in', 'Sign In')}</span>
               </Link>
             )}
-
-            {/* Functional User Profile Dropdown with Auth Integration */}
-            <div className="flex-shrink-0">
-              <UserProfileDropdown />
-            </div>
 
             {/* Mobile Hamburger Button */}
             <button

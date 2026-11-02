@@ -22,6 +22,10 @@ import {
   DashboardData,
   NotificationItem,
   SeoMetadata,
+  PaymentMethodsData,
+  AppConfiguration,
+  ReviewItem,
+  ReviewListResponse,
 } from '@/types';
 
 export function normalizeMediaItem(raw: unknown): MediaItem {
@@ -110,19 +114,37 @@ class ApiClient {
 
   private getToken(): string | null {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem('token') || null;
+    try {
+      const local = localStorage.getItem('token');
+      if (local) return local;
+      const match = document.cookie.match(/(?:^|;\s*)noor_token=([^;]+)/);
+      return match ? decodeURIComponent(match[1]) : null;
+    } catch {
+      return null;
+    }
   }
 
   public setToken(token: string) {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('token', token);
+      try {
+        localStorage.setItem('token', token);
+        const isSecure = window.location.protocol === 'https:';
+        document.cookie = `noor_token=${encodeURIComponent(token)}; path=/; max-age=2592000; SameSite=Lax${isSecure ? '; Secure' : ''}`;
+      } catch {
+        // ignore storage errors
+      }
     }
   }
 
   public removeToken() {
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      try {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        document.cookie = 'noor_token=; path=/; max-age=0; SameSite=Lax';
+      } catch {
+        // ignore
+      }
     }
   }
 
@@ -372,6 +394,13 @@ class ApiClient {
       google_site_verification: (seoRaw.google_site_verification as string) || (details.google_site_verification as string) || null,
     };
 
+    const reviewRaw = (raw?.review as Record<string, unknown>) || (details?.review as Record<string, unknown>) || {};
+    const reviewData: ReviewListResponse = {
+      total_reviews: typeof reviewRaw.total_reviews === 'number' ? reviewRaw.total_reviews : 0,
+      my_review: (reviewRaw.my_review as ReviewItem) || null,
+      other_reviews: Array.isArray(reviewRaw.other_reviews) ? (reviewRaw.other_reviews as ReviewItem[]) : [],
+    };
+
     return {
       id: (raw?.id as string | number) || (details?.id as string | number) || id,
       name: String(details.name || raw?.name),
@@ -409,6 +438,7 @@ class ApiClient {
       meta_keywords: seoObj.meta_keywords,
       seo_image: seoObj.seo_image,
       canonical_url: seoObj.canonical_url,
+      reviews: reviewData,
     };
   }
 
@@ -557,9 +587,34 @@ class ApiClient {
     });
   }
 
+  // ── Payment Methods & Gateways ───────────────────────────────────────────
+  async getPaymentMethods(): Promise<PaymentMethodsData> {
+    const res = await this.request<{ status?: boolean; data?: PaymentMethodsData }>('/v3/payment-methods');
+    return res?.data || (res as unknown as PaymentMethodsData) || {};
+  }
+
+  // ── Reviews & Ratings ─────────────────────────────────────────────────────
+  async saveReview(params: {
+    entertainment_id: string | number;
+    rating: number;
+    review?: string;
+  }): Promise<{ status: boolean; message?: string; data?: ReviewItem }> {
+    return this.request('/save-review', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    });
+  }
+
+  async deleteReview(id: string | number): Promise<{ status: boolean; message?: string }> {
+    return this.request('/delete-review', {
+      method: 'POST',
+      body: JSON.stringify({ id }),
+    });
+  }
+
   // ── App Settings & Static Pages ───────────────────────────────────────────
-  async getAppConfiguration(): Promise<Record<string, unknown>> {
-    return this.request<Record<string, unknown>>('/v3/app-configuration');
+  async getAppConfiguration(): Promise<AppConfiguration> {
+    return this.request<AppConfiguration>('/v3/app-configuration');
   }
 
   async getPage(slug: string): Promise<{ title?: string; name?: string; description?: string; content?: string; [key: string]: unknown }> {

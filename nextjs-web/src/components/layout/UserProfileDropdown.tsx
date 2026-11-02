@@ -90,26 +90,22 @@ export default function UserProfileDropdown() {
         className={`relative w-9 h-9 rounded-full overflow-hidden transition-all flex items-center justify-center cursor-pointer active:scale-95 flex-shrink-0 ${
           isOpen
             ? 'ring-2 ring-[#E5B869] shadow-[0_0_12px_rgba(229,184,105,0.4)]'
-            : 'ring-1 ring-white/15 hover:ring-[#E5B869]/70'
-        } ${user ? '' : 'bg-white/[0.06] hover:bg-white/[0.12]'}`}
+            : 'ring-1 ring-white/20 hover:ring-[#E5B869]/70'
+        } bg-white/[0.08]`}
         aria-label="User Profile"
         aria-expanded={isOpen}
       >
-        {user ? (
-          userAvatar && !imgError ? (
-            <img
-              src={userAvatar}
-              alt={user.name || 'User Profile'}
-              onError={() => setImgError(true)}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-tr from-[#99732e] to-[#E5B869] text-black font-bold text-xs flex items-center justify-center">
-              {getInitials(user.name)}
-            </div>
-          )
+        {userAvatar && !imgError ? (
+          <img
+            src={userAvatar}
+            alt={user?.name || 'User Profile'}
+            onError={() => setImgError(true)}
+            className="w-full h-full object-cover"
+          />
         ) : (
-          <UserIcon className="w-4 h-4 text-gray-300" />
+          <div className="w-full h-full bg-gradient-to-tr from-[#99732e] to-[#E5B869] text-black font-bold text-xs flex items-center justify-center">
+            {getInitials(user?.name)}
+          </div>
         )}
 
         {/* Genuine Online Green Indicator Dot - Only when authenticated */}

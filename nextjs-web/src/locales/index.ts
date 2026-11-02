@@ -10,7 +10,7 @@ export const locales: Record<Locale, Record<TranslationKey, string>> = {
 
 export const availableLocales: { code: Locale; label: string; shortLabel: string; flag: string }[] = [
   { code: 'en', label: 'English', shortLabel: 'EN', flag: '🇬🇧' },
-  { code: 'bn', label: 'বাংলা', shortLabel: 'বাং', flag: '🇧🇩' },
+  { code: 'bn', label: 'বাংলা', shortLabel: 'BN', flag: '🇧🇩' },
 ];
 
 export { en, bn };

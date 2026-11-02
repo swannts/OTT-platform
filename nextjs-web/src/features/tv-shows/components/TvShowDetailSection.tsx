@@ -6,6 +6,7 @@ import { ContentDetails, EpisodeItem } from '@/types';
 import { Play, Star, Calendar, Tv, Plus, Check } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
+import { ReviewSection } from '@/components/shared';
 
 interface TvShowDetailSectionProps {
   initialShow: ContentDetails;
@@ -169,6 +170,13 @@ export default function TvShowDetailSection({
             ))}
           </div>
         )}
+
+        {/* Viewer Reviews & Star Ratings */}
+        <ReviewSection
+          contentId={show.id}
+          contentType="tvshow"
+          initialReviews={show.reviews}
+        />
       </div>
     </div>
   );

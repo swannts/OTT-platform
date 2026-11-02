@@ -106,6 +106,7 @@ export interface ContentDetails {
   meta_keywords?: string[] | string;
   seo_image?: string | null;
   canonical_url?: string | null;
+  reviews?: ReviewListResponse;
 }
 
 export interface SeasonItem {
@@ -389,6 +390,48 @@ export type {
   BlogListResponse,
   BlogDetailResponse,
 } from '@/features/blog/types/blog.types';
+
+export interface PaymentMethodsData {
+  razor_pay?: { razorpay_publickey?: string };
+  stripe_pay?: { stripe_publickey?: string };
+  paystack_pay?: { paystack_publickey?: string };
+  paypal_pay?: { paypal_clientid?: string };
+  flutterwave_pay?: { flutterwave_publickey?: string };
+  in_app_purchase?: { entitlement_id?: string; apple_api_key?: string; google_api_key?: string };
+}
+
+export interface AppConfiguration {
+  currency?: {
+    currency_name?: string;
+    currency_symbol?: string;
+    currency_code?: string;
+    currency_position?: 'left' | 'right';
+    no_of_decimal?: number;
+    thousand_separator?: string;
+    decimal_separator?: string;
+  };
+  site_name?: string;
+  site_description?: string;
+  [key: string]: unknown;
+}
+
+export interface ReviewItem {
+  id: number | string;
+  rating: number;
+  review?: string;
+  username?: string;
+  user_name?: string;
+  profile_image?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ReviewListResponse {
+  total_reviews?: number;
+  my_review?: ReviewItem | null;
+  other_reviews?: ReviewItem[];
+  data?: ReviewItem[];
+}
 
 
 

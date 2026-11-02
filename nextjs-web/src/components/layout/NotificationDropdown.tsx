@@ -198,15 +198,15 @@ export default function NotificationDropdown() {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-9 h-9 rounded-full flex items-center justify-center transition-all relative cursor-pointer active:scale-95 flex-shrink-0 ${
+        className={`w-9 h-9 rounded-full flex items-center justify-center transition-all relative cursor-pointer active:scale-95 flex-shrink-0 backdrop-blur-md ${
           isOpen
             ? 'bg-[#E5B869]/20 border border-[#E5B869]/60 text-[#E5B869]'
-            : 'bg-white/[0.04] hover:bg-white/10 border border-white/10 hover:border-[#E5B869]/40 text-gray-300 hover:text-[#E5B869]'
+            : 'bg-white/[0.08] hover:bg-white/[0.12] border border-white/10 hover:border-white/20 text-gray-200 hover:text-white'
         }`}
         aria-label="Notifications"
         aria-expanded={isOpen}
       >
-        <Bell className="w-4 h-4" />
+        <Bell className="w-4 h-4 text-gray-200" strokeWidth={1.75} />
         {unreadCount > 0 && (
           <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#E5B869] opacity-75" />

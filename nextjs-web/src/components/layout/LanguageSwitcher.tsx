@@ -68,16 +68,16 @@ export default function LanguageSwitcher({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full transition-all cursor-pointer active:scale-95 text-xs font-medium border flex-shrink-0 ${
+        className={`h-9 px-3 sm:px-3.5 rounded-full flex items-center space-x-1.5 sm:space-x-2 transition-all cursor-pointer active:scale-95 text-xs font-medium border flex-shrink-0 backdrop-blur-md ${
           isOpen
             ? 'bg-[#E5B869]/20 border-[#E5B869]/60 text-[#E5B869]'
-            : 'bg-white/[0.04] hover:bg-white/10 border-white/10 text-gray-300 hover:text-white'
+            : 'bg-white/[0.08] hover:bg-white/[0.12] border-white/10 hover:border-white/20 text-white'
         }`}
         aria-label="Change Language"
         aria-expanded={isOpen}
       >
-        <Languages className="w-3.5 h-3.5 text-[#E5B869] flex-shrink-0" />
-        <span className="font-semibold">{activeLocale.shortLabel}</span>
+        <Languages className="w-4 h-4 text-[#E5B869] flex-shrink-0" strokeWidth={1.8} />
+        <span className="font-semibold text-white tracking-wide text-xs">{activeLocale.shortLabel}</span>
       </button>
 
       {isOpen && (
