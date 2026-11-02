@@ -4,7 +4,7 @@ import './globals.css';
 import { AuthProvider, StoreProvider, LanguageProvider } from '@/providers';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
-import { BottomPlayerBar } from '@/features/player';
+import BottomPlayerBar from '@/features/player/components/BottomPlayerBar';
 
 const playfair = Playfair_Display({
   subsets: ['latin'],
