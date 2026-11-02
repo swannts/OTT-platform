@@ -79,6 +79,7 @@ export default function WatchPage() {
             hasAccess={content.has_content_access === true}
             initialTime={typeof content.watched_time === 'number' ? content.watched_time : 0}
             poster={content.banner_image || content.poster_image}
+            onBack={() => router.back()}
           />
         </div>
 
