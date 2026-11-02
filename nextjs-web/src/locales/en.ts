@@ -18,6 +18,7 @@ export const en = {
 
   // Actions & Buttons
   sign_in: 'Sign In',
+  sign_up: 'Sign Up',
   create_account: 'Create Account',
   sign_out: 'Sign Out',
   go_vip: 'Go VIP',

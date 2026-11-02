@@ -20,6 +20,7 @@ export const bn: Record<TranslationKey, string> = {
 
   // Actions & Buttons
   sign_in: 'সাইন ইন',
+  sign_up: 'সাইন আপ',
   create_account: 'অ্যাকাউন্ট তৈরি করুন',
   sign_out: 'সাইন আউট',
   go_vip: 'ভিআইপি হন',

@@ -23,12 +23,15 @@ import {
   Flame,
   Compass,
   LogIn,
+  UserPlus,
+  User as UserIcon,
+  LogOut,
 } from 'lucide-react';
 
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, subscription } = useAuth();
+  const { user, subscription, logout } = useAuth();
   const { t } = useLanguage();
 
   const [isScrolled, setIsScrolled] = useState(false);
@@ -265,15 +268,17 @@ export default function Navbar() {
               </Link>
             )}
 
-            {/* Language Switcher (English / বাংলা) */}
-            <LanguageSwitcher />
+            {/* Language Switcher (English / বাংলা) - Compact on desktop/tablet, inside drawer on mobile */}
+            <div className="hidden sm:block flex-shrink-0">
+              <LanguageSwitcher />
+            </div>
 
             {/* Functional Notification Dropdown with Live Unread Tracking */}
-            <div className="flex-shrink-0">
+            <div className="hidden sm:block flex-shrink-0">
               <NotificationDropdown />
             </div>
 
-            {/* Functional User Profile Dropdown when authenticated, or sleek Sign In when guest */}
+            {/* Functional User Profile Dropdown when authenticated, or sleek Sign In when guest (hidden on mobile, available in mobile drawer) */}
             {user ? (
               <div className="flex-shrink-0">
                 <UserProfileDropdown />
@@ -281,9 +286,9 @@ export default function Navbar() {
             ) : (
               <Link
                 href="/login"
-                className="inline-flex items-center space-x-1.5 h-9 px-4 rounded-full bg-[#E5B869] hover:bg-[#f3cf8a] text-black text-xs sm:text-[13px] font-bold shadow-md shadow-[#E5B869]/20 transition-all cursor-pointer hover:scale-[1.02] active:scale-95 whitespace-nowrap flex-shrink-0"
+                className="hidden sm:inline-flex items-center space-x-1.5 h-8 sm:h-9 px-3 sm:px-4 rounded-full bg-[#E5B869] hover:bg-[#f3cf8a] text-black text-xs sm:text-[13px] font-bold shadow-md shadow-[#E5B869]/20 transition-all cursor-pointer hover:scale-[1.02] active:scale-95 whitespace-nowrap flex-shrink-0"
               >
-                <LogIn className="w-4 h-4 text-black flex-shrink-0" />
+                <LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-black flex-shrink-0" />
                 <span className="whitespace-nowrap">{t('sign_in', 'Sign In')}</span>
               </Link>
             )}
@@ -291,31 +296,86 @@ export default function Navbar() {
             {/* Mobile Hamburger Button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden w-9 h-9 rounded-full flex items-center justify-center bg-white/[0.04] border border-white/10 text-gray-300 hover:text-white cursor-pointer flex-shrink-0"
+              className="lg:hidden w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center bg-white/[0.04] border border-white/10 text-gray-300 hover:text-white cursor-pointer flex-shrink-0"
               aria-label="Toggle Navigation Menu"
             >
-              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {isMobileMenuOpen ? <X className="w-4 h-4 sm:w-5 sm:h-5" /> : <Menu className="w-4 h-4 sm:w-5 sm:h-5" />}
             </button>
           </div>
         </div>
 
         {/* Mobile menu dropdown */}
         {isMobileMenuOpen && (
-          <div className="lg:hidden mt-3 pt-4 border-t border-white/10 bg-[#090e15]/98 backdrop-blur-2xl rounded-2xl p-4 space-y-2 shadow-2xl animate-hero-title">
-            <form onSubmit={handleSearchSubmit} className="mb-3">
+          <div className="lg:hidden mt-3 pt-4 border-t border-white/10 bg-[#090e15]/98 backdrop-blur-2xl rounded-2xl p-4 space-y-3 shadow-2xl animate-hero-title">
+            {/* Guest Action Cards: Sign In & Sign Up */}
+            {!user ? (
+              <div className="grid grid-cols-2 gap-2 pb-3 border-b border-white/10">
+                <Link
+                  href="/login"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center justify-center space-x-1.5 bg-[#E5B869] hover:bg-[#f3cf8a] text-black font-bold text-xs py-2.5 rounded-xl shadow-md transition-all text-center cursor-pointer active:scale-95"
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  <span>{t('sign_in', 'Sign In')}</span>
+                </Link>
+                <Link
+                  href="/register"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center justify-center space-x-1.5 bg-white/10 hover:bg-white/15 border border-white/15 text-white font-bold text-xs py-2.5 rounded-xl transition-all text-center cursor-pointer active:scale-95"
+                >
+                  <UserPlus className="w-3.5 h-3.5 text-[#E5B869]" />
+                  <span>{t('sign_up', 'Sign Up')}</span>
+                </Link>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                <div className="flex items-center space-x-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-full bg-[#E5B869]/20 border border-[#E5B869]/40 text-[#E5B869] font-bold text-xs flex items-center justify-center flex-shrink-0">
+                    {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-white truncate">{user.name || 'My Account'}</p>
+                    <p className="text-[10px] text-gray-400 truncate">{user.email}</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2 flex-shrink-0">
+                  <Link
+                    href="/account"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="text-xs font-bold text-[#E5B869] hover:underline"
+                  >
+                    Account
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setIsMobileMenuOpen(false);
+                      await logout();
+                      router.push('/');
+                    }}
+                    className="p-1.5 text-gray-400 hover:text-red-400 cursor-pointer"
+                    title="Sign Out"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <form onSubmit={handleSearchSubmit} className="mb-2">
               <div className="relative">
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search movies, series, channels..."
+                  placeholder={t('search_placeholder', 'Search movies, series...')}
                   className="w-full bg-white/[0.06] border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-[#E5B869]"
                 />
                 <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
               </div>
             </form>
 
-            <div className="flex items-center justify-between pb-2 border-b border-white/10 mb-2">
+            <div className="flex items-center justify-between pb-2 border-b border-white/10">
               <span className="text-xs text-gray-400 font-medium">{t('language', 'Language')}</span>
               <LanguageSwitcher variant="pill" />
             </div>
