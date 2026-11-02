@@ -1,382 +1,186 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { api } from '@/lib/api';
+import { Spinner } from '@/components/ui';
+import { LogOut } from 'lucide-react';
 import {
-  User as UserIcon,
-  Shield,
-  CreditCard,
-  Users,
-  Lock,
-  CheckCircle2,
-  AlertCircle,
-  LogOut,
-  Crown,
-  KeyRound,
-  Save,
-} from 'lucide-react';
+  AccountNavTabs,
+  ProfileSection,
+  ViewerProfilesSection,
+  SecuritySection,
+  DevicesSection,
+  BillingSection,
+  useAccountData,
+  useMultiProfiles,
+  type AccountTab,
+} from '@/features/account';
 
-export default function AccountPage() {
-  const { user, subscription, logout, refreshUser, isLoading } = useAuth();
+function AccountDashboardContent() {
+  const { user, subscription, logout, isLoading: authLoading, refreshUser } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  // Active tab derived directly from URL search params (Rule 5: no unnecessary effect/state sync)
+  const activeTab: AccountTab = (searchParams?.get('tab') as AccountTab) || 'profile';
 
-  const [profileLoading, setProfileLoading] = useState(false);
-  const [profileMessage, setProfileMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const handleTabChange = (tab: AccountTab) => {
+    router.replace(`/account?tab=${tab}`, { scroll: false });
+  };
 
-  const [passwordLoading, setPasswordLoading] = useState(false);
-  const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
+  // Auth Guard
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (!authLoading && !user) {
       router.push('/login?redirect=/account');
-      return;
     }
-    if (user) {
-      setName(user.name || '');
-      setEmail(user.email || '');
-      setPhone(user.phone || '');
-    }
-  }, [user, isLoading, router]);
+  }, [user, authLoading, router]);
 
-  const handleUpdateProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setProfileLoading(true);
-    setProfileMessage(null);
-    try {
-      await api.updateProfile({ name, email, phone });
-      setProfileMessage({ type: 'success', text: 'Profile updated successfully.' });
-      await refreshUser();
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to update profile.';
-      setProfileMessage({ type: 'error', text: message });
-    } finally {
-      setProfileLoading(false);
-    }
-  };
+  // Feature Hooks
+  const {
+    data,
+    devices,
+    isLoading: accountLoading,
+    actionLoading: accountActionLoading,
+    updateProfile,
+    changePassword,
+    updateParentalLock,
+    logoutDevice,
+    logoutAllDevices,
+    refresh: refreshAccount,
+  } = useAccountData();
 
-  const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newPassword !== confirmPassword) {
-      setPasswordMessage({ type: 'error', text: 'New passwords do not match.' });
-      return;
-    }
-    if (newPassword.length < 6) {
-      setPasswordMessage({ type: 'error', text: 'Password must be at least 6 characters.' });
-      return;
-    }
+  const {
+    profiles,
+    currentProfile,
+    isLoading: profilesLoading,
+    actionLoading: profileActionLoading,
+    pinTargetProfile,
+    selectProfile,
+    saveProfile,
+    deleteProfile,
+    cancelPinVerification,
+  } = useMultiProfiles();
 
-    setPasswordLoading(true);
-    setPasswordMessage(null);
-    try {
-      await api.changePassword({ old_password: currentPassword, new_password: newPassword });
-      setPasswordMessage({ type: 'success', text: 'Password changed successfully.' });
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to change password.';
-      setPasswordMessage({ type: 'error', text: message });
-    } finally {
-      setPasswordLoading(false);
-    }
-  };
-
-  if (isLoading) {
+  if (authLoading || (accountLoading && !data)) {
     return (
       <div className="min-h-screen pt-32 text-center text-white space-y-4">
-        <div className="w-10 h-10 border-4 border-[#E5B869] border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-sm text-gray-400">Loading your account details...</p>
+        <Spinner size="lg" label="Loading your account dashboard..." />
       </div>
     );
   }
 
   if (!user) return null;
 
+  const isVIP = Boolean(user.is_subscribe || subscription?.has_active_subscription);
+
   return (
-    <div className="min-h-screen pt-24 pb-16 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
-      {/* Header */}
+    <div className="min-h-screen pt-24 pb-20 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
+      {/* Page Header */}
       <div className="border-b border-white/10 pb-6 mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-white tracking-tight">Account & Settings</h1>
-          <p className="text-gray-400 text-sm mt-1">Manage your personal profile, security, and preferences</p>
+          <p className="text-gray-400 text-sm mt-1">
+            Manage your personal profile, viewer spaces, security controls, and active devices.
+          </p>
         </div>
+
         <button
+          type="button"
           onClick={() => {
             logout();
             router.push('/');
           }}
-          className="self-start sm:self-auto flex items-center space-x-2 text-sm text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 px-4 py-2 rounded-xl transition-colors border border-red-500/20"
+          className="self-start sm:self-auto flex items-center space-x-2 text-sm text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 px-4 py-2.5 rounded-xl transition-colors border border-red-500/20 font-semibold"
         >
           <LogOut className="w-4 h-4" />
           <span>Sign Out</span>
         </button>
       </div>
 
-      {/* Navigation Sub-Tabs */}
-      <div className="flex flex-wrap gap-2 mb-8 border-b border-white/10 pb-4">
-        <Link
-          href="/account"
-          className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-[#E5B869] text-black text-sm font-bold shadow-md shadow-[#E5B869]/20"
-        >
-          <UserIcon className="w-4 h-4" />
-          <span>General Info</span>
-        </Link>
-        <Link
-          href="/account/billing"
-          className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 text-sm font-medium transition-colors"
-        >
-          <CreditCard className="w-4 h-4" />
-          <span>Billing & History</span>
-        </Link>
-        <Link
-          href="/account/security"
-          className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 text-sm font-medium transition-colors"
-        >
-          <Shield className="w-4 h-4" />
-          <span>Security & PIN</span>
-        </Link>
-        <Link
-          href="/profiles"
-          className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 text-sm font-medium transition-colors"
-        >
-          <Users className="w-4 h-4" />
-          <span>Profiles</span>
-        </Link>
-      </div>
+      {/* Navigation Tabs */}
+      <AccountNavTabs
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        devicesCount={devices.others.length + (devices.current ? 1 : 0)}
+        profilesCount={profiles.length}
+        isVIP={isVIP}
+      />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Subscription & Quick Stats */}
-        <div className="space-y-6">
-          {/* Subscription Card */}
-          <div className="glass-card rounded-2xl p-6 border border-white/10 relative overflow-hidden">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-xs uppercase tracking-wider font-bold text-gray-400">Membership</span>
-              <Crown className="w-5 h-5 text-amber-400" />
-            </div>
+      {/* Tab Panels */}
+      {activeTab === 'profile' && (
+        <ProfileSection
+          user={{
+            ...user,
+            first_name: data?.user?.first_name,
+            last_name: data?.user?.last_name,
+            mobile: data?.user?.mobile,
+            gender: data?.user?.gender,
+            date_of_birth: data?.user?.date_of_birth,
+          }}
+          onUpdate={updateProfile}
+          isUpdating={accountActionLoading}
+        />
+      )}
 
-            {subscription?.has_active_subscription ? (
-              <div>
-                <div className="flex items-center space-x-2">
-                  <span className="text-2xl font-black text-amber-300">VIP Pass</span>
-                  <span className="bg-amber-500/20 text-amber-400 text-xs px-2 py-0.5 rounded-full font-bold">
-                    Active
-                  </span>
-                </div>
-                <p className="text-sm text-gray-400 mt-2">
-                  You have <span className="text-white font-bold">{subscription.days_left} days</span> remaining.
-                </p>
-                <Link
-                  href="/account/billing"
-                  className="block text-center mt-4 w-full bg-white/10 hover:bg-white/20 text-white text-xs font-semibold py-2.5 rounded-xl transition-colors border border-white/10"
-                >
-                  Manage Membership
-                </Link>
-              </div>
-            ) : (
-              <div>
-                <p className="text-lg font-bold text-white">Free Account</p>
-                <p className="text-xs text-gray-400 mt-1">Unlock 4K streaming, VIP exclusives, and live sports.</p>
-                <Link
-                  href="/pricing"
-                  className="block text-center mt-4 w-full bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-2.5 rounded-xl transition-colors shadow-lg shadow-red-600/30"
-                >
-                  Upgrade to VIP
-                </Link>
-              </div>
-            )}
-          </div>
+      {activeTab === 'profiles' && (
+        <ViewerProfilesSection
+          profiles={profiles}
+          currentProfile={currentProfile}
+          onSelectProfile={selectProfile}
+          onSaveProfile={saveProfile}
+          onDeleteProfile={deleteProfile}
+          pinTargetProfile={pinTargetProfile}
+          onCancelPin={cancelPinVerification}
+          isLoading={profilesLoading}
+          actionLoading={profileActionLoading}
+          isVIP={isVIP}
+        />
+      )}
 
-          {/* Quick Shortcuts */}
-          <div className="glass-card rounded-2xl p-6 border border-white/10 space-y-4">
-            <h3 className="text-sm font-semibold text-white">Account Shortcuts</h3>
-            <div className="space-y-2 text-sm">
-              <Link
-                href="/watchlist"
-                className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-gray-300 hover:text-white"
-              >
-                <span>My Watchlist</span>
-                <span className="text-xs text-gray-500">→</span>
-              </Link>
-              <Link
-                href="/account/billing"
-                className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-gray-300 hover:text-white"
-              >
-                <span>Invoice Downloads</span>
-                <span className="text-xs text-gray-500">→</span>
-              </Link>
-              <Link
-                href="/profiles"
-                className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-gray-300 hover:text-white"
-              >
-                <span>Manage Sub-Profiles</span>
-                <span className="text-xs text-gray-500">→</span>
-              </Link>
-            </div>
-          </div>
-        </div>
+      {activeTab === 'security' && (
+        <SecuritySection
+          isParentalLockEnabled={Boolean(user.is_parental_lock_enable)}
+          onUpdateParentalLock={updateParentalLock}
+          onChangePassword={changePassword}
+          actionLoading={accountActionLoading}
+        />
+      )}
 
-        {/* Right Column: Profile Edit & Password Change */}
-        <div className="lg:col-span-2 space-y-8">
-          {/* Personal Information Form */}
-          <div className="glass-card rounded-2xl p-6 sm:p-8 border border-white/10">
-            <h2 className="text-xl font-bold text-white mb-2">Personal Information</h2>
-            <p className="text-sm text-gray-400 mb-6">Update your personal contact details and display name.</p>
+      {activeTab === 'devices' && (
+        <DevicesSection
+          currentDevice={devices.current}
+          otherDevices={devices.others}
+          onLogoutDevice={logoutDevice}
+          onLogoutAll={logoutAllDevices}
+          isLoading={accountLoading}
+          actionLoading={accountActionLoading}
+        />
+      )}
 
-            {profileMessage && (
-              <div
-                className={`flex items-center space-x-2 p-4 rounded-xl text-sm mb-6 ${
-                  profileMessage.type === 'success'
-                    ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                    : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                }`}
-              >
-                {profileMessage.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
-                <span>{profileMessage.text}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleUpdateProfile} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-red-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-red-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">
-                  Phone Number (Optional)
-                </label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+1 (555) 000-0000"
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-red-500"
-                />
-              </div>
-
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={profileLoading}
-                  className="flex items-center space-x-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-semibold text-sm px-6 py-2.5 rounded-xl transition-colors shadow-lg shadow-red-600/30"
-                >
-                  <Save className="w-4 h-4" />
-                  <span>{profileLoading ? 'Saving...' : 'Save Profile'}</span>
-                </button>
-              </div>
-            </form>
-          </div>
-
-          {/* Change Password Form */}
-          <div className="glass-card rounded-2xl p-6 sm:p-8 border border-white/10">
-            <div className="flex items-center space-x-2 mb-2">
-              <KeyRound className="w-5 h-5 text-gray-400" />
-              <h2 className="text-xl font-bold text-white">Change Password</h2>
-            </div>
-            <p className="text-sm text-gray-400 mb-6">Ensure your account is using a long, random password to stay secure.</p>
-
-            {passwordMessage && (
-              <div
-                className={`flex items-center space-x-2 p-4 rounded-xl text-sm mb-6 ${
-                  passwordMessage.type === 'success'
-                    ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                    : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                }`}
-              >
-                {passwordMessage.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
-                <span>{passwordMessage.text}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleChangePassword} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">
-                  Current Password
-                </label>
-                <input
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  required
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-red-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">
-                    New Password
-                  </label>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    required
-                    placeholder="Min 6 characters"
-                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-red-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">
-                    Confirm New Password
-                  </label>
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-red-500"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={passwordLoading}
-                  className="flex items-center space-x-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white font-semibold text-sm px-6 py-2.5 rounded-xl transition-colors border border-white/10"
-                >
-                  <Lock className="w-4 h-4" />
-                  <span>{passwordLoading ? 'Updating...' : 'Update Password'}</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
+      {activeTab === 'billing' && (
+        <BillingSection
+          subscription={subscription}
+          onRefresh={async () => {
+            await refreshUser();
+            await refreshAccount();
+          }}
+        />
+      )}
     </div>
   );
 }
 
+export default function AccountPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen pt-32 text-center text-white space-y-4">
+          <Spinner size="lg" label="Loading account..." />
+        </div>
+      }
+    >
+      <AccountDashboardContent />
+    </Suspense>
+  );
+}

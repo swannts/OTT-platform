@@ -288,10 +288,28 @@ class ApiClient {
     });
   }
 
-  async selectProfile(profileId: string | number): Promise<{ message?: string; profile?: UserMultiProfile }> {
-    return this.request<{ message?: string; profile?: UserMultiProfile }>(`/select-userprofile/${profileId}`, {
+  async selectProfile(profileId: string | number, pin?: string | string[]): Promise<{ message?: string; profile?: UserMultiProfile; data?: UserMultiProfile[] }> {
+    return this.request<{ message?: string; profile?: UserMultiProfile; data?: UserMultiProfile[] }>(`/select-userprofile/${profileId}`, {
       method: 'POST',
+      body: pin ? JSON.stringify({ pin: Array.isArray(pin) ? pin : pin.split('') }) : undefined,
     });
+  }
+
+  // ── Account & Devices ─────────────────────────────────────────────────────
+  async getAccountSettings(): Promise<Record<string, unknown>> {
+    return this.request<Record<string, unknown>>('/account-setting');
+  }
+
+  async logoutDevice(deviceId: string | number): Promise<{ message?: string; status?: boolean }> {
+    return this.request<{ message?: string; status?: boolean }>(`/device-logout?id=${deviceId}`);
+  }
+
+  async logoutAllDevices(): Promise<{ message?: string; status?: boolean }> {
+    return this.request<{ message?: string; status?: boolean }>('/logout-all');
+  }
+
+  async deleteAccount(): Promise<{ message?: string; status?: boolean }> {
+    return this.request<{ message?: string; status?: boolean }>('/delete-account');
   }
 
   // ── Billing & Invoices ────────────────────────────────────────────────────
