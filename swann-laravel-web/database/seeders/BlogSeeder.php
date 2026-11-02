@@ -39,11 +39,11 @@ In projects like *Prophetic Chronicles* and *The Golden Age of Cordoba*, product
 
 As platforms like NOOR Islamic Cinema invest in original productions, the horizon for halal entertainment has never looked brighter. Families now have an inspiring space to gather, learn, and be captivated without compromise.
 MARKDOWN,
-                'image_url' => 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=1200&auto=format&fit=crop&q=85',
+                'image_url' => 'https://i.ytimg.com/vi/DW-00ckCAPI/maxresdefault.jpg',
                 'category' => 'Cinema & Culture',
                 'tags' => ['Cinema', 'Culture', 'Halal Media', 'Storytelling'],
                 'author_name' => 'Dr. Zayd Al-Husseini',
-                'author_avatar' => 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80',
+                'author_avatar' => 'https://i.ytimg.com/vi/YAZ-ePjDP8M/hqdefault.jpg',
                 'reading_time' => 6,
                 'views_count' => 1240,
                 'is_featured' => true,
@@ -70,11 +70,11 @@ The art department spent over fourteen months reviewing excavations from the Ara
 
 The result is an awe-inspiring docudrama that transports viewers back to the dawn of Islam, making the prophetic legacy palpably real for viewers of all generations.
 MARKDOWN,
-                'image_url' => 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=1200&auto=format&fit=crop&q=85',
+                'image_url' => 'https://i.ytimg.com/vi/gL-bOx7au9I/maxresdefault.jpg',
                 'category' => 'Behind the Scenes',
                 'tags' => ['Seerah', 'History', 'Production', 'Behind the Scenes'],
                 'author_name' => 'Maryam Qasim',
-                'author_avatar' => 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&auto=format&fit=crop&q=80',
+                'author_avatar' => 'https://i.ytimg.com/vi/yLFbG4nmQ-0/hqdefault.jpg',
                 'reading_time' => 5,
                 'views_count' => 890,
                 'is_featured' => true,
@@ -99,11 +99,11 @@ From the 8th to the 14th centuries, the Islamic world was the intellectual epice
 
 Our upcoming docuseries illuminates this glorious chapter of history with CGI reconstructions of historic observatories and interactive astrolabe diagrams.
 MARKDOWN,
-                'image_url' => 'https://images.unsplash.com/photo-1564769625905-50e93615e769?w=1200&auto=format&fit=crop&q=85',
+                'image_url' => 'https://i.ytimg.com/vi/O8hhwSn1iaU/maxresdefault.jpg',
                 'category' => 'Islamic History',
                 'tags' => ['History', 'Science', 'Golden Age', 'Baghdad'],
                 'author_name' => 'Prof. Tariq Mansour',
-                'author_avatar' => 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80',
+                'author_avatar' => 'https://i.ytimg.com/vi/PUaq6dSejTI/hqdefault.jpg',
                 'reading_time' => 7,
                 'views_count' => 1520,
                 'is_featured' => false,
@@ -126,11 +126,11 @@ Sound director Farhan Noor describes the technique:
 
 Combined with organic foley like blowing sands, flowing streams, and rhythmic percussion (*daf*), the acoustic landscape of NOOR's productions achieves deep emotional power while honoring strict Islamic guidelines.
 MARKDOWN,
-                'image_url' => 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=1200&auto=format&fit=crop&q=85',
+                'image_url' => 'https://i.ytimg.com/vi/UDvh63xHVa0/maxresdefault.jpg',
                 'category' => 'Sound & Art',
                 'tags' => ['Soundtrack', 'Acapella', 'Halal Audio', 'Cinema'],
                 'author_name' => 'Farhan Noor',
-                'author_avatar' => 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=120&auto=format&fit=crop&q=80',
+                'author_avatar' => 'https://i.ytimg.com/vi/pUZftt-jHDY/hqdefault.jpg',
                 'reading_time' => 4,
                 'views_count' => 640,
                 'is_featured' => false,
@@ -154,11 +154,11 @@ In an age of hyper-stimulating algorithmic video feeds and unfiltered content, i
 
 NOOR Kids provides parents with parental locks, safe profiles, and values-aligned animated shorts designed specifically to cultivate love for Allah and His Messenger ﷺ.
 MARKDOWN,
-                'image_url' => 'https://images.unsplash.com/photo-1516627145497-ae6968895b74?w=1200&auto=format&fit=crop&q=85',
+                'image_url' => 'https://i.ytimg.com/vi/AwW8s_r4g4w/maxresdefault.jpg',
                 'category' => 'Family & Parenting',
                 'tags' => ['Kids', 'Parenting', 'Family', 'Education'],
                 'author_name' => 'Amina Siddiqui',
-                'author_avatar' => 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
+                'author_avatar' => 'https://i.ytimg.com/vi/tMY0PN1pE8U/hqdefault.jpg',
                 'reading_time' => 5,
                 'views_count' => 1100,
                 'is_featured' => false,
@@ -183,11 +183,11 @@ Our documentary series *Sacred Inks* showcases:
 
 By bringing these treasures to life in 4K Ultra HD, we ensure that current and future generations remain intimately tethered to the grandeur of our collective heritage.
 MARKDOWN,
-                'image_url' => 'https://images.unsplash.com/photo-1461360370896-922624d12aa1?w=1200&auto=format&fit=crop&q=85',
+                'image_url' => 'https://i.ytimg.com/vi/pg1NpMmPv48/maxresdefault.jpg',
                 'category' => 'Heritage & Preservation',
                 'tags' => ['Heritage', 'Manuscripts', 'Quran', 'Art'],
                 'author_name' => 'Dr. Zayd Al-Husseini',
-                'author_avatar' => 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80',
+                'author_avatar' => 'https://i.ytimg.com/vi/YAZ-ePjDP8M/hqdefault.jpg',
                 'reading_time' => 6,
                 'views_count' => 980,
                 'is_featured' => false,
