@@ -37,6 +37,7 @@ export default function SafeImage({
   const [imgSrc, setImgSrc] = useState<string>(initialTarget);
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [blurDataUrl, setBlurDataUrl] = useState<string | null>(null);
 
   // Sync state if src changes
   useEffect(() => {
@@ -46,10 +47,14 @@ export default function SafeImage({
     setHasError(false);
   }, [src, fallbackSrc]);
 
-  // Decode blurhash to lightweight data URL (cached)
-  const blurDataUrl = useMemo(() => {
-    if (!blurhash) return null;
-    return blurHashToDataURL(blurhash, 32, 32);
+  // Decode blurhash to lightweight data URL on client after mount to prevent SSR hydration mismatch
+  useEffect(() => {
+    if (!blurhash) {
+      setBlurDataUrl(null);
+      return;
+    }
+    const dataUrl = blurHashToDataURL(blurhash, 32, 32);
+    setBlurDataUrl(dataUrl);
   }, [blurhash]);
 
   const handleError = () => {
@@ -72,7 +77,16 @@ export default function SafeImage({
         containerClassName
       )}
     >
-      {/* 1. BlurHash Placeholder Layer (Cross-fades smoothly when real image loads) */}
+      {/* 1. Base Fallback Background (always matches SSR and initial paint) */}
+      <div
+        className={cn(
+          'absolute inset-0 z-0 bg-gradient-to-br from-[#0b1017] via-[#141b24] to-[#070b10] transition-opacity duration-700 pointer-events-none',
+          isLoaded ? 'opacity-0' : 'opacity-100'
+        )}
+        aria-hidden="true"
+      />
+
+      {/* 2. BlurHash Placeholder Layer (Client-hydrated, cross-fades smoothly when available) */}
       {blurDataUrl ? (
         <div
           className={cn(
@@ -82,18 +96,9 @@ export default function SafeImage({
           style={{ backgroundImage: `url(${blurDataUrl})` }}
           aria-hidden="true"
         />
-      ) : (
-        /* Shimmering Sacred Fallback if no blurhash is available */
-        <div
-          className={cn(
-            'absolute inset-0 z-0 bg-gradient-to-br from-[#0b1017] via-[#141b24] to-[#070b10] transition-opacity duration-700 pointer-events-none',
-            isLoaded ? 'opacity-0' : 'opacity-100'
-          )}
-          aria-hidden="true"
-        />
-      )}
+      ) : null}
 
-      {/* 2. Primary Image Layer */}
+      {/* 3. Primary Image Layer */}
       <img
         src={imgSrc}
         alt={alt}
