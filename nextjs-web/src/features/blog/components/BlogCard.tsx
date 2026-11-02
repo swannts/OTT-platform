@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { BlogPost } from '@/types';
 import { Clock, Eye, Calendar, ArrowRight } from 'lucide-react';
 import { DEFAULT_FALLBACK_IMAGE } from '@/constants';
+import { formatDhakaDate } from '@/lib/datetime';
 
 interface BlogCardProps {
   post: BlogPost;
@@ -13,12 +14,8 @@ interface BlogCardProps {
 export default function BlogCard({ post }: BlogCardProps) {
   const [imgSrc, setImgSrc] = useState(post.image_url || DEFAULT_FALLBACK_IMAGE);
 
-  const formattedDate = post.published_at
-    ? new Date(post.published_at).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      })
+  const formattedDate = post.published_at || post.created_at
+    ? formatDhakaDate(post.published_at || post.created_at)
     : 'Recent';
 
   return (

@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
+import { Spinner } from '@/components/ui';
+import { formatDhakaDateTime } from '@/lib/datetime';
 import {
   Bell,
   CheckCircle2,
@@ -83,8 +85,7 @@ export default function NotificationsPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen pt-32 text-center text-white space-y-4">
-        <div className="w-10 h-10 border-4 border-[#E5B869] border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-sm text-gray-400">Loading notifications...</p>
+        <Spinner size="lg" label="Loading notifications..." />
       </div>
     );
   }
@@ -159,7 +160,7 @@ export default function NotificationsPage() {
                       </p>
                     )}
                     <span className="text-[11px] text-gray-500 mt-2 block">
-                      {item.created_at || 'Recently'}
+                      {item.created_at ? formatDhakaDateTime(item.created_at) : 'Recently'}
                     </span>
                   </div>
                 </div>

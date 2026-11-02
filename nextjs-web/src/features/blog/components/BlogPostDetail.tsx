@@ -15,6 +15,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { DEFAULT_FALLBACK_IMAGE } from '@/constants';
+import { formatDhakaDate } from '@/lib/datetime';
 
 interface BlogPostDetailProps {
   post: BlogPost;
@@ -25,12 +26,8 @@ export default function BlogPostDetail({ post, related }: BlogPostDetailProps) {
   const [copied, setCopied] = useState(false);
   const [imgSrc, setImgSrc] = useState(post.image_url || DEFAULT_FALLBACK_IMAGE);
 
-  const formattedDate = post.published_at
-    ? new Date(post.published_at).toLocaleDateString('en-US', {
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric',
-      })
+  const formattedDate = post.published_at || post.created_at
+    ? formatDhakaDate(post.published_at || post.created_at, 'long')
     : 'Recently Published';
 
   const handleCopyLink = () => {

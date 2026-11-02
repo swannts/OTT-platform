@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuth, useLanguage } from '@/providers';
 import { api } from '@/lib/api';
 import { ReviewItem, ReviewListResponse } from '@/types';
+import { formatDhakaDateTime } from '@/lib/datetime';
 import { Star, MessageSquare, Trash2, Send, LogIn, CheckCircle2 } from 'lucide-react';
 
 interface ReviewSectionProps {
@@ -293,7 +294,9 @@ export default function ReviewSection({
                         {r.username || r.user_name || 'Community Member'}
                       </p>
                       <span className="text-[10px] text-gray-500">
-                        {r.created_at || r.updated_at || 'Recent review'}
+                        {r.created_at || r.updated_at
+                          ? formatDhakaDateTime(r.created_at || r.updated_at)
+                          : 'Recent review'}
                       </span>
                     </div>
                   </div>
