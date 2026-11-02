@@ -12,6 +12,7 @@ import {
   SecuritySection,
   DevicesSection,
   BillingSection,
+  PreferencesSection,
   useAccountData,
   useMultiProfiles,
   type AccountTab,
@@ -118,8 +119,10 @@ function AccountDashboardContent() {
             gender: data?.user?.gender,
             date_of_birth: data?.user?.date_of_birth,
           }}
+          subscription={subscription}
           onUpdate={updateProfile}
           isUpdating={accountActionLoading}
+          onNavigateTab={handleTabChange}
         />
       )}
 
@@ -137,6 +140,8 @@ function AccountDashboardContent() {
           isVIP={isVIP}
         />
       )}
+
+      {activeTab === 'preferences' && <PreferencesSection />}
 
       {activeTab === 'security' && (
         <SecuritySection

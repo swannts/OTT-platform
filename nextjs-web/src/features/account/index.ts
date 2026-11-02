@@ -9,3 +9,4 @@ export * from './components/ViewerProfilesSection';
 export * from './components/SecuritySection';
 export * from './components/DevicesSection';
 export * from './components/BillingSection';
+export * from './components/PreferencesSection';

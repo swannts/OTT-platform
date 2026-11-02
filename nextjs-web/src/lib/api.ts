@@ -155,9 +155,11 @@ class ApiClient {
     const token = this.getToken();
     const locale = this.getLocale();
 
+    const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+
     const headers: Record<string, string> = {
       'Accept': 'application/json',
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       'app-locale': locale,
       'Accept-Language': locale,
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
@@ -248,10 +250,11 @@ class ApiClient {
     return this.request<User>('/v3/profile-details');
   }
 
-  async updateProfile(data: { name?: string; email?: string; phone?: string; avatar?: string }): Promise<{ message?: string; user?: User }> {
+  async updateProfile(data: Record<string, unknown> | FormData): Promise<{ message?: string; user?: User }> {
+    const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
     return this.request<{ message?: string; user?: User }>('/update-profile', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: isFormData ? data : JSON.stringify(data),
     });
   }
 

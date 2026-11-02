@@ -91,16 +91,19 @@ class LiveTVsController extends Controller
                 $channelData = setContentAccess($channelData, $userId, $userPlanId);
 
             } else {
-                $deviceTypeResponse = ['isDeviceSupported' => false];
+                $getDeviceTypeData = Subscription::checkPlanSupportDevice(null, $device_type);
+                $deviceTypeResponse = json_decode($getDeviceTypeData->getContent(), true);
                 $userPlanId = 0;
                 $channelData = setContentAccess($channelData, null, $userPlanId);
             }
 
-            if (!$channelData->has_content_access || !$channelData->isDeviceSupported) {
+            $isSupported = !empty($deviceTypeResponse['isDeviceSupported']);
+            $channelData['isDeviceSupported'] = $isSupported ? 1 : 0;
+            $channelData->isDeviceSupported = $isSupported ? 1 : 0;
+
+            if (!$channelData->has_content_access || !$isSupported) {
                 $channelData['video_qualities'] = [];
             }
-
-            $channelData['isDeviceSupported'] = $deviceTypeResponse['isDeviceSupported'] == true ? 1 : 0;
 
             $channelData['poster_image'] =  $device_type == 'tv' ? $channelData->poster_tv_url : $channelData->poster_url ?? null;
             // Get more items and apply setContentAccess to each

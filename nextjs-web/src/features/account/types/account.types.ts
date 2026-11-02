@@ -1,6 +1,6 @@
 import type { User, BillingSubscriptionRecord, BillingPayPerViewRecord } from '@/types';
 
-export type AccountTab = 'profile' | 'profiles' | 'security' | 'devices' | 'billing';
+export type AccountTab = 'profile' | 'profiles' | 'security' | 'devices' | 'billing' | 'preferences';
 
 export interface DeviceSession {
   id: number | string;

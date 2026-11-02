@@ -102,6 +102,18 @@ export function formatDhakaDateTime(
 }
 
 /**
+ * Safely format remaining days as an integer with proper pluralization (e.g. "365 days", "1 day").
+ * Never displays ugly floating-point decimals like "364.97763850403936".
+ */
+export function formatDaysRemaining(value: number | string | null | undefined): string {
+  if (value === null || value === undefined || value === '') return '0 days';
+  const parsed = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(parsed) || parsed <= 0) return '0 days';
+  const rounded = Math.ceil(parsed);
+  return `${rounded} ${rounded === 1 ? 'day' : 'days'}`;
+}
+
+/**
  * Returns a human-friendly relative time or full Dhaka date-time with AM/PM.
  */
 export function formatDhakaTimeAgo(value: string | number | Date | null | undefined): string {

@@ -66,7 +66,7 @@ export function useAccountData() {
     };
   }, [user]);
 
-  const updateProfile = async (input: UpdateProfileInput & { avatar?: string }) => {
+  const updateProfile = async (input: UpdateProfileInput & { avatar?: string; avatarFile?: File | null }) => {
     setActionLoading(true);
     try {
       await accountApi.updateProfile(input);

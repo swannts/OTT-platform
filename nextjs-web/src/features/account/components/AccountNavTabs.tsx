@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { User, Users, Shield, Smartphone, CreditCard } from 'lucide-react';
+import { User, Users, Shield, Smartphone, CreditCard, Sliders } from 'lucide-react';
 import type { AccountTab } from '../types/account.types';
 
 interface AccountNavTabsProps {
@@ -15,6 +15,7 @@ interface AccountNavTabsProps {
 const TABS: { id: AccountTab; label: string; icon: React.ElementType }[] = [
   { id: 'profile', label: 'General Info', icon: User },
   { id: 'profiles', label: 'Viewer Profiles', icon: Users },
+  { id: 'preferences', label: 'Preferences', icon: Sliders },
   { id: 'security', label: 'Security & PIN', icon: Shield },
   { id: 'devices', label: 'Connected Devices', icon: Smartphone },
   { id: 'billing', label: 'Billing & History', icon: CreditCard },

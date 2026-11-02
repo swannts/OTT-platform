@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Crown, Clock, CheckCircle2, AlertTriangle, Film, Receipt, ChevronRight } from 'lucide-react';
 import { Spinner } from '@/components/ui';
 import { accountApi } from '../api/account.client';
-import { formatDhakaDate, formatDhakaDateTime } from '@/lib/datetime';
+import { formatDhakaDate, formatDhakaDateTime, formatDaysRemaining } from '@/lib/datetime';
 import type { BillingSubscriptionRecord, BillingPayPerViewRecord, SubscriptionStatus } from '@/types';
 
 interface BillingSectionProps {
@@ -107,14 +107,23 @@ export function BillingSection({ subscription, onRefresh }: BillingSectionProps)
               </div>
             </div>
 
-            {isSubscribed && renewalDate ? (
-              <p className="text-gray-400 text-xs sm:text-sm flex items-center gap-1.5 pt-1">
-                <Clock className="w-4 h-4 text-gray-500" />
-                <span>Next renewal date:</span>
-                <strong className="text-white font-semibold">
-                  {formatDhakaDate(renewalDate)}
-                </strong>
-              </p>
+            {isSubscribed ? (
+              <div className="flex flex-wrap items-center gap-3 pt-1 text-xs sm:text-sm text-gray-400">
+                {renewalDate && (
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-gray-500" />
+                    <span>Next renewal:</span>
+                    <strong className="text-white font-semibold">
+                      {formatDhakaDate(renewalDate)}
+                    </strong>
+                  </span>
+                )}
+                {subscription?.days_left !== undefined && subscription?.days_left !== null && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#E5B869]/15 text-[#E5B869] border border-[#E5B869]/30">
+                    {formatDaysRemaining(subscription.days_left)} remaining
+                  </span>
+                )}
+              </div>
             ) : (
               <p className="text-gray-400 text-xs sm:text-sm pt-1">
                 Upgrade to unlock high-definition originals, ad-free streaming, and multi-screen access.

@@ -26,9 +26,20 @@ export const accountApi = {
   },
 
   /**
-   * Update personal profile information
+   * Update personal profile information with optional custom image file
    */
-  async updateProfile(input: UpdateProfileInput & { avatar?: string }) {
+  async updateProfile(input: UpdateProfileInput & { avatar?: string; avatarFile?: File | null }) {
+    if (input.avatarFile) {
+      const formData = new FormData();
+      if (input.first_name) formData.append('first_name', input.first_name);
+      if (input.last_name) formData.append('last_name', input.last_name);
+      if (input.email) formData.append('email', input.email);
+      if (input.mobile) formData.append('mobile', input.mobile);
+      if (input.gender) formData.append('gender', input.gender);
+      if (input.date_of_birth) formData.append('date_of_birth', input.date_of_birth);
+      formData.append('file_url', input.avatarFile);
+      return api.updateProfile(formData);
+    }
     return api.updateProfile(input);
   },
 

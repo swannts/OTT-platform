@@ -22,11 +22,12 @@ describe('User Account, Profiles & Preferences E2E', () => {
 
     it('renders account overview and profile details', () => {
       cy.contains('Account & Settings').should('be.visible');
-      cy.get('input[value="Test Viewer"]').should('exist');
+      cy.get('input[value="Test"]').should('exist');
       cy.get('input[value="viewer@noor.tv"]').should('exist');
     });
 
     it('displays password change inputs', () => {
+      cy.contains('button', 'Security & PIN').click();
       cy.contains(/Change Password|Security/i).should('exist');
       cy.get('input[type="password"]').should('have.length.at.least', 2);
     });
@@ -57,4 +58,3 @@ describe('User Account, Profiles & Preferences E2E', () => {
     });
   });
 });
-
