@@ -12,6 +12,25 @@ interface PageProps {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
+interface RawEpisodeResponse {
+  id: string | number;
+  name?: string;
+  episode_number?: number;
+  description?: string;
+  duration?: string;
+  poster_image?: string;
+  poster_tv_image?: string;
+  has_content_access?: boolean;
+  details?: {
+    name?: string;
+    description?: string;
+    short_description?: string;
+    duration?: string;
+    poster_image?: string;
+    has_content_access?: boolean;
+  };
+}
+
 async function getTvShowData(id: string): Promise<{ show: ContentDetails; episodes: EpisodeItem[] } | null> {
   let show: ContentDetails | null = null;
   let episodes: EpisodeItem[] = [];
@@ -27,16 +46,16 @@ async function getTvShowData(id: string): Promise<{ show: ContentDetails; episod
 
   try {
     const epData = await api.getEpisodes(id);
-    const list = Array.isArray(epData) ? epData : (epData?.data || []);
+    const list = Array.isArray(epData) ? epData : ((epData as { data?: RawEpisodeResponse[] })?.data || []);
     if (Array.isArray(list) && list.length > 0) {
-      episodes = list.map((ep, idx) => ({
+      episodes = (list as RawEpisodeResponse[]).map((ep, idx) => ({
         id: ep.id,
-        name: ep.name || `Episode ${idx + 1}`,
+        name: ep.name || ep.details?.name || `Episode ${idx + 1}`,
         episode_number: typeof ep.episode_number === 'number' ? ep.episode_number : (idx + 1),
-        description: ep.description,
-        poster_image: ep.poster_image || ep.thumbnail_image,
-        duration: ep.duration,
-        has_content_access: ep.has_content_access,
+        description: ep.description || ep.details?.description || ep.details?.short_description || '',
+        poster_image: ep.poster_image || ep.details?.poster_image || ep.poster_tv_image || show?.poster_image || '',
+        duration: ep.duration || ep.details?.duration || '',
+        has_content_access: Boolean(ep.has_content_access ?? ep.details?.has_content_access ?? true),
       }));
     }
   } catch (err) {

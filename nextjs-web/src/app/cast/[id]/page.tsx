@@ -41,7 +41,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const image: string =
     (typeof cast.image === 'string' && cast.image) ||
     (typeof cast.profile_image === 'string' && cast.profile_image) ||
-    'https://images.unsplash.com/photo-1544717305-2782549b5136?w=500&auto=format&fit=crop&q=80';
+    'https://images.unsplash.com/photo-1564769625905-50e93615e769?w=500&auto=format&fit=crop&q=80';
 
   return {
     title,
@@ -123,7 +123,7 @@ export default async function CastDetailPage({ params }: PageProps) {
               src={
                 (typeof cast.image === 'string' && cast.image) ||
                 (typeof cast.profile_image === 'string' && cast.profile_image) ||
-                'https://images.unsplash.com/photo-1544717305-2782549b5136?w=500&auto=format&fit=crop&q=80'
+                'https://images.unsplash.com/photo-1564769625905-50e93615e769?w=500&auto=format&fit=crop&q=80'
               }
               alt={cast.name}
               className="w-full h-full object-cover"

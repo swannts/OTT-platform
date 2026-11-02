@@ -368,6 +368,7 @@ class ApiClient {
     if (params.page) q.append('page', params.page.toString());
     if (params.genre_id) q.append('genre_id', params.genre_id.toString());
     if (params.search) q.append('search', params.search);
+    q.append('per_page', '100');
     return this.request<{ data?: MediaItem[]; [key: string]: unknown } | MediaItem[]>(`/v3/tvshow-list?${q.toString()}`);
   }
 
@@ -447,7 +448,10 @@ class ApiClient {
   }
 
   async getEpisodes(tvShowId: number | string, seasonId?: number | string): Promise<{ data?: Episode[]; [key: string]: unknown } | Episode[]> {
-    const q = new URLSearchParams({ tv_show_id: tvShowId.toString() });
+    const q = new URLSearchParams({
+      tv_show_id: tvShowId.toString(),
+      tvshow_id: tvShowId.toString(),
+    });
     if (seasonId) q.append('season_id', seasonId.toString());
     return this.request<{ data?: Episode[]; [key: string]: unknown } | Episode[]>(`/v3/episode-list?${q.toString()}`);
   }

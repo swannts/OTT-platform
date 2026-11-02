@@ -255,10 +255,10 @@ class EntertainmentsController extends Controller
             ])
     
             // SAME as whereHas('episodeV2') but much faster
-            ->join('episodes', 'episodes.entertainment_id', '=', 'entertainments.id')
+            ->leftJoin('episodes', 'episodes.entertainment_id', '=', 'entertainments.id')
     
             // SAME as original (genre mapping must exist)
-            ->join('entertainment_gener_mapping as egm', 'egm.entertainment_id', '=', 'entertainments.id')
+            ->leftJoin('entertainment_gener_mapping as egm', 'egm.entertainment_id', '=', 'entertainments.id')
     
             ->leftJoin('plan', 'plan.id', '=', 'entertainments.plan_id')
     
@@ -536,14 +536,14 @@ class EntertainmentsController extends Controller
         $device_type = getDeviceType($request);
         $perPage = $request->input('per_page', 10);
         $user_id = $request->user_id;
-        $tvshow_id = $request->input('tv_show_id');
+        $tvshow_id = $request->input('tvshow_id') ?? $request->input('tv_show_id');
 
         // Create unique cache key based on all relevant parameters
         $cacheKey = 'episode_list_v3_'. md5(json_encode([
             'user_id' => $user_id,
             'device_type' => $device_type,
             'per_page' => $perPage,
-            'tvshow_id' => $request->input('tvshow_id'),
+            'tvshow_id' => $tvshow_id,
             'season_id' => $request->input('season_id'),
             'search' => $request->input('search'),
             'download_quality' => $request->input('download_quality'),
@@ -552,12 +552,12 @@ class EntertainmentsController extends Controller
         ]));
 
         // Use cacheApiResponse helper with 5 minutes TTL
-        $cachedResult = cacheApiResponse($cacheKey, 300, function() use ($request, $device_type, $perPage, $user_id) {
+        $cachedResult = cacheApiResponse($cacheKey, 300, function() use ($request, $device_type, $perPage, $user_id, $tvshow_id) {
             $episodeList = Episode::where('status', 1)
                 ->with('entertainmentdata', 'plan', 'EpisodeStreamContentMapping', 'episodeDownloadMappings');
 
-            if ($request->has('tvshow_id')) {
-                $episodeList->where('entertainment_id', $request->tvshow_id);
+            if ($tvshow_id) {
+                $episodeList->where('entertainment_id', $tvshow_id);
             }
             if ($request->has('season_id')) {
                 $episodeList->where('season_id', $request->season_id);

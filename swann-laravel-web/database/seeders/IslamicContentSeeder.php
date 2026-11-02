@@ -720,12 +720,17 @@ class IslamicContentSeeder extends Seeder
                 'updated_at' => now(),
             ]);
 
+            $ytEpisodeData = file_exists(__DIR__ . '/data/yt_episodes.json')
+                ? json_decode(file_get_contents(__DIR__ . '/data/yt_episodes.json'), true)
+                : [];
+
             // Seed episodes
             foreach ($episodes as $epIndex => $ep) {
                 $epUuid = $this->uuidv7('episode', $ep['id']);
                 $epUploadType = $ep['video_upload_type'] ?? 'hls';
                 $epUrlInput = $ep['video_url_input'] ?? 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
                 $isEpYouTube = $epUploadType === 'YouTube' || str_contains($epUrlInput, 'youtu');
+                $epThumbnail = $ytEpisodeData['ep_' . $ep['id']] ?? $s['poster_url'];
 
                 DB::table('episodes')->insert([
                     'id' => $epUuid,
@@ -735,8 +740,8 @@ class IslamicContentSeeder extends Seeder
                     'slug' => \Illuminate\Support\Str::slug($s['name'] . '-ep-' . ($epIndex + 1)),
                     'description' => $ep['desc'],
                     'duration' => $ep['duration'],
-                    'poster_url' => $s['poster_url'],
-                    'poster_tv_url' => $s['poster_tv_url'],
+                    'poster_url' => $epThumbnail,
+                    'poster_tv_url' => $epThumbnail,
                     'access' => 'free',
                     'video_upload_type' => $epUploadType,
                     'video_url_input' => $epUrlInput,
@@ -971,9 +976,9 @@ class IslamicContentSeeder extends Seeder
                 'name' => 'Ibn Battuta: Master Traveler of the Medieval World',
                 'type' => 'movie',
                 'description' => 'Tracing thirty years across 73,000 miles: the extraordinary journey of the Moroccan scholar across Africa, the Middle East, India and China.',
-                'poster_url' => 'https://i.ytimg.com/vi/ra5zfkFfKAg/hqdefault.jpg',
-                'thumbnail_url' => 'https://i.ytimg.com/vi/ra5zfkFfKAg/hqdefault.jpg',
-                'poster_tv_url' => 'https://i.ytimg.com/vi/ra5zfkFfKAg/hqdefault.jpg',
+                'poster_url' => 'https://i.ytimg.com/vi/Ff87j_ccnkY/hqdefault.jpg',
+                'thumbnail_url' => 'https://i.ytimg.com/vi/Ff87j_ccnkY/hqdefault.jpg',
+                'poster_tv_url' => 'https://i.ytimg.com/vi/Ff87j_ccnkY/hqdefault.jpg',
                 'movie_access' => 'paid',
                 'duration' => '2h 05m',
                 'IMDb_rating' => 9.7,
