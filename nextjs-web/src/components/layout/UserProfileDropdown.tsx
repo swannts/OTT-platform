@@ -54,7 +54,7 @@ export default function UserProfileDropdown() {
   const handleSignOut = async () => {
     setIsOpen(false);
     await logout();
-    router.push('/');
+    window.location.href = '/';
   };
 
   const handleDemoLogin = async () => {

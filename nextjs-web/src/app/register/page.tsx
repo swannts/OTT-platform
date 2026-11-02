@@ -24,7 +24,7 @@ export default function RegisterPage() {
     setIsSubmitting(true);
     try {
       await register({ name, email, password });
-      router.push('/');
+      window.location.href = '/';
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Registration failed. Please check your details.');
     } finally {

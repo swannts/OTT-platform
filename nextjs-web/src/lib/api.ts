@@ -172,6 +172,9 @@ class ApiClient {
     const data = await res.json().catch(() => null);
 
     if (!res.ok) {
+      if (res.status === 401) {
+        this.removeToken();
+      }
       const errorMsg = data?.message || data?.error || `Request failed with status ${res.status}`;
       throw new Error(errorMsg);
     }

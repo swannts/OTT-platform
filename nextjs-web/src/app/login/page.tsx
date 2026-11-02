@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -11,7 +11,7 @@ function LoginFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams?.get('redirect') || '/';
-  const { login } = useAuth();
+  const { login, user, isLoading } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -19,13 +19,20 @@ function LoginFormContent() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // If already authenticated, redirect
+  useEffect(() => {
+    if (!isLoading && user) {
+      window.location.href = redirect;
+    }
+  }, [user, isLoading, redirect]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsSubmitting(true);
     try {
       await login({ email, password });
-      router.push(redirect);
+      window.location.href = redirect;
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Invalid email or password.');
     } finally {

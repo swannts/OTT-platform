@@ -76,11 +76,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const initializeAuth = async () => {
       try {
         const storedUser = localStorage.getItem('user');
-        const token = localStorage.getItem('token');
+        const token =
+          localStorage.getItem('token') ||
+          (typeof document !== 'undefined'
+            ? document.cookie.match(/(?:^|;\s*)noor_token=([^;]+)/)?.[1]
+            : null);
 
         if (token) {
           if (storedUser) {
-            setUser(normalizeUser(JSON.parse(storedUser)));
+            try {
+              setUser(normalizeUser(JSON.parse(storedUser)));
+            } catch {
+              // Ignore JSON parse errors
+            }
           }
           // Fetch live user profile and subscription status
           try {
@@ -92,8 +100,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 localStorage.setItem('user', JSON.stringify(norm));
               }
             }
-          } catch {
-            // Profile fetch failure
+          } catch (err: unknown) {
+            // If token is invalid or expired (401), remove token and reset user state
+            const errMsg = err instanceof Error ? err.message : String(err);
+            if (errMsg.includes('401') || errMsg.includes('Unauthenticated') || errMsg.includes('Unauthorized')) {
+              api.removeToken();
+              setUser(null);
+              setSubscription(null);
+            }
           }
           await refreshSubscription();
         }
