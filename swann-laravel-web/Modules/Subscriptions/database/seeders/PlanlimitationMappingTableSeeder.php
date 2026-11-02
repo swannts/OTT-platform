@@ -6,7 +6,6 @@ use Illuminate\Database\Seeder;
 
 class PlanlimitationMappingTableSeeder extends Seeder
 {
-
     /**
      * Auto generated seed file
      *
@@ -14,343 +13,158 @@ class PlanlimitationMappingTableSeeder extends Seeder
      */
     public function run()
     {
-
-
         \DB::table('planlimitation_mapping')->delete();
 
-        \DB::table('planlimitation_mapping')->insert(array (
-            0 =>
-            array (
+        \DB::table('planlimitation_mapping')->insert([
+            // Plan 1: Monthly VIP
+            [
                 'id' => 1,
                 'plan_id' => 1,
                 'planlimitation_id' => 1,
                 'limitation_slug' => 'video-cast',
                 'limitation_value' => 1,
-                'limit' => NULL,
-            ),
-            1 =>
-            array (
+                'limit' => null,
+            ],
+            [
                 'id' => 2,
                 'plan_id' => 1,
                 'planlimitation_id' => 2,
                 'limitation_slug' => 'ads',
-                'limitation_value' => 1,
-                'limit' => NULL,
-            ),
-            2 =>
-            array (
+                'limitation_value' => 0,
+                'limit' => null,
+            ],
+            [
                 'id' => 3,
                 'plan_id' => 1,
                 'planlimitation_id' => 3,
                 'limitation_slug' => 'device-limit',
                 'limitation_value' => 1,
-                'limit' => '1',
-            ),
-            3 =>
-            array (
+                'limit' => '2',
+            ],
+            [
                 'id' => 4,
                 'plan_id' => 1,
                 'planlimitation_id' => 4,
                 'limitation_slug' => 'download-status',
                 'limitation_value' => 1,
                 'limit' => '{"480p":1,"720p":1,"1080p":1,"1440p":0,"2K":0,"4K":0,"8K":0}',
-            ),
-            4 =>
-            array (
+            ],
+            [
                 'id' => 5,
-                'plan_id' => 2,
-                'planlimitation_id' => 1,
-                'limitation_slug' => 'video-cast',
+                'plan_id' => 1,
+                'planlimitation_id' => 5,
+                'limitation_slug' => 'supported-device-type',
                 'limitation_value' => 1,
-                'limit' => NULL,
-            ),
-            5 =>
-            array (
+                'limit' => '{"tablet":"1","laptop":"1","mobile":"1","tv":"1"}',
+            ],
+            [
                 'id' => 6,
-                'plan_id' => 2,
-                'planlimitation_id' => 2,
-                'limitation_slug' => 'ads',
-                'limitation_value' => 0,
-                'limit' => NULL,
-            ),
-            6 =>
-            array (
+                'plan_id' => 1,
+                'planlimitation_id' => 6,
+                'limitation_slug' => 'profile-limit',
+                'limitation_value' => 1,
+                'limit' => 2,
+            ],
+
+            // Plan 2: Annual VIP
+            [
                 'id' => 7,
                 'plan_id' => 2,
-                'planlimitation_id' => 3,
-                'limitation_slug' => 'device-limit',
+                'planlimitation_id' => 1,
+                'limitation_slug' => 'video-cast',
                 'limitation_value' => 1,
-                'limit' => '2',
-            ),
-            7 =>
-            array (
+                'limit' => null,
+            ],
+            [
                 'id' => 8,
                 'plan_id' => 2,
-                'planlimitation_id' => 4,
-                'limitation_slug' => 'download-status',
-                'limitation_value' => 1,
-                'limit' => '{"480p":1,"720p":1,"1080p":1,"1440p":1,"2K":0,"4K":0,"8K":0}',
-            ),
-            8 =>
-            array (
+                'planlimitation_id' => 2,
+                'limitation_slug' => 'ads',
+                'limitation_value' => 0,
+                'limit' => null,
+            ],
+            [
                 'id' => 9,
-                'plan_id' => 3,
-                'planlimitation_id' => 1,
-                'limitation_slug' => 'video-cast',
+                'plan_id' => 2,
+                'planlimitation_id' => 3,
+                'limitation_slug' => 'device-limit',
                 'limitation_value' => 1,
-                'limit' => NULL,
-            ),
-            9 =>
-            array (
+                'limit' => '4',
+            ],
+            [
                 'id' => 10,
-                'plan_id' => 3,
-                'planlimitation_id' => 2,
-                'limitation_slug' => 'ads',
-                'limitation_value' => 0,
-                'limit' => NULL,
-            ),
-            10 =>
-            array (
+                'plan_id' => 2,
+                'planlimitation_id' => 4,
+                'limitation_slug' => 'download-status',
+                'limitation_value' => 1,
+                'limit' => '{"480p":1,"720p":1,"1080p":1,"1440p":1,"2K":1,"4K":1,"8K":0}',
+            ],
+            [
                 'id' => 11,
-                'plan_id' => 3,
-                'planlimitation_id' => 3,
-                'limitation_slug' => 'device-limit',
+                'plan_id' => 2,
+                'planlimitation_id' => 5,
+                'limitation_slug' => 'supported-device-type',
                 'limitation_value' => 1,
-                'limit' => '5',
-            ),
-            11 =>
-            array (
+                'limit' => '{"tablet":"1","laptop":"1","mobile":"1","tv":"1"}',
+            ],
+            [
                 'id' => 12,
-                'plan_id' => 3,
-                'planlimitation_id' => 4,
-                'limitation_slug' => 'download-status',
+                'plan_id' => 2,
+                'planlimitation_id' => 6,
+                'limitation_slug' => 'profile-limit',
                 'limitation_value' => 1,
-                'limit' => '{"480p":1,"720p":1,"1080p":1,"1440p":1,"2K":1,"4K":0,"8K":0}',
-            ),
-            12 =>
-            array (
+                'limit' => 4,
+            ],
+
+            // Plan 3: Family VIP
+            [
                 'id' => 13,
-                'plan_id' => 4,
+                'plan_id' => 3,
                 'planlimitation_id' => 1,
                 'limitation_slug' => 'video-cast',
                 'limitation_value' => 1,
-                'limit' => NULL,
-            ),
-            13 =>
-            array (
+                'limit' => null,
+            ],
+            [
                 'id' => 14,
-                'plan_id' => 4,
+                'plan_id' => 3,
                 'planlimitation_id' => 2,
                 'limitation_slug' => 'ads',
-                'limitation_value' => 1,
-                'limit' => NULL,
-            ),
-            14 =>
-            array (
+                'limitation_value' => 0,
+                'limit' => null,
+            ],
+            [
                 'id' => 15,
-                'plan_id' => 4,
-                'planlimitation_id' => 3,
-                'limitation_slug' => 'device-limit',
-                'limitation_value' => 1,
-                'limit' => '1',
-            ),
-            15 =>
-            array (
-                'id' => 16,
-                'plan_id' => 4,
-                'planlimitation_id' => 4,
-                'limitation_slug' => 'download-status',
-                'limitation_value' => 1,
-                'limit' => '{"480p":1,"720p":1,"1080p":1,"1440p":0,"2K":0,"4K":0,"8K":0}',
-            ),
-            16 =>
-            array (
-                'id' => 17,
-                'plan_id' => 1,
-                'planlimitation_id' => 5,
-                'limitation_slug' => 'supported-device-type',
-                'limitation_value' => 1,
-                'limit' => '{"tablet":"0","laptop":"0","mobile":"1","tv":"0"}',
-            ),
-
-            17 =>
-            array (
-                'id' => 18,
-                'plan_id' => 1,
-                'planlimitation_id' => 6,
-                'limitation_slug' => 'profile-limit',
-                'limitation_value' => 1,
-                'limit' => 2,
-            ),
-            18 =>
-            array (
-                'id' => 19,
-                'plan_id' => 2,
-                'planlimitation_id' => 5,
-                'limitation_slug' => 'supported-device-type',
-                'limitation_value' => 1,
-                'limit' => '{"tablet":"1","laptop":"0","mobile":"1","tv":"0"}',
-            ),
-
-            19 =>
-            array (
-                'id' => 20,
-                'plan_id' => 2,
-                'planlimitation_id' => 6,
-                'limitation_slug' => 'profile-limit',
-                'limitation_value' => 1,
-                'limit' => 3,
-            ),
-            20 =>
-            array (
-                'id' => 21,
                 'plan_id' => 3,
-                'planlimitation_id' => 5,
-                'limitation_slug' => 'supported-device-type',
-                'limitation_value' => 1,
-                'limit' => '{"tablet":"0","laptop":"1","mobile":"1","tv":"1"}',
-            ),
-
-            21 =>
-            array (
-                'id' => 22,
-                'plan_id' => 3,
-                'planlimitation_id' => 6,
-                'limitation_slug' => 'profile-limit',
-                'limitation_value' => 1,
-                'limit' => 3,
-            ),
-            22 =>
-            array (
-                'id' => 23,
-                'plan_id' => 4,
-                'planlimitation_id' => 5,
-                'limitation_slug' => 'supported-device-type',
-                'limitation_value' => 1,
-                'limit' => '{"tablet":"0","laptop":"0","mobile":"1","tv":"0"}',
-            ),
-
-            23 =>
-            array (
-                'id' => 24,
-                'plan_id' => 4,
-                'planlimitation_id' => 6,
-                'limitation_slug' => 'profile-limit',
-                'limitation_value' => 1,
-                'limit' => 2,
-            ),
-            // Plan 5 (Premium Plan - Yearly) - Same as Plan 2
-            24 =>
-            array (
-                'id' => 25,
-                'plan_id' => 5,
-                'planlimitation_id' => 1,
-                'limitation_slug' => 'video-cast',
-                'limitation_value' => 1,
-                'limit' => NULL,
-            ),
-            25 =>
-            array (
-                'id' => 26,
-                'plan_id' => 5,
-                'planlimitation_id' => 2,
-                'limitation_slug' => 'ads',
-                'limitation_value' => 0,
-                'limit' => NULL,
-            ),
-            26 =>
-            array (
-                'id' => 27,
-                'plan_id' => 5,
-                'planlimitation_id' => 3,
-                'limitation_slug' => 'device-limit',
-                'limitation_value' => 1,
-                'limit' => '2',
-            ),
-            27 =>
-            array (
-                'id' => 28,
-                'plan_id' => 5,
-                'planlimitation_id' => 4,
-                'limitation_slug' => 'download-status',
-                'limitation_value' => 1,
-                'limit' => '{"480p":1,"720p":1,"1080p":1,"1440p":1,"2K":0,"4K":0,"8K":0}',
-            ),
-            28 =>
-            array (
-                'id' => 29,
-                'plan_id' => 5,
-                'planlimitation_id' => 5,
-                'limitation_slug' => 'supported-device-type',
-                'limitation_value' => 1,
-                'limit' => '{"tablet":"1","laptop":"0","mobile":"1","tv":"0"}',
-            ),
-            29 =>
-            array (
-                'id' => 30,
-                'plan_id' => 5,
-                'planlimitation_id' => 6,
-                'limitation_slug' => 'profile-limit',
-                'limitation_value' => 1,
-                'limit' => 3,
-            ),
-            // Plan 6 (Ultimate Plan - Yearly) - Same as Plan 3
-            30 =>
-            array (
-                'id' => 31,
-                'plan_id' => 6,
-                'planlimitation_id' => 1,
-                'limitation_slug' => 'video-cast',
-                'limitation_value' => 1,
-                'limit' => NULL,
-            ),
-            31 =>
-            array (
-                'id' => 32,
-                'plan_id' => 6,
-                'planlimitation_id' => 2,
-                'limitation_slug' => 'ads',
-                'limitation_value' => 0,
-                'limit' => NULL,
-            ),
-            32 =>
-            array (
-                'id' => 33,
-                'plan_id' => 6,
                 'planlimitation_id' => 3,
                 'limitation_slug' => 'device-limit',
                 'limitation_value' => 1,
                 'limit' => '5',
-            ),
-            33 =>
-            array (
-                'id' => 34,
-                'plan_id' => 6,
+            ],
+            [
+                'id' => 16,
+                'plan_id' => 3,
                 'planlimitation_id' => 4,
                 'limitation_slug' => 'download-status',
                 'limitation_value' => 1,
-                'limit' => '{"480p":1,"720p":1,"1080p":1,"1440p":1,"2K":1,"4K":0,"8K":0}',
-            ),
-            34 =>
-            array (
-                'id' => 35,
-                'plan_id' => 6,
+                'limit' => '{"480p":1,"720p":1,"1080p":1,"1440p":1,"2K":1,"4K":1,"8K":1}',
+            ],
+            [
+                'id' => 17,
+                'plan_id' => 3,
                 'planlimitation_id' => 5,
                 'limitation_slug' => 'supported-device-type',
                 'limitation_value' => 1,
-                'limit' => '{"tablet":"0","laptop":"1","mobile":"1","tv":"1"}',
-            ),
-            35 =>
-            array (
-                'id' => 36,
-                'plan_id' => 6,
+                'limit' => '{"tablet":"1","laptop":"1","mobile":"1","tv":"1"}',
+            ],
+            [
+                'id' => 18,
+                'plan_id' => 3,
                 'planlimitation_id' => 6,
                 'limitation_slug' => 'profile-limit',
                 'limitation_value' => 1,
-                'limit' => 3,
-            ),
-        ));
-
-
+                'limit' => 5,
+            ],
+        ]);
     }
 }
