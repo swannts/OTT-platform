@@ -43,6 +43,9 @@ Route::get('v3/blogs', [BlogApiController::class, 'index']);
 Route::get('v3/blogs/{slug}', [BlogApiController::class, 'show']);
 Route::get('v3/blog-categories', [BlogApiController::class, 'categories']);
 
+// Public Global SEO Settings
+Route::get('v3/seo-settings', [\Modules\SEO\Http\Controllers\SEOController::class, 'getSeoSettingsApi']);
+
 // Provider-signed callbacks are verified by their dedicated controller handlers.
 Route::post('webhooks/stripe', [WebPaymentApiController::class, 'stripeWebhook'])->middleware('throttle:300,1');
 Route::post('webhooks/razorpay', [WebPaymentApiController::class, 'razorpayWebhook'])->middleware('throttle:300,1');

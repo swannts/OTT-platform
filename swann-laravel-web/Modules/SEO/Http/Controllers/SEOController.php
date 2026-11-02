@@ -150,5 +150,33 @@ public function update(SeoRequest $request, int $id)
     return redirect()->back()->with('success', 'SEO settings updated successfully!');
 }
 
+public function getSeoSettingsApi(Request $request)
+{
+    $seo = Seo::first();
+    if (!$seo) {
+        $seo = Seo::create([
+            'meta_title' => setting('app_name', 'NOOR - Islamic Video Streaming & Live TV'),
+            'meta_keywords' => 'Islamic movie,Halal cinema,Makkah live TV,Madinah live TV,Islamic streaming,NOOR Cinema',
+            'short_description' => setting('site_description', 'Stream exclusive Islamic series, documentaries, live sacred broadcasts from Makkah and Madinah, and spiritual lectures on NOOR Islamic Cinema.'),
+            'canonical_url' => config('app.url', 'https://noorcinema.com'),
+        ]);
+    }
+
+    $keywords = $seo->meta_keywords ? array_values(array_filter(array_map('trim', explode(',', $seo->meta_keywords)))) : [];
+    $seoImage = !empty($seo->seo_image) ? setBaseUrlWithFileName($seo->seo_image, 'image', 'seo') : null;
+
+    return response()->json([
+        'status' => true,
+        'message' => 'SEO settings retrieved successfully',
+        'data' => [
+            'meta_title' => $seo->meta_title,
+            'meta_description' => $seo->short_description ?? $seo->meta_description,
+            'meta_keywords' => $keywords,
+            'seo_image' => $seoImage,
+            'canonical_url' => $seo->canonical_url,
+            'google_site_verification' => $seo->google_site_verification,
+        ],
+    ]);
+}
 
 }

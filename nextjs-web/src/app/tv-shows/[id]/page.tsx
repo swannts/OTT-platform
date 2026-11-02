@@ -62,50 +62,56 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   const { show } = data;
-  const title = `${show.name} - Stream Series on NOOR Islamic Cinema`;
+  const title = show.seo?.meta_title || show.meta_title || `${show.name} - Stream Series on NOOR Islamic Cinema`;
   const description =
-    show.description || 'Watch inspiring Islamic TV shows, Prophetic chronicles, and historical docuseries on NOOR.';
-  const imageUrl =
-    show.banner_image ||
-    show.poster_image ||
-    'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=1200&auto=format&fit=crop&q=80';
+    show.seo?.meta_description ||
+    show.meta_description ||
+    show.description ||
+    'Watch inspiring Islamic TV shows, Prophetic chronicles, and historical docuseries on NOOR.';
+
+  const rawKeywords = show.seo?.meta_keywords || show.meta_keywords || show.genre_data;
+  const keywords = Array.isArray(rawKeywords)
+    ? rawKeywords
+    : typeof rawKeywords === 'string'
+      ? rawKeywords.split(',').map((k) => k.trim()).filter(Boolean)
+      : [show.name, ...(show.genre_data || [])];
+
+  const imageUrl = show.seo?.seo_image || show.banner_image || show.poster_image;
+  const canonicalUrl = show.seo?.canonical_url || show.canonical_url || `/tv-shows/${id}`;
 
   return {
     title,
     description,
-    keywords: [
-      show.name,
-      ...(show.genre_data || []),
-      'Islamic series',
-      'Prophetic series',
-      'Islamic TV show',
-      'Halal docuseries',
-      'NOOR Islamic Cinema',
-    ],
+    keywords,
     openGraph: {
       title,
       description,
-      url: `https://noorcinema.com/tv-shows/${id}`,
+      url: canonicalUrl,
       siteName: 'NOOR Islamic Cinema',
       type: 'video.tv_show',
-      images: [
-        {
-          url: imageUrl,
-          width: 1200,
-          height: 630,
-          alt: show.name,
-        },
-      ],
+      images: imageUrl
+        ? [
+            {
+              url: imageUrl,
+              width: 1200,
+              height: 630,
+              alt: show.name,
+            },
+          ]
+        : [],
       locale: 'en_US',
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: [imageUrl],
+      images: imageUrl ? [imageUrl] : [],
     },
     alternates: {
-      canonical: `/tv-shows/${id}`,
+      canonical: canonicalUrl,
+    },
+    verification: {
+      ...(show.seo?.google_site_verification ? { google: show.seo.google_site_verification } : {}),
     },
   };
 }

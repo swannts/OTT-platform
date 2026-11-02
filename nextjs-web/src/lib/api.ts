@@ -21,6 +21,7 @@ import {
   SearchDataResult,
   DashboardData,
   NotificationItem,
+  SeoMetadata,
 } from '@/types';
 
 export function normalizeMediaItem(raw: unknown): MediaItem {
@@ -361,6 +362,16 @@ class ApiClient {
     const casts = ((raw?.actors || raw?.casts || []) as Array<Record<string, unknown>>);
     const directors = ((raw?.directors || []) as Array<Record<string, unknown>>);
 
+    const seoRaw = (raw?.seo as Record<string, unknown>) || (details?.seo as Record<string, unknown>) || {};
+    const seoObj: SeoMetadata = {
+      meta_title: (seoRaw.meta_title as string) || (details.meta_title as string) || undefined,
+      meta_description: (seoRaw.meta_description as string) || (details.meta_description as string) || undefined,
+      meta_keywords: (seoRaw.meta_keywords as string[] | string) || (details.meta_keywords as string[] | string) || undefined,
+      seo_image: (seoRaw.seo_image as string) || (details.seo_image as string) || null,
+      canonical_url: (seoRaw.canonical_url as string) || (details.canonical_url as string) || null,
+      google_site_verification: (seoRaw.google_site_verification as string) || (details.google_site_verification as string) || null,
+    };
+
     return {
       id: (raw?.id as string | number) || (details?.id as string | number) || id,
       name: String(details.name || raw?.name),
@@ -392,7 +403,17 @@ class ApiClient {
       video_qualities: (raw?.video_qualities as ContentDetails['video_qualities']) || [],
       video_default_quality: (raw?.video_qualities as ContentDetails['video_qualities'])?.[0],
       seasons: (raw?.seasons as ContentDetails['seasons']) || (details?.season_data as ContentDetails['seasons']) || [],
+      seo: seoObj,
+      meta_title: seoObj.meta_title,
+      meta_description: seoObj.meta_description,
+      meta_keywords: seoObj.meta_keywords,
+      seo_image: seoObj.seo_image,
+      canonical_url: seoObj.canonical_url,
     };
+  }
+
+  async getSeoSettings(): Promise<SeoMetadata> {
+    return this.request<SeoMetadata>('/v3/seo-settings');
   }
 
   async getEpisodes(tvShowId: number | string, seasonId?: number | string): Promise<{ data?: Episode[]; [key: string]: unknown } | Episode[]> {

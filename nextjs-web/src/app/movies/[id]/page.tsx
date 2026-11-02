@@ -34,49 +34,56 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  const title = `${movie.name} - Watch on NOOR Islamic Cinema`;
+  const title = movie.seo?.meta_title || movie.meta_title || `${movie.name} - Watch on NOOR Islamic Cinema`;
   const description =
-    movie.description || 'Watch sacred Islamic movies, historical epics, and faith-inspired documentaries on NOOR.';
-  const imageUrl =
-    movie.banner_image ||
-    movie.poster_image ||
-    'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=1200&auto=format&fit=crop&q=80';
+    movie.seo?.meta_description ||
+    movie.meta_description ||
+    movie.description ||
+    'Watch sacred Islamic movies, historical epics, and faith-inspired documentaries on NOOR.';
+
+  const rawKeywords = movie.seo?.meta_keywords || movie.meta_keywords || movie.genre_data;
+  const keywords = Array.isArray(rawKeywords)
+    ? rawKeywords
+    : typeof rawKeywords === 'string'
+      ? rawKeywords.split(',').map((k) => k.trim()).filter(Boolean)
+      : [movie.name, ...(movie.genre_data || [])];
+
+  const imageUrl = movie.seo?.seo_image || movie.banner_image || movie.poster_image;
+  const canonicalUrl = movie.seo?.canonical_url || movie.canonical_url || `/movies/${id}`;
 
   return {
     title,
     description,
-    keywords: [
-      movie.name,
-      ...(movie.genre_data || []),
-      'Islamic movie',
-      'Halal cinema',
-      'Islamic streaming',
-      'NOOR Islamic Cinema',
-    ],
+    keywords,
     openGraph: {
       title,
       description,
-      url: `https://noorcinema.com/movies/${id}`,
+      url: canonicalUrl,
       siteName: 'NOOR Islamic Cinema',
       type: 'video.movie',
-      images: [
-        {
-          url: imageUrl,
-          width: 1200,
-          height: 630,
-          alt: movie.name,
-        },
-      ],
+      images: imageUrl
+        ? [
+            {
+              url: imageUrl,
+              width: 1200,
+              height: 630,
+              alt: movie.name,
+            },
+          ]
+        : [],
       locale: 'en_US',
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: [imageUrl],
+      images: imageUrl ? [imageUrl] : [],
     },
     alternates: {
-      canonical: `/movies/${id}`,
+      canonical: canonicalUrl,
+    },
+    verification: {
+      ...(movie.seo?.google_site_verification ? { google: movie.seo.google_site_verification } : {}),
     },
   };
 }

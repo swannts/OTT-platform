@@ -4,6 +4,7 @@ import './globals.css';
 import { AuthProvider, StoreProvider, LanguageProvider } from '@/providers';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
+import { api } from '@/lib/api';
 
 const playfair = Playfair_Display({
   subsets: ['latin'],
@@ -17,10 +18,67 @@ const inter = Inter({
   display: 'swap',
 });
 
-export const metadata: Metadata = {
-  title: 'NOOR - Islamic Video Streaming & Live TV',
-  description: 'Stream exclusive Islamic series, documentaries, live sacred broadcasts from Makkah and Madinah, and spiritual lectures.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  let title = 'NOOR - Islamic Video Streaming & Live TV';
+  let description =
+    'Stream exclusive Islamic series, documentaries, live sacred broadcasts from Makkah and Madinah, and spiritual lectures.';
+  let keywords: string[] = [
+    'Islamic movie',
+    'Halal cinema',
+    'Makkah live TV',
+    'Madinah live TV',
+    'Islamic streaming',
+    'NOOR Cinema',
+  ];
+  let imageUrl: string | undefined;
+  let canonicalUrl: string | undefined;
+  let googleVerification: string | undefined;
+
+  try {
+    const seo = await api.getSeoSettings();
+    if (seo) {
+      if (seo.meta_title) title = seo.meta_title;
+      if (seo.meta_description) description = seo.meta_description;
+      if (Array.isArray(seo.meta_keywords)) {
+        keywords = seo.meta_keywords;
+      } else if (typeof seo.meta_keywords === 'string' && seo.meta_keywords.trim()) {
+        keywords = seo.meta_keywords
+          .split(',')
+          .map((k) => k.trim())
+          .filter(Boolean);
+      }
+      if (seo.seo_image) imageUrl = seo.seo_image;
+      if (seo.canonical_url) canonicalUrl = seo.canonical_url;
+      if (seo.google_site_verification) googleVerification = seo.google_site_verification;
+    }
+  } catch {
+    // Graceful fallback to default brand tokens if API is unreachable
+  }
+
+  return {
+    title,
+    description,
+    keywords,
+    openGraph: {
+      title,
+      description,
+      ...(imageUrl ? { images: [imageUrl] } : {}),
+      ...(canonicalUrl ? { url: canonicalUrl } : {}),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      ...(imageUrl ? { images: [imageUrl] } : {}),
+    },
+    alternates: {
+      ...(canonicalUrl ? { canonical: canonicalUrl } : {}),
+    },
+    verification: {
+      ...(googleVerification ? { google: googleVerification } : {}),
+    },
+  };
+}
 
 export default function RootLayout({
   children,

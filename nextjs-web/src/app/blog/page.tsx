@@ -2,48 +2,39 @@ import React from 'react';
 import type { Metadata } from 'next';
 import { getBlogsDal, getBlogCategoriesDal } from '@/server/dal';
 import { BlogSection } from '@/features/blog';
+import { api } from '@/lib/api';
 
 export const revalidate = 60; // ISR revalidation every 60 seconds
 
-export const metadata: Metadata = {
-  title: 'Islamic Cinema Journal & Sacred Stories | NOOR',
-  description:
-    'Explore inspiring articles, behind-the-scenes insights, and historical chronicles celebrating Islamic cinema, culture, and values.',
-  keywords: [
-    'Islamic cinema blog',
-    'Halal entertainment articles',
-    'Islamic history chronicles',
-    'Prophetic storytelling',
-    'NOOR Journal',
-    'Behind the scenes Islamic cinema',
-  ],
-  openGraph: {
-    title: 'Islamic Cinema Journal & Sacred Stories | NOOR',
-    description:
-      'Explore inspiring articles, behind-the-scenes insights, and historical chronicles celebrating Islamic cinema, culture, and values.',
-    url: 'https://noorcinema.com/blog',
-    siteName: 'NOOR Islamic Cinema',
-    type: 'website',
-    images: [
-      {
-        url: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=1200&auto=format&fit=crop&q=85',
-        width: 1200,
-        height: 630,
-        alt: 'NOOR Islamic Cinema Journal',
-      },
-    ],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Islamic Cinema Journal & Sacred Stories | NOOR',
-    description:
-      'Explore inspiring articles, behind-the-scenes insights, and historical chronicles on NOOR.',
-    images: ['https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=1200&auto=format&fit=crop&q=85'],
-  },
-  alternates: {
-    canonical: '/blog',
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const seo = await api.getSeoSettings().catch(() => null);
+  const title = seo?.meta_title
+    ? `Journal & Stories | ${seo.meta_title}`
+    : 'Islamic Cinema Journal & Sacred Stories | NOOR';
+  const description =
+    seo?.meta_description ||
+    'Explore inspiring articles, behind-the-scenes insights, and historical chronicles celebrating Islamic cinema, culture, and values.';
+
+  return {
+    title,
+    description,
+    keywords:
+      Array.isArray(seo?.meta_keywords) && seo.meta_keywords.length > 0
+        ? ['Journal', ...seo.meta_keywords]
+        : ['Islamic cinema blog', 'Halal entertainment articles', 'Islamic history chronicles', 'NOOR Journal'],
+    openGraph: {
+      title,
+      description,
+      url: '/blog',
+      siteName: 'NOOR Islamic Cinema',
+      type: 'website',
+      images: seo?.seo_image ? [seo.seo_image] : [],
+    },
+    alternates: {
+      canonical: '/blog',
+    },
+  };
+}
 
 export default async function BlogIndexPage() {
   const [blogsRes, categories] = await Promise.all([

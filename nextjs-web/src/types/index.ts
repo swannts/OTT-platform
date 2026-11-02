@@ -67,6 +67,15 @@ export interface VideoQuality {
   url_type: string;
 }
 
+export interface SeoMetadata {
+  meta_title?: string;
+  meta_description?: string;
+  meta_keywords?: string[] | string;
+  seo_image?: string | null;
+  canonical_url?: string | null;
+  google_site_verification?: string | null;
+}
+
 export interface ContentDetails {
   id: string | number;
   name: string;
@@ -91,6 +100,12 @@ export interface ContentDetails {
   video_default_quality?: VideoQuality;
   seasons?: SeasonItem[];
   watched_time?: string | number;
+  seo?: SeoMetadata;
+  meta_title?: string;
+  meta_description?: string;
+  meta_keywords?: string[] | string;
+  seo_image?: string | null;
+  canonical_url?: string | null;
 }
 
 export interface SeasonItem {
