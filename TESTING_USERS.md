@@ -80,3 +80,4 @@ Every user in the database is automatically provisioned with at least two profil
 | **OTP Verification** | `POST` | `/api/v3/verify-otp` | `{"mobile": "+911234567890", "otp": 1234}` |
 | **Profiles List** | `GET` | `/api/v3/user-profiles` | *(Requires Bearer Token)* |
 | **Switch Profile** | `POST` | `/api/v3/switch-profile` | `{"profile_id": 5}` |
+
