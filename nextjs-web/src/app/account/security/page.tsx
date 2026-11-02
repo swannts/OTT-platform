@@ -18,14 +18,14 @@ import {
 } from 'lucide-react';
 
 export default function SecurityPage() {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, isLoading } = useAuth();
   const router = useRouter();
 
   React.useEffect(() => {
-    if (!user) {
-      router.push('/login');
+    if (!isLoading && !user) {
+      router.push('/login?redirect=/account/security');
     }
-  }, [user, router]);
+  }, [user, isLoading, router]);
 
   const [parentalLock, setParentalLock] = useState<boolean>(
     Boolean(user?.is_parental_lock_enable)
@@ -36,6 +36,15 @@ export default function SecurityPage() {
 
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [logoutMessage, setLogoutMessage] = useState<string | null>(null);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen pt-32 text-center text-white space-y-4">
+        <div className="w-10 h-10 border-4 border-[#E5B869] border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-sm text-gray-400">Loading security settings...</p>
+      </div>
+    );
+  }
 
   if (!user) return null;
 
@@ -108,7 +117,7 @@ export default function SecurityPage() {
         </Link>
         <Link
           href="/account/security"
-          className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold shadow-md"
+          className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-[#E5B869] text-black text-sm font-bold shadow-md shadow-[#E5B869]/20"
         >
           <Shield className="w-4 h-4" />
           <span>Security & PIN</span>

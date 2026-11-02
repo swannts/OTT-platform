@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth, useLanguage } from '@/providers';
-import { DEFAULT_AVATAR_IMAGE } from '@/constants';
 import {
   User as UserIcon,
   LogOut,
@@ -80,7 +79,7 @@ export default function UserProfileDropdown() {
     return name.slice(0, 2).toUpperCase();
   };
 
-  const avatarDisplayUrl = user?.avatar || user?.profile_image || DEFAULT_AVATAR_IMAGE;
+  const userAvatar = user?.avatar || user?.profile_image;
 
   return (
     <div className="relative flex-shrink-0" ref={dropdownRef}>
@@ -91,26 +90,32 @@ export default function UserProfileDropdown() {
         className={`relative w-9 h-9 rounded-full overflow-hidden transition-all flex items-center justify-center cursor-pointer active:scale-95 flex-shrink-0 ${
           isOpen
             ? 'ring-2 ring-[#E5B869] shadow-[0_0_12px_rgba(229,184,105,0.4)]'
-            : 'ring-2 ring-white/15 hover:ring-[#E5B869]/70'
-        }`}
+            : 'ring-1 ring-white/15 hover:ring-[#E5B869]/70'
+        } ${user ? '' : 'bg-white/[0.06] hover:bg-white/[0.12]'}`}
         aria-label="User Profile"
         aria-expanded={isOpen}
       >
-        {!imgError ? (
-          <img
-            src={avatarDisplayUrl}
-            alt={user?.name || 'User Profile'}
-            onError={() => setImgError(true)}
-            className="w-full h-full object-cover"
-          />
+        {user ? (
+          userAvatar && !imgError ? (
+            <img
+              src={userAvatar}
+              alt={user.name || 'User Profile'}
+              onError={() => setImgError(true)}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-tr from-[#99732e] to-[#E5B869] text-black font-bold text-xs flex items-center justify-center">
+              {getInitials(user.name)}
+            </div>
+          )
         ) : (
-          <div className="w-full h-full bg-gradient-to-tr from-[#99732e] to-[#E5B869] text-black font-bold text-xs flex items-center justify-center">
-            {user ? getInitials(user.name) : 'U'}
-          </div>
+          <UserIcon className="w-4 h-4 text-gray-300" />
         )}
 
-        {/* Genuine Online Green Indicator Dot */}
-        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#070a0e] pointer-events-none" />
+        {/* Genuine Online Green Indicator Dot - Only when authenticated */}
+        {user && (
+          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#070a0e] pointer-events-none" />
+        )}
       </button>
 
       {/* Dropdown Menu */}
@@ -122,17 +127,17 @@ export default function UserProfileDropdown() {
               <div className="px-4 py-3 border-b border-white/10 bg-white/[0.02]">
                 <div className="flex items-center space-x-3 mb-2">
                   <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center ring-2 ring-[#E5B869]/50 flex-shrink-0 bg-[#E5B869]/20">
-                    {!imgError ? (
+                    {userAvatar && !imgError ? (
                       <img
-                        src={avatarDisplayUrl}
+                        src={userAvatar}
                         alt={user.name}
                         onError={() => setImgError(true)}
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <span className="font-bold text-xs text-[#E5B869]">
+                      <div className="w-full h-full bg-gradient-to-tr from-[#99732e] to-[#E5B869] text-black font-bold text-xs flex items-center justify-center">
                         {getInitials(user.name)}
-                      </span>
+                      </div>
                     )}
                   </div>
                   <div className="min-w-0 flex-1">

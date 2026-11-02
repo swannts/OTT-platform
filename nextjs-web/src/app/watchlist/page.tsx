@@ -10,7 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Heart, Plus } from 'lucide-react';
 
 export default function WatchlistPage() {
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [items, setItems] = useState<MediaItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -31,12 +31,23 @@ export default function WatchlistPage() {
       }
     }
 
-    if (user) {
-      loadWatchlist();
-    } else {
-      setIsLoading(false);
+    if (!isAuthLoading) {
+      if (user) {
+        loadWatchlist();
+      } else {
+        setIsLoading(false);
+      }
     }
-  }, [user]);
+  }, [user, isAuthLoading]);
+
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen pt-32 text-center text-white space-y-4">
+        <div className="w-10 h-10 border-4 border-[#E5B869] border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-sm text-gray-400">Loading your watchlist...</p>
+      </div>
+    );
+  }
 
   if (!user) {
     return (

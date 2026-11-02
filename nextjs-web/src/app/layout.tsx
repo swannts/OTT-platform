@@ -4,7 +4,6 @@ import './globals.css';
 import { AuthProvider, StoreProvider, LanguageProvider } from '@/providers';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
-import BottomPlayerBar from '@/features/player/components/BottomPlayerBar';
 
 const playfair = Playfair_Display({
   subsets: ['latin'],
@@ -35,11 +34,10 @@ export default function RootLayout({
           <AuthProvider>
             <LanguageProvider>
               <Navbar />
-              <main className="flex-1 pb-24">
+              <main className="flex-1 pb-12">
                 {children}
               </main>
               <Footer />
-              <BottomPlayerBar />
             </LanguageProvider>
           </AuthProvider>
         </StoreProvider>

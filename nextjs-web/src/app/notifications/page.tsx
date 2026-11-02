@@ -32,19 +32,21 @@ interface NotificationItem {
 }
 
 export default function NotificationsPage() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
 
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) {
-      router.push('/login');
+    if (!isLoading && !user) {
+      router.push('/login?redirect=/notifications');
       return;
     }
-    loadNotifications();
-  }, [user, router]);
+    if (user) {
+      loadNotifications();
+    }
+  }, [user, isLoading, router]);
 
   const loadNotifications = async () => {
     setLoading(true);
@@ -77,6 +79,15 @@ export default function NotificationsPage() {
       setNotifications((prev) => prev.filter((n) => n.id !== id));
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen pt-32 text-center text-white space-y-4">
+        <div className="w-10 h-10 border-4 border-[#E5B869] border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-sm text-gray-400">Loading notifications...</p>
+      </div>
+    );
+  }
 
   if (!user) return null;
 

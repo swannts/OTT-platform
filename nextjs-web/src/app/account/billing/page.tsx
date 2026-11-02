@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 
 export default function BillingPage() {
-  const { user, subscription, refreshUser } = useAuth();
+  const { user, subscription, refreshUser, isLoading } = useAuth();
   const router = useRouter();
 
   const [history, setHistory] = useState<{
@@ -35,10 +35,12 @@ export default function BillingPage() {
   const [cancelMessage, setCancelMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) {
-      router.push('/login');
+    if (!isLoading && !user) {
+      router.push('/login?redirect=/account/billing');
       return;
     }
+
+    if (!user) return;
 
     async function loadData() {
       setLoading(true);
@@ -55,7 +57,7 @@ export default function BillingPage() {
       }
     }
     loadData();
-  }, [user, router]);
+  }, [user, isLoading, router]);
 
   const handleCancelSubscription = async () => {
     if (!confirm('Are you sure you want to cancel your VIP membership? You will lose access to premium content.')) {
@@ -80,6 +82,15 @@ export default function BillingPage() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen pt-32 text-center text-white space-y-4">
+        <div className="w-10 h-10 border-4 border-[#E5B869] border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-sm text-gray-400">Loading billing details...</p>
+      </div>
+    );
+  }
+
   if (!user) return null;
 
   return (
@@ -101,7 +112,7 @@ export default function BillingPage() {
         </Link>
         <Link
           href="/account/billing"
-          className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold shadow-md"
+          className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-[#E5B869] text-black text-sm font-bold shadow-md shadow-[#E5B869]/20"
         >
           <CreditCard className="w-4 h-4" />
           <span>Billing & History</span>

@@ -34,7 +34,7 @@ const AVATAR_COLORS = [
 ];
 
 export default function ProfilesPage() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
 
   const [profiles, setProfiles] = useState<ProfileItem[]>([]);
@@ -48,12 +48,14 @@ export default function ProfilesPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!user) {
-      router.push('/login');
+    if (!isLoading && !user) {
+      router.push('/login?redirect=/profiles');
       return;
     }
-    loadProfiles();
-  }, [user, router]);
+    if (user) {
+      loadProfiles();
+    }
+  }, [user, isLoading, router]);
 
   const loadProfiles = async () => {
     setLoading(true);
@@ -116,6 +118,15 @@ export default function ProfilesPage() {
       alert(err instanceof Error ? err.message : 'Failed to delete profile');
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen pt-32 text-center text-white space-y-4">
+        <div className="w-10 h-10 border-4 border-[#E5B869] border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-sm text-gray-400">Loading viewing profiles...</p>
+      </div>
+    );
+  }
 
   if (!user) return null;
 

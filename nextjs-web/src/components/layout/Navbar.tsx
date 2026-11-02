@@ -22,12 +22,13 @@ import {
   Smile,
   Flame,
   Compass,
+  LogIn,
 } from 'lucide-react';
 
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { subscription } = useAuth();
+  const { user, subscription } = useAuth();
   const { t } = useLanguage();
 
   const [isScrolled, setIsScrolled] = useState(false);
@@ -271,6 +272,17 @@ export default function Navbar() {
             <div className="flex-shrink-0">
               <NotificationDropdown />
             </div>
+
+            {/* Quick Sign In Button for Guests */}
+            {!user && (
+              <Link
+                href="/login"
+                className="hidden sm:inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-[#E5B869] hover:bg-[#f3cf8a] text-black text-xs font-bold shadow-md shadow-[#E5B869]/20 transition-all cursor-pointer hover:scale-[1.02] active:scale-95 whitespace-nowrap flex-shrink-0"
+              >
+                <LogIn className="w-3.5 h-3.5 text-black flex-shrink-0" />
+                <span className="whitespace-nowrap">{t('sign_in', 'Sign In')}</span>
+              </Link>
+            )}
 
             {/* Functional User Profile Dropdown with Auth Integration */}
             <div className="flex-shrink-0">

@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 
 export default function AccountPage() {
-  const { user, subscription, logout, refreshUser } = useAuth();
+  const { user, subscription, logout, refreshUser, isLoading } = useAuth();
   const router = useRouter();
 
   const [name, setName] = useState('');
@@ -37,14 +37,16 @@ export default function AccountPage() {
   const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
-    if (!user) {
-      router.push('/login');
+    if (!isLoading && !user) {
+      router.push('/login?redirect=/account');
       return;
     }
-    setName(user.name || '');
-    setEmail(user.email || '');
-    setPhone(user.phone || '');
-  }, [user, router]);
+    if (user) {
+      setName(user.name || '');
+      setEmail(user.email || '');
+      setPhone(user.phone || '');
+    }
+  }, [user, isLoading, router]);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,6 +91,15 @@ export default function AccountPage() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen pt-32 text-center text-white space-y-4">
+        <div className="w-10 h-10 border-4 border-[#E5B869] border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-sm text-gray-400">Loading your account details...</p>
+      </div>
+    );
+  }
+
   if (!user) return null;
 
   return (
@@ -115,7 +126,7 @@ export default function AccountPage() {
       <div className="flex flex-wrap gap-2 mb-8 border-b border-white/10 pb-4">
         <Link
           href="/account"
-          className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold shadow-md"
+          className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-[#E5B869] text-black text-sm font-bold shadow-md shadow-[#E5B869]/20"
         >
           <UserIcon className="w-4 h-4" />
           <span>General Info</span>
