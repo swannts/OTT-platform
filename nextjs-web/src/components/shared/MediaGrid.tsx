@@ -3,6 +3,7 @@
 import React from 'react';
 import { MediaItem } from '@/types';
 import MediaCard from './MediaCard';
+import { MediaCardSkeleton } from '@/components/ui';
 import { cn } from '@/lib/utils';
 
 interface MediaGridProps {
@@ -28,13 +29,7 @@ export default function MediaGrid({
     return (
       <div className={cn('grid gap-4 sm:gap-6', columnsClassName, className)}>
         {[...Array(skeletonCount)].map((_, i) => (
-          <div
-            key={i}
-            className={cn(
-              'bg-white/5 rounded-2xl animate-pulse min-w-0',
-              aspectRatio === 'poster' ? 'aspect-[2/3]' : 'aspect-[16/10]'
-            )}
-          />
+          <MediaCardSkeleton key={i} aspectRatio={aspectRatio} />
         ))}
       </div>
     );

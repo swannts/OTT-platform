@@ -114,6 +114,7 @@ export default function HeroBanner({ items }: HeroBannerProps) {
               src={imgUrl}
               alt={slide.name || 'Hero Backdrop'}
               blurhash={slide.blurhash}
+              priority={isCurrent}
               className={`w-full h-full object-cover object-center transform transition-transform duration-[12000ms] ease-out ${
                 isCurrent ? 'scale-105' : 'scale-100'
               }`}

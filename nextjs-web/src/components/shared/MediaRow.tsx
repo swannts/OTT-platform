@@ -5,7 +5,7 @@ import { MediaItem } from '@/types';
 import MediaCard from './MediaCard';
 import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
-import { Heading } from '@/components/ui';
+import { Heading, MediaCardSkeleton } from '@/components/ui';
 
 interface MediaRowProps {
   title: string;
@@ -13,6 +13,7 @@ interface MediaRowProps {
   moreHref?: string;
   showRank?: boolean;
   aspectRatio?: 'poster' | 'backdrop';
+  isLoading?: boolean;
 }
 
 export default function MediaRow({
@@ -21,6 +22,7 @@ export default function MediaRow({
   moreHref,
   showRank = false,
   aspectRatio = 'poster',
+  isLoading = false,
 }: MediaRowProps) {
   const rowRef = useRef<HTMLDivElement>(null);
 
@@ -34,6 +36,26 @@ export default function MediaRow({
       });
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="relative group w-full my-4">
+        <div className="flex items-center justify-between mb-3.5">
+          <div className="flex items-center">
+            <span className="w-1 h-5 bg-[#E5B869] rounded-full inline-block mr-2.5 flex-shrink-0" />
+            <Heading as="h2" size="xl">
+              {title}
+            </Heading>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          {[...Array(6)].map((_, i) => (
+            <MediaCardSkeleton key={i} aspectRatio={aspectRatio} />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   if (!items || items.length === 0) return null;
 

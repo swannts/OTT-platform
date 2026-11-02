@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { ContentDetails } from '@/types';
 import { VideoPlayer } from '@/features/player';
 import { MediaRow } from '@/components/shared';
+import { Spinner } from '@/components/ui';
 import { ArrowLeft, Star, Clock, Calendar } from 'lucide-react';
 
 export default function WatchPage() {
@@ -43,7 +44,7 @@ export default function WatchPage() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center text-white">
         {isLoading ? (
-          <div className="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin" />
+          <Spinner size="lg" label="Loading title..." />
         ) : (
           <p role="alert" className="text-gray-300">{loadError ? 'Unable to load this title. Please try again later.' : 'Title not found.'}</p>
         )}

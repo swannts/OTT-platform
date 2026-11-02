@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import { Spinner } from '@/components/ui';
 import { CheckCircle2, Crown, Sparkles, ArrowRight } from 'lucide-react';
 
 function PaymentSuccessContent() {
@@ -55,7 +56,7 @@ function PaymentSuccessContent() {
   if (isVerifying) {
     return (
       <div className="min-h-screen pt-32 text-center text-white space-y-4">
-        <div className="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin mx-auto" />
+        <Spinner size="lg" className="mx-auto" />
         <h2 className="text-xl font-bold">Verifying your payment...</h2>
         <p className="text-sm text-gray-400">Please do not close or refresh this window.</p>
       </div>

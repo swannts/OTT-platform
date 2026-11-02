@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { PriceCalculation, PaymentMethodsData, AppConfiguration } from '@/types';
 import { useAuth, useLanguage } from '@/providers';
+import { Spinner } from '@/components/ui';
 import { Crown, Tag, Shield, CreditCard, Lock, ArrowRight, Wallet, CheckCircle2 } from 'lucide-react';
 
 interface GatewayOption {
@@ -191,8 +192,7 @@ export default function CheckoutPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen pt-36 text-center text-white space-y-4">
-        <div className="w-10 h-10 border-4 border-[#E5B869] border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-sm text-gray-400">{t('loading_checkout', 'Calculating secure checkout pricing...')}</p>
+        <Spinner size="lg" label={t('loading_checkout', 'Calculating secure checkout pricing...')} />
       </div>
     );
   }

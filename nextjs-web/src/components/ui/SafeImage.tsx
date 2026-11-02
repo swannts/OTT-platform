@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { DEFAULT_FALLBACK_IMAGE } from '@/constants';
 import { blurHashToDataURL } from '@/lib/blurhash';
@@ -13,6 +13,7 @@ export interface SafeImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageEl
   blurhash?: string | null;
   aspectRatio?: 'poster' | 'backdrop' | 'square' | 'banner' | 'auto';
   containerClassName?: string;
+  priority?: boolean;
 }
 
 const aspectClasses = {
@@ -29,25 +30,67 @@ export default function SafeImage({
   fallbackSrc = DEFAULT_ISLAMIC_FALLBACK,
   blurhash,
   aspectRatio = 'auto',
+  priority = false,
   className,
   containerClassName,
   ...props
 }: SafeImageProps) {
-  const initialTarget = typeof src === 'string' && src.trim() ? src.trim() : fallbackSrc;
-  const [imgSrc, setImgSrc] = useState<string>(initialTarget);
+  const cleanTarget = typeof src === 'string' && src.trim() ? src.trim() : fallbackSrc;
+  const [imgSrc, setImgSrc] = useState<string>(cleanTarget);
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [blurDataUrl, setBlurDataUrl] = useState<string | null>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+
+  // Check if image is already loaded (crucial for cached images during route navigation)
+  const checkImageComplete = useCallback((node: HTMLImageElement | null) => {
+    if (!node) return;
+    if (node.complete) {
+      if (node.naturalWidth > 0) {
+        setIsLoaded(true);
+      } else if (node.currentSrc || node.src) {
+        // Failed to load
+        if (!hasError && imgSrc !== fallbackSrc) {
+          setHasError(true);
+          setImgSrc(fallbackSrc);
+        } else {
+          setIsLoaded(true);
+        }
+      }
+    }
+  }, [hasError, imgSrc, fallbackSrc]);
+
+  // Callback ref so we immediately evaluate cached images upon DOM node creation
+  const setRef = useCallback((node: HTMLImageElement | null) => {
+    imgRef.current = node;
+    checkImageComplete(node);
+  }, [checkImageComplete]);
 
   // Sync state if src changes
   useEffect(() => {
     const nextSrc = typeof src === 'string' && src.trim() ? src.trim() : fallbackSrc;
     setImgSrc(nextSrc);
-    setIsLoaded(false);
     setHasError(false);
-  }, [src, fallbackSrc]);
 
-  // Decode blurhash to lightweight data URL on client after mount to prevent SSR hydration mismatch
+    // If cached in memory, immediately mark loaded
+    if (imgRef.current) {
+      if (imgRef.current.complete && imgRef.current.naturalWidth > 0) {
+        setIsLoaded(true);
+        return;
+      }
+    }
+
+    setIsLoaded(false);
+
+    // Check again on next microtask/frame after React commits DOM changes
+    const raf = requestAnimationFrame(() => {
+      checkImageComplete(imgRef.current);
+    });
+
+    return () => cancelAnimationFrame(raf);
+  }, [src, fallbackSrc, checkImageComplete]);
+
+  // Decode blurhash to lightweight data URL on client after mount
   useEffect(() => {
     if (!blurhash) {
       setBlurDataUrl(null);
@@ -57,16 +100,52 @@ export default function SafeImage({
     setBlurDataUrl(dataUrl);
   }, [blurhash]);
 
-  const handleError = () => {
-    if (!hasError) {
-      setHasError(true);
-      setImgSrc(fallbackSrc);
+  // Safety Watchdog: If an image is cached or network stalls on page change,
+  // never leave the user stuck on the blurhash color forever.
+  useEffect(() => {
+    if (isLoaded) return;
+
+    // Check immediately in case DOM complete updated
+    if (imgRef.current?.complete && imgRef.current.naturalWidth > 0) {
       setIsLoaded(true);
+      return;
     }
-  };
+
+    const timer = setTimeout(() => {
+      if (imgRef.current?.complete) {
+        if (imgRef.current.naturalWidth > 0) {
+          setIsLoaded(true);
+          return;
+        }
+      }
+
+      // If image didn't resolve in 2 seconds, gracefully show fallback and reveal
+      if (!hasError && imgSrc !== fallbackSrc) {
+        setHasError(true);
+        setImgSrc(fallbackSrc);
+        setIsLoaded(true);
+      } else {
+        setIsLoaded(true);
+      }
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [imgSrc, isLoaded, hasError, fallbackSrc]);
 
   const handleLoad = () => {
     setIsLoaded(true);
+  };
+
+  const handleError = () => {
+    if (!hasError && imgSrc !== fallbackSrc) {
+      setHasError(true);
+      setImgSrc(fallbackSrc);
+      if (imgRef.current?.complete && imgRef.current.naturalWidth > 0) {
+        setIsLoaded(true);
+      }
+    } else {
+      setIsLoaded(true);
+    }
   };
 
   return (
@@ -80,7 +159,7 @@ export default function SafeImage({
       {/* 1. Base Fallback Background (always matches SSR and initial paint) */}
       <div
         className={cn(
-          'absolute inset-0 z-0 bg-gradient-to-br from-[#0b1017] via-[#141b24] to-[#070b10] transition-opacity duration-700 pointer-events-none',
+          'absolute inset-0 z-0 bg-gradient-to-br from-[#0b1017] via-[#141b24] to-[#070b10] transition-opacity duration-500 pointer-events-none',
           isLoaded ? 'opacity-0' : 'opacity-100'
         )}
         aria-hidden="true"
@@ -90,7 +169,7 @@ export default function SafeImage({
       {blurDataUrl ? (
         <div
           className={cn(
-            'absolute inset-0 z-0 bg-cover bg-center filter blur-md scale-110 transition-opacity duration-700 ease-out pointer-events-none',
+            'absolute inset-0 z-0 bg-cover bg-center filter blur-md scale-110 transition-opacity duration-500 ease-out pointer-events-none',
             isLoaded ? 'opacity-0' : 'opacity-100'
           )}
           style={{ backgroundImage: `url(${blurDataUrl})` }}
@@ -100,13 +179,15 @@ export default function SafeImage({
 
       {/* 3. Primary Image Layer */}
       <img
+        ref={setRef}
         src={imgSrc}
         alt={alt}
         onLoad={handleLoad}
         onError={handleError}
-        loading="lazy"
+        decoding="async"
+        loading={priority ? 'eager' : (props.loading || 'lazy')}
         className={cn(
-          'relative z-10 w-full h-full object-cover transition-opacity duration-500 ease-in-out',
+          'relative z-10 w-full h-full object-cover transition-opacity duration-300 ease-in-out',
           isLoaded ? 'opacity-100' : 'opacity-0',
           className
         )}

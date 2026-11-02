@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import { MediaItem } from '@/types';
 import { MediaGrid } from '@/components/shared';
-import { EmptyState } from '@/components/ui';
+import { EmptyState, Spinner } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/providers';
 import { Heart, Plus } from 'lucide-react';
@@ -45,8 +45,7 @@ export default function WatchlistPage() {
   if (isAuthLoading) {
     return (
       <div className="min-h-screen pt-32 text-center text-white space-y-4">
-        <div className="w-10 h-10 border-4 border-[#E5B869] border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-sm text-gray-400">{t('loading_watchlist', 'Loading your watchlist...')}</p>
+        <Spinner size="lg" label={t('loading_watchlist', 'Loading your watchlist...')} />
       </div>
     );
   }

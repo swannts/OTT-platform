@@ -4,6 +4,7 @@ import './globals.css';
 import { AuthProvider, StoreProvider, LanguageProvider } from '@/providers';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
+import NavigationProgress from '@/components/layout/NavigationProgress';
 import { api } from '@/lib/api';
 
 const playfair = Playfair_Display({
@@ -91,6 +92,7 @@ export default function RootLayout({
         <StoreProvider>
           <AuthProvider>
             <LanguageProvider>
+              <NavigationProgress />
               <Navbar />
               <main className="flex-1 pb-12">
                 {children}
