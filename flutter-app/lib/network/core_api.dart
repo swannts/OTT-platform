@@ -45,16 +45,20 @@ class CoreServiceApis {
     Function(bool)? loaderOnOff,
   }) async {
     await checkApiCallIsWithinTimeSpan(
-        sharePreferencesKey: SharedPreferenceConst.LAST_APP_CONFIGURATION_CALL_TIME,
+        sharePreferencesKey:
+            SharedPreferenceConst.LAST_APP_CONFIGURATION_CALL_TIME,
         forceSync: forceSync,
         callback: () async {
           loaderOnOff?.call(true);
           List<String> params = [];
-          if (await getBoolFromLocal(SharedPreferenceConst.IS_LOGGED_IN) && loginUserData.value.id > -1) {
+          if (await getBoolFromLocal(SharedPreferenceConst.IS_LOGGED_IN) &&
+              loginUserData.value.id > -1) {
             params.add('${ApiRequestKeys.userIdKey}=${loginUserData.value.id}');
-            params.add('${ApiRequestKeys.deviceIdKey}=${currentDevice.value.deviceId}');
+            params.add(
+                '${ApiRequestKeys.deviceIdKey}=${currentDevice.value.deviceId}');
           }
-          params.add('${ApiRequestKeys.isAuthenticatedKey}=${isLoggedIn.isTrue.getIntBool()}');
+          params.add(
+              '${ApiRequestKeys.isAuthenticatedKey}=${isLoggedIn.isTrue.getIntBool()}');
 
           await getApiResponse(
             getEndPoint(
@@ -64,28 +68,41 @@ class CoreServiceApis {
             manageApiVersion: API_VERSION > 2,
           ).then(
             (value) async {
-              ConfigurationResponse configurationResponse = ConfigurationResponse.fromJson(value);
+              ConfigurationResponse configurationResponse =
+                  ConfigurationResponse.fromJson(value);
 
               appCurrency(configurationResponse.currency);
               appConfigs(configurationResponse);
               if (currentSubscription.value.level > -1 &&
                   currentSubscription.value.planType.isNotEmpty &&
-                  currentSubscription.value.planType.any((element) => element.slug == SubscriptionTitle.videoCast)) {
-                isCastingSupported(currentSubscription.value.planType.firstWhere((element) => element.slug == SubscriptionTitle.videoCast).limitationValue.getBoolInt());
+                  currentSubscription.value.planType.any((element) =>
+                      element.slug == SubscriptionTitle.videoCast)) {
+                isCastingSupported(currentSubscription.value.planType
+                    .firstWhere((element) =>
+                        element.slug == SubscriptionTitle.videoCast)
+                    .limitationValue
+                    .getBoolInt());
               } else {
                 isCastingSupported(false);
               }
               isSupportedDevice(configurationResponse.isDeviceSupported);
               isCastingAvailable(configurationResponse.isCastingAvailable);
-              setBoolToLocal(SharedPreferenceConst.IS_SUPPORTED_DEVICE, configurationResponse.isDeviceSupported);
+              setBoolToLocal(SharedPreferenceConst.IS_SUPPORTED_DEVICE,
+                  configurationResponse.isDeviceSupported);
 
-              setIntToLocal(SharedPreferenceConst.LAST_APP_CONFIGURATION_CALL_TIME, DateTime.timestamp().millisecondsSinceEpoch);
-              await setBoolToLocal(SharedPreferenceConst.IS_APP_CONFIGURATION_SYNCED_ONCE, true);
-              setJsonToLocal(SharedPreferenceConst.CACHE_CONFIGURATION_RESPONSE, configurationResponse.toJson());
+              setIntToLocal(
+                  SharedPreferenceConst.LAST_APP_CONFIGURATION_CALL_TIME,
+                  DateTime.timestamp().millisecondsSinceEpoch);
+              await setBoolToLocal(
+                  SharedPreferenceConst.IS_APP_CONFIGURATION_SYNCED_ONCE, true);
+              setJsonToLocal(SharedPreferenceConst.CACHE_CONFIGURATION_RESPONSE,
+                  configurationResponse.toJson());
             },
           ).onError(
             (error, stackTrace) {
-              setBoolToLocal(SharedPreferenceConst.IS_APP_CONFIGURATION_SYNCED_ONCE, false);
+              setBoolToLocal(
+                  SharedPreferenceConst.IS_APP_CONFIGURATION_SYNCED_ONCE,
+                  false);
 
               onError?.call();
             },
@@ -97,11 +114,15 @@ class CoreServiceApis {
     List<String> params = [];
     if (loginUserData.value.id > -1) {
       params.add('${ApiRequestKeys.userIdKey}=${loginUserData.value.id}');
-      if (selectedAccountProfile.value.id > 0) params.add('${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
-      if (selectedAccountProfile.value.isChildProfile.validate() == 1) params.add('${ApiRequestKeys.isRestrictedKey}=0');
+      if (selectedAccountProfile.value.id > 0)
+        params.add(
+            '${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
+      if (selectedAccountProfile.value.isChildProfile.validate() == 1)
+        params.add('${ApiRequestKeys.isRestrictedKey}=0');
     }
 
-    DashboardDetailResponse dashboardDetailsResp = DashboardDetailResponse.fromJson(
+    DashboardDetailResponse dashboardDetailsResp =
+        DashboardDetailResponse.fromJson(
       await getApiResponse(
         getEndPoint(
           endPoint: APIEndPoints.dashboardDetails,
@@ -118,10 +139,13 @@ class CoreServiceApis {
     List<String> params = [];
     if (loginUserData.value.id > -1) {
       params.add('${ApiRequestKeys.userIdKey}=${loginUserData.value.id}');
-      if (selectedAccountProfile.value.id > 0) params.add('${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
+      if (selectedAccountProfile.value.id > 0)
+        params.add(
+            '${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
     }
 
-    NotificationCountResponse notificationCountResponse = NotificationCountResponse.fromJson(
+    NotificationCountResponse notificationCountResponse =
+        NotificationCountResponse.fromJson(
       await getApiResponse(
         getEndPoint(
           endPoint: APIEndPoints.notificationCount,
@@ -137,13 +161,18 @@ class CoreServiceApis {
     List<String> params = [];
     if (loginUserData.value.id > -1) {
       params.add('${ApiRequestKeys.userIdKey}=${loginUserData.value.id}');
-      if (selectedAccountProfile.value.id > 0) params.add('${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
-      if (selectedAccountProfile.value.isChildProfile.validate() == 1) params.add('${ApiRequestKeys.isRestrictedKey}=0');
+      if (selectedAccountProfile.value.id > 0)
+        params.add(
+            '${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
+      if (selectedAccountProfile.value.isChildProfile.validate() == 1)
+        params.add('${ApiRequestKeys.isRestrictedKey}=0');
     }
 
-    DashboardDetailResponse dashboardDetailsResp = DashboardDetailResponse.fromJson(
+    DashboardDetailResponse dashboardDetailsResp =
+        DashboardDetailResponse.fromJson(
       await getApiResponse(
-        getEndPoint(endPoint: APIEndPoints.dashboardDetailsOtherData, params: params),
+        getEndPoint(
+            endPoint: APIEndPoints.dashboardDetailsOtherData, params: params),
         manageApiVersion: true,
       ),
     );
@@ -159,9 +188,12 @@ class CoreServiceApis {
     List<String> params = [];
     if (loginUserData.value.id > -1) {
       params.add('${ApiRequestKeys.userIdKey}=${loginUserData.value.id}');
-      if (selectedAccountProfile.value.id > 0) params.add('${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
+      if (selectedAccountProfile.value.id > 0)
+        params.add(
+            '${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
     }
-    LiveChannelDashboardResponse liveChannelDashboardResp = LiveChannelDashboardResponse.fromJson(
+    LiveChannelDashboardResponse liveChannelDashboardResp =
+        LiveChannelDashboardResponse.fromJson(
       await getApiResponse(
         getEndPoint(endPoint: APIEndPoints.liveTvDashboard, params: params),
         manageApiVersion: true,
@@ -176,17 +208,27 @@ class CoreServiceApis {
   }
 
   // Original Search Details
-  static Future<List<PosterDataModel>> searchContent({required String queryParams}) async {
-    final SearchResponse searchResponse = await searchContentDetailed(queryParams: queryParams);
-    return (searchResponse.movieList + searchResponse.tvShowList + searchResponse.videoList + searchResponse.seasonList + searchResponse.episodeList + searchResponse.channelList);
+  static Future<List<PosterDataModel>> searchContent(
+      {required String queryParams}) async {
+    final SearchResponse searchResponse =
+        await searchContentDetailed(queryParams: queryParams);
+    return (searchResponse.movieList +
+        searchResponse.tvShowList +
+        searchResponse.videoList +
+        searchResponse.seasonList +
+        searchResponse.episodeList +
+        searchResponse.channelList);
   }
 
-  static Future<SearchResponse> searchContentDetailed({required String queryParams}) async {
+  static Future<SearchResponse> searchContentDetailed(
+      {required String queryParams}) async {
     List<String> params = [];
     if (loginUserData.value.id > -1) {
       params.add('${ApiRequestKeys.userIdKey}=${loginUserData.value.id}');
-      params.add('${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
-      if (selectedAccountProfile.value.isChildProfile.validate() == 1) params.add('${ApiRequestKeys.isRestrictedKey}=0');
+      params.add(
+          '${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
+      if (selectedAccountProfile.value.isChildProfile.validate() == 1)
+        params.add('${ApiRequestKeys.isRestrictedKey}=0');
     }
     if (queryParams.isNotEmpty) params.add(queryParams);
     return SearchResponse.fromJson(
@@ -210,8 +252,10 @@ class CoreServiceApis {
     List<String> params = [];
     if (loginUserData.value.id > -1) {
       params.add('${ApiRequestKeys.userIdKey}=${loginUserData.value.id}');
-      params.add('${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
-      if (selectedAccountProfile.value.isChildProfile.validate() == 1) params.add('${ApiRequestKeys.isRestrictedKey}=0');
+      params.add(
+          '${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
+      if (selectedAccountProfile.value.isChildProfile.validate() == 1)
+        params.add('${ApiRequestKeys.isRestrictedKey}=0');
     }
     params.add('${ApiRequestKeys.perPageKey}=$perPage');
     params.add('${ApiRequestKeys.pageKey}=$page');
@@ -227,7 +271,8 @@ class CoreServiceApis {
       final List<String> newItems = dataList
           .map((item) {
             if (item is String) return item;
-            if (item is Map<String, dynamic> && item.containsKey('search_query')) {
+            if (item is Map<String, dynamic> &&
+                item.containsKey('search_query')) {
               return item['search_query']?.toString() ?? '';
             }
             return item.toString();
@@ -245,8 +290,10 @@ class CoreServiceApis {
     List<String> params = [];
     if (loginUserData.value.id > -1) {
       params.add('${ApiRequestKeys.userIdKey}=${loginUserData.value.id}');
-      params.add('${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
-      if (selectedAccountProfile.value.isChildProfile.validate() == 1) params.add('${ApiRequestKeys.isRestrictedKey}=0');
+      params.add(
+          '${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
+      if (selectedAccountProfile.value.isChildProfile.validate() == 1)
+        params.add('${ApiRequestKeys.isRestrictedKey}=0');
     }
     ProfileDetailResponse profileDetailResp = ProfileDetailResponse.fromJson(
       await getApiResponse(
@@ -263,8 +310,10 @@ class CoreServiceApis {
   }
 
   //Account Setting Screen
-  static Future<AccountSettingModel> getAccountSettingsResponse({required String deviceId}) async {
-    String id = deviceId.isNotEmpty ? "?${ApiRequestKeys.deviceIdKey}=$deviceId" : "";
+  static Future<AccountSettingModel> getAccountSettingsResponse(
+      {required String deviceId}) async {
+    String id =
+        deviceId.isNotEmpty ? "?${ApiRequestKeys.deviceIdKey}=$deviceId" : "";
     return AccountSettingResponse.fromJson(
       await getApiResponse(
         "${APIEndPoints.accountSetting}$id",
@@ -273,15 +322,19 @@ class CoreServiceApis {
   }
 
   //Live Show details
-  static Future<ContentModel> getLiveContentDetails({required int contentId}) async {
+  static Future<ContentModel> getLiveContentDetails(
+      {required int contentId}) async {
     List<String> params = [];
     if (contentId > 0) params.add('${ApiRequestKeys.channelKey}=$contentId');
 
     params.add('${ApiRequestKeys.deviceIdKey}=${currentDevice.value.deviceId}');
     if (loginUserData.value.id > -1) {
       params.add('${ApiRequestKeys.userIdKey}=${loginUserData.value.id}');
-      if (selectedAccountProfile.value.id > 0) params.add('${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
-      if (selectedAccountProfile.value.isChildProfile.validate() == 1) params.add('${ApiRequestKeys.isRestrictedKey}=0');
+      if (selectedAccountProfile.value.id > 0)
+        params.add(
+            '${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
+      if (selectedAccountProfile.value.isChildProfile.validate() == 1)
+        params.add('${ApiRequestKeys.isRestrictedKey}=0');
     }
     LiveShowDetailResponse contentResponse = LiveShowDetailResponse.fromJson(
       await getApiResponse(
@@ -325,7 +378,8 @@ class CoreServiceApis {
     );
   }
 
-  static Future<BaseResponseModel> deleteFromDownload({required List<int> idList}) async {
+  static Future<BaseResponseModel> deleteFromDownload(
+      {required List<int> idList}) async {
     List<String> params = [];
     params.add('${ApiRequestKeys.idKey}=${idList.join(',')}');
     return BaseResponseModel.fromJson(
@@ -337,7 +391,8 @@ class CoreServiceApis {
   }
 
   // Save Continue Watch List API
-  static Future<BaseResponseModel> saveContinueWatch({required Map request}) async {
+  static Future<BaseResponseModel> saveContinueWatch(
+      {required Map request}) async {
     return BaseResponseModel.fromJson(
       await getApiResponse(
         APIEndPoints.saveContinueWatch,
@@ -370,7 +425,8 @@ class CoreServiceApis {
   }
 
   // Store View Movie
-  static Future<BaseResponseModel> storeViewDetails({required Map request}) async {
+  static Future<BaseResponseModel> storeViewDetails(
+      {required Map request}) async {
     return BaseResponseModel.fromJson(
       await getApiResponse(
         APIEndPoints.saveEntertainmentViews,
@@ -392,7 +448,8 @@ class CoreServiceApis {
   }
 
   // Save Reminder
-  static Future<BaseResponseModel> deleteReminder({required Map request}) async {
+  static Future<BaseResponseModel> deleteReminder(
+      {required Map request}) async {
     return BaseResponseModel.fromJson(
       await getApiResponse(
         APIEndPoints.deleteReminder,
@@ -403,7 +460,8 @@ class CoreServiceApis {
   }
 
   // Save Subscription Details
-  static Future<SubscriptionResponseModel> saveSubscriptionDetails({required Map request}) async {
+  static Future<SubscriptionResponseModel> saveSubscriptionDetails(
+      {required Map request}) async {
     return SubscriptionResponseModel.fromJson(
       await getApiResponse(
         APIEndPoints.saveSubscriptionDetails,
@@ -414,7 +472,8 @@ class CoreServiceApis {
   }
 
   // Cancel Subscription Details
-  static Future<SubscriptionResponseModel> cancelSubscription({required Map request}) async {
+  static Future<SubscriptionResponseModel> cancelSubscription(
+      {required Map request}) async {
     return SubscriptionResponseModel.fromJson(
       await getApiResponse(
         APIEndPoints.cancelSubscription,
@@ -452,7 +511,8 @@ class CoreServiceApis {
     List<String> params = [];
     if (param.isNotEmpty) params.add(param);
     int perPage = determinePerPage(perPage: 21);
-    params.add('${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
+    params.add(
+        '${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
     final actorDetails = CastListResponse.fromJson(
       await getApiResponse(
         getEndPoint(endPoint: APIEndPoints.actorDetails, params: params),
@@ -465,13 +525,17 @@ class CoreServiceApis {
     return actorList.obs;
   }
 
-  static Future<List<PosterDataModel>> getSliderList({required String type}) async {
+  static Future<List<PosterDataModel>> getSliderList(
+      {required String type}) async {
     List<String> params = [];
     params.add('${ApiRequestKeys.bannerTypeKey}=$type');
     if (loginUserData.value.id > -1) {
-      if (selectedAccountProfile.value.isChildProfile.validate() == 1) params.add('${ApiRequestKeys.isRestrictedKey}=0');
+      if (selectedAccountProfile.value.isChildProfile.validate() == 1)
+        params.add('${ApiRequestKeys.isRestrictedKey}=0');
       params.add('${ApiRequestKeys.userIdKey}=${loginUserData.value.id}');
-      if (selectedAccountProfile.value.id > 0) params.add('${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
+      if (selectedAccountProfile.value.id > 0)
+        params.add(
+            '${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
     }
 
     final dynamic rawResponse = await getApiResponse(
@@ -482,7 +546,8 @@ class CoreServiceApis {
       manageApiVersion: API_VERSION > 2,
     );
 
-    final SliderResponse response = _parseSliderResponse(_ensureMap(rawResponse));
+    final SliderResponse response =
+        _parseSliderResponse(_ensureMap(rawResponse));
     cachedSliderList = response.data.slider.obs;
     return response.data.slider;
   }
@@ -498,12 +563,16 @@ class CoreServiceApis {
     int perPage = determinePerPage(perPage: 20);
     final userID = loginUserData.value.id;
     if (userID > -1) params.add('${ApiRequestKeys.userIdKey}=$userID');
-    params.add('${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
+    params.add(
+        '${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
     if (category > -1) params.add('${ApiRequestKeys.categoryIdKey}=$category');
     if (loginUserData.value.id > -1) {
-      if (selectedAccountProfile.value.isChildProfile.validate() == 1) params.add('${ApiRequestKeys.isRestrictedKey}=0');
+      if (selectedAccountProfile.value.isChildProfile.validate() == 1)
+        params.add('${ApiRequestKeys.isRestrictedKey}=0');
       params.add('${ApiRequestKeys.userIdKey}=${loginUserData.value.id}');
-      if (selectedAccountProfile.value.id > 0) params.add('${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
+      if (selectedAccountProfile.value.id > 0)
+        params.add(
+            '${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
     }
     ChannelResponse channelResponse = ChannelResponse.fromJson(
       await getApiResponse(
@@ -524,7 +593,8 @@ class CoreServiceApis {
     Function(bool)? lastPageCallBack,
   }) async {
     int perPage = determinePerPage();
-    final SubscriptionResponse subscriptionResponse = SubscriptionResponse.fromJson(
+    final SubscriptionResponse subscriptionResponse =
+        SubscriptionResponse.fromJson(
       await getApiResponse(
         getEndPoint(
           endPoint: APIEndPoints.planLists,
@@ -549,15 +619,19 @@ class CoreServiceApis {
     List<String> params = [];
     if (loginUserData.value.id > -1) {
       params.add('${ApiRequestKeys.userIdKey}=${loginUserData.value.id}');
-      if (selectedAccountProfile.value.id > 0) params.add('${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
-      if (selectedAccountProfile.value.isChildProfile.validate() == 1) params.add('${ApiRequestKeys.isRestrictedKey}=0');
+      if (selectedAccountProfile.value.id > 0)
+        params.add(
+            '${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
+      if (selectedAccountProfile.value.isChildProfile.validate() == 1)
+        params.add('${ApiRequestKeys.isRestrictedKey}=0');
     }
     if (type.isNotEmpty) {
       params.add('${ApiRequestKeys.typeKey}=$type');
     }
 
     int perPage = determinePerPage();
-    params.add('${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
+    params.add(
+        '${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
     ComingSoonResponse comingSoonDetails = ComingSoonResponse.fromJson(
       await getApiResponse(
         getEndPoint(endPoint: APIEndPoints.comingSoon, params: params),
@@ -582,16 +656,21 @@ class CoreServiceApis {
     int perPage = determinePerPage();
     if (loginUserData.value.id > -1) {
       params.add('${ApiRequestKeys.userIdKey}=${loginUserData.value.id}');
-      if (selectedAccountProfile.value.id > 0) params.add('${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
-      if (selectedAccountProfile.value.isChildProfile.validate() == 1) params.add('${ApiRequestKeys.isRestrictedKey}=0');
+      if (selectedAccountProfile.value.id > 0)
+        params.add(
+            '${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
+      if (selectedAccountProfile.value.isChildProfile.validate() == 1)
+        params.add('${ApiRequestKeys.isRestrictedKey}=0');
     }
-    params.add('${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
+    params.add(
+        '${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
 
     final dynamic rawResponse = await getApiResponse(
       getEndPoint(endPoint: APIEndPoints.continueWatchList, params: params),
       manageApiVersion: API_VERSION > 2,
     );
-    final ThumbnailListResponse listResponse = await compute(_parseContinueWatchResponse, _ensureMap(rawResponse));
+    final ThumbnailListResponse listResponse =
+        await compute(_parseContinueWatchResponse, _ensureMap(rawResponse));
     if (page == 1) continueWatchList.clear();
     continueWatchList.addAll(listResponse.data);
     lastPageCallBack?.call(listResponse.data.length != perPage);
@@ -599,7 +678,8 @@ class CoreServiceApis {
   }
 
 //region Remove from Continue Watching
-  static Future<BaseResponseModel> removeContinueWatching({required int continueWatchingId}) async {
+  static Future<BaseResponseModel> removeContinueWatching(
+      {required int continueWatchingId}) async {
     List<String> params = [];
     params.add('id=$continueWatchingId');
     return BaseResponseModel.fromJson(
@@ -621,19 +701,24 @@ class CoreServiceApis {
     int perPage = determinePerPage();
     if (loginUserData.value.id > -1) {
       params.add('${ApiRequestKeys.userIdKey}=${loginUserData.value.id}');
-      if (selectedAccountProfile.value.id > 0) params.add('${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
-      if (selectedAccountProfile.value.isChildProfile.validate() == 1) params.add('${ApiRequestKeys.isRestrictedKey}=0');
+      if (selectedAccountProfile.value.id > 0)
+        params.add(
+            '${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
+      if (selectedAccountProfile.value.isChildProfile.validate() == 1)
+        params.add('${ApiRequestKeys.isRestrictedKey}=0');
     }
     if (type.isNotEmpty) {
       params.add('${ApiRequestKeys.typeKey}=$type');
     }
-    params.add('${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
+    params.add(
+        '${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
 
     final dynamic rawResponse = await getApiResponse(
       getEndPoint(endPoint: APIEndPoints.watchList, params: params),
       manageApiVersion: true,
     );
-    final ListResponse listResponse = await compute(_parseWatchListResponse, _ensureMap(rawResponse));
+    final ListResponse listResponse =
+        await compute(_parseWatchListResponse, _ensureMap(rawResponse));
     if (page == 1) watchList.clear();
     watchList.addAll(listResponse.data);
     lastPageCallBack?.call(listResponse.data.length != perPage);
@@ -647,7 +732,8 @@ class CoreServiceApis {
     List<String> params = [];
     if (idList.isNotEmpty) {
       params.add('${ApiRequestKeys.idKey}=${idList.join(',')}');
-      params.add('${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
+      params.add(
+          '${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
       params.add('${ApiRequestKeys.userIdKey}=${loginUserData.value.id}');
       params.add('${ApiRequestKeys.isAjaxKey}=1');
     } else if (request != null) {
@@ -679,7 +765,8 @@ class CoreServiceApis {
     Function(bool)? lastPageCallBack,
   }) async {
     List<String> params = [];
-    params.add('${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
+    params.add(
+        '${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
     if (loginUserData.value.id > -1) {
       params.add('${ApiRequestKeys.userIdKey}=${loginUserData.value.id}');
     }
@@ -709,8 +796,10 @@ class CoreServiceApis {
   }) async {
     List<String> params = [];
     int perPage = determinePerPage();
-    params.add('${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
-    if (contentId > -1) params.add('${ApiRequestKeys.entertainmentIdKey}=$contentId');
+    params.add(
+        '${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
+    if (contentId > -1)
+      params.add('${ApiRequestKeys.entertainmentIdKey}=$contentId');
     ReviewResponse reviewDetails = ReviewResponse.fromJson(
       await getApiResponse(
         getEndPoint(endPoint: APIEndPoints.reviewDetails, params: params),
@@ -729,7 +818,8 @@ class CoreServiceApis {
     ).data;
   }
 
-  static Future<BaseResponseModel> saveViewCompleted({required Map request}) async {
+  static Future<BaseResponseModel> saveViewCompleted(
+      {required Map request}) async {
     return BaseResponseModel.fromJson(
       await getApiResponse(
         APIEndPoints.saveEntertainmentCompletedView,
@@ -750,8 +840,10 @@ class CoreServiceApis {
       params.add('${ApiRequestKeys.userIdKey}=${loginUserData.value.id}');
     }
     int perPage = determinePerPage();
-    params.add('${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
-    WatchingProfileResponse profileResponseModel = WatchingProfileResponse.fromJson(
+    params.add(
+        '${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
+    WatchingProfileResponse profileResponseModel =
+        WatchingProfileResponse.fromJson(
       await getApiResponse(
         getEndPoint(endPoint: APIEndPoints.watchingProfileList, params: params),
       ),
@@ -781,7 +873,8 @@ class CoreServiceApis {
   }
 
 // Watching Delete Profile
-  static Future<BaseResponseModel> deleteWatchingProfile({required Map request}) async {
+  static Future<BaseResponseModel> deleteWatchingProfile(
+      {required Map request}) async {
     return BaseResponseModel.fromJson(
       await getApiResponse(
         APIEndPoints.deleteWatchingProfile,
@@ -793,7 +886,8 @@ class CoreServiceApis {
 
   /// Search Apis
 // Save search
-  static Future<WatchingProfileResponse> saveSearch({required Map request}) async {
+  static Future<WatchingProfileResponse> saveSearch(
+      {required Map request}) async {
     return WatchingProfileResponse.fromJson(
       await getApiResponse(
         APIEndPoints.saveSearch,
@@ -828,7 +922,8 @@ class CoreServiceApis {
   }) async {
     int perPage = determinePerPage();
     List<String> params = [];
-    params.add('${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
+    params.add(
+        '${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
     FAQResponse res = FAQResponse.fromJson(
       await getApiResponse(
         getEndPoint(endPoint: APIEndPoints.faqList, params: params),
@@ -849,7 +944,8 @@ class CoreServiceApis {
   }) async {
     int perPage = determinePerPage();
     List<String> params = [];
-    params.add('${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
+    params.add(
+        '${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
     SubscriptionResponse profileResponseModel = SubscriptionResponse.fromJson(
       await getApiResponse(
         getEndPoint(endPoint: APIEndPoints.subscriptionHistory, params: params),
@@ -872,8 +968,10 @@ class CoreServiceApis {
     List<String> params = [];
     int perPage = determinePerPage();
     params.add('${ApiRequestKeys.planIdKey}=$planId');
-    if (couponCode.isNotEmpty) params.add('${ApiRequestKeys.couponCode}=$couponCode');
-    params.add('${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
+    if (couponCode.isNotEmpty)
+      params.add('${ApiRequestKeys.couponCode}=$couponCode');
+    params.add(
+        '${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
 
     CouponListResponse couponListResponse = CouponListResponse.fromJson(
       await getApiResponse(
@@ -886,7 +984,8 @@ class CoreServiceApis {
     return couponList.obs;
   }
 
-  static Future<BaseResponseModel> changePin(Map<String, dynamic> request) async {
+  static Future<BaseResponseModel> changePin(
+      Map<String, dynamic> request) async {
     return BaseResponseModel.fromJson(
       await getApiResponse(
         getEndPoint(endPoint: APIEndPoints.changePin),
@@ -904,7 +1003,8 @@ class CoreServiceApis {
     );
   }
 
-  static Future<BaseResponseModel> verifyOtp(Map<String, dynamic> request) async {
+  static Future<BaseResponseModel> verifyOtp(
+      Map<String, dynamic> request) async {
     return BaseResponseModel.fromJson(
       await getApiResponse(
         getEndPoint(endPoint: APIEndPoints.verifyOtp),
@@ -914,7 +1014,8 @@ class CoreServiceApis {
     );
   }
 
-  static Future<BaseResponseModel> updateParentalLock(Map<String, dynamic> request) async {
+  static Future<BaseResponseModel> updateParentalLock(
+      Map<String, dynamic> request) async {
     return BaseResponseModel.fromJson(
       await getApiResponse(
         getEndPoint(endPoint: APIEndPoints.updateParentalLock),
@@ -936,7 +1037,10 @@ class CoreServiceApis {
   }
 
   static Future<PayPerViewModel> saveRentDetails({required Map request}) async {
-    return PayPerViewModel.fromJson(await getApiResponse(APIEndPoints.saveRentDetails, request: request, method: HttpMethodType.POST));
+    return PayPerViewModel.fromJson(await getApiResponse(
+        APIEndPoints.saveRentDetails,
+        request: request,
+        method: HttpMethodType.POST));
   }
 
   static Future<RxList<PosterDataModel>> getRentedContent({
@@ -949,11 +1053,14 @@ class CoreServiceApis {
   }) async {
     List<String> params = [];
     int perPage = determinePerPage();
-    params.add('${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
+    params.add(
+        '${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
     if (loginUserData.value.id > -1) {
       params.add('${ApiRequestKeys.userIdKey}=${loginUserData.value.id}');
-      params.add('${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
-      if (selectedAccountProfile.value.isChildProfile.validate() == 1) params.add('${ApiRequestKeys.isRestrictedKey}=0');
+      params.add(
+          '${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
+      if (selectedAccountProfile.value.isChildProfile.validate() == 1)
+        params.add('${ApiRequestKeys.isRestrictedKey}=0');
     }
 
     RentedContent movieList = RentedContent.fromJson(
@@ -963,8 +1070,15 @@ class CoreServiceApis {
       ),
     );
     if (page == 1) rentedContentList.clear();
-    rentedContentList.addAll(movieList.data.movies + movieList.data.tvshows + movieList.data.videos + movieList.data.episodes);
-    lastPageCallBack?.call((movieList.data.movies.length + movieList.data.tvshows.length + movieList.data.videos.length + movieList.data.episodes.length) != perPage);
+    rentedContentList.addAll(movieList.data.movies +
+        movieList.data.tvshows +
+        movieList.data.videos +
+        movieList.data.episodes);
+    lastPageCallBack?.call((movieList.data.movies.length +
+            movieList.data.tvshows.length +
+            movieList.data.videos.length +
+            movieList.data.episodes.length) !=
+        perPage);
     return rentedContentList.obs;
   }
 
@@ -976,10 +1090,12 @@ class CoreServiceApis {
   }) async {
     List<String> params = [];
     int perPage = determinePerPage();
-    params.add('${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
+    params.add(
+        '${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
     if (loginUserData.value.id > -1) {
       params.add('${ApiRequestKeys.userIdKey}=${loginUserData.value.id}');
-      params.add('${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
+      params.add(
+          '${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
     }
     if (type.isNotEmpty) {
       params.add('${ApiRequestKeys.typeKey}=$type');
@@ -1014,10 +1130,12 @@ class CoreServiceApis {
   }) async {
     int perPage = determinePerPage();
     List<String> params = [];
-    params.add('${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
+    params.add(
+        '${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
     if (loginUserData.value.id > -1) {
       params.add('${ApiRequestKeys.userIdKey}=${loginUserData.value.id}');
-      params.add('${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
+      params.add(
+          '${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
     }
 
     RentalHistoryModel res = RentalHistoryModel.fromJson(
@@ -1063,6 +1181,60 @@ class CoreServiceApis {
     );
   }
 
+  static Future<Map<String, dynamic>> createMobilePaymentIntent(
+      {required Map request}) async {
+    final response = await getApiResponse(
+      'mobile/payment-intent',
+      request: request,
+      method: HttpMethodType.POST,
+      manageApiVersion: true,
+    );
+    return Map<String, dynamic>.from(response['data'] as Map);
+  }
+
+  static Future<Map<String, dynamic>> verifyMobilePaymentIntent(
+      {required String paymentIntentId}) async {
+    final response = await getApiResponse(
+      'mobile/verify-payment-intent',
+      request: {'payment_intent_id': paymentIntentId},
+      method: HttpMethodType.POST,
+      manageApiVersion: true,
+    );
+    return Map<String, dynamic>.from(response['data'] as Map);
+  }
+
+  static Future<Map<String, dynamic>> processMobileGatewayPayment(
+      {required String endpoint, required Map request}) async {
+    final response = await getApiResponse(
+      endpoint,
+      request: request,
+      method: HttpMethodType.POST,
+      manageApiVersion: true,
+    );
+    return Map<String, dynamic>.from(response['data'] as Map);
+  }
+
+  static Future<Map<String, dynamic>> verifyMobileGatewayPayment(
+      {required String endpoint, required Map request}) async {
+    final response = await getApiResponse(
+      endpoint,
+      request: request,
+      method: HttpMethodType.POST,
+      manageApiVersion: true,
+    );
+    return Map<String, dynamic>.from(response['data'] as Map);
+  }
+
+  static Future<Map<String, dynamic>> syncInAppPurchaseSubscription() async {
+    final response = await getApiResponse(
+      'user/subscription/sync-in-app-purchase',
+      request: const {},
+      method: HttpMethodType.POST,
+      manageApiVersion: true,
+    );
+    return Map<String, dynamic>.from(response['data'] as Map);
+  }
+
   static Future<ContentModel> getContentDetails({
     required int contentId,
     required String type,
@@ -1073,7 +1245,8 @@ class CoreServiceApis {
     List<String> params = [];
     if (contentId > 0) params.add('${ApiRequestKeys.idKey}=$contentId');
     if (type.isNotEmpty) params.add('${ApiRequestKeys.typeKey}=$type');
-    if (requiresReleasedDataOnly) params.add('${ApiRequestKeys.isReleasedKey}=1');
+    if (requiresReleasedDataOnly)
+      params.add('${ApiRequestKeys.isReleasedKey}=1');
 
     if (tvShowId > 0) {
       params.add('${ApiRequestKeys.tvShowIdKey}=$tvShowId');
@@ -1085,8 +1258,11 @@ class CoreServiceApis {
     params.add('${ApiRequestKeys.deviceIdKey}=${currentDevice.value.deviceId}');
     if (loginUserData.value.id > -1) {
       params.add('${ApiRequestKeys.userIdKey}=${loginUserData.value.id}');
-      if (selectedAccountProfile.value.id > 0) params.add('${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
-      if (selectedAccountProfile.value.isChildProfile.validate() == 1) params.add('${ApiRequestKeys.isRestrictedKey}=0');
+      if (selectedAccountProfile.value.id > 0)
+        params.add(
+            '${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
+      if (selectedAccountProfile.value.isChildProfile.validate() == 1)
+        params.add('${ApiRequestKeys.isRestrictedKey}=0');
     }
     ContentResponse contentResponse = ContentResponse.fromJson(
       await getApiResponse(
@@ -1112,11 +1288,15 @@ class CoreServiceApis {
     if (params.isNotEmpty) newParams.add(params);
     if (loginUserData.value.id > -1) {
       newParams.add('${ApiRequestKeys.userIdKey}=${loginUserData.value.id}');
-      if (selectedAccountProfile.value.id > 0) newParams.add('${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
-      if (selectedAccountProfile.value.isChildProfile.validate() == 1) newParams.add('${ApiRequestKeys.isRestrictedKey}=0');
+      if (selectedAccountProfile.value.id > 0)
+        newParams.add(
+            '${ApiRequestKeys.profileIdKey}=${selectedAccountProfile.value.id}');
+      if (selectedAccountProfile.value.isChildProfile.validate() == 1)
+        newParams.add('${ApiRequestKeys.isRestrictedKey}=0');
     }
 
-    newParams.add('${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
+    newParams.add(
+        '${ApiRequestKeys.perPageKey}=$perPage&${ApiRequestKeys.pageKey}=$page');
 
     ListResponse movieList = ListResponse.fromListJson(
       await getApiResponse(
@@ -1131,7 +1311,8 @@ class CoreServiceApis {
   }
 
   static Future<List<WalkthroughModel>> getOnboardingData() async {
-    WalkthroughListResponse contentListResponse = WalkthroughListResponse.fromJson(
+    WalkthroughListResponse contentListResponse =
+        WalkthroughListResponse.fromJson(
       await getApiResponse(
         getEndPoint(endPoint: APIEndPoints.onboardingList),
       ),
@@ -1158,8 +1339,11 @@ Map<String, dynamic> _ensureMap(dynamic raw) {
   return <String, dynamic>{};
 }
 
-SliderResponse _parseSliderResponse(Map<String, dynamic> json) => SliderResponse.fromJson(json);
+SliderResponse _parseSliderResponse(Map<String, dynamic> json) =>
+    SliderResponse.fromJson(json);
 
-ThumbnailListResponse _parseContinueWatchResponse(Map<String, dynamic> json) => ThumbnailListResponse.fromContinueWatchJson(json);
+ThumbnailListResponse _parseContinueWatchResponse(Map<String, dynamic> json) =>
+    ThumbnailListResponse.fromContinueWatchJson(json);
 
-ListResponse _parseWatchListResponse(Map<String, dynamic> json) => ListResponse.fromListJson(json);
+ListResponse _parseWatchListResponse(Map<String, dynamic> json) =>
+    ListResponse.fromListJson(json);

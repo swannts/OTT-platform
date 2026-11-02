@@ -2727,13 +2727,13 @@ class EntertainmentsController extends Controller
         $device_type = getDeviceType($request);
 
         // Create unique cache key based on all relevant parameters including user_id
-        $userId = $request->user_id ?? auth()->id() ;
+        $userId = auth()->id();
         $cacheKey = 'common_content_detail_v3_'.$id . '_' . $request->profile_id . '_' . $request->type . '_' . ($userId ?? 0);
 
          $responseData = cacheApiResponse($cacheKey, 10, function () use ($request, $id,$device_type, $userId) {
 
 
-            $user_id = isset($request->user_id) ? $request->user_id : 0;
+            $user_id = $userId ?? 0;
             $profile_id = isset($request->profile_id) ? $request->profile_id : 0;
             $device_id = isset($request->device_id) ? $request->device_id : 0;
 
@@ -3465,7 +3465,7 @@ class EntertainmentsController extends Controller
                     $today = Carbon::now()->toDateString();
                     $placement = ['player','banner'];
                     $movie['posterImage'] = $device_type == 'tv' ? setBaseUrlWithFileName($movie->poster_tv_url ?? null) : setBaseUrlWithFileName($movie->poster_url ?? null);
-                    $userId = $request->user_id ?? auth()->id() ;
+                    $userId = auth()->id();
                     $getDeviceTypeData = Subscription::checkPlanSupportDevice($userId,$device_type);
                     $deviceTypeResponse = json_decode($getDeviceTypeData->getContent(), true); // Decode to associative array
                     $movie['isDeviceSupported'] = $deviceTypeResponse['isDeviceSupported'] == true ? 1 : 0;

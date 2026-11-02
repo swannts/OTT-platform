@@ -816,6 +816,7 @@ Future<void> handleLogoutAndNavigateToLogin({
 }
 
 Future<void> clearAppData({bool isFromDeleteAcc = false}) async {
+  await inAppPurchaseService.logOutFromRevenueCat();
   NotificationService().unSubscribeTopic();
   isLoggedIn(false);
   selectedAccountProfile(WatchingProfileModel());

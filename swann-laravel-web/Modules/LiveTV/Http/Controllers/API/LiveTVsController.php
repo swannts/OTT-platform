@@ -69,7 +69,7 @@ class LiveTVsController extends Controller
         $device_type = getDeviceType($request);
 
         $channelId = $request->channel_id;
-        $userId = $request->user_id ?? auth()->id();
+        $userId = auth()->id();
 
         $cacheKey = 'livetv_details_v3_'. md5(json_encode([
             'channel_id' => $channelId,
@@ -94,6 +94,10 @@ class LiveTVsController extends Controller
                 $deviceTypeResponse = ['isDeviceSupported' => false];
                 $userPlanId = 0;
                 $channelData = setContentAccess($channelData, null, $userPlanId);
+            }
+
+            if (!$channelData->has_content_access || !$channelData->isDeviceSupported) {
+                $channelData['video_qualities'] = [];
             }
 
             $channelData['isDeviceSupported'] = $deviceTypeResponse['isDeviceSupported'] == true ? 1 : 0;
@@ -268,7 +272,7 @@ class LiveTVsController extends Controller
     }
 
     public function liveTvDashboardV3(Request $request){
-        $user_id = !empty($request->user_id) ? $request->user_id : null;
+        $user_id = auth()->id();
 
         $device_type = getDeviceType($request);
 
@@ -296,7 +300,7 @@ class LiveTVsController extends Controller
             ->with([
                 'plan:id,level',
                 'TvCategory:id,name',
-                'TvChannelStreamContentMappings:id,tv_channel_id,stream_type,embedded,server_url,server_url1'
+                'TvChannelStreamContentMappings:id,tv_channel_id,stream_type'
             ])
             ->where('status',1)
             ->where('deleted_at',null)
@@ -305,10 +309,6 @@ class LiveTVsController extends Controller
             ->map(function ($item) {
                 $item->plan_level = optional($item->plan)->level;
                 $item->category = optional($item->TvCategory)->name;
-                $item->stream_type = optional($item->TvChannelStreamContentMappings)->stream_type;
-                $item->embedded = optional($item->TvChannelStreamContentMappings)->embedded;
-                $item->server_url = optional($item->TvChannelStreamContentMappings)->server_url;
-                $item->server_url1 = optional($item->TvChannelStreamContentMappings)->server_url1;
                 $item->base_url = $item->poster_url;
                 return $item;
             });
@@ -375,7 +375,7 @@ class LiveTVsController extends Controller
                 ->with([
                     'plan:id,level',
                     'TvCategory:id,name',
-                    'TvChannelStreamContentMappings:id,tv_channel_id,stream_type,embedded,server_url,server_url1'
+                    'TvChannelStreamContentMappings:id,tv_channel_id,stream_type'
                 ])
                 ->whereIn('id', $bannerChannelIds)
                 ->where('status', 1)
@@ -392,10 +392,6 @@ class LiveTVsController extends Controller
                         // Map channel data similar to allChannelData
                         $livetvChannel->plan_level = optional($livetvChannel->plan)->level;
                         $livetvChannel->category = optional($livetvChannel->TvCategory)->name;
-                        $livetvChannel->stream_type = optional($livetvChannel->TvChannelStreamContentMappings)->stream_type;
-                        $livetvChannel->embedded = optional($livetvChannel->TvChannelStreamContentMappings)->embedded;
-                        $livetvChannel->server_url = optional($livetvChannel->TvChannelStreamContentMappings)->server_url;
-                        $livetvChannel->server_url1 = optional($livetvChannel->TvChannelStreamContentMappings)->server_url1;
                         $livetvChannel->base_url = $livetvChannel->poster_url;
                         
                         $livetvChannel->user_id = $user_id;

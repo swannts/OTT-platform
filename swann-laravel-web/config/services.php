@@ -58,6 +58,21 @@ return [
         'private_key' => env('APPLE_PRIVATE_KEY'),
     ],
 
+    'stripe' => [
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+    ],
+
+    'razorpay' => [
+        'webhook_secret' => env('RAZORPAY_WEBHOOK_SECRET'),
+    ],
+
+    'revenuecat' => [
+        'api_key' => env('REVENUECAT_API_KEY'),
+        'webhook_secret' => env('REVENUECAT_WEBHOOK_SECRET'),
+        'public_ios_key' => env('REVENUECAT_IOS_PUBLIC_KEY'),
+        'public_android_key' => env('REVENUECAT_ANDROID_PUBLIC_KEY'),
+    ],
+
 
 
 ];

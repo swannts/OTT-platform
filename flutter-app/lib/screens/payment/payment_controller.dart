@@ -12,20 +12,16 @@ import 'package:swann_ott/screens/content/model/content_model.dart';
 import 'package:swann_ott/screens/coupon/model/coupon_list_model.dart';
 import 'package:swann_ott/screens/payment/model/payment_model.dart';
 import 'package:swann_ott/screens/payment/model/subscription_model.dart';
-import 'package:swann_ott/screens/payment/payment_gateways/pay_pal_service.dart';
+import 'package:swann_ott/services/in_app_purhcase_service.dart';
 import 'package:swann_ott/screens/subscription/subscription_controller.dart';
 import 'package:swann_ott/services/local_storage_service.dart';
-import 'package:swann_ott/utils/api_end_points.dart';
 import 'package:swann_ott/utils/colors.dart';
-import 'package:swann_ott/utils/common_functions.dart';
 import 'package:swann_ott/utils/constants.dart';
 
 import '../../network/core_api.dart';
 import '../../utils/common_base.dart';
 import '../coupon/coupon_list_controller.dart';
 import '../subscription/model/subscription_plan_model.dart';
-import 'payment_gateways/flutter_wave_service.dart';
-import 'payment_gateways/pay_stack_service.dart';
 import 'payment_gateways/razor_pay_service.dart';
 import 'payment_gateways/stripe_services.dart';
 
@@ -41,15 +37,12 @@ class PaymentController extends BaseController {
   RxBool isRent = false.obs;
   Rx<PaymentSetting> selectPayment = PaymentSetting().obs;
   ContentData contentData = ContentData();
-  ContentModel contentModel = ContentModel(details: ContentData(), downloadData: DownloadDataModel());
+  ContentModel contentModel =
+      ContentModel(details: ContentData(), downloadData: DownloadDataModel());
   RentalData rentalData = RentalData();
 
   // Payment Class
   RazorPayService razorPayService = RazorPayService();
-  PayStackService paystackServices = PayStackService();
-
-  PayPalService payPalService = PayPalService();
-  FlutterWaveService flutterWaveServices = FlutterWaveService();
   Rx<Future<RxBool>> paymentListFuture = Future(() => false.obs).obs;
 
   // Coupon
@@ -99,8 +92,13 @@ class PaymentController extends BaseController {
   Future<void> fetchCouponList() async {
     if (isRent.value) return;
     setLoading(true);
-    await couponController.getListData(selectedPlanId: selectPlan.value.planId.toString()).then((value) {
-      couponController.listContent.removeWhere((coupon) => coupon.discountType == Tax.fixed && coupon.discount.validate().toDouble() >= selectPlan.value.totalPrice.toDouble());
+    await couponController
+        .getListData(selectedPlanId: selectPlan.value.planId.toString())
+        .then((value) {
+      couponController.listContent.removeWhere((coupon) =>
+          coupon.discountType == Tax.fixed &&
+          coupon.discount.validate().toDouble() >=
+              selectPlan.value.totalPrice.toDouble());
       setLoading(false);
     }).onError((error, stackTrace) {
       setLoading(false);
@@ -116,7 +114,19 @@ class PaymentController extends BaseController {
       showCoupon.value = true;
       update([availablePaymentMethods]);
 
-      paymentListFuture(Future(() async => getPayment())).whenComplete(() => setLoading(false));
+      final inAppPurchase = availablePaymentMethods.inAppPurchase;
+      final storeApiKey =
+          isIOS ? inAppPurchase.appleApiKey : inAppPurchase.googleApiKey;
+      if (!isRent.value &&
+          inAppPurchase.entitlementId.isNotEmpty &&
+          storeApiKey.isNotEmpty) {
+        await inAppPurchaseService.init(apiKey: storeApiKey);
+        if (isLoggedIn.value)
+          await inAppPurchaseService.retryPendingSubscriptionData();
+      }
+
+      paymentListFuture(Future(() async => getPayment()))
+          .whenComplete(() => setLoading(false));
     }).onError((error, stackTrace) {
       toast(error.toString());
     }).whenComplete(() {
@@ -129,82 +139,47 @@ class PaymentController extends BaseController {
   Future<RxBool> getPayment({bool showLoader = true}) async {
     isLoading(showLoader);
     originalPaymentList.clear();
+
+    // Mobile checkout is limited to gateways whose payment is created and verified by the backend.
     if (availablePaymentMethods.stripePay.stripePublicKey.isNotEmpty) {
-      originalPaymentList.add(
-        PaymentSetting(
-          id: 0,
-          title: locale.value.stripePay,
-          type: PaymentMethods.PAYMENT_METHOD_STRIPE,
-          liveValue: LiveValue(stripePublickey: availablePaymentMethods.stripePay.stripePublicKey, stripeKey: availablePaymentMethods.stripePay.stripeSecretKey),
-        ),
-      );
+      originalPaymentList.add(PaymentSetting(
+        id: 0,
+        title: locale.value.stripePay,
+        type: PaymentMethods.PAYMENT_METHOD_STRIPE,
+        liveValue: LiveValue(
+            stripePublickey: availablePaymentMethods.stripePay.stripePublicKey),
+      ));
     }
     if (availablePaymentMethods.razorPay.razorpayPublicKey.isNotEmpty) {
-      originalPaymentList.add(
-        PaymentSetting(
-          id: 1,
-          title: locale.value.razorPay,
-          type: PaymentMethods.PAYMENT_METHOD_RAZORPAY,
-          liveValue: LiveValue(razorKey: availablePaymentMethods.razorPay.razorpayPublicKey, razorSecret: availablePaymentMethods.razorPay.razorpaySecretKey),
-        ),
-      );
+      originalPaymentList.add(PaymentSetting(
+        id: 1,
+        title: locale.value.razorPay,
+        type: PaymentMethods.PAYMENT_METHOD_RAZORPAY,
+        liveValue: LiveValue(
+            razorKey: availablePaymentMethods.razorPay.razorpayPublicKey),
+      ));
     }
-    if (availablePaymentMethods.payStackPay.payStackPublicKey.isNotEmpty) {
-      originalPaymentList.add(
-        PaymentSetting(
-          id: 2,
-          title: locale.value.payStackPay,
-          type: PaymentMethods.PAYMENT_METHOD_PAYSTACK,
-          liveValue: LiveValue(paystackPublicKey: availablePaymentMethods.payStackPay.payStackPublicKey, paystackSecrateKey: availablePaymentMethods.payStackPay.payStackPublicKey),
-        ),
-      );
-    }
-    if (availablePaymentMethods.paypalPay.paypalClientId.isNotEmpty) {
-      originalPaymentList.add(
-        PaymentSetting(
-          id: 3,
-          title: locale.value.paypalPay,
-          type: PaymentMethods.PAYMENT_METHOD_PAYPAL,
-          liveValue: LiveValue(
-            payPalClientId: availablePaymentMethods.paypalPay.paypalClientId,
-            payPalSecretKey: availablePaymentMethods.paypalPay.paypalSecretKey,
-          ),
-        ),
-      );
-    }
-    if (availablePaymentMethods.flutterWavePay.flutterwavePublickey.isNotEmpty) {
-      originalPaymentList.add(
-        PaymentSetting(
-          id: 4,
-          title: locale.value.flutterWavePay,
-          type: PaymentMethods.PAYMENT_METHOD_FLUTTER_WAVE,
-          liveValue: LiveValue(
-            flutterwavePublic: availablePaymentMethods.flutterWavePay.flutterwavePublickey,
-            flutterwaveSecret: availablePaymentMethods.flutterWavePay.flutterwaveSecretkey,
-          ),
-        ),
-      );
-    }
+    final store = availablePaymentMethods.inAppPurchase;
     if (!isRent.value &&
-        availablePaymentMethods.inAppPurchase.entitlementId.isNotEmpty &&
-        (isIOS ? availablePaymentMethods.inAppPurchase.appleApiKey.isNotEmpty : availablePaymentMethods.inAppPurchase.googleApiKey.isNotEmpty)) {
-      originalPaymentList.add(
-        PaymentSetting(
-          id: 5,
-          title: locale.value.inAppPurchase,
-          type: PaymentMethods.PAYMENT_METHOD_IN_APP_PURCHASE,
-        ),
-      );
+        store.entitlementId.isNotEmpty &&
+        (isIOS ? store.appleApiKey : store.googleApiKey).isNotEmpty) {
+      originalPaymentList.add(PaymentSetting(
+        id: 2,
+        title: locale.value.inAppPurchase,
+        type: PaymentMethods.PAYMENT_METHOD_IN_APP_PURCHASE,
+      ));
     }
-    setLoading(false);
 
+    setLoading(false);
     return true.obs;
   }
 
   void handlePaymentSelection(PaymentSetting data) {
     selectPayment.value = data;
     paymentOption.value = data.type.validate();
-    showCoupon(paymentOption.value != PaymentMethods.PAYMENT_METHOD_IN_APP_PURCHASE && !isRent.value);
+    showCoupon(
+        paymentOption.value != PaymentMethods.PAYMENT_METHOD_IN_APP_PURCHASE &&
+            !isRent.value);
     update([selectPayment, paymentOption]);
   }
 
@@ -213,20 +188,23 @@ class PaymentController extends BaseController {
   void handlePayNowClick(BuildContext context, VoidCallback onSuccess) {
     Get.bottomSheet(
       AppDialogWidget(
-        title: "${isRent.value ? locale.value.doYouConfirmThis(contentData.name) : locale.value.doYouConfirmThisPlanWithPlanName(selectPlan.value.name)}",
+        title: isRent.value
+            ? locale.value.doYouConfirmThis(contentData.name)
+            : locale.value
+                .doYouConfirmThisPlanWithPlanName(selectPlan.value.name),
         onAccept: () {
           if (paymentOption.value == PaymentMethods.PAYMENT_METHOD_STRIPE) {
             payWithStripe(context, onSuccess);
-          } else if (paymentOption.value == PaymentMethods.PAYMENT_METHOD_RAZORPAY) {
+          } else if (paymentOption.value ==
+              PaymentMethods.PAYMENT_METHOD_RAZORPAY) {
             payWithRazorPay(context, onSuccess);
-          } else if (paymentOption.value == PaymentMethods.PAYMENT_METHOD_PAYSTACK) {
-            payWithPayStack(context, onSuccess);
-          } else if (paymentOption.value == PaymentMethods.PAYMENT_METHOD_FLUTTER_WAVE) {
-            payWithFlutterWave(context, onSuccess);
-          } else if (paymentOption.value == PaymentMethods.PAYMENT_METHOD_PAYPAL) {
-            payWithPaypal(context, onSuccess);
-          } else if (paymentOption.value == PaymentMethods.PAYMENT_METHOD_IN_APP_PURCHASE) {
+          } else if (paymentOption.value ==
+                  PaymentMethods.PAYMENT_METHOD_IN_APP_PURCHASE &&
+              !isRent.value) {
             payWithInAppPurchase(onSuccess);
+          } else {
+            toast(
+                'This payment method is not available in the secure checkout flow yet.');
           }
         },
         image: isRent.value ? Assets.imagesRental : Assets.iconsCrown,
@@ -237,276 +215,247 @@ class PaymentController extends BaseController {
     );
   }
 
-  Future<void> payWithStripe(BuildContext context, VoidCallback onSuccess) async {
-    await StripeServices.stripePaymentMethod(
-      publicKey: availablePaymentMethods.stripePay.stripePublicKey,
-      secretKey: availablePaymentMethods.stripePay.stripeSecretKey,
-      loaderOnOff: (p0) {
-        isLoading(p0);
-      },
-      amount: isRent.value ? rentPrice.value.validate() : price.value.validate(),
-      onComplete: (res) {
-        if (isRent.value) {
-          saveRentDetails(
-            transactionId: res["transaction_id"].toString(),
-            paymentType: PaymentMethods.PAYMENT_METHOD_STRIPE,
-            onSuccess: onSuccess,
-          );
-        } else {
-          saveSubscriptionDetails(
-            transactionId: res["transaction_id"].toString(),
-            paymentType: PaymentMethods.PAYMENT_METHOD_STRIPE,
-            onSuccess: onSuccess,
-          );
-        }
-      },
-    ).catchError(onError);
-  }
-
-  Future<void> payWithRazorPay(BuildContext context, VoidCallback onSuccess) async {
+  Future<void> payWithStripe(
+      BuildContext context, VoidCallback onSuccess) async {
     setLoading(true);
-    final isOrderCreated = await razorPayService
-        .init(
-      razorPublicKey: availablePaymentMethods.razorPay.razorpayPublicKey,
-      razorSecretKey: availablePaymentMethods.razorPay.razorpaySecretKey,
-      totalAmount: isRent.value ? rentPrice.value.validate() : price.value.validate(),
-      selectedPlanId: selectPlan.value.id,
-      onComplete: (res) {
-        if (isRent.value) {
-          saveRentDetails(
-            transactionId: res["transaction_id"].toString(),
-            paymentType: PaymentMethods.PAYMENT_METHOD_RAZORPAY,
-            onSuccess: onSuccess,
-          );
-        } else {
-          saveSubscriptionDetails(transactionId: res["transaction_id"].toString(), paymentType: PaymentMethods.PAYMENT_METHOD_RAZORPAY, onSuccess: onSuccess);
-        }
-      },
-    )
-        .catchError((e) {
-      setLoading(false);
-      toast(e.toString());
-      return false;
-    });
+    try {
+      if ((!isRent.value && price.value <= 0) ||
+          (isRent.value && rentPrice.value <= 0)) {
+        final freeResponse = await CoreServiceApis.processMobileGatewayPayment(
+          endpoint: isRent.value
+              ? 'pay-per-view/process-payment'
+              : 'subscription/process-payment',
+          request: isRent.value
+              ? {
+                  'movie_id': contentModel.id,
+                  'type': contentData.type,
+                  'payment_method': 'free'
+                }
+              : {
+                  'plan_id': selectPlan.value.planId,
+                  'payment_method': 'free',
+                  if (couponController.appliedCouponData.value.id > 0)
+                    'coupon_id': couponController.appliedCouponData.value.id,
+                },
+        );
+        _completePurchase(freeResponse, onSuccess);
+        return;
+      }
 
-    if (isOrderCreated) {
-      setLoading(false);
-      await Future.delayed(const Duration(seconds: 1));
-      razorPayService.razorPayCheckout();
-    } else {
-      setLoading(false);
-      toast(locale.value.failedInitiateRazorpayPayment);
-    }
-  }
-
-  Future<void> payWithPayStack(BuildContext context, VoidCallback onSuccess) async {
-    setLoading(true);
-    await paystackServices.init(
-      publicKey: availablePaymentMethods.payStackPay.payStackPublicKey,
-      loaderOnOff: (p0) {
-        isLoading(p0);
-      },
-      ctx: context,
-      totalAmount: isRent.value ? rentPrice.value.validate() : price.value.validate(),
-      onComplete: (res) {
-        if (isRent.value) {
-          saveRentDetails(
-            transactionId: res["transaction_id"].toString(),
-            paymentType: PaymentMethods.PAYMENT_METHOD_PAYSTACK,
-            onSuccess: onSuccess,
-          );
-        } else {
-          saveSubscriptionDetails(
-            transactionId: res["transaction_id"].toString(),
-            paymentType: PaymentMethods.PAYMENT_METHOD_PAYSTACK,
-            onSuccess: onSuccess,
-          );
-        }
-      },
-    );
-    await Future.delayed(const Duration(seconds: 1));
-    setLoading(false);
-    if (Get.context != null) {
-      paystackServices.checkout();
-    } else {
-      toast(locale.value.contextNotFound);
-    }
-  }
-
-  void payWithPaypal(BuildContext context, VoidCallback onSuccess) {
-    setLoading(true);
-    payPalService.paypalCheckOut(
-      secretKey: availablePaymentMethods.paypalPay.paypalSecretKey,
-      clientId: availablePaymentMethods.paypalPay.paypalClientId,
-      context: context,
-      loderOnOFF: (p0) {
-        isLoading(p0);
-      },
-      totalAmount: isRent.value ? rentPrice.value.validate() : price.value.validate(),
-      onComplete: (res) {
-        if (isRent.value) {
-          saveRentDetails(
-            transactionId: res["transaction_id"].toString(),
-            paymentType: PaymentMethods.PAYMENT_METHOD_PAYPAL,
-            onSuccess: onSuccess,
-          );
-        } else {
-          saveSubscriptionDetails(
-            transactionId: res["transaction_id"].toString(),
-            paymentType: PaymentMethods.PAYMENT_METHOD_PAYPAL,
-            onSuccess: onSuccess,
-          );
-        }
-        // toast("==============Completed=================", print: true);
-        //saveSubscriptionPlan(paymentType: PaymentMethods.PAYMENT_METHOD_PAYPAL, txnId: res["transaction_id"], paymentStatus: PaymentStatus.PAID);
-      },
-    );
-  }
-
-  Future<void> payWithFlutterWave(BuildContext context, VoidCallback onSuccess) async {
-    setLoading(true);
-    flutterWaveServices.checkout(
-      secretKey: availablePaymentMethods.flutterWavePay.flutterwaveSecretkey,
-      publicKey: availablePaymentMethods.flutterWavePay.flutterwavePublickey,
-      ctx: context,
-      loderOnOFF: (p0) {
-        isLoading(p0);
-      },
-      totalAmount: isRent.value ? rentPrice.value.validate() : price.value.validate(),
-      isTestMode: availablePaymentMethods.flutterWavePay.flutterwavePublickey.toLowerCase().contains("test"),
-      onComplete: (res) {
-        if (isRent.value) {
-          saveRentDetails(
-            transactionId: res["transaction_id"].toString(),
-            paymentType: PaymentMethods.PAYMENT_METHOD_FLUTTER_WAVE,
-            onSuccess: onSuccess,
-          );
-        } else {
-          saveSubscriptionDetails(
-            transactionId: res["transaction_id"].toString(),
-            paymentType: PaymentMethods.PAYMENT_METHOD_FLUTTER_WAVE,
-            onSuccess: onSuccess,
-          );
-        }
-      },
-    );
-    await Future.delayed(const Duration(seconds: 1));
-    setLoading(false);
-  }
-
-  void payWithInAppPurchase(VoidCallback onSuccess) {
-    final InAppPurchase inAppPurchase = availablePaymentMethods.inAppPurchase;
-    setLoading(true);
-    inAppPurchaseService.init(apiKey: isIOS ? inAppPurchase.appleApiKey : inAppPurchase.googleApiKey).then(
-      (value) {
-        setLoading(false);
-        final selectedRevenueCatPackage = inAppPurchaseService.getSelectedPlanFromRevenueCat(selectPlan.value);
-        if (selectedRevenueCatPackage != null) {
-          inAppPurchaseService.startPurchase(
-            selectedRevenueCatPackage: selectedRevenueCatPackage,
-            onComplete: (transactionId) {
-              saveSubscriptionDetails(
-                transactionId: transactionId,
-                paymentType: PaymentMethods.PAYMENT_METHOD_IN_APP_PURCHASE,
-                onSuccess: onSuccess,
-              );
-            },
-          );
-        } else {
-          toast(locale.value.cantFindPlanOnStore(selectPlan.value.name, isIOS ? 'Appstore' : "PlayStore"));
-        }
-      },
-    );
-  }
-
-//saveSubscriptionDetails
-
-  Future<void> saveSubscriptionDetails({required String transactionId, required String paymentType, required VoidCallback onSuccess}) async {
-    if (isLoading.value) return;
-    setLoading(true);
-    Map<String, dynamic> request = {
-      ApiRequestKeys.planIdKey: selectPlan.value.planId,
-      ApiRequestKeys.userIdKey: loginUserData.value.id,
-      ApiRequestKeys.identifierKey: selectPlan.value.name.validate(),
-      ApiRequestKeys.paymentStatusKey: PaymentStatus.PAID,
-      ApiRequestKeys.paymentTypeKey: paymentType,
-      ApiRequestKeys.transactionIdKey: transactionId.validate(),
-      ApiRequestKeys.deviceIdKey: currentDevice.value.deviceId,
-      ApiRequestKeys.paymentDate: DateTime.now().toString(),
-    };
-
-    if (couponController.appliedCouponData.value.code.isNotEmpty) {
-      request.putIfAbsent(ApiRequestKeys.couponIdKey, () => couponController.appliedCouponData.value.id);
-    }
-
-    if (paymentType == PaymentMethods.PAYMENT_METHOD_IN_APP_PURCHASE) {
-      request.putIfAbsent(
-        ApiRequestKeys.activeInAppPurchaseIdentifierKey,
-        () => isIOS ? selectPlan.value.appleInAppPurchaseIdentifier : selectPlan.value.googleInAppPurchaseIdentifier,
+      final intent = await CoreServiceApis.createMobilePaymentIntent(
+        request: isRent.value
+            ? {
+                'purchase_type': 'pay_per_view',
+                'movie_id': contentModel.id,
+                'type': contentData.type,
+              }
+            : {
+                'purchase_type': 'subscription',
+                'plan_id': selectPlan.value.planId,
+                if (couponController.appliedCouponData.value.id > 0)
+                  'coupon_id': couponController.appliedCouponData.value.id,
+              },
       );
+
+      await StripeServices.stripePaymentMethod(
+        publicKey: intent['publishable_key'] as String,
+        clientSecret: intent['client_secret'] as String,
+        paymentIntentId: intent['payment_intent_id'] as String,
+        loaderOnOff: (bool value) => isLoading(value),
+        onComplete: (result) async {
+          try {
+            final verified = await CoreServiceApis.verifyMobilePaymentIntent(
+              paymentIntentId: result['payment_intent_id'] as String,
+            );
+            _completePurchase(verified, onSuccess);
+          } catch (error) {
+            setLoading(false);
+            errorSnackBar(error: error);
+          }
+        },
+      );
+    } catch (error) {
+      setLoading(false);
+      errorSnackBar(error: error);
     }
-    await CoreServiceApis.saveSubscriptionDetails(request: request).then((value) async {
-      Get.back();
+  }
+
+  Future<void> payWithRazorPay(
+      BuildContext context, VoidCallback onSuccess) async {
+    setLoading(true);
+    try {
+      final endpoint = isRent.value
+          ? 'pay-per-view/process-payment'
+          : 'subscription/process-payment';
+      final order = await CoreServiceApis.processMobileGatewayPayment(
+        endpoint: endpoint,
+        request: isRent.value
+            ? {
+                'movie_id': contentModel.id,
+                'type': contentData.type,
+                'payment_method': 'razorpay',
+              }
+            : {
+                'plan_id': selectPlan.value.planId,
+                'payment_method': 'razorpay',
+                if (couponController.appliedCouponData.value.id > 0)
+                  'coupon_id': couponController.appliedCouponData.value.id,
+              },
+      );
+
+      if (order['is_free'] == true ||
+          order['success'] == true && isRent.value) {
+        _completePurchase(order, onSuccess);
+        return;
+      }
+
+      await razorPayService.init(
+        publicKey: order['key'] as String,
+        orderId: order['order_id'] as String,
+        amountMinor: (order['amount'] as num).round(),
+        currency: order['currency'] as String,
+        onComplete: (payment) async {
+          setLoading(true);
+          try {
+            final verified = await CoreServiceApis.verifyMobileGatewayPayment(
+              endpoint: isRent.value
+                  ? 'pay-per-view/verify-payment'
+                  : 'subscription/verify-payment',
+              request: {
+                'gateway': 'razorpay',
+                'payment_id': payment['payment_id'],
+                'order_id': payment['order_id'],
+                'signature': payment['signature'],
+              },
+            );
+            _completePurchase(verified, onSuccess);
+          } catch (error) {
+            setLoading(false);
+            errorSnackBar(error: error);
+          }
+        },
+        onFailure: () => setLoading(false),
+      );
+      setLoading(false);
+    } catch (error) {
+      setLoading(false);
+      errorSnackBar(error: error);
+    }
+  }
+
+  Future<void> payWithInAppPurchase(VoidCallback onSuccess) async {
+    if (isRent.value) return;
+    final package =
+        inAppPurchaseService.getSelectedPlanFromRevenueCat(selectPlan.value);
+    if (package == null) {
+      toast('This plan is not available in the app store.');
+      return;
+    }
+
+    setLoading(true);
+    await inAppPurchaseService.startPurchase(
+      selectedRevenueCatPackage: package,
+      onComplete: (_) async {
+        try {
+          await setBoolToLocal(
+              SharedPreferenceConst.IS_SUBSCRIPTION_PURCHASE_RESTORE_REQUIRED,
+              true);
+          await setJsonToLocal(SharedPreferenceConst.PURCHASE_REQUEST,
+              selectPlan.value.toJson());
+          final result = await CoreServiceApis.syncInAppPurchaseSubscription();
+          if (result['has_active_subscription'] != true ||
+              result['subscription'] is! Map) {
+            throw StateError(
+                'The store purchase is not active for this account yet.');
+          }
+          await inAppPurchaseService.clearPendingSubscriptionData();
+          _completePurchase(result, onSuccess);
+        } catch (error) {
+          setLoading(false);
+          errorSnackBar(error: error);
+        }
+      },
+      onFailure: () => setLoading(false),
+    );
+  }
+
+  Future<void> restoreInAppPurchases() async {
+    if (!isLoggedIn.value) {
+      toast('Sign in to restore purchases.');
+      return;
+    }
+    setLoading(true);
+    try {
+      final customerInfo = await inAppPurchaseService.restorePurchases();
+      final result = await CoreServiceApis.syncInAppPurchaseSubscription();
+      if (result['has_active_subscription'] == true &&
+          result['subscription'] is Map) {
+        updateSubscriptionDetails(SubscriptionResponseModel.fromJson({
+          'status': true,
+          'data': Map<String, dynamic>.from(result['subscription'] as Map),
+        }));
+        setLoading(false);
+        toast('Purchases restored.');
+      } else {
+        setLoading(false);
+        toast(customerInfo == null
+            ? 'Unable to restore purchases. Please try again.'
+            : 'No active subscription was found.');
+      }
+    } catch (error) {
+      setLoading(false);
+      errorSnackBar(error: error);
+    }
+  }
+
+  void _completePurchase(Map<String, dynamic> result, VoidCallback onSuccess) {
+    if (isRent.value) {
       Get.back();
       onSuccess.call();
-      updateSubscriptionDetails(value);
-    }).catchError((e) {
       setLoading(false);
-      errorSnackBar(error: e);
-    }).whenComplete(() {
-      setLoading(false);
-    });
+      return;
+    }
+
+    final subscription = result['subscription'];
+    if (subscription is Map) {
+      updateSubscriptionDetails(SubscriptionResponseModel.fromJson({
+        'status': true,
+        'data': Map<String, dynamic>.from(subscription),
+      }));
+    }
+    Get.back();
+    Get.back();
+    onSuccess.call();
+    setLoading(false);
   }
 
   void updateSubscriptionDetails(SubscriptionResponseModel value) {
     currentSubscription(value.data);
-    if (currentSubscription.value.level > -1 && currentSubscription.value.planType.isNotEmpty && currentSubscription.value.planType.any((element) => element.slug == SubscriptionTitle.videoCast)) {
-      isCastingSupported(currentSubscription.value.planType.firstWhere((element) => element.slug == SubscriptionTitle.videoCast).limitationValue.getBoolInt());
+    if (currentSubscription.value.level > -1 &&
+        currentSubscription.value.planType.isNotEmpty &&
+        currentSubscription.value.planType
+            .any((element) => element.slug == SubscriptionTitle.videoCast)) {
+      isCastingSupported(currentSubscription.value.planType
+          .firstWhere((element) => element.slug == SubscriptionTitle.videoCast)
+          .limitationValue
+          .getBoolInt());
     } else {
       isCastingSupported(false);
     }
-    currentSubscription.value.activePlanInAppPurchaseIdentifier = isIOS ? currentSubscription.value.appleInAppPurchaseIdentifier : currentSubscription.value.googleInAppPurchaseIdentifier;
-    setJsonToLocal(SharedPreferenceConst.CACHE_USER_SUBSCRIPTION_DATA, value.data.toJson());
+    currentSubscription.value.activePlanInAppPurchaseIdentifier = isIOS
+        ? currentSubscription.value.appleInAppPurchaseIdentifier
+        : currentSubscription.value.googleInAppPurchaseIdentifier;
+    setJsonToLocal(SharedPreferenceConst.CACHE_USER_SUBSCRIPTION_DATA,
+        value.data.toJson());
     setJsonToLocal(SharedPreferenceConst.USER_DATA, loginUserData.toJson());
-  }
-
-  Future<void> saveRentDetails({required String transactionId, required String paymentType, required VoidCallback onSuccess}) async {
-    if (isLoading.value) return;
-    setLoading(true);
-    String typeValue = contentData.type.validate();
-    final Map<String, dynamic> request = {
-      ApiRequestKeys.userIdKey: loginUserData.value.id,
-      "price": rentalData.discountedPrice.validate(),
-      "discount": rentalData.discount.validate(),
-      "payment_status": PaymentStatus.PAID,
-      "payment_type": paymentType,
-      "transaction_id": transactionId.validate(),
-      "purchase_type": 'rental',
-      "access_duration": rentalData.accessDuration.validate(),
-      "available_for": rentalData.availabilityDays.validate(),
-      "movie_id": contentModel.id.validate(),
-      ApiRequestKeys.typeKey: typeValue,
-    };
-
-    await CoreServiceApis.saveRentDetails(request: request).then((value) async {
-      Get.back();
-      onSuccess.call();
-    }).catchError((e) {
-      if (e is Map && e.containsKey('message')) {
-        errorSnackBar(error: e['message']);
-        return;
-      }
-      errorSnackBar(error: e);
-    }).whenComplete(() async {
-      setLoading(false);
-    });
   }
 
   void removeAppliedCoupon({bool isDataFetch = true}) {
     if (isRent.value) return;
     couponController.appliedCouponData.value.isCouponApplied = false;
     couponController.appliedCouponData.value = CouponDataModel();
-    SubscriptionController subscriptionController = Get.find<SubscriptionController>();
+    SubscriptionController subscriptionController =
+        Get.find<SubscriptionController>();
     subscriptionController.calculateTotalPrice();
 
     /// Fetch Coupon List

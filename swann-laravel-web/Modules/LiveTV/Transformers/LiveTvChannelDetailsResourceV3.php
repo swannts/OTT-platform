@@ -20,7 +20,6 @@ class LiveTvChannelDetailsResourceV3 extends JsonResource
             'details' => [
                 'name' => $this->name,
                 'type' => 'livetv',
-                'server_url'=> optional($this->TvChannelStreamContentMappings)->server_url ?? null,
                 'access' => $this->access,
                 'is_device_supported'=> $this->isDeviceSupported ?? null,
                 "has_content_access"=> $this->has_content_access, // $this->access == 'free' || $this->access == 'pay-per-view' ? 1 : ($this->plan_id ?? 0),
@@ -29,7 +28,7 @@ class LiveTvChannelDetailsResourceV3 extends JsonResource
                 "thumbnail_image" => setBaseUrlWithFileName($this->poster_url,'image','livetv'),
                 'category' => $this->TvCategory->name ?? null,
             ],
-            'video_qualities'=> $this->video_qualities,
+            'video_qualities'=> ($this->has_content_access && $this->isDeviceSupported) ? $this->video_qualities : [],
             'suggested_content' => LiveTvChannelResourceV3::collection($this->moreItems),
         ];
     }

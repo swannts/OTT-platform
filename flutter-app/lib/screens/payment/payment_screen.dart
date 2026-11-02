@@ -11,7 +11,8 @@ import 'package:swann_ott/screens/payment/components/payment_card_component.dart
 import 'package:swann_ott/screens/payment/payment_controller.dart';
 import 'package:swann_ott/utils/colors.dart';
 import 'package:swann_ott/utils/common_functions.dart';
-import 'package:swann_ott/utils/constants.dart' show BannerType, SubscriptionTitle;
+import 'package:swann_ott/utils/constants.dart'
+    show BannerType, PaymentMethods, SubscriptionTitle;
 
 import '../../components/app_scaffold.dart';
 import '../../components/loader_widget.dart';
@@ -26,7 +27,8 @@ import 'components/selected_plan_component.dart';
 
 class PaymentScreen extends StatelessWidget {
   final PaymentController paymentCont = Get.find<PaymentController>();
-  final SubscriptionController subscriptionCont = Get.find<SubscriptionController>();
+  final SubscriptionController subscriptionCont =
+      Get.find<SubscriptionController>();
 
   @override
   Widget build(BuildContext context) {
@@ -35,9 +37,12 @@ class PaymentScreen extends StatelessWidget {
       scrollController: paymentCont.scrollController,
       isLoading: paymentCont.isLoading,
       scaffoldBackgroundColor: appScreenBackgroundDark,
-      appBarTitleText: paymentCont.isRent.value ? locale.value.rent : locale.value.subscription,
+      appBarTitleText: paymentCont.isRent.value
+          ? locale.value.rent
+          : locale.value.subscription,
       onRefresh: () async {
-        await paymentCont.getPayment(showLoader: true); // Retry fetching payment methods
+        await paymentCont.getPayment(
+            showLoader: true); // Retry fetching payment methods
       },
       leadingWidget: IconButton(
         padding: EdgeInsets.zero,
@@ -54,7 +59,9 @@ class PaymentScreen extends StatelessWidget {
           children: [
             SelectedPlanComponent(
               planDetails: paymentCont.selectPlan.value,
-              price: paymentCont.isRent.value ? paymentCont.rentPrice.value : paymentCont.selectPlan.value.totalPrice.toDouble(),
+              price: paymentCont.isRent.value
+                  ? paymentCont.rentPrice.value
+                  : paymentCont.selectPlan.value.totalPrice.toDouble(),
               contentName: paymentCont.contentData.name.validate(),
               isRent: paymentCont.isRent.value,
               rentalData: paymentCont.rentalData,
@@ -75,7 +82,8 @@ class PaymentScreen extends StatelessWidget {
                       retryText: locale.value.reload,
                       imageWidget: const ErrorStateWidget(),
                       onRetry: () async {
-                        await paymentCont.getPayment(showLoader: true); // Retry fetching payment methods
+                        await paymentCont.getPayment(
+                            showLoader: true); // Retry fetching payment methods
                       },
                     ).center().visible(!paymentCont.isLoading.value),
                   );
@@ -86,13 +94,15 @@ class PaymentScreen extends StatelessWidget {
                   child: const LoaderWidget(),
                 ).center(),
                 onSuccess: (data) {
-                  if (paymentCont.originalPaymentList.isEmpty && !paymentCont.isPaymentLoading.value) {
+                  if (paymentCont.originalPaymentList.isEmpty &&
+                      !paymentCont.isPaymentLoading.value) {
                     return AppNoDataWidget(
                       title: locale.value.noPaymentMethodsFound,
                       retryText: locale.value.reload,
                       imageWidget: const EmptyStateWidget(),
                       onRetry: () async {
-                        await paymentCont.getPayment(showLoader: true); // Retry fetching payment methods
+                        await paymentCont.getPayment(
+                            showLoader: true); // Retry fetching payment methods
                       },
                     ).center();
                   } else {
@@ -104,7 +114,8 @@ class PaymentScreen extends StatelessWidget {
                       // Number of payment methods
                       itemBuilder: (context, index) {
                         return PaymentCardComponent(
-                          paymentDetails: paymentCont.originalPaymentList[index], // Payment method details
+                          paymentDetails: paymentCont.originalPaymentList[
+                              index], // Payment method details
                         ); // Add padding between items
                       },
                     );
@@ -112,14 +123,29 @@ class PaymentScreen extends StatelessWidget {
                 },
               );
             }),
-            if (paymentCont.showCoupon.value && paymentCont.couponController.listContent.isNotEmpty) ...[
+            if (isLoggedIn.value &&
+                !paymentCont.isRent.value &&
+                paymentCont.originalPaymentList.any((method) =>
+                    method.type ==
+                    PaymentMethods.PAYMENT_METHOD_IN_APP_PURCHASE))
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TextButton.icon(
+                  onPressed: paymentCont.restoreInAppPurchases,
+                  icon: const Icon(Icons.restore),
+                  label: const Text('Restore purchases'),
+                ),
+              ),
+            if (paymentCont.showCoupon.value &&
+                paymentCont.couponController.listContent.isNotEmpty) ...[
               24.height,
               Obx(() {
                 return viewAllWidget(
                   label: locale.value.coupons,
                   showViewAll: true,
                   isSymmetricPaddingEnable: false,
-                  iconButton: paymentCont.couponController.listContent.length <= 2
+                  iconButton: paymentCont.couponController.listContent.length <=
+                          2
                       ? SizedBox.shrink()
                       : InkWell(
                           splashColor: appColorPrimary.withValues(alpha: 0.4),
@@ -132,14 +158,21 @@ class PaymentScreen extends StatelessWidget {
                             )?.then((value) async {
                               if (value != null) {
                                 if (value is CouponDataModel) {
-                                  paymentCont.couponController.appliedCouponData(value);
-                                  subscriptionCont.calculateTotalPrice(appliedCouponData: paymentCont.couponController.appliedCouponData.value);
+                                  paymentCont.couponController
+                                      .appliedCouponData(value);
+                                  subscriptionCont.calculateTotalPrice(
+                                      appliedCouponData: paymentCont
+                                          .couponController
+                                          .appliedCouponData
+                                          .value);
                                   successSnackBar(locale.value.coupanApplied);
                                 }
                               }
                             });
                           },
-                          child: Text(locale.value.viewAll, style: boldTextStyle(size: 14, color: appColorPrimary)),
+                          child: Text(locale.value.viewAll,
+                              style: boldTextStyle(
+                                  size: 14, color: appColorPrimary)),
                         ),
                 );
               }),
@@ -158,13 +191,16 @@ class PaymentScreen extends StatelessWidget {
             () {
               return PriceComponent(
                 subscriptionCont: subscriptionCont,
-                appliedCouponData: paymentCont.couponController.appliedCouponData.value,
+                appliedCouponData:
+                    paymentCont.couponController.appliedCouponData.value,
                 buttonText: locale.value.proceedPayment,
                 isProceedPayment: true,
                 isRent: paymentCont.isRent.value,
                 rentData: paymentCont.rentalData,
                 contentDetails: paymentCont.contentData,
-                buttonColor: paymentCont.selectPayment.value.type.isNotEmpty ? rentedColor : null,
+                buttonColor: paymentCont.selectPayment.value.type.isNotEmpty
+                    ? rentedColor
+                    : null,
                 onCallBack: () {
                   if (isLoggedIn.value) {
                     if (paymentCont.selectPayment.value.id > -1) {
@@ -174,7 +210,16 @@ class PaymentScreen extends StatelessWidget {
                         } else {
                           paymentCont.price(subscriptionCont.totalAmount.value);
                         }
-                        int previousLimit = currentSubscription.value.id > 0 ? (int.tryParse(currentSubscription.value.planType.firstWhereOrNull((element) => element.slug == SubscriptionTitle.deviceLimit)?.limit.value ?? '1') ?? 1) : 1;
+                        int previousLimit = currentSubscription.value.id > 0
+                            ? (int.tryParse(currentSubscription.value.planType
+                                        .firstWhereOrNull((element) =>
+                                            element.slug ==
+                                            SubscriptionTitle.deviceLimit)
+                                        ?.limit
+                                        .value ??
+                                    '1') ??
+                                1)
+                            : 1;
                         paymentCont.handlePayNowClick(
                           context,
                           () {
@@ -185,28 +230,53 @@ class PaymentScreen extends StatelessWidget {
                                 builder: (context) {
                                   return SuccessDialogueComponent(
                                     title: locale.value.successfullyRented,
-                                    subtitle: locale.value.enjoyUntilDays(paymentCont.rentalData.availabilityDays),
+                                    subtitle: locale.value.enjoyUntilDays(
+                                        paymentCont
+                                            .rentalData.availabilityDays),
                                     buttonText: locale.value.beginWatching,
                                     onButtonClick: () {
                                       Get.back();
-                                      Get.find<HomeController>().sliderController.getBanner(type: BannerType.home, showLoader: false);
+                                      Get.find<HomeController>()
+                                          .sliderController
+                                          .getBanner(
+                                              type: BannerType.home,
+                                              showLoader: false);
                                     },
                                   );
                                 },
                               );
                             } else {
-                              loginUserData.value.planDetails = currentSubscription.value;
+                              loginUserData.value.planDetails =
+                                  currentSubscription.value;
                               showDialog(
                                 context: context,
                                 barrierDismissible: false,
                                 builder: (context) {
                                   return SuccessDialogueComponent(
-                                    title: locale.value.paymentSuccessful + ' 🎉',
-                                    subtitle: locale.value.yourPaymentWasCompleted,
-                                    buttonText: paymentCont.contentData.id > 0 ? locale.value.beginWatching : locale.value.explore,
+                                    title:
+                                        locale.value.paymentSuccessful + ' 🎉',
+                                    subtitle:
+                                        locale.value.yourPaymentWasCompleted,
+                                    buttonText: paymentCont.contentData.id > 0
+                                        ? locale.value.beginWatching
+                                        : locale.value.explore,
                                     onButtonClick: () {
                                       Get.back();
-                                      int currentLimit = currentSubscription.value.id > 0 ? (int.tryParse(currentSubscription.value.planType.firstWhereOrNull((element) => element.slug == SubscriptionTitle.deviceLimit)?.limit.value ?? '1') ?? 1) : 0;
+                                      int currentLimit = currentSubscription
+                                                  .value.id >
+                                              0
+                                          ? (int.tryParse(currentSubscription
+                                                      .value.planType
+                                                      .firstWhereOrNull(
+                                                          (element) =>
+                                                              element.slug ==
+                                                              SubscriptionTitle
+                                                                  .deviceLimit)
+                                                      ?.limit
+                                                      .value ??
+                                                  '1') ??
+                                              1)
+                                          : 0;
                                       if (previousLimit > currentLimit) {
                                         logOutFromAllDevice(
                                           loaderOnOff: (setLoading) {
@@ -214,14 +284,23 @@ class PaymentScreen extends StatelessWidget {
                                           },
                                           showLoader: true,
                                           onSuccess: () {
-                                            final DashboardController dashboardController = Get.find<DashboardController>();
-                                            dashboardController.addDataOnBottomNav();
+                                            final DashboardController
+                                                dashboardController =
+                                                Get.find<DashboardController>();
+                                            dashboardController
+                                                .addDataOnBottomNav();
                                             dashboardController.currentIndex(0);
-                                            Get.to(() => SignInScreen(title: locale.value.logoutAllConfirmationMessage));
+                                            Get.to(() => SignInScreen(
+                                                title: locale.value
+                                                    .logoutAllConfirmationMessage));
                                           },
                                         );
                                       }
-                                      Get.find<HomeController>().sliderController.getBanner(type: BannerType.home, showLoader: false);
+                                      Get.find<HomeController>()
+                                          .sliderController
+                                          .getBanner(
+                                              type: BannerType.home,
+                                              showLoader: false);
                                     },
                                   );
                                 },

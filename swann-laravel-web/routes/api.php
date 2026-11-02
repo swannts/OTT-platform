@@ -43,6 +43,11 @@ Route::get('v3/blogs', [BlogApiController::class, 'index']);
 Route::get('v3/blogs/{slug}', [BlogApiController::class, 'show']);
 Route::get('v3/blog-categories', [BlogApiController::class, 'categories']);
 
+// Provider-signed callbacks are verified by their dedicated controller handlers.
+Route::post('webhooks/stripe', [WebPaymentApiController::class, 'stripeWebhook'])->middleware('throttle:300,1');
+Route::post('webhooks/razorpay', [WebPaymentApiController::class, 'razorpayWebhook'])->middleware('throttle:300,1');
+Route::post('webhooks/revenuecat', [WebPaymentApiController::class, 'revenueCatWebhook'])->middleware('throttle:300,1');
+
 
 Route::get('user-detail', [AuthController::class, 'userDetails']);
 
@@ -157,9 +162,12 @@ Route::prefix('v3')->middleware(['auth:sanctum', 'throttle:api'])->group(functio
     // Authenticated User Subscription Management & Checkout
     Route::get('user/subscription', [WebPaymentApiController::class, 'getUserSubscription']);
     Route::get('user/billing-history', [WebPaymentApiController::class, 'getBillingHistory']);
+    Route::post('user/subscription/sync-in-app-purchase', [WebPaymentApiController::class, 'syncInAppPurchaseSubscription']);
     Route::post('subscription/cancel', [WebPaymentApiController::class, 'cancelSubscription']);
     Route::post('subscription/process-payment', [WebPaymentApiController::class, 'processSubscriptionPayment']);
     Route::post('subscription/verify-payment', [WebPaymentApiController::class, 'verifySubscriptionPayment']);
+    Route::post('mobile/payment-intent', [WebPaymentApiController::class, 'createMobilePaymentIntent']);
+    Route::post('mobile/verify-payment-intent', [WebPaymentApiController::class, 'verifyMobilePaymentIntent']);
 
     // Authenticated Pay-Per-View Checkout & Verification
     Route::post('pay-per-view/process-payment', [WebPaymentApiController::class, 'processPayPerViewPayment']);
