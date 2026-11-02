@@ -159,6 +159,10 @@ class ApiClient {
 
     // Check for standard API response format { status: true, data: ... }
     if (data && typeof data === 'object' && 'data' in data && 'status' in data) {
+      const inner = data.data as Record<string, unknown> | null;
+      if (inner && typeof inner === 'object' && 'status' in inner && inner.status === false) {
+        throw new Error((inner.message as string) || 'Resource not found');
+      }
       return data.data as T;
     }
 
@@ -346,14 +350,20 @@ class ApiClient {
 
   async getContentDetails(id: number | string, type: 'movie' | 'tvshow' | 'episode' | 'video'): Promise<ContentDetails> {
     const raw = await this.request<Record<string, unknown>>(`/v3/content-details?id=${id}&type=${type}`);
-    const details = (raw?.details as Record<string, unknown>) || {};
+    if (!raw || raw.status === false) {
+      throw new Error('Content not found');
+    }
+    const details = (raw?.details as Record<string, unknown>) || raw;
+    if (!details.name && !raw.name) {
+      throw new Error('Content not found');
+    }
     const more = ((raw?.suggested_content || raw?.more_items || []) as unknown[]).map(normalizeMediaItem);
     const casts = ((raw?.actors || raw?.casts || []) as Array<Record<string, unknown>>);
     const directors = ((raw?.directors || []) as Array<Record<string, unknown>>);
 
     return {
       id: (raw?.id as string | number) || (details?.id as string | number) || id,
-      name: String(details.name || raw?.name || 'Untitled'),
+      name: String(details.name || raw?.name),
       type: String(details.type || raw?.type || type),
       description: String(details.description || raw?.description || ''),
       poster_image: String(details.poster_image || raw?.poster_image || ''),

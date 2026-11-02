@@ -27,7 +27,7 @@ export default function TvShowDetailSection({
     show.poster_image ||
     'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=1600&auto=format&fit=crop&q=80';
 
-  const firstEpId = episodes[0]?.id || '1';
+  const firstEpId = episodes[0]?.id;
 
   const handleToggleWatchlist = async () => {
     if (!user) {
@@ -92,13 +92,15 @@ export default function TvShowDetailSection({
             </p>
 
             <div className="flex items-center space-x-3 pt-2">
-              <Link
-                href={`/watch/episode/${firstEpId}`}
-                className="flex items-center space-x-2 bg-[#E5B869] hover:bg-[#f3cf8a] text-black font-bold px-7 py-3 rounded-full shadow-lg shadow-[#E5B869]/30 transition-transform active:scale-95 cursor-pointer"
-              >
-                <Play className="w-5 h-5 fill-black" />
-                <span>Play S1 E1</span>
-              </Link>
+              {firstEpId && (
+                <Link
+                  href={`/watch/episode/${firstEpId}`}
+                  className="flex items-center space-x-2 bg-[#E5B869] hover:bg-[#f3cf8a] text-black font-bold px-7 py-3 rounded-full shadow-lg shadow-[#E5B869]/30 transition-transform active:scale-95 cursor-pointer"
+                >
+                  <Play className="w-5 h-5 fill-black" />
+                  <span>Play S1 E1</span>
+                </Link>
+              )}
 
               <button
                 type="button"
@@ -130,37 +132,43 @@ export default function TvShowDetailSection({
           </span>
         </div>
 
-        <div className="space-y-3 sm:space-y-4">
-          {episodes.map((ep, idx) => (
-            <Link
-              key={ep.id || idx}
-              href={`/watch/episode/${ep.id || idx + 1}`}
-              className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 sm:p-5 rounded-2xl bg-[#0c1218] border border-white/[0.08] hover:border-[#E5B869]/40 hover:bg-white/[0.03] transition-all group cursor-pointer shadow-md"
-            >
-              <div className="flex items-start sm:items-center space-x-4">
-                <div className="w-11 h-11 rounded-full bg-[#E5B869]/15 text-[#E5B869] group-hover:bg-[#E5B869] group-hover:text-black flex items-center justify-center transition-all flex-shrink-0 mt-0.5 sm:mt-0 shadow-inner">
-                  <Play className="w-4 h-4 fill-current ml-0.5" />
+        {episodes.length === 0 ? (
+          <div className="py-12 text-center text-gray-400 text-sm bg-white/[0.02] border border-white/5 rounded-2xl">
+            No episodes currently available for this title.
+          </div>
+        ) : (
+          <div className="space-y-3 sm:space-y-4">
+            {episodes.map((ep, idx) => (
+              <Link
+                key={ep.id || idx}
+                href={`/watch/episode/${ep.id || idx + 1}`}
+                className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 sm:p-5 rounded-2xl bg-[#0c1218] border border-white/[0.08] hover:border-[#E5B869]/40 hover:bg-white/[0.03] transition-all group cursor-pointer shadow-md"
+              >
+                <div className="flex items-start sm:items-center space-x-4">
+                  <div className="w-11 h-11 rounded-full bg-[#E5B869]/15 text-[#E5B869] group-hover:bg-[#E5B869] group-hover:text-black flex items-center justify-center transition-all flex-shrink-0 mt-0.5 sm:mt-0 shadow-inner">
+                    <Play className="w-4 h-4 fill-current ml-0.5" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-bold text-sm sm:text-base group-hover:text-[#E5B869] transition-colors leading-snug">
+                      {ep.name || `Episode ${ep.episode_number || idx + 1}`}
+                    </h3>
+                    {ep.description && (
+                      <p className="text-xs text-gray-400 mt-1 line-clamp-2 max-w-2xl leading-relaxed">
+                        {ep.description}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-white font-bold text-sm sm:text-base group-hover:text-[#E5B869] transition-colors leading-snug">
-                    {ep.name || `Episode ${ep.episode_number || idx + 1}`}
-                  </h3>
-                  {ep.description && (
-                    <p className="text-xs text-gray-400 mt-1 line-clamp-2 max-w-2xl leading-relaxed">
-                      {ep.description}
-                    </p>
-                  )}
-                </div>
-              </div>
 
-              {ep.duration && (
-                <span className="text-xs text-gray-400 mt-2 sm:mt-0 font-medium bg-white/5 px-2.5 py-1 rounded-md border border-white/5 flex-shrink-0">
-                  {ep.duration}
-                </span>
-              )}
-            </Link>
-          ))}
-        </div>
+                {ep.duration && (
+                  <span className="text-xs text-gray-400 mt-2 sm:mt-0 font-medium bg-white/5 px-2.5 py-1 rounded-md border border-white/5 flex-shrink-0">
+                    {ep.duration}
+                  </span>
+                )}
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

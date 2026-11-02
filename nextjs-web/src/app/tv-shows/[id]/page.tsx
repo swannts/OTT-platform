@@ -44,49 +44,7 @@ async function getTvShowData(id: string): Promise<{ show: ContentDetails; episod
   }
 
   if (!show) {
-    show = {
-      id,
-      name: 'The Life of Prophet Muhammad ﷺ: From Mecca to Madinah',
-      type: 'tvshow',
-      description:
-        'A comprehensive, spiritually uplifting docuseries tracing the blessed life of the final Messenger of Allah ﷺ from the Year of the Elephant through the Hijrah to the Farewell Pilgrimage.',
-      poster_image: 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=800&auto=format&fit=crop&q=80',
-      banner_image: 'https://images.unsplash.com/photo-1588714477688-cf28a50e94f7?w=1600&auto=format&fit=crop&q=80',
-      release_year: '2026',
-      imdb_rating: '9.9',
-      access: 'free',
-      has_content_access: false,
-      genre_data: ['Prophetic Biographies', 'Islamic History', 'Docuseries'],
-    };
-  }
-
-  if (episodes.length === 0) {
-    episodes = [
-      {
-        id: '01940000-0006-7000-8000-000000000001',
-        name: 'Episode 1: The Year of the Elephant & The Blessed Birth',
-        episode_number: 1,
-        description: 'The miraculous defense of the Holy Kaaba and the blessed birth of the Prophet Muhammad ﷺ in Mecca.',
-        duration: '45m',
-        has_content_access: false,
-      },
-      {
-        id: '01940000-0006-7000-8000-000000000002',
-        name: 'Episode 2: The Cave of Hira & The First Divine Revelation',
-        episode_number: 2,
-        description: 'Solitude on Jabal al-Nour and the first revelation received through Angel Jibril: "Read in the name of your Lord."',
-        duration: '48m',
-        has_content_access: false,
-      },
-      {
-        id: '01940000-0006-7000-8000-000000000003',
-        name: 'Episode 3: The Call on Mount Safa & The Early Believers',
-        episode_number: 3,
-        description: 'The open invitation to monotheism and the steadfast patience of the early companions under adversity.',
-        duration: '52m',
-        has_content_access: false,
-      },
-    ];
+    return null;
   }
 
   return { show, episodes };

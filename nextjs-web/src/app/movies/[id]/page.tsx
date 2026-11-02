@@ -20,26 +20,7 @@ async function getMovieData(id: string): Promise<ContentDetails | null> {
     console.error(`Failed to fetch movie ${id} on server:`, error);
   }
 
-  // Authentic Islamic fallback if ID is valid format or during dev
-  return {
-    id,
-    name: 'The Holy Kaaba: Sanctuary of Monotheism',
-    type: 'movie',
-    description:
-      'An evocative historical exploration of the ancient foundation by Ibrahim (AS) and Ismail (AS), the sacred architecture, Kiswah craft, and centuries of pilgrims answering the divine call.',
-    poster_image: 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=800&auto=format&fit=crop&q=80',
-    banner_image: 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=1600&auto=format&fit=crop&q=80',
-    release_year: '2026',
-    duration: '1h 38m',
-    imdb_rating: '9.8',
-    access: 'free',
-    has_content_access: false,
-    genre_data: ['Islamic History', 'Sacred Sanctuaries', 'Documentary'],
-    casts: [
-      { id: '01940000-0002-7000-8000-000000000001', name: 'Dr. Yasir Qadhi', role: 'Lead Narrator & Historian' },
-      { id: '01940000-0002-7000-8000-000000000002', name: 'Sheikh Abdul Rahman Al-Sudais', role: 'Religious Authority' },
-    ],
-  };
+  return null;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {

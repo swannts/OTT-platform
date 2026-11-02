@@ -21,15 +21,7 @@ async function getCastData(id: string) {
     console.error(`Failed to fetch cast ${id} on server:`, err);
   }
 
-  // Authentic Islamic scholar fallback
-  return {
-    id,
-    name: 'Dr. Yasir Qadhi',
-    type: 'Islamic Scholar & Historian',
-    bio: 'Dean of Academic Affairs at The Islamic Seminary of America and renowned teacher of prophetic biography, Quranic studies, and Islamic theological history.',
-    image: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=500&auto=format&fit=crop&q=80',
-    entertainments: [],
-  };
+  return null;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {

@@ -10,48 +10,33 @@ interface LiveNowSectionProps {
 }
 
 export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
-  // Use backend channels if available
-  const hasBackendChannels = channels && channels.length > 0;
+  if (!channels || channels.length === 0) {
+    return null;
+  }
 
-  const featured = hasBackendChannels
-    ? {
-        id: channels[0].id,
-        title: channels[0].name || channels[0].details?.name || 'Live Broadcast',
-        location: channels[0].details?.category || 'Live Television',
-        thumbnail:
-          channels[0].poster_image ||
-          channels[0].thumbnail_image ||
-          channels[0].poster_tv_image ||
-          'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=800&auto=format&fit=crop&q=80',
-        watchUrl: `/watch/live/${channels[0].id}`,
-      }
-    : {
-        id: '01940000-0008-7000-8000-000000000001',
-        title: 'Jumma khutba from Masjid Al-Haram',
-        location: 'Makkah, Saudi Arabia',
-        thumbnail:
-          'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=800&auto=format&fit=crop&q=80',
-        watchUrl: '/live-tv',
-      };
+  const featured = {
+    id: channels[0].id,
+    title: channels[0].name || channels[0].details?.name || 'Live Broadcast',
+    location: channels[0].details?.category || 'Live Television',
+    thumbnail:
+      channels[0].poster_image ||
+      channels[0].thumbnail_image ||
+      channels[0].poster_tv_image ||
+      'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=800&auto=format&fit=crop&q=80',
+    watchUrl: `/watch/live/${channels[0].id}`,
+  };
 
-  const channelSlice = hasBackendChannels
-    ? channels.slice(1, 5).map((ch, idx) => ({
-        id: ch.id,
-        name: ch.name || ch.details?.name || `Channel ${ch.id}`,
-        subtitle: ch.details?.category || 'Live Channel',
-        logo:
-          ch.poster_image ||
-          ch.thumbnail_image ||
-          ch.poster_tv_image ||
-          '',
-        color: ['border-blue-500/30 text-blue-400 bg-blue-900/20', 'border-amber-500/30 text-amber-400 bg-amber-900/20', 'border-emerald-500/30 text-emerald-400 bg-emerald-900/20', 'border-red-500/30 text-red-400 bg-red-900/20'][idx % 4],
-      }))
-    : [
-        { id: '01940000-0008-7000-8000-000000000002', name: 'Peace TV', subtitle: 'Live Channel', logo: '', color: 'border-blue-500/30 text-blue-400 bg-blue-900/20' },
-        { id: '01940000-0008-7000-8000-000000000003', name: 'Huda TV', subtitle: 'Live Channel', logo: '', color: 'border-amber-500/30 text-amber-400 bg-amber-900/20' },
-        { id: '01940000-0008-7000-8000-000000000004', name: 'iTV', subtitle: 'Live Channel', logo: '', color: 'border-emerald-500/30 text-emerald-400 bg-emerald-900/20' },
-        { id: '01940000-0008-7000-8000-000000000005', name: 'ATN Bangla', subtitle: 'Live Channel', logo: '', color: 'border-red-500/30 text-red-400 bg-red-900/20' },
-      ];
+  const channelSlice = channels.slice(1, 5).map((ch, idx) => ({
+    id: ch.id,
+    name: ch.name || ch.details?.name || `Channel ${ch.id}`,
+    subtitle: ch.details?.category || 'Live Channel',
+    logo:
+      ch.poster_image ||
+      ch.thumbnail_image ||
+      ch.poster_tv_image ||
+      '',
+    color: ['border-blue-500/30 text-blue-400 bg-blue-900/20', 'border-amber-500/30 text-amber-400 bg-amber-900/20', 'border-emerald-500/30 text-emerald-400 bg-emerald-900/20', 'border-red-500/30 text-red-400 bg-red-900/20'][idx % 4],
+  }));
 
   return (
     <div className="w-full">

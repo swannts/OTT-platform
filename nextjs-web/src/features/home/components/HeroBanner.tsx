@@ -18,44 +18,11 @@ export default function HeroBanner({ items }: HeroBannerProps) {
   const [isPaused, setIsPaused] = useState(false);
   const fadeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Fallback high-definition slides with verified working URLs
-  const fallbackSlides: MediaItem[] = [
-    {
-      id: '01940000-0003-7000-8000-000000000001',
-      name: 'The Life of Prophet Muhammad',
-      type: 'tvshow',
-      description: 'A journey of mercy, wisdom and guidance for all humanity.',
-      banner_image:
-        'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=1920&auto=format&fit=crop&q=85',
-      access: 'free',
-      imdb_rating: 9.9,
-      duration: '45:20',
-    },
-    {
-      id: '01940000-0004-7000-8000-000000000006',
-      name: 'Stories of the Holy Sanctuary',
-      type: 'movie',
-      description: 'The profound architectural and spiritual chronicle of the Holy Kaaba and Masjid Al-Haram.',
-      banner_image:
-        'https://images.unsplash.com/photo-1578328819058-b69f3a3b0f6b?w=1920&auto=format&fit=crop&q=85',
-      access: 'paid',
-      imdb_rating: 9.6,
-      duration: '1h 50m',
-    },
-    {
-      id: '01940000-0003-7000-8000-000000000003',
-      name: 'The Golden Age of Islamic Civilization',
-      type: 'tvshow',
-      description: 'Exploring the House of Wisdom in Baghdad, Cordoba libraries, and breakthroughs in astronomy and medicine.',
-      banner_image:
-        'https://images.unsplash.com/photo-1541432901042-2d8bd64b4a9b?w=1920&auto=format&fit=crop&q=85',
-      access: 'paid',
-      imdb_rating: 9.8,
-      duration: '52:10',
-    },
-  ];
+  if (!items || items.length === 0) {
+    return null;
+  }
 
-  const slides = items && items.length > 0 ? items : fallbackSlides;
+  const slides = items;
 
   // Smooth fade transition handler
   const transitionToSlide = useCallback(

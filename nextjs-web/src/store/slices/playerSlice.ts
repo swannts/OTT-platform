@@ -42,19 +42,7 @@ export const loadActiveTrack = createAsyncThunk<MediaItem | null, void>(
         return normalizeMediaItem(topList[0]);
       }
 
-      // 3. Fallback to default featured title with UUIDv7
-      return {
-        id: '01940000-0003-7000-8000-000000000001',
-        name: 'The Life of Prophet Muhammad',
-        type: 'tvshow',
-        description: 'A journey of mercy, wisdom and guidance for all humanity.',
-        banner_image:
-          'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=1920&auto=format&fit=crop&q=85',
-        thumbnail_image:
-          'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=200&auto=format&fit=crop&q=80',
-        duration: '45:20',
-        access: 'free',
-      };
+      return null;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to load active track';
       return rejectWithValue(message);

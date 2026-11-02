@@ -35,21 +35,7 @@ export default function CheckoutPage() {
       if (code) {
         setCouponError(err instanceof Error ? err.message : 'Invalid coupon code');
       } else {
-        // Fallback pricing simulation
-        setCalculation({
-          plan_id: planId,
-          plan_name: 'VIP Subscription',
-          original_price: 9.99,
-          plan_discount_amount: 0,
-          price_after_plan_discount: 9.99,
-          coupon: null,
-          coupon_discount_amount: 0,
-          subtotal: 9.99,
-          total_tax: 0.80,
-          taxes: [{ title: 'VAT (8%)', type: 'percentage', value: 8, tax_amount: 0.80 }],
-          total_amount: 10.79,
-          currency: 'USD',
-        });
+        setCalculation(null);
       }
     } finally {
       setIsLoading(false);
@@ -100,6 +86,30 @@ export default function CheckoutPage() {
       setIsProcessing(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen pt-32 text-center text-white space-y-4">
+        <div className="w-10 h-10 border-4 border-[#E5B869] border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-sm text-gray-400">Loading checkout pricing...</p>
+      </div>
+    );
+  }
+
+  if (!calculation) {
+    return (
+      <div className="min-h-screen pt-32 text-center text-white px-4 space-y-4">
+        <h2 className="text-xl font-bold">Unable to load plan pricing</h2>
+        <p className="text-sm text-gray-400">Could not retrieve pricing details for the requested plan.</p>
+        <button
+          onClick={() => loadPricing()}
+          className="px-6 py-2.5 rounded-full bg-[#E5B869] text-black font-bold text-xs hover:bg-[#f3cf8a] transition-all cursor-pointer"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pt-24 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto pb-24">
