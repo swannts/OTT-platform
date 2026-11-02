@@ -6,6 +6,7 @@ import { MediaItem } from '@/types';
 import { useAppDispatch } from '@/store/hooks';
 import { setActiveItem } from '@/store/slices/playerSlice';
 import { Play, Info, ChevronLeft, ChevronRight, Star, Clock } from 'lucide-react';
+import { SafeImage } from '@/components/ui';
 
 interface HeroBannerProps {
   items: MediaItem[];
@@ -109,9 +110,10 @@ export default function HeroBanner({ items }: HeroBannerProps) {
               isCurrent ? 'opacity-100 z-0' : 'opacity-0 -z-10 pointer-events-none'
             }`}
           >
-            <img
+            <SafeImage
               src={imgUrl}
               alt={slide.name || 'Hero Backdrop'}
+              blurhash={slide.blurhash}
               className={`w-full h-full object-cover object-center transform transition-transform duration-[12000ms] ease-out ${
                 isCurrent ? 'scale-105' : 'scale-100'
               }`}

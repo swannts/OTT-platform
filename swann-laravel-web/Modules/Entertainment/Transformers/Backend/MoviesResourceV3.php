@@ -59,6 +59,7 @@ class MoviesResourceV3 extends JsonResource
             'duration' => $this->duration,
             'release_date' => $this->release_date,
             'poster_image' => setBaseUrlWithFileName($this->poster_url ?? null,'image',$this->type),
+            'blurhash' => $this->blurhash,
             'is_watch_list' => $isInWatchList ? true : false,
             'genres' => $genre_data,
 

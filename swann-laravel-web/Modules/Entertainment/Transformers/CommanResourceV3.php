@@ -19,9 +19,11 @@ class CommanResourceV3 extends JsonResource
             'id' => $this->id,
             'poster_image' => setBaseUrlWithFileName($this->poster_image,'image',$this->type),
             'poster_tv_image' => setBaseUrlWithFileName($this->poster_tv_url,'image',$this->type),
+            'blurhash' => $this->blurhash,
             'details'=>[
                 'name' => $this->name,
                 'type' => $this->type ?? 'livetv',
+                'blurhash' => $this->blurhash,
                 'access' => $access ,
                 'imdb_rating'=> $this->IMDb_rating ?? $this->imdb_rating ?? null,
                 'is_device_supported'=> $this->isDeviceSupported,

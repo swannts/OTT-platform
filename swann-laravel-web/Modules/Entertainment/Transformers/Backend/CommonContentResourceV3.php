@@ -134,6 +134,7 @@ class CommonContentResourceV3 extends JsonResource
             'is_purchased'    => $isPurchased,
             'is_pay_per_view' => $isPayPerView,
             'is_paid'         => $isPaid,
+            'blurhash'        => $this->blurhash,
         ];
     }
 }

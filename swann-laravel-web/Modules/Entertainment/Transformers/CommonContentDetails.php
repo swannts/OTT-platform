@@ -34,6 +34,7 @@ class CommonContentDetails  extends JsonResource
                 'is_in_watchlist'=>$this->is_watch_list ,
                 'thumbnail_image' => $this->thumbnail_url ? setBaseUrlWithFileName($this->thumbnail_url,'image',$this->type) : null ,
                 'poster_image' => $this->poster_url ? setBaseUrlWithFileName($this->poster_url,'image',$this->type) : null ,
+                'blurhash' => $this->blurhash,
                 'has_content_access'=> $this->has_content_access, // $this->access == 'free'|| $this->access == 'pay-per-view' ? 1 : $this->plan_id,
                 'required_plan_level'=> $this->required_plan_level, // $this->userPlanId  >= $this->plan_id ? 1 : 0  ,
                 'tv_show_data' => $this->tv_show_data,
@@ -97,6 +98,7 @@ class CommonContentDetails  extends JsonResource
                 'suggested_content' => CommanResourceV3::collection($this->more_items ?? []),
                 'review' => $this->review ?? null,
                 'poster_image' => $this->poster_tv_url ? setBaseUrlWithFileName($this->poster_tv_url,'image',$this->type) : null ,
+                'blurhash' => $this->blurhash,
         ];
 
     }

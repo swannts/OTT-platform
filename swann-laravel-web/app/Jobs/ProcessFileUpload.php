@@ -126,6 +126,20 @@ class ProcessFileUpload implements ShouldQueue
 
             $this->filemanager->save();
 
+            // Offload async thumbnail/image BlurHash generation to Go Worker via RabbitMQ
+            try {
+                \App\Services\EventPublisher::publish('media.upload.process', [
+                    'filemanager_id' => $this->filemanager->id,
+                    'file_path' => $this->filemanager->file_url ?? $folderPath,
+                    'disk_type' => $this->diskType,
+                    'original_name' => $this->originalName,
+                    'page_type' => $this->page_type,
+                    'file_type' => $this->fileType,
+                ]);
+            } catch (\Throwable $publishEx) {
+                Log::warning("[ProcessFileUpload] RabbitMQ background job dispatch skipped: " . $publishEx->getMessage());
+            }
+
             // Delete the unique file (with ID)
             if (Storage::exists($this->filePath)){
                 $deleted = Storage::disk('local')->delete($this->filePath);

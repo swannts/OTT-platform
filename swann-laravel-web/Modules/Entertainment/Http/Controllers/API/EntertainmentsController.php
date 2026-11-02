@@ -2848,7 +2848,7 @@ class EntertainmentsController extends Controller
                                 ->where('entertainment_id', '!=', $id)
                                 ->groupBy('entertainment_id');
                         })
-                        ->select('id', 'name', 'type', 'trailer_url_type', 'IMDb_rating as imdb_rating', 'poster_url', 'thumbnail_url', 'poster_tv_url', 'trailer_url', 'movie_access', 'plan_id')
+                        ->select('id', 'name', 'type', 'trailer_url_type', 'IMDb_rating as imdb_rating', 'poster_url', 'thumbnail_url', 'poster_tv_url', 'trailer_url', 'movie_access', 'plan_id', 'blurhash')
                         ->where('type', 'movie')
                         ->where('id', '!=', $id) // Optimized: Exclude in query instead of after fetch
                         ->where('status', 1)
@@ -3041,7 +3041,7 @@ class EntertainmentsController extends Controller
                                 ->where('entertainment_id', '!=', $id)
                                 ->groupBy('entertainment_id');
                         })
-                        ->select('id', 'name', 'type', 'trailer_url_type', 'IMDb_rating as imdb_rating', 'poster_url', 'thumbnail_url', 'poster_tv_url', 'trailer_url', 'movie_access', 'plan_id')
+                        ->select('id', 'name', 'type', 'trailer_url_type', 'IMDb_rating as imdb_rating', 'poster_url', 'thumbnail_url', 'poster_tv_url', 'trailer_url', 'movie_access', 'plan_id', 'blurhash')
                         ->where('type', 'tvshow')
                         ->where('id', '!=', $id) // Optimized: Exclude in query instead of after fetch
                         ->where('status', 1)
@@ -3195,7 +3195,7 @@ class EntertainmentsController extends Controller
                                 ->where('entertainment_id', '!=', $id)
                                 ->groupBy('entertainment_id');
                         })
-                        ->select('id', 'name', 'type', 'trailer_url_type', 'IMDb_rating as imdb_rating', 'poster_url', 'thumbnail_url', 'poster_tv_url', 'trailer_url', 'movie_access', 'plan_id')
+                        ->select('id', 'name', 'type', 'trailer_url_type', 'IMDb_rating as imdb_rating', 'poster_url', 'thumbnail_url', 'poster_tv_url', 'trailer_url', 'movie_access', 'plan_id', 'blurhash')
                         ->where('type', 'tvshow')
                         ->where('id', '!=', $id) // Optimized: Exclude in query instead of after fetch
                         ->where('status', 1)
@@ -3347,7 +3347,7 @@ class EntertainmentsController extends Controller
                         ->when(request()->has('is_restricted'), fn($q) => $q->where('is_restricted', request()->is_restricted))
                         ->when(getCurrentProfileSession('is_child_profile') && getCurrentProfileSession('is_child_profile') != 0, fn($q) => $q->where('is_restricted', 0))
                         ->when($request->has('is_released') && !empty($request->is_released), fn($q) => $q->where('release_date', '<=', Carbon::now()))
-                        ->select('id', 'name', 'type', 'trailer_url_type', 'IMDb_rating', 'poster_url', 'thumbnail_url', 'poster_tv_url', 'trailer_url', 'access', 'plan_id')
+                        ->select('id', 'name', 'type', 'trailer_url_type', 'IMDb_rating', 'poster_url', 'thumbnail_url', 'poster_tv_url', 'trailer_url', 'access', 'plan_id', 'blurhash')
                         ->limit(6)
                         ->get()
                         ->map(function($item) use ($userId, $userPlanLevel, $isDeviceSupported, $device_type, $purchasedIds) {

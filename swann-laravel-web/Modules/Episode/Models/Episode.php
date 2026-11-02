@@ -67,6 +67,7 @@ class Episode extends BaseModel
                         'short_description',
                         'bunny_trailer_url',
                         'bunny_video_url',
+                        'blurhash',
                     ];
 
     protected $casts = [
@@ -77,6 +78,17 @@ class Episode extends BaseModel
     protected static function boot()
     {
         parent::boot();
+
+        static::saved(function ($episode) {
+            $thumb = $episode->poster_url ?: $episode->poster_tv_url;
+            if (!empty($thumb) && (empty($episode->blurhash) || $episode->wasChanged(['poster_url', 'poster_tv_url']))) {
+                try {
+                    \App\Services\EventPublisher::dispatchThumbnailBlurHash('episodes', $episode->id, $thumb, 'episode');
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning("[Episode] BlurHash job dispatch skipped: " . $e->getMessage());
+                }
+            }
+        });
 
         static::creating(function ($episode) {
             if (empty($episode->slug) && !empty($episode->name)) {

@@ -84,7 +84,24 @@ class Entertainment extends BaseModel
     'enable_clips',
     'bunny_video_url',
     'bunny_trailer_url',
+    'blurhash',
 ];
+
+    protected static function booted()
+    {
+        parent::booted();
+
+        static::saved(function ($model) {
+            $thumb = $model->poster_url ?: $model->thumbnail_url ?: $model->poster_tv_url;
+            if (!empty($thumb) && (empty($model->blurhash) || $model->wasChanged(['poster_url', 'thumbnail_url', 'poster_tv_url']))) {
+                try {
+                    \App\Services\EventPublisher::dispatchThumbnailBlurHash('entertainments', $model->id, $thumb, $model->type ?? 'movie');
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning("[Entertainment] BlurHash job dispatch skipped: " . $e->getMessage());
+                }
+            }
+        });
+    }
 
     protected $casts = [
         'release_date' => 'date',
@@ -341,7 +358,8 @@ class Entertainment extends BaseModel
             'id','name','slug','type','release_date','trailer_url','plan_id','description',
             'trailer_url_type','is_restricted','language','imdb_rating','content_rating',
             'duration','video_upload_type','poster_url','thumbnail_url','poster_tv_url',
-            'video_url_input','movie_access','price','purchase_type','access_duration',
+            'blurhash',
+            'video_url_input','movie_access','blurhash','price','purchase_type','access_duration',
             'discount','available_for'
         ])
         ->with([
@@ -396,7 +414,7 @@ class Entertainment extends BaseModel
 
         $query = Entertainment::select([
             'id','name','type','release_date','trailer_url',
-            'trailer_url_type','is_restricted','imdb_rating','poster_url','thumbnail_url','poster_tv_url','movie_access','plan_id'
+            'trailer_url_type','is_restricted','imdb_rating','poster_url','thumbnail_url','poster_tv_url','blurhash','movie_access','plan_id'
         ])
         ->with([
             'plan:id,level',
@@ -472,6 +490,7 @@ class Entertainment extends BaseModel
             'poster_url',
             'thumbnail_url',
             'poster_tv_url',
+            'blurhash',
             'trailer_url as base_url',
             'video_url_input',
             'movie_access',
@@ -539,6 +558,7 @@ class Entertainment extends BaseModel
             'poster_url',
             'thumbnail_url',
             'poster_tv_url',
+            'blurhash',
             'trailer_url as base_url',
             'trailer_url',
             'video_url_input',
@@ -598,6 +618,7 @@ class Entertainment extends BaseModel
             'poster_url',
             'thumbnail_url',
             'poster_tv_url',
+            'blurhash',
             'trailer_url',
             'movie_access',           
         ])
@@ -657,9 +678,11 @@ class Entertainment extends BaseModel
             'poster_url',
             'thumbnail_url',
             'poster_tv_url',
+            'blurhash',
             'trailer_url as base_url',
             'trailer_url',
             'video_url_input',
+            'blurhash',
             'movie_access',
         ])
         ->addSelect([
@@ -722,7 +745,9 @@ class Entertainment extends BaseModel
             'poster_url',
             'thumbnail_url',
             'poster_tv_url',
+            'blurhash',
             'video_url_input',
+            'blurhash',
             'movie_access',
         ])
         ->addSelect([
@@ -792,6 +817,7 @@ class Entertainment extends BaseModel
             'poster_url',
             'thumbnail_url',
             'poster_tv_url',
+            'blurhash',
             'trailer_url as base_url',
             'trailer_url',
             'video_url_input',
@@ -851,6 +877,7 @@ class Entertainment extends BaseModel
             'poster_url',
             'thumbnail_url',
             'poster_tv_url',
+            'blurhash',
             'video_url_input',
             'movie_access',           
         ])
@@ -1090,6 +1117,7 @@ public static function get_top_movie_v3($topMovieIds)
         'poster_tv_url',
         'trailer_url',
         'video_url_input',
+        'blurhash',
         'plan_id',
     ])
     ->addSelect([
@@ -1385,7 +1413,7 @@ public static function get_movie($movieId, $user_id, $profile_id, $device_id)
         'entertainments.video_quality_url', 'entertainments.download_status', 'entertainments.enable_download_quality',
         'entertainments.status', 'entertainments.enable_subtitle', 'entertainments.subtitle_language', 'entertainments.is_default_subtitle',
         'entertainments.price', 'entertainments.purchase_type', 'entertainments.access_duration', 'entertainments.discount', 'entertainments.available_for',
-        'entertainments.plan_id', 'entertainments.tmdb_id', 'entertainments.bunny_trailer_url', 'entertainments.bunny_video_url',
+        'entertainments.plan_id', 'entertainments.blurhash', 'entertainments.tmdb_id', 'entertainments.bunny_trailer_url', 'entertainments.bunny_video_url',
         'entertainments.enable_clips'
     ])
     ->with([
@@ -1495,7 +1523,7 @@ public static function get_movie($movieId, $user_id, $profile_id, $device_id)
             'entertainments.video_quality_url', 'entertainments.download_status', 'entertainments.enable_download_quality',
             'entertainments.status', 'entertainments.enable_subtitle', 'entertainments.subtitle_language', 'entertainments.is_default_subtitle',
             'entertainments.price', 'entertainments.purchase_type', 'entertainments.access_duration', 'entertainments.discount', 'entertainments.available_for',
-            'entertainments.plan_id', 'entertainments.tmdb_id', 'entertainments.bunny_trailer_url', 'entertainments.bunny_video_url',
+            'entertainments.plan_id', 'entertainments.blurhash', 'entertainments.tmdb_id', 'entertainments.bunny_trailer_url', 'entertainments.bunny_video_url',
             'entertainments.enable_clips'
         ])
         ->with([

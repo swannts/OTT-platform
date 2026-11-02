@@ -31,3 +31,4 @@ export function formatRemainingTime(currentTime: number, duration: number): stri
   const remaining = Math.max(0, duration - currentTime);
   return `-${formatTime(remaining)}`;
 }
+

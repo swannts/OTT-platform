@@ -48,6 +48,10 @@ services:
       DB_PASSWORD: "${DB_PASSWORD:-}"
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASS:-guest}
       MEILISEARCH_HOST: http://meilisearch:7700
     volumes:
       - ./swann-laravel-web:/var/www/html
@@ -61,6 +65,29 @@ services:
         condition: service_healthy
       meilisearch:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: swann-rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - ott-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
 
   mysql:
     image: mysql/mysql-server:8.0
@@ -116,6 +143,32 @@ services:
       retries: 10
       start_period: 20s
 
+  worker:
+    build:
+      context: ./go-worker
+      dockerfile: Dockerfile
+    image: swann-worker:dev
+    container_name: swann-worker
+    restart: unless-stopped
+    environment:
+      APP_ENV: development
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      DB_DSN: root:@tcp(mysql:3306)/swann?charset=utf8mb4&parseTime=True&loc=Local
+      REDIS_ADDR: redis:6379
+      STORAGE_DRIVER: local
+      STORAGE_LOCAL_PATH: /var/www/html/public/storage
+    volumes:
+      - ./swann-laravel-web/storage/app/public:/var/www/html/public/storage
+    networks:
+      - ott-net
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
 networks:
   ott-net:
     driver: bridge
@@ -124,6 +177,8 @@ volumes:
   mysql-data:
     driver: local
   redis-data:
+    driver: local
+  rabbitmq-data:
     driver: local
   meilisearch-data:
     driver: local

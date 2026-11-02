@@ -78,6 +78,7 @@ export function normalizeMediaItem(raw: unknown): MediaItem {
     genre_data: genreList,
     has_content_access: Boolean(details.has_content_access ?? r.has_content_access),
     is_watchlist: Boolean(details.is_in_watchlist ?? r.is_watch_list ?? r.is_watchlist),
+    blurhash: (r.blurhash as string) || (details.blurhash as string) || undefined,
   };
 }
 
@@ -430,6 +431,7 @@ class ApiClient {
       poster_image: String(details.poster_image || raw?.poster_image || ''),
       thumbnail_image: String(details.thumbnail_image || raw?.thumbnail_image || ''),
       banner_image: String(details.thumbnail_image || details.poster_image || raw?.poster_image || ''),
+      blurhash: (details.blurhash as string) || (raw?.blurhash as string) || undefined,
       release_year: details.release_date ? String(details.release_date).substring(0, 4) : (raw?.release_year as string | number | undefined),
       duration: String(details.duration || raw?.duration || ''),
       imdb_rating: (details.imdb_rating as string | number | undefined) || (raw?.imdb_rating as string | number | undefined) || '',

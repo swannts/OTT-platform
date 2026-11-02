@@ -53,3 +53,4 @@ export default function CenterHUD({ action, volumeLevel = 100 }: CenterHUDProps)
     </div>
   );
 }
+

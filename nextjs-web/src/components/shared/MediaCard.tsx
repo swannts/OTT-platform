@@ -94,11 +94,12 @@ export default function MediaCard({
           </div>
         )}
 
-        {/* Standardized SafeImage */}
+        {/* Standardized SafeImage with BlurHash */}
         <SafeImage
           src={rawImage}
           alt={item.name || item.title || 'Media Poster'}
           fallbackSrc={DEFAULT_FALLBACK_IMAGE}
+          blurhash={item.blurhash}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 pointer-events-none"
         />
 

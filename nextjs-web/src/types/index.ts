@@ -45,6 +45,7 @@ export interface MediaItem {
   poster_url?: string;
   thumbnail_image?: string;
   banner_image?: string;
+  blurhash?: string;
   release_year?: string | number;
   release_date?: string;
   duration?: string;
@@ -84,6 +85,7 @@ export interface ContentDetails {
   poster_image: string;
   thumbnail_image?: string;
   banner_image?: string;
+  blurhash?: string;
   release_year?: string | number;
   duration?: string;
   imdb_rating?: string | number;
@@ -122,6 +124,7 @@ export interface EpisodeItem {
   episode_number: number;
   description?: string;
   poster_image?: string;
+  blurhash?: string;
   duration?: string;
   has_content_access?: boolean;
 }
@@ -150,6 +153,7 @@ export interface LiveChannel {
   category?: string;
   description?: string;
   poster_image?: string;
+  blurhash?: string;
   poster_url?: string;
   poster_tv_image?: string;
   thumbnail_image?: string;
@@ -291,6 +295,7 @@ export interface Episode {
   season_number?: number;
   tv_show_id?: number | string;
   poster_image?: string;
+  blurhash?: string;
   thumbnail_image?: string;
   description?: string;
   duration?: string;

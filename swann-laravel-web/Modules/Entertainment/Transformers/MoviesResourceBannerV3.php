@@ -29,6 +29,7 @@ class MoviesResourceBannerV3 extends JsonResource
         return [
             'poster_image' => setBaseUrlWithFileName($this->poster_image,'image',$this->type),
             'poster_tv_image' => setBaseUrlWithFileName($this->poster_tv_url,'image',$this->type),
+            'blurhash' => $this->blurhash,
             'details'=>[
                 'id' => $this->id,
                 'name' => $this->name,

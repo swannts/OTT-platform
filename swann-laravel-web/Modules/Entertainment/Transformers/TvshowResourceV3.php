@@ -24,14 +24,15 @@ class TvshowResourceV3 extends JsonResource
             }
         }
 
-
         return [
             'id' => $this->id,
             'poster_image' => setBaseUrlWithFileName($this->poster_image,'image',$this->type),
             'poster_tv_image' => setBaseUrlWithFileName($this->poster_tv_url,'image',$this->type),
+            'blurhash' => $this->blurhash,
             'details'=>[
                 'name' => $this->name,
                 'type' => $this->type,
+                'blurhash' => $this->blurhash,
                 'release_date' => $this->release_date ? formatDate($this->release_date) : null,
                 'movie_access' => $this->movie_access,
                 'imdb_rating'=> $this->IMDb_rating ?? $this->imdb_rating ?? null,

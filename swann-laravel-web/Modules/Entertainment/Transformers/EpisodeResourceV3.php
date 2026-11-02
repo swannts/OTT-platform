@@ -34,6 +34,7 @@ class EpisodeResourceV3 extends JsonResource
             'description' => $this->description ?? $this->short_desc,
             'poster_image' => setBaseUrlWithFileName($poster, 'image', 'episode'),
             'poster_tv_image' => setBaseUrlWithFileName($posterTv, 'image', 'episode'),
+            'blurhash' => $this->blurhash,
             'details' => [
                 'name' => $this->name,
                 'type' => 'episode',

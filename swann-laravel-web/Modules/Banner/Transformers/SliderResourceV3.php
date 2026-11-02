@@ -135,6 +135,7 @@ class SliderResourceV3 extends JsonResource
             'id' => $this->id,
             'poster_image' => setBaseUrlWithFileName($posterUrl,'image','banner'),
             'poster_tv_image' => $dataArray['poster_tv_image'] ?? null,
+            'blurhash' => $this->blurhash ?? $dataArray['blurhash'] ?? null,
             'details' =>  $dataArray['details'] ?? $dataArray ?? null,
             'trailer_data' => $dataArray['trailer_data'] ?? $dataArray['trailer_data'] ?? null,
         ];

@@ -40,6 +40,7 @@ class Top10ContentResourceV3 extends JsonResource
             'is_purchased'      => $isPurchased,
             'imdb_rating'       => $this->IMDb_rating ?? $this->imdb_rating ?? null,
             'poster_image'      => setBaseUrlWithFileName($this->poster_url ?? null, 'image', $this->type),
+            'blurhash'          => $this->blurhash,
         ];
     }
 }

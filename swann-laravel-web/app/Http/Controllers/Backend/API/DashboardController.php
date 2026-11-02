@@ -522,7 +522,7 @@ public function getTrandingData(Request $request){
                               ->select('id', 'name', 'status', 'deleted_at');
                     }
                 ])
-                    ->select('id', 'name', 'type', 'release_date', 'plan_id', 'is_restricted', 'IMDb_rating', 'duration', 'poster_url', 'poster_tv_url', 'trailer_url', 'movie_access','trailer_url_type')
+                    ->select('id', 'name', 'type', 'release_date', 'plan_id', 'is_restricted', 'IMDb_rating', 'duration', 'poster_url', 'poster_tv_url', 'blurhash', 'trailer_url', 'movie_access','trailer_url_type')
                     ->whereIn('id', $uniqueIds)
                     ->where('status', 1)
                     ->whereNull('deleted_at');
@@ -1266,7 +1266,7 @@ public function getTrandingData(Request $request){
                         'genresdata:id,name'
                     ])
                     ->whereIn('id', $ids)
-                        ->select(['id', 'name', 'slug', 'type', 'video_upload_type', 'release_date', 'trailer_url', 'trailer_url_type', 'is_restricted', 'imdb_rating', 'poster_url', 'thumbnail_url', 'poster_tv_url', 'trailer_url as base_url', 'trailer_url', 'video_url_input', 'movie_access', 'plan_id'])
+                        ->select(['id', 'name', 'slug', 'type', 'video_upload_type', 'release_date', 'trailer_url', 'trailer_url_type', 'is_restricted', 'imdb_rating', 'poster_url', 'thumbnail_url', 'poster_tv_url', 'blurhash', 'trailer_url as base_url', 'trailer_url', 'video_url_input', 'movie_access', 'plan_id'])
                         ->where('type', 'movie')
                         ->released()
                         ->where('status', 1)
@@ -1292,7 +1292,7 @@ public function getTrandingData(Request $request){
                         'genresdata:id,name'
                     ])
                     ->whereIn('id', $ids)
-                    ->select(['id', 'name', 'slug', 'type', 'video_upload_type', 'release_date', 'trailer_url', 'trailer_url_type', 'is_restricted', 'imdb_rating', 'poster_url', 'thumbnail_url', 'poster_tv_url', 'trailer_url as base_url', 'trailer_url', 'video_url_input', 'movie_access', 'plan_id'])
+                    ->select(['id', 'name', 'slug', 'type', 'video_upload_type', 'release_date', 'trailer_url', 'trailer_url_type', 'is_restricted', 'imdb_rating', 'poster_url', 'thumbnail_url', 'poster_tv_url', 'blurhash', 'trailer_url as base_url', 'trailer_url', 'video_url_input', 'movie_access', 'plan_id'])
                         ->where('type', 'tvshow')
                         ->released()
                         ->where('status', 1)

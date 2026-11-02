@@ -94,9 +94,10 @@ export default function TvShowDetailSection({
       <div className="relative w-full min-h-[64vh] sm:min-h-[74vh] lg:min-h-[80vh] flex items-end overflow-hidden pb-12 sm:pb-16 pt-24 sm:pt-28">
         {/* Dynamic Backdrop */}
         <div className="absolute inset-0 z-0">
-          <img
+          <SafeImage
             src={backdropUrl}
             alt={show.name}
+            blurhash={show.blurhash}
             className="w-full h-full object-cover object-center filter brightness-[0.75] contrast-[1.05] transform scale-[1.01] transition-transform duration-1000"
           />
           {/* Multi-layered cinematic gradients */}
@@ -272,11 +273,11 @@ export default function TvShowDetailSection({
                 >
                   {/* Thumbnail Container (16:9 Cinema Aspect) */}
                   <div className="relative w-full md:w-72 lg:w-80 flex-shrink-0 aspect-video rounded-xl overflow-hidden bg-black/60 border border-white/10 group-hover:border-[#E5B869]/40 transition-colors shadow-inner">
-                    <img
+                    <SafeImage
                       src={epThumb}
                       alt={ep.name}
+                      blurhash={ep.blurhash}
                       className="w-full h-full object-cover object-center transform transition-transform duration-500 group-hover:scale-105"
-                      loading="lazy"
                     />
 
                     {/* Gradient overlay */}
