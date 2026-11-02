@@ -14,6 +14,26 @@ interface ReviewSectionProps {
   initialReviews?: ReviewListResponse;
 }
 
+function ReviewAvatar({ src, name }: { src?: string | null; name?: string }) {
+  const [error, setError] = useState(false);
+  if (src && !error) {
+    return (
+      /* eslint-disable-next-line @next/next/no-img-element */
+      <img
+        src={src}
+        alt={name || 'User'}
+        onError={() => setError(true)}
+        className="w-8 h-8 rounded-full object-cover"
+      />
+    );
+  }
+  return (
+    <div className="w-8 h-8 rounded-full bg-[#E5B869]/20 text-[#E5B869] border border-[#E5B869]/30 flex items-center justify-center text-xs font-bold">
+      {(name || 'U').slice(0, 2).toUpperCase()}
+    </div>
+  );
+}
+
 export default function ReviewSection({
   contentId,
   initialReviews,
@@ -278,17 +298,7 @@ export default function ReviewSection({
               <div key={r.id || idx} className="p-4 rounded-xl border border-white/5 bg-white/[0.02] space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2.5">
-                    {r.profile_image ? (
-                      <img
-                        src={r.profile_image}
-                        alt={r.username || r.user_name || 'User'}
-                        className="w-8 h-8 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-gray-300">
-                        {(r.username || r.user_name || 'U').slice(0, 2).toUpperCase()}
-                      </div>
-                    )}
+                    <ReviewAvatar src={r.profile_image} name={r.username || r.user_name} />
                     <div>
                       <p className="text-xs font-semibold text-white">
                         {r.username || r.user_name || 'Community Member'}

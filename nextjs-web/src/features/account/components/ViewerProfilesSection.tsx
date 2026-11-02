@@ -29,6 +29,48 @@ const PRESET_AVATARS = [
   'bg-cyan-600',
 ];
 
+function ProfileAvatarBox({ avatar, name, isKids }: { avatar?: string | null; name: string; isKids?: boolean }) {
+  const [imgError, setImgError] = useState(false);
+  const isImg = Boolean(
+    avatar &&
+      !imgError &&
+      (avatar.startsWith('http://') || avatar.startsWith('https://') || avatar.startsWith('/'))
+  );
+  const bgClass =
+    avatar && avatar.startsWith('bg-')
+      ? avatar
+      : avatar && avatar.startsWith('from-')
+      ? `bg-gradient-to-tr ${avatar}`
+      : 'bg-gradient-to-tr from-amber-600 to-red-600';
+
+  return (
+    <div className="relative">
+      <div
+        className={`w-20 h-20 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-lg overflow-hidden border-2 border-white/10 ${
+          isImg ? 'bg-black/40' : bgClass
+        }`}
+      >
+        {isImg ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={avatar!}
+            alt={name}
+            onError={() => setImgError(true)}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          name.charAt(0).toUpperCase()
+        )}
+      </div>
+      {isKids && (
+        <span className="absolute -bottom-2 inset-x-0 mx-auto w-max bg-emerald-500 text-black text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow-md">
+          Kids
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function ViewerProfilesSection({
   profiles,
   currentProfile,
@@ -148,20 +190,11 @@ export function ViewerProfilesSection({
                   disabled={actionLoading || isActive}
                   className="relative cursor-pointer transition-transform group-hover:scale-105 my-2"
                 >
-                  <div
-                    className={`w-20 h-20 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-lg ${
-                      profile.avatar && profile.avatar.startsWith('bg-')
-                        ? profile.avatar
-                        : 'bg-gradient-to-tr from-amber-600 to-red-600'
-                    }`}
-                  >
-                    {profile.name.charAt(0).toUpperCase()}
-                  </div>
-                  {isKids && (
-                    <span className="absolute -bottom-2 inset-x-0 mx-auto w-max bg-emerald-500 text-black text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow-md">
-                      Kids
-                    </span>
-                  )}
+                  <ProfileAvatarBox
+                    avatar={profile.avatar}
+                    name={profile.name}
+                    isKids={isKids}
+                  />
                 </button>
 
                 {/* Name */}

@@ -122,8 +122,12 @@ export default function ProfilesPage() {
                 type="button"
                 onClick={() => handleSelect(p)}
                 className={`w-28 h-28 sm:w-32 sm:h-32 rounded-2xl ${
-                  p.avatar && p.avatar.startsWith('bg-') ? p.avatar : colorClass
-                } flex flex-col items-center justify-center text-white text-3xl font-black shadow-xl transition-all duration-300 ${
+                  p.avatar && p.avatar.startsWith('bg-')
+                    ? p.avatar
+                    : p.avatar && p.avatar.startsWith('from-')
+                    ? `bg-gradient-to-tr ${p.avatar}`
+                    : colorClass
+                } flex flex-col items-center justify-center text-white text-3xl font-black shadow-xl transition-all duration-300 overflow-hidden ${
                   isManaging
                     ? 'opacity-80 hover:opacity-100 hover:scale-105 border-2 border-white/40'
                     : isActive
@@ -131,7 +135,15 @@ export default function ProfilesPage() {
                     : 'hover:scale-105 hover:ring-4 hover:ring-white/40'
                 }`}
               >
-                <span>{p.name.charAt(0).toUpperCase()}</span>
+                {p.avatar &&
+                (p.avatar.startsWith('http://') ||
+                  p.avatar.startsWith('https://') ||
+                  p.avatar.startsWith('/')) ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={p.avatar} alt={p.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span>{p.name.charAt(0).toUpperCase()}</span>
+                )}
                 {isKids && (
                   <span className="text-[10px] uppercase font-bold tracking-wider bg-black/60 px-2 py-0.5 rounded-full mt-1">
                     Kids
