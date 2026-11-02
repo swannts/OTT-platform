@@ -39,3 +39,8 @@
 .vscode/
 .DS_Store
 Thumbs.db
+.antigravitycli
+
+# Cypress test artifacts
+**/cypress/screenshots/
+**/cypress/videos/

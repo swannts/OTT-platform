@@ -8,7 +8,7 @@ This document provides all pre-configured user credentials across the administra
 
 ## 1. Administrative Accounts (Full Control & Demo Mode)
 
-Use these accounts to access the Admin Panel at [http://localhost:8000/login](http://localhost:8000/login).
+Use these accounts to access the Admin Panel at [http://localhost:8000/admin/login](http://localhost:8000/admin/login) (CMS backend) or test directly on the Next.js frontend at [http://localhost:3000/login](http://localhost:3000/login).
 
 | Name | Email | Password | Role / Type | Capabilities & Notes |
 | :--- | :--- | :--- | :--- | :--- |
