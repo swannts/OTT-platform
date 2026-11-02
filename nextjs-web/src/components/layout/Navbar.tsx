@@ -41,10 +41,26 @@ export default function Navbar() {
   const exploreTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    let ticking = false;
+
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 15);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentY = window.scrollY;
+          setIsScrolled((prev) => {
+            // Hysteresis threshold to prevent flapping/flickering at the scroll boundary
+            if (!prev && currentY > 25) return true;
+            if (prev && currentY < 10) return false;
+            return prev;
+          });
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
-    window.addEventListener('scroll', handleScroll);
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -112,12 +128,19 @@ export default function Navbar() {
 
   return (
     <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      className={`fixed top-0 left-0 right-0 z-50 transform-gpu py-3 sm:py-3.5 transition-colors duration-300 ${
         isScrolled
-          ? 'bg-[#05080c]/95 backdrop-blur-xl border-b border-white/[0.08] shadow-[0_10px_30px_rgba(0,0,0,0.8)] py-2.5'
-          : 'bg-gradient-to-b from-[#05080c]/95 via-[#05080c]/60 to-transparent py-4'
+          ? 'bg-[#05080c]/95 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.8)]'
+          : 'bg-gradient-to-b from-[#05080c]/95 via-[#05080c]/60 to-transparent'
       }`}
     >
+      {/* Hardware-accelerated Bottom Border Line with Smooth Opacity - Prevents subpixel raster flicker during scrolling */}
+      <div
+        className={`absolute bottom-0 left-0 right-0 h-[1px] bg-white/[0.08] transition-opacity duration-300 pointer-events-none ${
+          isScrolled ? 'opacity-100' : 'opacity-0'
+        }`}
+        aria-hidden="true"
+      />
       <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-10">
         <div className="flex items-center justify-between">
           {/* Left: Brand Identity + Main Navigation */}
