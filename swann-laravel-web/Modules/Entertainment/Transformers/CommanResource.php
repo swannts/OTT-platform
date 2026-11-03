@@ -46,6 +46,9 @@ class CommanResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'title' => $this->name,
+            'name_bn' => $this->name_bn ?? $this->getRawOriginal('name_bn'),
+            'name_en' => $this->getRawOriginal('name') ?? $this->name,
             'type' => $this->type,
             'movie_access' => in_array($this->type, ['movie', 'tvshow']) ? $this->movie_access : $this->access,
             'plan_id' => $this->plan_id,

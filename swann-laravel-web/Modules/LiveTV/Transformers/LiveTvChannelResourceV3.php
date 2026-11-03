@@ -17,6 +17,9 @@ class LiveTvChannelResourceV3 extends JsonResource
             'poster_tv_image' => setBaseUrlWithFileName($this->poster_tv_url,'image','livetv'),
             'details'=>[
                 'name' => $this->name,
+                'title' => $this->name,
+                'name_bn' => $this->name_bn ?? $this->getRawOriginal('name_bn'),
+                'name_en' => $this->getRawOriginal('name') ?? $this->name,
                 'type' => 'livetv',
                 'access' => $this->access,
                 'is_device_supported'=> $this->isDeviceSupported ?? null,

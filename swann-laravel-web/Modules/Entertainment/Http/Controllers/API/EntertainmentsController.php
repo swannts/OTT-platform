@@ -2741,9 +2741,9 @@ class EntertainmentsController extends Controller
         $id = $request->id;
         $device_type = getDeviceType($request);
 
-        // Create unique cache key based on all relevant parameters including user_id
+        // Create unique cache key based on all relevant parameters including user_id and locale
         $userId = auth()->id();
-        $cacheKey = 'common_content_detail_v3_'.$id . '_' . $request->profile_id . '_' . $request->type . '_' . ($userId ?? 0);
+        $cacheKey = 'common_content_detail_v3_'.$id . '_' . $request->profile_id . '_' . $request->type . '_' . ($userId ?? 0) . '_' . app()->getLocale();
 
          $responseData = cacheApiResponse($cacheKey, 10, function () use ($request, $id,$device_type, $userId) {
 

@@ -218,14 +218,8 @@ class DashboardController extends Controller
                 'popular-videos' => 'Popular Videos',
             ];
 
-            // Fetch all required settings in one query
-            $settings = MobileSetting::whereIn('slug', array_keys($slugsWithDefaults))->pluck('name', 'slug');
-
-            // Resolve names with fallback to default
-            $sectionNames = [];
-            foreach ($slugsWithDefaults as $slug => $default) {
-                $sectionNames[$slug] = $settings[$slug] ?? $default;
-            }
+            // Resolve names with localized fallback
+            $sectionNames = $this->getLocalizedSectionNames($slugsWithDefaults);
            $responseData = [
                'latest_movie' => [
                     'name' => $sectionNames['latest-movies'],
@@ -373,7 +367,7 @@ public function getTrandingData(Request $request){
            'slider' => $sliders,
            'continue_watch' => $continueWatch,
            'top_10' => [
-              'name' => MobileSetting::where('slug', 'top-10')->value('name') ?? 'Top 10',
+              'name' => $this->getLocalizedSectionNames(['top-10' => 'Top 10'])['top-10'],
               'data' => $top_10,
           ],
         ];
@@ -393,8 +387,9 @@ public function getTrandingData(Request $request){
         $profile_id = $request->profile_id ?? null;
         $device_type =  getDeviceType($request)??null;
         $is_restricted = $request->is_restricted ?? null;
-        // Create cache key based on request parameters
-        $cacheKey = 'entertainment_data_v3_'. $type . '_' . $user_id . '_' . $profile_id . '_' . $device_type . '_' . $is_restricted;
+        $locale = app()->getLocale();
+        // Create cache key based on request parameters and active locale
+        $cacheKey = 'entertainment_data_v3_'. $type . '_' . $user_id . '_' . $profile_id . '_' . $device_type . '_' . $is_restricted . '_' . $locale;
         
         // Check cache version to invalidate cache when genres are updated
         // When version changes, old cache keys become invalid
@@ -522,7 +517,7 @@ public function getTrandingData(Request $request){
                               ->select('id', 'name', 'status', 'deleted_at');
                     }
                 ])
-                    ->select('id', 'name', 'type', 'release_date', 'plan_id', 'is_restricted', 'IMDb_rating', 'duration', 'poster_url', 'poster_tv_url', 'blurhash', 'trailer_url', 'movie_access','trailer_url_type')
+                    ->select('id', 'name', 'name_bn', 'description', 'description_bn', 'type', 'release_date', 'plan_id', 'is_restricted', 'IMDb_rating', 'duration', 'poster_url', 'poster_tv_url', 'blurhash', 'trailer_url', 'movie_access','trailer_url_type')
                     ->whereIn('id', $uniqueIds)
                     ->where('status', 1)
                     ->whereNull('deleted_at');
@@ -542,7 +537,7 @@ public function getTrandingData(Request $request){
             if (!empty($videoTypeIds)) {
                 $uniqueIds = array_unique($videoTypeIds);
                 $videoQuery = Video::whereIn('id', $uniqueIds)
-                    ->select('id', 'name', 'type', 'release_date', 'plan_id', 'is_restricted', 'IMDb_rating', 'duration', 'poster_url', 'poster_tv_url', 'trailer_url', 'access','trailer_url_type')
+                    ->select('id', 'name', 'name_bn', 'description', 'description_bn', 'type', 'release_date', 'plan_id', 'is_restricted', 'IMDb_rating', 'duration', 'poster_url', 'poster_tv_url', 'trailer_url', 'access','trailer_url_type')
                     ->where('status', 1)
                     ->whereNull('deleted_at');
                 
@@ -561,7 +556,7 @@ public function getTrandingData(Request $request){
             if (!empty($livetvTypeIds)) {
                 $uniqueIds = array_unique($livetvTypeIds);
                 $livetvChannels = LiveTvChannel::whereIn('id', $uniqueIds)
-                    ->select('id', 'name', 'plan_id', 'poster_url', 'poster_tv_url', 'access')
+                    ->select('id', 'name', 'name_bn', 'description', 'description_bn', 'plan_id', 'poster_url', 'poster_tv_url', 'access')
                     ->where('status', 1)
                     ->whereNull('deleted_at')
                     ->get()
@@ -1068,14 +1063,8 @@ public function getTrandingData(Request $request){
                 'popular-videos' => 'Popular Videos',
             ];
 
-            // OPTIMIZATION: Fetch section names in one query (already have mobileSettings, but need names)
-            $settings = MobileSetting::whereIn('slug', array_keys($slugsWithDefaults))->pluck('name', 'slug');
-             
-            // Resolve names with fallback to default
-            $sectionNames = [];
-            foreach ($slugsWithDefaults as $slug => $default) {
-                $sectionNames[$slug] = $settings[$slug] ?? $default;
-            }
+            // Resolve names with localized fallback
+            $sectionNames = $this->getLocalizedSectionNames($slugsWithDefaults);
             // OPTIMIZATION: getOtherSectionData is already optimized with limits
             $otherSectionData = $this->getOtherSectionData($request);
            $likedMovies = collect();
@@ -1727,23 +1716,14 @@ public function getTrandingData(Request $request){
                 'enjoy-in-your-native-tongue' => 'Popular Language',
                 'popular-movies' => 'Popular Movies',
             ];
-            $settingsAdditional = MobileSetting::whereIn('slug', array_keys($slugsWithDefaultsAdditional))->pluck('name', 'slug');
-            $sectionNamesAdditional = [];
-            foreach ($slugsWithDefaultsAdditional as $slug => $default) {
-                $sectionNamesAdditional[$slug] = $settingsAdditional[$slug] ?? $default;
-            }
+            $sectionNamesAdditional = $this->getLocalizedSectionNames($slugsWithDefaultsAdditional);
 
-                        $slugsWithDefaults = [
-                            'latest-movies' => 'Latest Movies',
-                            'top-10' => 'Top 10',
-                        ];
+            $slugsWithDefaults = [
+                'latest-movies' => 'Latest Movies',
+                'top-10' => 'Top 10',
+            ];
 
-                        $settings = MobileSetting::whereIn('slug', array_keys($slugsWithDefaults))->pluck('name', 'slug');
-
-                        $sectionNames = [];
-                        foreach ($slugsWithDefaults as $slug => $default) {
-                            $sectionNames[$slug] = $settings[$slug] ?? $default;
-                        }
+            $sectionNames = $this->getLocalizedSectionNames($slugsWithDefaults);
 
                     return [
                         'continue_watch' => $continueWatch,
@@ -2163,5 +2143,40 @@ public function getTrandingData(Request $request){
         }
 
         return $data;
+    }
+
+    protected function getLocalizedSectionNames(array $slugsWithDefaults): array
+    {
+        $isBn = app()->getLocale() === 'bn';
+        $bengaliDefaults = [
+            'latest-movies' => 'এখন ট্রেন্ডিং',
+            'top-10' => 'আজকের শীর্ষ ১০',
+            'enjoy-in-your-native-tongue' => 'আপনার মাতৃভাষায় উপভোগ করুন',
+            'popular-movies' => 'জনপ্রিয় সিনেমা',
+            'top-channels' => 'সরাসরি সম্প্রচার',
+            'your-favorite-personality' => 'সম্মানিত আলেম ও ব্যক্তিত্ব',
+            '500-free-movies' => 'ফ্রি সিনেমা',
+            'popular-tvshows' => 'জনপ্রিয় টিভি শো ও সিরিজ',
+            'genre' => 'ক্যাটাগরি ও ধরন',
+            'popular-videos' => 'জনপ্রিয় ভিডিও ও রিমাইন্ডার',
+            'continue-watching' => 'দেখা চালিয়ে যান',
+            'pay-per-view' => 'পে-পার-ভিউ এক্সক্লুসিভ',
+            'trending-now' => 'এখন ট্রেন্ডিং',
+        ];
+
+        if ($isBn) {
+            $sectionNames = [];
+            foreach ($slugsWithDefaults as $slug => $default) {
+                $sectionNames[$slug] = $bengaliDefaults[$slug] ?? $default;
+            }
+            return $sectionNames;
+        }
+
+        $settings = MobileSetting::whereIn('slug', array_keys($slugsWithDefaults))->pluck('name', 'slug');
+        $sectionNames = [];
+        foreach ($slugsWithDefaults as $slug => $default) {
+            $sectionNames[$slug] = $settings[$slug] ?? $default;
+        }
+        return $sectionNames;
     }
 }

@@ -21,6 +21,9 @@ class VideoResourceV3 extends JsonResource
             'poster_tv_image' => setBaseUrlWithFileName($this->poster_tv_url,'image','video'),
             'details'=>[
                 'name' => $this->name,
+                'title' => $this->name,
+                'name_bn' => $this->name_bn ?? $this->getRawOriginal('name_bn'),
+                'name_en' => $this->getRawOriginal('name') ?? $this->name,
                 'slug' => $this->slug,
                 'type' => $this->type ?? 'video',
                 'release_date' => $this->release_date ? formatDate($this->release_date):null,

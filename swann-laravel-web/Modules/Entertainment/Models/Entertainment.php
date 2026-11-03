@@ -40,9 +40,11 @@ class Entertainment extends BaseModel
 
     protected $fillable = [
     'name',
+    'name_bn',
     'tmdb_id',
     'slug',
     'description',
+    'description_bn',
     'trailer_url_type',
     'trailer_url',
     'poster_url',
@@ -106,6 +108,50 @@ class Entertainment extends BaseModel
     protected $casts = [
         'release_date' => 'date',
     ];
+
+    /**
+     * Localized title (returns name_bn when locale is bn and available).
+     */
+    public function getNameAttribute($value)
+    {
+        if (app()->getLocale() === 'bn') {
+            if (array_key_exists('name_bn', $this->attributes) && !empty($this->attributes['name_bn'])) {
+                return $this->attributes['name_bn'];
+            }
+            if (!array_key_exists('name_bn', $this->attributes) && !empty($this->attributes['id'] ?? null)) {
+                $bn = \Illuminate\Support\Facades\DB::table('entertainments')
+                    ->where('id', $this->attributes['id'])
+                    ->value('name_bn');
+                if (!empty($bn)) {
+                    $this->attributes['name_bn'] = $bn;
+                    return $bn;
+                }
+            }
+        }
+        return $value;
+    }
+
+    /**
+     * Localized description (returns description_bn when locale is bn and available).
+     */
+    public function getDescriptionAttribute($value)
+    {
+        if (app()->getLocale() === 'bn') {
+            if (array_key_exists('description_bn', $this->attributes) && !empty($this->attributes['description_bn'])) {
+                return $this->attributes['description_bn'];
+            }
+            if (!array_key_exists('description_bn', $this->attributes) && !empty($this->attributes['id'] ?? null)) {
+                $bn = \Illuminate\Support\Facades\DB::table('entertainments')
+                    ->where('id', $this->attributes['id'])
+                    ->value('description_bn');
+                if (!empty($bn)) {
+                    $this->attributes['description_bn'] = $bn;
+                    return $bn;
+                }
+            }
+        }
+        return $value;
+    }
 
 
 
@@ -364,7 +410,7 @@ class Entertainment extends BaseModel
         ])
         ->with([
             'plan:id,level',
-            'genresdata:id,name'
+            'genresdata:id,name,name_bn'
         ])
         ->whereIn('id', $latestMovieIdsArray)
         ->where('status', 1)
@@ -418,7 +464,7 @@ class Entertainment extends BaseModel
         ])
         ->with([
             'plan:id,level',
-            'genresdata:id,name'
+            'genresdata:id,name,name_bn'
         ])
         ->whereIn('id', $latestMovieIdsArray)
         ->where('status', 1)
@@ -468,18 +514,20 @@ class Entertainment extends BaseModel
         }
 
         $query = Entertainment::with([
-            'genresdata:id,name',
+            'genresdata:id,name,name_bn',
             'plan:id,level'
         ])
         ->select([
             'id',
             'name',
+            'name_bn',
             'slug',
             'type',
             'release_date',
             'trailer_url',
             'plan_id',
             'description',
+            'description_bn',
             'trailer_url_type',
             'is_restricted',
             'language',
@@ -537,17 +585,19 @@ class Entertainment extends BaseModel
         }
 
         $query = Entertainment::with([
-            'genresdata:id,name',
+            'genresdata:id,name,name_bn',
             'plan:id,level'
         ])
         ->select([
             'id',
             'name',
+            'name_bn',
             'slug',
             'type',
             'release_date',
             'plan_id',
             'description',
+            'description_bn',
             'trailer_url_type',
             'is_restricted',
             'language',
@@ -603,12 +653,13 @@ class Entertainment extends BaseModel
         }
 
         $query = Entertainment::with([
-            'genresdata:id,name',
+            'genresdata:id,name,name_bn',
             'plan:id,level'
         ])
         ->select([
             'id',
             'name',
+            'name_bn',
             'type',
             'release_date',
             'trailer_url',
@@ -657,17 +708,19 @@ class Entertainment extends BaseModel
         }
 
         $query = Entertainment::with([
-            'genresdata:id,name',
+            'genresdata:id,name,name_bn',
             'plan:id,level'
         ])
         ->select([
             'id',
             'name',
+            'name_bn',
             'slug',
             'type',
             'release_date',
             'plan_id',
             'description',
+            'description_bn',
             'trailer_url_type',
             'is_restricted',
             'language',
@@ -730,12 +783,13 @@ class Entertainment extends BaseModel
         }
 
         $query = Entertainment::with([
-            'genresdata:id,name',
+            'genresdata:id,name,name_bn',
             'plan:id,level'
         ])
         ->select([
             'id',
             'name',
+            'name_bn',
             'type',
             'release_date',
             'trailer_url',
@@ -796,17 +850,19 @@ class Entertainment extends BaseModel
         }
 
         $query = Entertainment::with([
-            'genresdata:id,name',
+            'genresdata:id,name,name_bn',
             'plan:id,level'
         ])
         ->select([
             'id',
             'name',
+            'name_bn',
             'slug',
             'type',
             'release_date',
             'plan_id',
             'description',
+            'description_bn',
             'trailer_url_type',
             'is_restricted',
             'language',
@@ -862,12 +918,13 @@ class Entertainment extends BaseModel
         }
 
         $query = Entertainment::with([
-            'genresdata:id,name',
+            'genresdata:id,name,name_bn',
             'plan:id,level'
         ])
         ->select([
             'id',
             'name',
+            'name_bn',
             'type',
             'release_date',
             'trailer_url',
@@ -910,7 +967,7 @@ class Entertainment extends BaseModel
     public static function get_entertainment_list()
 {
     $query = Entertainment::with([
-        'genresdata:id,name',
+        'genresdata:id,name,name_bn',
         'plan:id,level',
         'entertainmentReviews' => function ($q) {
             $q->whereBetween('rating', [4, 5])->take(6);
@@ -919,11 +976,13 @@ class Entertainment extends BaseModel
     ->select([
         'id',
         'name',
+        'name_bn',
         'slug',
         'type',
         'release_date',
         'plan_id',
         'description',
+        'description_bn',
         'trailer_url_type',
         'is_restricted',
         'language',
@@ -974,7 +1033,7 @@ class Entertainment extends BaseModel
 public static function get_entertainment_listV3()
 {
     $query = Entertainment::with([
-        'genresdata:id,name',
+        'genresdata:id,name,name_bn',
         'plan:id,level',
         'entertainmentReviews' => function ($q) {
             $q->whereBetween('rating', [4, 5])->take(6);
@@ -983,6 +1042,7 @@ public static function get_entertainment_listV3()
     ->select([
         'id',
         'name',
+        'name_bn',
         'slug',
         'type',
         'release_date',
@@ -1027,17 +1087,19 @@ public static function get_entertainment_listV3()
 public static function get_top_movie($topMovieIds)
 {
     $query = Entertainment::with([
-        'genresdata:id,name',
+        'genresdata:id,name,name_bn',
         'plan:id,level'
     ])
     ->select([
         'id',
         'name',
+        'name_bn',
         'slug',
         'type',
         'release_date',
         'plan_id',
         'description',
+        'description_bn',
         'trailer_url_type',
         'is_restricted',
         'language',
@@ -1099,12 +1161,13 @@ public static function get_top_movie($topMovieIds)
 public static function get_top_movie_v3($topMovieIds)
 {
     $query = Entertainment::with([
-        'genresdata:id,name',
+        'genresdata:id,name,name_bn',
         'plan:id,level'
     ])
     ->select([
         'id',
         'name',
+        'name_bn',
         'type',
         'release_date',
         'trailer_url_type',
@@ -1161,16 +1224,18 @@ public static function get_top_movie_v3($topMovieIds)
 public static function get_more_items($episodeId, $genre_ids)
 {
     $query = Entertainment::with([
-        'genresdata:id,name',
+        'genresdata:id,name,name_bn',
         'plan:id,level'
     ])
     ->select([
         'id',
         'name',
+        'name_bn',
         'slug',
         'type',
         'plan_id',
         'description',
+        'description_bn',
         'trailer_url_type',
         'is_restricted',
         'language',
@@ -1218,14 +1283,16 @@ public static function get_more_items($episodeId, $genre_ids)
 public static function get_first_tvshow($tvshow_id, $user_id, $profile_id)
 {
     $query = Entertainment::with([
-        'genresdata:id,name',
+        'genresdata:id,name,name_bn',
         'plan:id,level'
     ])
     ->select([
         'id',
         'name',
+        'name_bn',
         'slug',
         'description',
+        'description_bn',
         'type',
         'trailer_url_type',
         'plan_id',
@@ -1293,13 +1360,15 @@ public static function get_recommended_movie($movieIdsArray)
     }
 
     $query = Entertainment::with([
-        'genresdata:id,name',
+        'genresdata:id,name,name_bn',
         'plan:id,level'
     ])
     ->select([
         'id',
         'name',
+        'name_bn',
         'description',
+        'description_bn',
         'type',
         'slug',
         'trailer_url_type',
@@ -1360,7 +1429,7 @@ public static function get_recommended_movie($movieIdsArray)
 public static function get_coming_soon_movie()
 {
     $query = Entertainment::with([
-                'genresdata:id,name',
+                'genresdata:id,name,name_bn',
                 'plan:id,level',
         'watchlist' => function ($q) {
             if (loggedUserId()) {
@@ -1371,8 +1440,10 @@ public static function get_coming_soon_movie()
     ->select([
         'id',
         'name',
+        'name_bn',
         'slug',
         'description',
+        'description_bn',
         'type',
         'trailer_url_type',
         'trailer_url',
@@ -1417,7 +1488,7 @@ public static function get_movie($movieId, $user_id, $profile_id, $device_id)
         'entertainments.enable_clips'
     ])
     ->with([
-        'genresdata:id,name',
+        'genresdata:id,name,name_bn',
         'plan:id,level',
         'entertainmentTalentMappings.talentprofile:id,name,type,file_url,bio,dob,place_of_birth,status,deleted_at',
         'entertainmentGenerMappings.genre:id,name,status',
@@ -1527,7 +1598,7 @@ public static function get_movie($movieId, $user_id, $profile_id, $device_id)
             'entertainments.enable_clips'
         ])
         ->with([
-            'genresdata:id,name',
+            'genresdata:id,name,name_bn',
             'plan:id,level',
 'entertainmentTalentMappings.talentprofile:id,name,type,file_url,bio,dob,place_of_birth,status,deleted_at',
         'entertainmentGenerMappings.genre:id,name,status',

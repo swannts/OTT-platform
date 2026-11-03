@@ -26,6 +26,7 @@ class Episode extends BaseModel
 
     protected $table = 'episodes';
     protected $fillable=[ 'name',
+                          'name_bn',
                           'slug',
                           'entertainment_id',
                           'season_id',
@@ -43,6 +44,7 @@ class Episode extends BaseModel
                           'is_restricted',
                           'short_desc',
                           'description',
+                          'description_bn',
                           'enable_quality',
                           'video_upload_type',
                           'video_url_input',
@@ -73,6 +75,44 @@ class Episode extends BaseModel
     protected $casts = [
         'release_date' => 'date',
     ];
+
+    public function getNameAttribute($value)
+    {
+        if (app()->getLocale() === 'bn') {
+            if (array_key_exists('name_bn', $this->attributes) && !empty($this->attributes['name_bn'])) {
+                return $this->attributes['name_bn'];
+            }
+            if (!array_key_exists('name_bn', $this->attributes) && !empty($this->attributes['id'] ?? null)) {
+                $bn = \Illuminate\Support\Facades\DB::table('episodes')
+                    ->where('id', $this->attributes['id'])
+                    ->value('name_bn');
+                if (!empty($bn)) {
+                    $this->attributes['name_bn'] = $bn;
+                    return $bn;
+                }
+            }
+        }
+        return $value;
+    }
+
+    public function getDescriptionAttribute($value)
+    {
+        if (app()->getLocale() === 'bn') {
+            if (array_key_exists('description_bn', $this->attributes) && !empty($this->attributes['description_bn'])) {
+                return $this->attributes['description_bn'];
+            }
+            if (!array_key_exists('description_bn', $this->attributes) && !empty($this->attributes['id'] ?? null)) {
+                $bn = \Illuminate\Support\Facades\DB::table('episodes')
+                    ->where('id', $this->attributes['id'])
+                    ->value('description_bn');
+                if (!empty($bn)) {
+                    $this->attributes['description_bn'] = $bn;
+                    return $bn;
+                }
+            }
+        }
+        return $value;
+    }
 
 
     protected static function boot()

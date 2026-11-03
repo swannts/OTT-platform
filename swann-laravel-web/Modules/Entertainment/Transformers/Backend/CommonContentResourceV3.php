@@ -115,8 +115,13 @@ class CommonContentResourceV3 extends JsonResource
         return [
             'id'              => $this->id,
             'name'            => $this->name,
+            'title'           => $this->name,
+            'name_bn'         => $this->name_bn ?? $this->getRawOriginal('name_bn'),
+            'name_en'         => $this->getRawOriginal('name') ?? $this->name,
             'slug'            => $this->slug,
             'description'     => $this->description,
+            'description_bn'  => $this->description_bn ?? $this->getRawOriginal('description_bn'),
+            'description_en'  => $this->getRawOriginal('description') ?? $this->description,
             'type'            => $this->type,
             'trailer_url_type'=> $this->trailer_url_type,
             'trailer_url'     => $this->trailer_url,

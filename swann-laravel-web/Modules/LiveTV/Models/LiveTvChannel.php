@@ -22,9 +22,47 @@ class LiveTvChannel extends BaseModel
      */
     protected $table = 'live_tv_channel';
     protected $fillable = [
-        'name','slug','category_id','poster_url','thumb_url','access','plan_id','description','status','poster_tv_url'
+        'name','name_bn','slug','category_id','poster_url','thumb_url','access','plan_id','description','description_bn','status','poster_tv_url'
     ];
     // protected $appends = ['poster_url'];
+
+    public function getNameAttribute($value)
+    {
+        if (app()->getLocale() === 'bn') {
+            if (array_key_exists('name_bn', $this->attributes) && !empty($this->attributes['name_bn'])) {
+                return $this->attributes['name_bn'];
+            }
+            if (!array_key_exists('name_bn', $this->attributes) && !empty($this->attributes['id'] ?? null)) {
+                $bn = \Illuminate\Support\Facades\DB::table('live_tv_channel')
+                    ->where('id', $this->attributes['id'])
+                    ->value('name_bn');
+                if (!empty($bn)) {
+                    $this->attributes['name_bn'] = $bn;
+                    return $bn;
+                }
+            }
+        }
+        return $value;
+    }
+
+    public function getDescriptionAttribute($value)
+    {
+        if (app()->getLocale() === 'bn') {
+            if (array_key_exists('description_bn', $this->attributes) && !empty($this->attributes['description_bn'])) {
+                return $this->attributes['description_bn'];
+            }
+            if (!array_key_exists('description_bn', $this->attributes) && !empty($this->attributes['id'] ?? null)) {
+                $bn = \Illuminate\Support\Facades\DB::table('live_tv_channel')
+                    ->where('id', $this->attributes['id'])
+                    ->value('description_bn');
+                if (!empty($bn)) {
+                    $this->attributes['description_bn'] = $bn;
+                    return $bn;
+                }
+            }
+        }
+        return $value;
+    }
 
     public function getBaseUrlAttribute($value)
     {

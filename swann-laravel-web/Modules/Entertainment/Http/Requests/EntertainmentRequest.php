@@ -79,6 +79,8 @@ class EntertainmentRequest extends FormRequest
         $id = request()->id;
         $rules = [
             'name' => ['required',Rule::unique('entertainments', 'name')->ignore($id)],
+            'name_bn' => ['nullable', 'string', 'max:255'],
+            'description_bn' => ['nullable', 'string'],
             'trailer_url_type' => ['required'],
             'movie_access' => 'required',
             'language' => ['required'],

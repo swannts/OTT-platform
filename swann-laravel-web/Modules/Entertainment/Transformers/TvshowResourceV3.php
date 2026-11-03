@@ -31,6 +31,9 @@ class TvshowResourceV3 extends JsonResource
             'blurhash' => $this->blurhash,
             'details'=>[
                 'name' => $this->name,
+                'title' => $this->name,
+                'name_bn' => $this->name_bn ?? $this->getRawOriginal('name_bn'),
+                'name_en' => $this->getRawOriginal('name') ?? $this->name,
                 'type' => $this->type,
                 'blurhash' => $this->blurhash,
                 'release_date' => $this->release_date ? formatDate($this->release_date) : null,

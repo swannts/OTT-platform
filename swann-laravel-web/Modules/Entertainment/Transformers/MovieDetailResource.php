@@ -66,7 +66,12 @@ class MovieDetailResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'title' => $this->name,
+            'name_bn' => $this->name_bn ?? $this->getRawOriginal('name_bn'),
+            'name_en' => $this->getRawOriginal('name') ?? $this->name,
             'description' => strip_tags($this->description),
+            'description_bn' => $this->description_bn ? strip_tags($this->description_bn) : ($this->getRawOriginal('description_bn') ? strip_tags($this->getRawOriginal('description_bn')) : null),
+            'description_en' => strip_tags($this->getRawOriginal('description') ?? $this->description),
             'trailer_url_type' => $this->trailer_url_type,
             'type' => $this->type,
             'trailer_url' => $this->trailer_url,

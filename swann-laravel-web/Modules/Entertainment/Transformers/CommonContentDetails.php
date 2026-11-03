@@ -16,6 +16,9 @@ class CommonContentDetails  extends JsonResource
             'id' => $this->id,
             'details'=>[
                 'name' => $this->name,
+                'title' => $this->name,
+                'name_bn' => $this->name_bn ?? (is_object($this->resource) && method_exists($this->resource, 'getRawOriginal') ? $this->getRawOriginal('name_bn') : null),
+                'name_en' => (is_object($this->resource) && method_exists($this->resource, 'getRawOriginal') ? $this->getRawOriginal('name') : null) ?? $this->name,
                 'type' => $this->type,
                 'is_device_supported' => $this->isDeviceSupported,
                 'genres' => $this->genre_data ?? null,
@@ -31,6 +34,8 @@ class CommonContentDetails  extends JsonResource
                 'imdb_rating'=> $this->IMDb_rating ?? $this->imdb_rating,
                 'access'=> $this->access,
                 'description'=> strip_tags($this->description),
+                'description_bn' => $this->description_bn ? strip_tags($this->description_bn) : null,
+                'description_en' => $this->description_en ? strip_tags($this->description_en) : strip_tags($this->description),
                 'is_in_watchlist'=>$this->is_watch_list ,
                 'thumbnail_image' => $this->thumbnail_url ? setBaseUrlWithFileName($this->thumbnail_url,'image',$this->type) : null ,
                 'poster_image' => $this->poster_url ? setBaseUrlWithFileName($this->poster_url,'image',$this->type) : null ,

@@ -33,6 +33,9 @@ class EpisodeResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'title' => $this->name,
+            'name_bn' => $this->name_bn ?? $this->getRawOriginal('name_bn'),
+            'name_en' => $this->getRawOriginal('name') ?? $this->name,
             'slug' => $this->slug,
             'entertainment_id' => $this->entertainment_id,
             'season_id' => $this->season_id,

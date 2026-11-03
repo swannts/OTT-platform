@@ -22,9 +22,11 @@ class Video extends BaseModel
     protected $table = 'videos';
     protected $fillable = [
         'name',
+        'name_bn',
         'slug',
         'type',
         'description',
+        'description_bn',
         'poster_url',
         'short_desc',
         'thumbnail_url',
@@ -72,6 +74,44 @@ class Video extends BaseModel
     protected $casts = [
         'release_date' => 'date',
     ];
+
+    public function getNameAttribute($value)
+    {
+        if (app()->getLocale() === 'bn') {
+            if (array_key_exists('name_bn', $this->attributes) && !empty($this->attributes['name_bn'])) {
+                return $this->attributes['name_bn'];
+            }
+            if (!array_key_exists('name_bn', $this->attributes) && !empty($this->attributes['id'] ?? null)) {
+                $bn = \Illuminate\Support\Facades\DB::table('videos')
+                    ->where('id', $this->attributes['id'])
+                    ->value('name_bn');
+                if (!empty($bn)) {
+                    $this->attributes['name_bn'] = $bn;
+                    return $bn;
+                }
+            }
+        }
+        return $value;
+    }
+
+    public function getDescriptionAttribute($value)
+    {
+        if (app()->getLocale() === 'bn') {
+            if (array_key_exists('description_bn', $this->attributes) && !empty($this->attributes['description_bn'])) {
+                return $this->attributes['description_bn'];
+            }
+            if (!array_key_exists('description_bn', $this->attributes) && !empty($this->attributes['id'] ?? null)) {
+                $bn = \Illuminate\Support\Facades\DB::table('videos')
+                    ->where('id', $this->attributes['id'])
+                    ->value('description_bn');
+                if (!empty($bn)) {
+                    $this->attributes['description_bn'] = $bn;
+                    return $bn;
+                }
+            }
+        }
+        return $value;
+    }
 
 
     public function getBaseUrlAttribute($value)

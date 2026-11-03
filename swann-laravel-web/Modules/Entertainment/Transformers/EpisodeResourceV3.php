@@ -30,6 +30,9 @@ class EpisodeResourceV3 extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'title' => $this->name,
+            'name_bn' => $this->name_bn ?? $this->getRawOriginal('name_bn'),
+            'name_en' => $this->getRawOriginal('name') ?? $this->name,
             'duration' => $this->duration,
             'description' => $this->description ?? $this->short_desc,
             'poster_image' => setBaseUrlWithFileName($poster, 'image', 'episode'),
@@ -37,6 +40,9 @@ class EpisodeResourceV3 extends JsonResource
             'blurhash' => $this->blurhash,
             'details' => [
                 'name' => $this->name,
+                'title' => $this->name,
+                'name_bn' => $this->name_bn ?? $this->getRawOriginal('name_bn'),
+                'name_en' => $this->getRawOriginal('name') ?? $this->name,
                 'type' => 'episode',
                 'slug' => $this->slug,
                 'genres' => $genre_data,

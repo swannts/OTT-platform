@@ -131,8 +131,23 @@ class SliderResourceV3 extends JsonResource
             $posterUrl = $dataArray['poster_image'];
         }
 
+        $detailsData = $dataArray['details'] ?? (is_array($dataArray) ? $dataArray : []);
+        $resolvedName = $dataArray['name'] ?? $detailsData['name'] ?? $this->title ?? $this->name ?? null;
+        $resolvedNameBn = $dataArray['name_bn'] ?? $detailsData['name_bn'] ?? null;
+        $resolvedNameEn = $dataArray['name_en'] ?? $detailsData['name_en'] ?? null;
+        $resolvedDesc = $dataArray['description'] ?? $detailsData['description'] ?? $this->description ?? null;
+        $resolvedDescBn = $dataArray['description_bn'] ?? $detailsData['description_bn'] ?? null;
+        $resolvedDescEn = $dataArray['description_en'] ?? $detailsData['description_en'] ?? null;
+
         return [
             'id' => $this->id,
+            'name' => $resolvedName,
+            'title' => $resolvedName,
+            'name_bn' => $resolvedNameBn,
+            'name_en' => $resolvedNameEn,
+            'description' => $resolvedDesc,
+            'description_bn' => $resolvedDescBn,
+            'description_en' => $resolvedDescEn,
             'poster_image' => setBaseUrlWithFileName($posterUrl,'image','banner'),
             'poster_tv_image' => $dataArray['poster_tv_image'] ?? null,
             'blurhash' => $this->blurhash ?? $dataArray['blurhash'] ?? null,

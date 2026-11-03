@@ -160,6 +160,13 @@
                             <div class="invalid-feedback" id="name-error">Name field is required</div>
                         </div>
                         <div class="col-md-4 col-lg-4 mb-3">
+                            {{ html()->label('শিরোনাম (বাংলা / Bengali)', 'name_bn')->class('form-label') }}
+                            {{ html()->text('name_bn')->attribute('value', old('name_bn'))->placeholder('বাংলায় শিরোনাম লিখুন (ঐচ্ছিক)')->class('form-control') }}
+                            @error('name_bn')
+                                <span class="text-danger">{{ $message }}</span>
+                            @enderror
+                        </div>
+                        <div class="col-md-4 col-lg-4 mb-3">
                             {{ html()->label(__('movie.lbl_trailer_url_type') . ' <span class="text-danger">*</span>', 'type')->class('form-label') }}
                             {{ html()->select(
                                     'trailer_url_type',

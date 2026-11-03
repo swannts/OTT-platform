@@ -35,6 +35,9 @@ class VideoResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'title' => $this->name,
+            'name_bn' => $this->name_bn ?? $this->getRawOriginal('name_bn'),
+            'name_en' => $this->getRawOriginal('name') ?? $this->name,
             'trailer_url_type' => $this->trailer_url_type,
             'trailer_url' => $this->trailer_url_type=='Local' ? setBaseUrlWithFileName($this->trailer_url,'video','video') : $this->trailer_url,
             'access' => $this->access,
