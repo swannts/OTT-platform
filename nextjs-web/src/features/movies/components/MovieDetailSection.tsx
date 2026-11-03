@@ -6,6 +6,7 @@ import { ContentDetails } from '@/types';
 import { Play, Plus, Check, Star, Clock, Calendar } from 'lucide-react';
 import { MediaRow, ReviewSection } from '@/components/shared';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/providers';
 import { api } from '@/lib/api';
 
 interface MovieDetailSectionProps {
@@ -14,9 +15,13 @@ interface MovieDetailSectionProps {
 
 export default function MovieDetailSection({ initialMovie }: MovieDetailSectionProps) {
   const { user } = useAuth();
+  const { t, locale } = useLanguage();
   const [movie] = useState<ContentDetails>(initialMovie);
   const [inWatchlist, setInWatchlist] = useState<boolean>(initialMovie.is_watchlist || false);
   const [isUpdatingWatchlist, setIsUpdatingWatchlist] = useState(false);
+
+  const displayName = locale === 'bn' ? (movie.name_bn || movie.name) : (movie.name_en || movie.name);
+  const displayDescription = locale === 'bn' ? (movie.description_bn || movie.description) : (movie.description_en || movie.description);
 
   const backdropUrl =
     movie.banner_image ||
@@ -88,12 +93,14 @@ export default function MovieDetailSection({ initialMovie }: MovieDetailSectionP
             </div>
 
             <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight drop-shadow-md">
-              {movie.name}
+              {displayName}
             </h1>
 
-            <p className="text-sm sm:text-base text-gray-300 leading-relaxed line-clamp-3">
-              {movie.description}
-            </p>
+            {displayDescription && (
+              <p className="text-sm sm:text-base text-gray-300 leading-relaxed line-clamp-3">
+                {displayDescription}
+              </p>
+            )}
 
             <div className="flex items-center space-x-3 pt-2">
               <Link

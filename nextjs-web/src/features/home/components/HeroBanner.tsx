@@ -7,6 +7,7 @@ import { useAppDispatch } from '@/store/hooks';
 import { setActiveItem } from '@/store/slices/playerSlice';
 import { Play, Info, ChevronLeft, ChevronRight, Star, Clock } from 'lucide-react';
 import { SafeImage } from '@/components/ui';
+import { useLanguage } from '@/providers';
 
 interface HeroBannerProps {
   items: MediaItem[];
@@ -14,6 +15,7 @@ interface HeroBannerProps {
 
 export default function HeroBanner({ items }: HeroBannerProps) {
   const dispatch = useAppDispatch();
+  const { t, locale } = useLanguage();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [fadeState, setFadeState] = useState<'visible' | 'fading'>('visible');
   const [isPaused, setIsPaused] = useState(false);
@@ -83,10 +85,19 @@ export default function HeroBanner({ items }: HeroBannerProps) {
   const current = slides[currentIndex] || slides[0];
   if (!current) return null;
 
+  const isBn = locale === 'bn';
+  const displayName = isBn
+    ? current.name_bn || current.name || current.title || 'Untitled'
+    : current.name_en || current.name || current.title || 'Untitled';
+
+  const displayDescription = isBn
+    ? current.description_bn || current.description
+    : current.description_en || current.description;
+
   const type = current.type || 'movie';
   const watchUrl = `/watch/${type}/${current.id}`;
   const detailUrl = type === 'movie' ? `/movies/${current.id}` : `/tv-shows/${current.id}`;
-  const badge = current.access === 'paid' ? 'VIP EXCLUSIVE ★' : 'EXCLUSIVE SERIES ★';
+  const badge = current.access === 'paid' ? t('hero_vip_badge', 'VIP EXCLUSIVE ★') : t('hero_series_badge', 'EXCLUSIVE SERIES ★');
 
   return (
     <div
@@ -172,7 +183,7 @@ export default function HeroBanner({ items }: HeroBannerProps) {
 
           {/* Main Title in Serif Typography with Arabic Ligature */}
           <div className="flex flex-wrap items-center gap-3">
-            {current.name?.toLowerCase().includes('prophet muhammad') ? (
+            {!isBn && current.name?.toLowerCase().trim() === 'the life of prophet muhammad' ? (
               <h1 className="font-serif-title text-4xl sm:text-6xl lg:text-7xl font-bold text-white tracking-tight leading-[1.08] drop-shadow-2xl">
                 <span>The Life of</span>
                 <span className="block mt-1 flex-wrap items-center gap-3">
@@ -183,16 +194,23 @@ export default function HeroBanner({ items }: HeroBannerProps) {
                 </span>
               </h1>
             ) : (
-              <h1 className="font-serif-title text-4xl sm:text-6xl lg:text-7xl font-bold text-white tracking-tight leading-[1.08] drop-shadow-2xl">
-                {current.name || current.title}
+              <h1 className="font-serif-title text-4xl sm:text-6xl lg:text-7xl font-bold text-white tracking-tight leading-[1.12] drop-shadow-2xl">
+                {displayName}
+                {(displayName.includes('মুহাম্মদ') || displayName.toLowerCase().includes('muhammad')) &&
+                  !displayName.includes('ﷺ') &&
+                  !displayName.includes('(সাঃ)') && (
+                    <span className="inline-block ml-3 font-arabic text-2xl sm:text-3xl text-[#E5B869] font-normal align-middle select-none drop-shadow">
+                      ﷺ
+                    </span>
+                  )}
               </h1>
             )}
           </div>
 
           {/* Subtitle / Description */}
-          {current.description && (
+          {displayDescription && (
             <p className="text-sm sm:text-base text-gray-300/90 font-light leading-relaxed max-w-xl drop-shadow line-clamp-3">
-              {current.description}
+              {displayDescription}
             </p>
           )}
 
@@ -204,7 +222,7 @@ export default function HeroBanner({ items }: HeroBannerProps) {
               className="group flex items-center space-x-2 bg-[#E5B869] hover:bg-[#f3cf8a] text-black font-bold text-sm px-7 py-3 rounded-full shadow-lg shadow-[#E5B869]/25 hover:shadow-xl hover:shadow-[#E5B869]/40 transition-all transform hover:scale-[1.03] active:scale-95 cursor-pointer"
             >
               <Play className="w-4 h-4 fill-black text-black ml-0.5 transition-transform group-hover:scale-110" />
-              <span>Watch Now</span>
+              <span>{t('hero_watch_now', 'Watch Now')}</span>
             </Link>
 
             <Link
@@ -212,7 +230,7 @@ export default function HeroBanner({ items }: HeroBannerProps) {
               className="flex items-center space-x-2 border border-white/30 hover:border-[#E5B869]/70 hover:bg-white/10 text-white font-medium text-sm px-6 py-3 rounded-full backdrop-blur-md transition-all transform hover:scale-[1.03] active:scale-95 shadow-lg shadow-black/30 cursor-pointer"
             >
               <Info className="w-4 h-4 text-white" />
-              <span>More Info</span>
+              <span>{t('hero_more_info', 'More Info')}</span>
             </Link>
           </div>
         </div>

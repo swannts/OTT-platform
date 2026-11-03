@@ -140,5 +140,30 @@ export const bn: Record<TranslationKey, string> = {
   community_reviews: 'কমিউনিটি রিভিউ',
   your_review: 'আপনি',
   no_reviews_yet: 'এখনও কোনো রিভিউ দেওয়া হয়নি। প্রথম রিভিউটি আপনি দিন!',
+
+  // Section Headers & Titles
+  trending_now: 'এখন ট্রেন্ডিং',
+  top_10_today: 'আজকের শীর্ষ ১০',
+  popular_tv_shows: 'জনপ্রিয় টিভি শো ও সিরিজ',
+  popular_movies: 'জনপ্রিয় সিনেমা',
+  continue_watching: 'দেখা চালিয়ে যান',
+  pay_per_view_exclusives: 'পে-পার-ভিউ এক্সক্লুসিভ',
+  live_now: 'সরাসরি সম্প্রচার',
+  free_movies: 'ফ্রি সিনেমা',
+  popular_videos: 'জনপ্রিয় ভিডিও ও রিমাইন্ডার',
+  recommended_titles: 'সুপারিশকৃত কনটেন্ট',
+
+  // Hero Section
+  hero_watch_now: 'এখন দেখুন',
+  hero_more_info: 'বিস্তারিত তথ্য',
+  hero_vip_badge: 'ভিআইপি এক্সক্লুসিভ ★',
+  hero_series_badge: 'এক্সক্লুসিভ সিরিজ ★',
+
+  // Membership & Account
+  membership: 'মেম্বারশিপ',
+  active: 'সক্রিয়',
+  manage_membership: 'মেম্বারশিপ পরিচালনা',
+  you_have: 'আপনার বাকি আছে',
+  days_remaining: 'মেয়াদ',
 };
 

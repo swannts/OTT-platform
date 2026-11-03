@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { User as UserIcon, CheckCircle2, AlertCircle, Save, Camera, Mail, Phone, Calendar, Sparkles, Crown, Upload, X } from 'lucide-react';
 import { Spinner } from '@/components/ui';
+import { useLanguage } from '@/providers';
 import { formatDhakaDate, formatDaysRemaining } from '@/lib/datetime';
 import type { User, SubscriptionStatus } from '@/types';
 import type { UpdateProfileInput } from '../schemas/account.schema';
@@ -40,6 +41,7 @@ export function ProfileSection({
   isUpdating,
   onNavigateTab,
 }: ProfileSectionProps) {
+  const { t, locale } = useLanguage();
   const [firstName, setFirstName] = useState(user.first_name || user.name?.split(' ')[0] || '');
   const [lastName, setLastName] = useState(user.last_name || user.name?.split(' ').slice(1).join(' ') || '');
   const [email, setEmail] = useState(user.email || '');
@@ -312,10 +314,12 @@ export function ProfileSection({
             </div>
             <div>
               <div className="flex items-center space-x-2.5">
-                <span className="text-xs uppercase font-extrabold tracking-wider text-gray-400">Membership</span>
+                <span className="text-xs uppercase font-extrabold tracking-wider text-gray-400">
+                  {t('membership', 'Membership')}
+                </span>
                 {isSubscribed ? (
                   <span className="bg-[#E5B869]/20 text-[#E5B869] border border-[#E5B869]/40 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full tracking-wider">
-                    Active
+                    {t('active', 'Active')}
                   </span>
                 ) : (
                   <span className="bg-white/10 text-gray-400 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full">
@@ -329,11 +333,11 @@ export function ProfileSection({
               <p className="text-xs text-gray-400 mt-1">
                 {isSubscribed ? (
                   <>
-                    You have{' '}
+                    {t('you_have', 'You have')}{' '}
                     <span className="text-white font-bold">
-                      {formatDaysRemaining(subscription?.days_left)}
+                      {formatDaysRemaining(subscription?.days_left, locale)}
                     </span>{' '}
-                    remaining{renewalDate ? ` • Renews ${formatDhakaDate(renewalDate)}` : ''}.
+                    {t('days_remaining', 'remaining')}{renewalDate ? ` • Renews ${formatDhakaDate(renewalDate)}` : ''}.
                   </>
                 ) : (
                   'Upgrade today to stream ad-free 4K video content and access all premium channels.'
@@ -349,14 +353,14 @@ export function ProfileSection({
                 onClick={() => onNavigateTab('billing')}
                 className="bg-white/10 hover:bg-white/20 text-white font-semibold text-xs px-4 py-2.5 rounded-xl border border-white/10 transition-colors cursor-pointer"
               >
-                Manage Membership
+                {t('manage_membership', 'Manage Membership')}
               </button>
             ) : (
               <Link
                 href="/account?tab=billing"
                 className="bg-white/10 hover:bg-white/20 text-white font-semibold text-xs px-4 py-2.5 rounded-xl border border-white/10 transition-colors"
               >
-                Manage Membership
+                {t('manage_membership', 'Manage Membership')}
               </Link>
             )}
             {!isSubscribed && (

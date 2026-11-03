@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Crown, Clock, CheckCircle2, AlertTriangle, Film, Receipt, ChevronRight } from 'lucide-react';
 import { Spinner } from '@/components/ui';
+import { useLanguage } from '@/providers';
 import { accountApi } from '../api/account.client';
 import { formatDhakaDate, formatDhakaDateTime, formatDaysRemaining } from '@/lib/datetime';
 import type { BillingSubscriptionRecord, BillingPayPerViewRecord, SubscriptionStatus } from '@/types';
@@ -14,6 +15,7 @@ interface BillingSectionProps {
 }
 
 export function BillingSection({ subscription, onRefresh }: BillingSectionProps) {
+  const { t, locale } = useLanguage();
   const [history, setHistory] = useState<{
     subscriptions: BillingSubscriptionRecord[];
     pay_per_view: BillingPayPerViewRecord[];
@@ -120,7 +122,7 @@ export function BillingSection({ subscription, onRefresh }: BillingSectionProps)
                 )}
                 {subscription?.days_left !== undefined && subscription?.days_left !== null && (
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#E5B869]/15 text-[#E5B869] border border-[#E5B869]/30">
-                    {formatDaysRemaining(subscription.days_left)} remaining
+                    {formatDaysRemaining(subscription.days_left, locale)} {t('days_remaining', 'remaining')}
                   </span>
                 )}
               </div>

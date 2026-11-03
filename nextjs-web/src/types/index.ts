@@ -38,9 +38,13 @@ export interface LoginResponse extends AuthResponse {
 export interface MediaItem {
   id: string | number;
   name: string;
+  name_en?: string;
+  name_bn?: string;
   title?: string;
   type: 'movie' | 'tvshow' | 'episode' | 'video' | 'livetv';
   description?: string;
+  description_en?: string;
+  description_bn?: string;
   poster_image?: string;
   poster_url?: string;
   thumbnail_image?: string;
@@ -80,8 +84,12 @@ export interface SeoMetadata {
 export interface ContentDetails {
   id: string | number;
   name: string;
+  name_en?: string;
+  name_bn?: string;
   type: string;
   description: string;
+  description_en?: string;
+  description_bn?: string;
   poster_image: string;
   thumbnail_image?: string;
   banner_image?: string;
@@ -123,6 +131,8 @@ export interface EpisodeItem {
   name: string;
   episode_number: number;
   description?: string;
+  description_en?: string;
+  description_bn?: string;
   poster_image?: string;
   blurhash?: string;
   duration?: string;
@@ -152,6 +162,8 @@ export interface LiveChannel {
   access?: string;
   category?: string;
   description?: string;
+  description_en?: string;
+  description_bn?: string;
   poster_image?: string;
   blurhash?: string;
   poster_url?: string;
@@ -167,6 +179,8 @@ export interface LiveChannel {
     name?: string;
     category?: string;
     description?: string;
+  description_en?: string;
+  description_bn?: string;
     poster_url?: string;
     poster_tv_image?: string;
     server_url?: string;
@@ -208,6 +222,8 @@ export interface Plan {
   duration: string;
   duration_value: number;
   description?: string;
+  description_en?: string;
+  description_bn?: string;
   plan_type?: PlanLimitation[];
 }
 
@@ -280,6 +296,8 @@ export interface NotificationItem {
   title?: string;
   body?: string;
   description?: string;
+  description_en?: string;
+  description_bn?: string;
   read?: boolean;
   read_at?: string | null;
   created_at?: string;
@@ -298,6 +316,8 @@ export interface Episode {
   blurhash?: string;
   thumbnail_image?: string;
   description?: string;
+  description_en?: string;
+  description_bn?: string;
   duration?: string;
   access?: 'free' | 'paid' | 'unlock';
   has_content_access?: boolean;

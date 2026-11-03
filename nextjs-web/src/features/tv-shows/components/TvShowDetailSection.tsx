@@ -19,6 +19,7 @@ import {
   Info,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/providers';
 import { api } from '@/lib/api';
 import { ReviewSection } from '@/components/shared';
 import { SafeImage } from '@/components/ui';
@@ -34,10 +35,14 @@ export default function TvShowDetailSection({
   initialEpisodes,
 }: TvShowDetailSectionProps) {
   const { user } = useAuth();
+  const { t, locale } = useLanguage();
   const [show] = useState<ContentDetails>(initialShow);
   const [episodes] = useState<EpisodeItem[]>(initialEpisodes);
   const [inWatchlist, setInWatchlist] = useState<boolean>(initialShow.is_watchlist || false);
   const [isUpdatingWatchlist, setIsUpdatingWatchlist] = useState(false);
+
+  const displayName = locale === 'bn' ? (show.name_bn || show.name) : (show.name_en || show.name);
+  const displayDescription = locale === 'bn' ? (show.description_bn || show.description) : (show.description_en || show.description);
   const [copiedShare, setCopiedShare] = useState(false);
   const [selectedSeason, setSelectedSeason] = useState<number>(1);
 
@@ -144,7 +149,7 @@ export default function TvShowDetailSection({
 
             {/* Title */}
             <h1 className="font-serif-title text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-[1.1] drop-shadow-xl">
-              {show.name}
+              {displayName}
             </h1>
 
             {/* Genres */}
@@ -163,9 +168,11 @@ export default function TvShowDetailSection({
             </div>
 
             {/* Synopsis */}
-            <p className="text-sm sm:text-base text-gray-200 leading-relaxed font-normal max-w-2xl drop-shadow">
-              {show.description}
-            </p>
+            {displayDescription && (
+              <p className="text-sm sm:text-base text-gray-200 leading-relaxed font-normal max-w-2xl drop-shadow">
+                {displayDescription}
+              </p>
+            )}
 
             {/* Primary Action Buttons */}
             <div className="flex flex-wrap items-center gap-3 pt-2">

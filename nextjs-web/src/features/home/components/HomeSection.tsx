@@ -8,6 +8,7 @@ import { MediaRow } from '@/components/shared';
 import LiveNowSection from './LiveNowSection';
 import { MediaItem, LiveChannel } from '@/types';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/providers';
 
 interface HomeSectionProps {
   initialBanners: MediaItem[];
@@ -30,6 +31,7 @@ export default function HomeSection({
 }: HomeSectionProps) {
   const dispatch = useAppDispatch();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const state = useAppSelector(selectHomeState);
 
   useEffect(() => {
@@ -82,7 +84,7 @@ export default function HomeSection({
         {/* Continue Watching (User specific) */}
         {continueWatching.length > 0 && (
           <MediaRow
-            title="Continue Watching"
+            title={t('continue_watching', 'Continue Watching')}
             items={continueWatching}
             aspectRatio="backdrop"
           />
@@ -91,7 +93,7 @@ export default function HomeSection({
         {/* Trending / Latest Movies */}
         {latestMovies.length > 0 && (
           <MediaRow
-            title="Trending Now"
+            title={t('trending_now', 'Trending Now')}
             items={latestMovies}
             moreHref="/movies"
             aspectRatio="backdrop"
@@ -104,7 +106,7 @@ export default function HomeSection({
         {/* Top 10 Today with Rank badges */}
         {top10.length > 0 && (
           <MediaRow
-            title="Top 10 Today"
+            title={t('top_10_today', 'Top 10 Today')}
             items={top10}
             showRank={true}
             aspectRatio="poster"
@@ -115,7 +117,7 @@ export default function HomeSection({
         {/* Featured TV Shows & Series */}
         {tvShows.length > 0 && (
           <MediaRow
-            title="Popular TV Shows & Series"
+            title={t('popular_tv_shows', 'Popular TV Shows & Series')}
             items={tvShows}
             moreHref="/tv-shows"
             aspectRatio="backdrop"
@@ -125,7 +127,7 @@ export default function HomeSection({
         {/* Popular Islamic Movies */}
         {popularMovies.length > 0 && (
           <MediaRow
-            title="Popular Movies"
+            title={t('popular_movies', 'Popular Movies')}
             items={popularMovies}
             moreHref="/movies"
             aspectRatio="backdrop"
@@ -135,7 +137,7 @@ export default function HomeSection({
         {/* Pay-Per-View Rentals */}
         {payPerView.length > 0 && (
           <MediaRow
-            title="Pay-Per-View Exclusives"
+            title={t('pay_per_view_exclusives', 'Pay-Per-View Exclusives')}
             items={payPerView}
             moreHref="/movies"
             aspectRatio="backdrop"

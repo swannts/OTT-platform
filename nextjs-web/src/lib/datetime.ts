@@ -102,14 +102,23 @@ export function formatDhakaDateTime(
 }
 
 /**
- * Safely format remaining days as an integer with proper pluralization (e.g. "365 days", "1 day").
+ * Safely format remaining days as an integer with proper pluralization (e.g. "365 days", "1 day", "৩৬৫ দিন").
  * Never displays ugly floating-point decimals like "364.97763850403936".
  */
-export function formatDaysRemaining(value: number | string | null | undefined): string {
-  if (value === null || value === undefined || value === '') return '0 days';
-  const parsed = typeof value === 'string' ? parseFloat(value) : value;
-  if (isNaN(parsed) || parsed <= 0) return '0 days';
+export function formatDaysRemaining(value: number | string | null | undefined, locale?: string): string {
+  if (value === null || value === undefined || value === '') {
+    return locale === 'bn' ? '০ দিন' : '0 days';
+  }
+  const parsed = typeof value === 'string' ? parseFloat(value) : Number(value);
+  if (isNaN(parsed) || parsed <= 0) {
+    return locale === 'bn' ? '০ দিন' : '0 days';
+  }
   const rounded = Math.ceil(parsed);
+  if (locale === 'bn') {
+    const bnDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+    const bnStr = String(rounded).replace(/[0-9]/g, (d) => bnDigits[Number(d)]);
+    return `${bnStr} দিন`;
+  }
   return `${rounded} ${rounded === 1 ? 'day' : 'days'}`;
 }
 

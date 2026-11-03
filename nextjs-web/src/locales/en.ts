@@ -138,6 +138,31 @@ export const en = {
   community_reviews: 'Community Reviews',
   your_review: 'You',
   no_reviews_yet: 'No reviews posted yet. Be the first to share your review!',
+
+  // Section Headers & Titles
+  trending_now: 'Trending Now',
+  top_10_today: 'Top 10 Today',
+  popular_tv_shows: 'Popular TV Shows & Series',
+  popular_movies: 'Popular Movies',
+  continue_watching: 'Continue Watching',
+  pay_per_view_exclusives: 'Pay-Per-View Exclusives',
+  live_now: 'Live Now',
+  free_movies: 'Free Movies',
+  popular_videos: 'Popular Videos & Reminders',
+  recommended_titles: 'Recommended Titles',
+
+  // Hero Section
+  hero_watch_now: 'Watch Now',
+  hero_more_info: 'More Info',
+  hero_vip_badge: 'VIP EXCLUSIVE ★',
+  hero_series_badge: 'EXCLUSIVE SERIES ★',
+
+  // Membership & Account
+  membership: 'Membership',
+  active: 'Active',
+  manage_membership: 'Manage Membership',
+  you_have: 'You have',
+  days_remaining: 'remaining',
 };
 
 export type TranslationKey = keyof typeof en;
