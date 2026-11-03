@@ -137,7 +137,7 @@ class LiveTvChannel extends BaseModel
         }
 
         $items = LiveTvChannel::select([
-            'id','name','slug','plan_id','description','status','access','category_id','poster_url','poster_tv_url',
+            'id','name','name_bn','slug','plan_id','description','description_bn','status','access','category_id','poster_url','poster_tv_url',
         ])
         ->with([
             'plan:id,level',
@@ -165,7 +165,7 @@ class LiveTvChannel extends BaseModel
     public static function get_channel()
     {
         $items = LiveTvChannel::select([
-            'id','category_id','name','plan_id','slug','description','status','access','poster_url','poster_tv_url',
+            'id','category_id','name','name_bn','plan_id','slug','description','description_bn','status','access','poster_url','poster_tv_url',
         ])
         ->with([
             'plan:id,level',
@@ -193,7 +193,7 @@ class LiveTvChannel extends BaseModel
     public static function get_tvChannels_catgory_wise($category)
     {
         $items = LiveTvChannel::select([
-            'id','name','plan_id','description','status','access','category_id','poster_url','poster_tv_url'
+            'id','name','name_bn','plan_id','description','description_bn','status','access','category_id','poster_url','poster_tv_url'
         ])
         ->with([
             'plan:id,level',
