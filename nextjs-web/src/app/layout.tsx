@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Playfair_Display, Inter } from 'next/font/google';
 import './globals.css';
-import { AuthProvider, StoreProvider, LanguageProvider } from '@/providers';
+import { AuthProvider, StoreProvider, LanguageProvider, RuntimeErrorGuard } from '@/providers';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import NavigationProgress from '@/components/layout/NavigationProgress';
@@ -89,18 +89,20 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={`dark ${playfair.variable} ${inter.variable}`}>
       <body suppressHydrationWarning className="bg-[#070a0e] text-[#f8fafc] font-sans min-h-screen flex flex-col antialiased selection:bg-[#e5b869]/30 selection:text-[#e5b869]">
-        <StoreProvider>
-          <AuthProvider>
-            <LanguageProvider>
-              <NavigationProgress />
-              <Navbar />
-              <main className="flex-1 pb-12">
-                {children}
-              </main>
-              <Footer />
-            </LanguageProvider>
-          </AuthProvider>
-        </StoreProvider>
+        <RuntimeErrorGuard>
+          <StoreProvider>
+            <AuthProvider>
+              <LanguageProvider>
+                <NavigationProgress />
+                <Navbar />
+                <main className="flex-1 pb-12">
+                  {children}
+                </main>
+                <Footer />
+              </LanguageProvider>
+            </AuthProvider>
+          </StoreProvider>
+        </RuntimeErrorGuard>
       </body>
     </html>
   );

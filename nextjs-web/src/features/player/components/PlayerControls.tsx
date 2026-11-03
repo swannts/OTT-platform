@@ -14,7 +14,7 @@ import {
   PictureInPicture,
 } from 'lucide-react';
 import PlayerTimeline from './PlayerTimeline';
-import QualityMenu from './QualityMenu';
+import QualityMenu, { HlsQualityItem } from './QualityMenu';
 import { formatTime, formatRemainingTime } from '../utils/formatTime';
 import { VideoQuality } from '@/types';
 
@@ -25,6 +25,7 @@ interface PlayerControlsProps {
   duration: number;
   bufferedTime?: number;
   onSeek: (time: number) => void;
+  onSeekingChange?: (seeking: boolean) => void;
   onRewind10: () => void;
   onForward10: () => void;
   volume: number; // 0 to 1
@@ -36,6 +37,7 @@ interface PlayerControlsProps {
   qualities?: VideoQuality[];
   selectedQualityUrl: string;
   onQualityChange: (url: string, urlType: string) => void;
+  hlsQualities?: HlsQualityItem[];
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
   onTogglePip?: () => void;
@@ -50,6 +52,7 @@ export default function PlayerControls({
   duration,
   bufferedTime = 0,
   onSeek,
+  onSeekingChange,
   onRewind10,
   onForward10,
   volume,
@@ -61,6 +64,7 @@ export default function PlayerControls({
   qualities = [],
   selectedQualityUrl,
   onQualityChange,
+  hlsQualities = [],
   isFullscreen,
   onToggleFullscreen,
   onTogglePip,
@@ -82,6 +86,7 @@ export default function PlayerControls({
         duration={duration}
         bufferedTime={bufferedTime}
         onSeek={onSeek}
+        onSeekingChange={onSeekingChange}
         isLive={isLive}
       />
 
@@ -191,6 +196,7 @@ export default function PlayerControls({
             qualities={qualities}
             selectedQualityUrl={selectedQualityUrl}
             onQualityChange={onQualityChange}
+            hlsQualities={hlsQualities}
           />
 
           {/* Picture in Picture */}

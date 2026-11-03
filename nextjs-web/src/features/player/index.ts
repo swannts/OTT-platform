@@ -1,4 +1,5 @@
 export { default as VideoPlayer } from './components/VideoPlayer';
+export { default as VidstackPlayer } from './components/VidstackPlayer';
 export { default as CustomVideoPlayer } from './components/CustomVideoPlayer';
 export { default as LockedPlayer } from './components/LockedPlayer';
 export { default as PlayerControls } from './components/PlayerControls';

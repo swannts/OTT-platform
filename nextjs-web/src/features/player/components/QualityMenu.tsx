@@ -1,8 +1,14 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Settings, Check, Gauge, Layers } from 'lucide-react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { Settings, Check, Gauge, Layers, Sparkles } from 'lucide-react';
 import { VideoQuality } from '@/types';
+
+export interface HlsQualityItem {
+  label: string;
+  selected: boolean;
+  select: () => void;
+}
 
 interface QualityMenuProps {
   playbackRate: number;
@@ -10,6 +16,7 @@ interface QualityMenuProps {
   qualities?: VideoQuality[];
   selectedQualityUrl: string;
   onQualityChange: (url: string, urlType: string) => void;
+  hlsQualities?: HlsQualityItem[];
 }
 
 const PLAYBACK_RATES = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
@@ -20,6 +27,7 @@ export default function QualityMenu({
   qualities = [],
   selectedQualityUrl,
   onQualityChange,
+  hlsQualities = [],
 }: QualityMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [tab, setTab] = useState<'main' | 'speed' | 'quality'>('main');
@@ -38,7 +46,23 @@ export default function QualityMenu({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
-  const hasMultipleQualities = qualities.length > 1;
+  const hasHlsQualities = hlsQualities.length > 1;
+  const hasMultipleSources = qualities.length > 1;
+  const showQualityOption = hasHlsQualities || hasMultipleSources;
+
+  // Find active quality label to display in the main settings row
+  const activeQualityLabel = useMemo(() => {
+    const activeHls = hlsQualities.find((h) => h.selected);
+    if (activeHls) return activeHls.label;
+
+    const matchedSource = qualities.find((q) => q.url === selectedQualityUrl);
+    if (matchedSource) {
+      const raw = matchedSource.quality || 'HD';
+      return raw.replace(/youtube/gi, 'Cinema HD').replace(/default_quality/gi, '1080p FHD');
+    }
+
+    return 'Auto';
+  }, [hlsQualities, qualities, selectedQualityUrl]);
 
   return (
     <div className="relative inline-block text-left" ref={menuRef}>
@@ -61,7 +85,7 @@ export default function QualityMenu({
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 bottom-full mb-3 w-56 rounded-2xl bg-[#0b1017]/95 backdrop-blur-xl border border-[#E5B869]/30 shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute right-0 bottom-full mb-3 w-64 rounded-2xl bg-[#0b1017]/95 backdrop-blur-2xl border border-[#E5B869]/30 shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
           {tab === 'main' && (
             <div className="space-y-1">
               <div className="px-3 py-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider border-b border-white/10">
@@ -84,7 +108,7 @@ export default function QualityMenu({
               </button>
 
               {/* Quality Option */}
-              {hasMultipleQualities && (
+              {showQualityOption && (
                 <button
                   type="button"
                   onClick={() => setTab('quality')}
@@ -92,9 +116,11 @@ export default function QualityMenu({
                 >
                   <div className="flex items-center space-x-2">
                     <Layers className="w-4 h-4 text-[#E5B869]" />
-                    <span>Quality / Source</span>
+                    <span>Video Quality</span>
                   </div>
-                  <span className="text-[#E5B869] font-bold">Auto ›</span>
+                  <span className="text-[#E5B869] font-bold truncate max-w-[90px] text-right">
+                    {activeQualityLabel} ›
+                  </span>
                 </button>
               )}
             </div>
@@ -137,7 +163,7 @@ export default function QualityMenu({
 
           {/* Quality Submenu */}
           {tab === 'quality' && (
-            <div className="space-y-1">
+            <div className="space-y-2">
               <button
                 type="button"
                 onClick={() => setTab('main')}
@@ -146,30 +172,80 @@ export default function QualityMenu({
                 <span>‹ Back to Settings</span>
               </button>
 
-              <div className="py-1 max-h-48 overflow-y-auto">
-                {qualities.map((q, idx) => {
-                  const isSelected = selectedQualityUrl === q.url;
-                  const label = q.quality || `Source ${idx + 1}`;
-                  return (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => {
-                        onQualityChange(q.url, q.url_type || '');
-                        setIsOpen(false);
-                        setTab('main');
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
-                        isSelected
-                          ? 'bg-[#E5B869]/20 text-[#E5B869] font-bold'
-                          : 'text-gray-300 hover:text-white hover:bg-white/10'
-                      }`}
-                    >
-                      <span className="truncate">{label}</span>
-                      {isSelected && <Check className="w-3.5 h-3.5 flex-shrink-0 ml-2" />}
-                    </button>
-                  );
-                })}
+              <div className="max-h-60 overflow-y-auto space-y-2">
+                {/* 1. Adaptive HLS Resolutions */}
+                {hasHlsQualities && (
+                  <div>
+                    <p className="px-3 py-1 text-[10px] font-bold text-[#E5B869] uppercase tracking-wider flex items-center space-x-1">
+                      <Sparkles className="w-3 h-3" />
+                      <span>Adaptive Resolutions</span>
+                    </p>
+                    <div className="py-0.5 space-y-0.5">
+                      {hlsQualities.map((hls, idx) => (
+                        <button
+                          key={`hls-${idx}`}
+                          type="button"
+                          onClick={() => {
+                            hls.select();
+                            setIsOpen(false);
+                            setTab('main');
+                          }}
+                          className={`w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
+                            hls.selected
+                              ? 'bg-[#E5B869]/20 text-[#E5B869] font-bold'
+                              : 'text-gray-300 hover:text-white hover:bg-white/10'
+                          }`}
+                        >
+                          <span>{hls.label}</span>
+                          {hls.selected && <Check className="w-3.5 h-3.5 flex-shrink-0 ml-2" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. Stream Sources & Renditions */}
+                {hasMultipleSources && (
+                  <div>
+                    {hasHlsQualities && (
+                      <div className="border-t border-white/10 my-1 pt-1" />
+                    )}
+                    <p className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                      Stream Sources
+                    </p>
+                    <div className="py-0.5 space-y-0.5">
+                      {qualities.map((q, idx) => {
+                        const isSelected = selectedQualityUrl === q.url;
+                        const rawLabel = q.quality || `Source ${idx + 1}`;
+                        const label = rawLabel
+                          .replace(/youtube/gi, 'Cinema HD')
+                          .replace(/default_quality/gi, '1080p FHD');
+
+                        return (
+                          <button
+                            key={`src-${idx}`}
+                            type="button"
+                            onClick={() => {
+                              if (!isSelected) {
+                                onQualityChange(q.url, q.url_type || '');
+                              }
+                              setIsOpen(false);
+                              setTab('main');
+                            }}
+                            className={`w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
+                              isSelected
+                                ? 'bg-[#E5B869]/20 text-[#E5B869] font-bold'
+                                : 'text-gray-300 hover:text-white hover:bg-white/10'
+                            }`}
+                          >
+                            <span className="truncate">{label}</span>
+                            {isSelected && <Check className="w-3.5 h-3.5 flex-shrink-0 ml-2" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -178,4 +254,3 @@ export default function QualityMenu({
     </div>
   );
 }
-

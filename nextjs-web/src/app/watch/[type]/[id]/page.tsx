@@ -5,13 +5,16 @@ import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { ContentDetails } from '@/types';
 import { VideoPlayer } from '@/features/player';
+import { getSavedProgress } from '@/features/player/utils/playbackProgress';
 import { MediaRow } from '@/components/shared';
 import { Spinner } from '@/components/ui';
 import { ArrowLeft, Star, Clock, Calendar } from 'lucide-react';
+import { useLanguage } from '@/providers';
 
 export default function WatchPage() {
   const params = useParams();
   const router = useRouter();
+  const { t, locale } = useLanguage();
   const type = (params?.type as string) || 'movie';
   const id = params?.id as string;
 
@@ -54,6 +57,10 @@ export default function WatchPage() {
 
   const streamUrl = content.video_default_quality?.url || content.video_qualities?.[0]?.url || '';
   const urlType = content.video_default_quality?.url_type || 'HLS';
+  const initialResumeTime = getSavedProgress(content.id, type, content.watched_time);
+
+  const displayName = locale === 'bn' ? (content.name_bn || content.name) : (content.name_en || content.name);
+  const displayDescription = locale === 'bn' ? (content.description_bn || content.description) : (content.description_en || content.description);
 
   return (
     <div className="min-h-screen bg-[#07080b] pt-20 pb-20">
@@ -73,12 +80,12 @@ export default function WatchPage() {
             key={`${type}:${content.id}`}
             contentId={content.id}
             contentType={type}
-            title={content.name}
+            title={displayName}
             videoUrl={streamUrl}
             urlType={urlType}
             qualities={content.video_qualities || []}
             hasAccess={content.has_content_access === true}
-            initialTime={typeof content.watched_time === 'number' ? content.watched_time : 0}
+            initialTime={initialResumeTime}
             poster={content.banner_image || content.poster_image}
             onBack={() => router.back()}
           />
@@ -87,7 +94,7 @@ export default function WatchPage() {
         {/* Media Details Below Player */}
         <div className="glass-card p-6 sm:p-8 rounded-2xl space-y-4">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl sm:text-3xl font-black text-white">{content.name}</h1>
+            <h1 className="text-2xl sm:text-3xl font-black text-white">{displayName}</h1>
             {content.access === 'paid' && (
               <span className="bg-amber-500 text-black text-xs font-bold px-2.5 py-0.5 rounded-full uppercase">
                 VIP
@@ -116,9 +123,9 @@ export default function WatchPage() {
             )}
           </div>
 
-          {content.description && (
+          {displayDescription && (
             <p className="text-sm text-gray-300 leading-relaxed max-w-4xl">
-              {content.description}
+              {displayDescription}
             </p>
           )}
 
@@ -135,7 +142,7 @@ export default function WatchPage() {
 
         {/* More items */}
         {content.more_items && content.more_items.length > 0 && (
-          <MediaRow title="Recommended Titles" items={content.more_items} />
+          <MediaRow title={t('recommended_titles', 'Recommended Titles')} items={content.more_items} />
         )}
       </div>
     </div>

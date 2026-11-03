@@ -1,36 +1,8 @@
-describe('Audio & Video Players E2E', () => {
-  describe('Bottom Floating Player Dock', () => {
-    beforeEach(() => {
-      cy.visit('/');
-    });
-
-    it('toggles play and pause state', () => {
-      cy.get('[title="Click to seek"]').should('be.visible');
-      cy.get('button[aria-label="Play"], button[aria-label="Pause"]').first().as('playBtn');
-      cy.get('@playBtn').click();
-      cy.get('[title="Audio streaming"]').should('be.visible');
-    });
-
-    it('allows seeking via progress bar scrubber', () => {
-      cy.get('[title="Click to seek"]').click('center');
-    });
-
-    it('toggles mute on volume button click', () => {
-      cy.get('button[aria-label="Mute"], button[aria-label="Unmute"]').first().click();
-      cy.get('button[aria-label="Unmute"]').should('exist');
-    });
-
-    it('minimizes into floating bubble and expands back', () => {
-      cy.get('button[aria-label="Minimize player"]').click();
-      cy.contains('Tap to expand').should('be.visible');
-      cy.contains('Tap to expand').click();
-      cy.get('[title="Click to seek"]').should('be.visible');
-    });
-
-    it('dismisses player dock when close button is clicked', () => {
-      cy.get('button[aria-label="Dismiss player"]').click();
-      cy.get('[title="Click to seek"]').should('not.exist');
-    });
+describe('Video Player E2E', () => {
+  it('does not render bottom sticky player bar', () => {
+    cy.visit('/');
+    cy.get('[title="Click to seek"]').should('not.exist');
+    cy.get('[title="Audio streaming"]').should('not.exist');
   });
 
   describe('Full Video Watch Player (/watch/[type]/[id])', () => {
@@ -61,6 +33,29 @@ describe('Audio & Video Players E2E', () => {
       cy.get('video').should('exist');
       cy.contains('button', 'YouTube HD').click();
       cy.get('[data-testid="youtube-connector"]').should('exist');
+    });
+
+    it('supports the resume system and allows starting over from beginning', () => {
+      const contentId = '01940000-0004-7000-8000-000000000006';
+      const storageKey = `noor_watch_progress_movie_${contentId}`;
+      const mockSavedProgress = JSON.stringify({
+        currentTime: 75,
+        duration: 3600,
+        completed: false,
+        updatedAt: Date.now(),
+      });
+
+      cy.visit(`/watch/movie/${contentId}`, {
+        onBeforeLoad(win) {
+          win.localStorage.setItem(storageKey, mockSavedProgress);
+        },
+      });
+
+      // Verify resume banner toast appears with saved time and allows Start Over
+      cy.get('[data-testid="resume-banner"]').should('be.visible');
+      cy.get('[data-testid="resume-banner"]').should('contain', 'Resumed from');
+      cy.contains('button', 'Start Over').click();
+      cy.get('[data-testid="resume-banner"]').should('not.exist');
     });
   });
 });

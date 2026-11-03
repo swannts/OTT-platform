@@ -42,7 +42,15 @@ export const loadActiveTrack = createAsyncThunk<MediaItem | null, void>(
         return normalizeMediaItem(topList[0]);
       }
 
-      return null;
+      // 3. Fallback default stream preview track when guest/unauthenticated
+      return {
+        id: '01940000-0004-7000-8000-000000000006',
+        name: 'The Message: Desert Journey',
+        type: 'movie',
+        poster_image: 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=400&auto=format&fit=crop&q=80',
+        genres: ['Historical', 'Documentary'],
+        duration: '2h 15m',
+      } as MediaItem;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to load active track';
       return rejectWithValue(message);
