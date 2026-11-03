@@ -27,6 +27,27 @@ export default function WatchPage() {
       if (!id) return;
       setIsLoading(true);
       try {
+        if (type === 'livetv' || type === 'live') {
+          const liveData = await api.getLiveTvDetails(id);
+          setContent({
+            id: liveData.id || id,
+            name: liveData.details.name || 'Live Channel',
+            name_en: liveData.details.name_en,
+            name_bn: liveData.details.name_bn,
+            type: 'livetv',
+            description: liveData.details.description || '',
+            description_en: liveData.details.description_en,
+            description_bn: liveData.details.description_bn,
+            access: liveData.details.access || 'free',
+            has_content_access: liveData.details.has_content_access === 1 || liveData.details.has_content_access === true,
+            poster_image: liveData.details.thumbnail_image || '',
+            banner_image: liveData.details.thumbnail_image || '',
+            video_qualities: liveData.video_qualities,
+            video_default_quality: liveData.video_qualities[0],
+          });
+          return;
+        }
+
         const contentType = ['movie', 'tvshow', 'episode', 'video'].includes(type)
           ? (type as 'movie' | 'tvshow' | 'episode' | 'video')
           : 'movie';
@@ -87,6 +108,7 @@ export default function WatchPage() {
             hasAccess={content.has_content_access === true}
             initialTime={initialResumeTime}
             poster={content.banner_image || content.poster_image}
+            isLive={type === 'livetv' || type === 'live'}
             onBack={() => router.back()}
           />
         </div>

@@ -22,6 +22,7 @@ import {
   getSavedProgress,
 } from '../utils/playbackProgress';
 import { VideoQuality } from '@/types';
+import { extractYouTubeId, isYouTubeVideo } from '@/lib/youtube';
 
 export interface VidstackPlayerProps {
   contentId: string | number;
@@ -113,13 +114,14 @@ function VidstackCinematicOverlay({
 
   // Compute effective initial resume time from initialTime prop or local progress
   const effectiveInitialTime = useMemo(() => {
+    if (isLive) return 0;
     return getSavedProgress(contentId, contentType, initialTime);
-  }, [contentId, contentType, initialTime]);
+  }, [contentId, contentType, initialTime, isLive]);
 
   // Show resume notification toast immediately on mount if saved progress exists from previous session
   useEffect(() => {
-    // Only display large resume toast when entering video initially, not mid-playback quality switch
-    if (!isQualitySwitch && effectiveInitialTime > 5) {
+    // Only display large resume toast when entering video initially, not mid-playback quality switch, and not for live streams
+    if (!isLive && !isQualitySwitch && effectiveInitialTime > 5) {
       setResumedFromTime(effectiveInitialTime);
       setShowResumeBanner(true);
       if (resumeBannerTimerRef.current) clearTimeout(resumeBannerTimerRef.current);
@@ -127,11 +129,11 @@ function VidstackCinematicOverlay({
         setShowResumeBanner(false);
       }, 8000);
     }
-  }, [effectiveInitialTime, isQualitySwitch]);
+  }, [effectiveInitialTime, isQualitySwitch, isLive]);
 
   // Initial resume seek once duration and canPlay are loaded
   useEffect(() => {
-    if (!hasAppliedInitialTime && effectiveInitialTime > 0 && canPlay) {
+    if (!isLive && !hasAppliedInitialTime && effectiveInitialTime > 0 && canPlay) {
       if (!duration || effectiveInitialTime < duration * 0.95) {
         try {
           remote.seek(effectiveInitialTime);
@@ -143,7 +145,7 @@ function VidstackCinematicOverlay({
       }
       setHasAppliedInitialTime(true);
     }
-  }, [hasAppliedInitialTime, effectiveInitialTime, canPlay, duration, remote, triggerHud, initialTime]);
+  }, [hasAppliedInitialTime, effectiveInitialTime, canPlay, duration, remote, triggerHud, initialTime, isLive]);
 
   // Restart playback from beginning handler
   const handleRestartFromBeginning = useCallback(() => {
@@ -196,32 +198,32 @@ function VidstackCinematicOverlay({
 
   // Periodic Progress Saving while actively playing (every 8s)
   useEffect(() => {
-    if (!contentId || currentTime <= 5 || !isPlaying) return;
+    if (isLive || !contentId || currentTime <= 5 || !isPlaying) return;
 
     if (Math.abs(currentTime - lastSavedTimeRef.current) >= 8) {
       lastSavedTimeRef.current = currentTime;
       savePlaybackProgress(contentId, contentType, currentTime, duration);
     }
-  }, [contentId, contentType, currentTime, duration, isPlaying]);
+  }, [contentId, contentType, currentTime, duration, isPlaying, isLive]);
 
   // Immediate save on pause
   useEffect(() => {
-    if (paused && contentId && currentTime > 5) {
+    if (!isLive && paused && contentId && currentTime > 5) {
       savePlaybackProgress(contentId, contentType, currentTime, duration);
     }
-  }, [paused, contentId, contentType, currentTime, duration]);
+  }, [paused, contentId, contentType, currentTime, duration, isLive]);
 
   // Handle video completion
   useEffect(() => {
-    if (ended && contentId) {
+    if (!isLive && ended && contentId) {
       savePlaybackProgress(contentId, contentType, duration || 0, duration);
     }
-  }, [ended, contentId, contentType, duration]);
+  }, [ended, contentId, contentType, duration, isLive]);
 
   // Persist progress on page unload or component unmount
   useEffect(() => {
     const handleBeforeUnload = () => {
-      if (contentId && currentTime > 5) {
+      if (!isLive && contentId && currentTime > 5) {
         savePlaybackProgress(contentId, contentType, currentTime, duration);
       }
     };
@@ -229,14 +231,14 @@ function VidstackCinematicOverlay({
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      if (contentId && currentTime > 5) {
+      if (!isLive && contentId && currentTime > 5) {
         savePlaybackProgress(contentId, contentType, currentTime, duration);
       }
       if (resumeBannerTimerRef.current) {
         clearTimeout(resumeBannerTimerRef.current);
       }
     };
-  }, [contentId, contentType, currentTime, duration]);
+  }, [contentId, contentType, currentTime, duration, isLive]);
 
   // Vidstack reactive adaptive HLS quality options
   const rawHlsQualities = useVideoQualityOptions({ auto: 'Auto' });
@@ -541,6 +543,11 @@ export default function VidstackPlayer({
 
   const resolvedSrc = useMemo(() => {
     if (!videoUrl) return '';
+    if (isYouTubeVideo(videoUrl, urlType)) {
+      const ytId = extractYouTubeId(videoUrl);
+      const canonicalYtUrl = ytId ? `https://www.youtube.com/watch?v=${ytId}` : videoUrl;
+      return { src: canonicalYtUrl, type: 'video/youtube' as const };
+    }
     const isHls = urlType?.toLowerCase() === 'hls' || videoUrl.includes('.m3u8');
     if (isHls) {
       return { src: videoUrl, type: 'application/x-mpegurl' as const };
@@ -548,16 +555,6 @@ export default function VidstackPlayer({
     return videoUrl;
   }, [videoUrl, urlType]);
 
-  // Gracefully pause player on component unmount to prevent dangling provider operations
-  useEffect(() => {
-    return () => {
-      if (playerRef.current) {
-        try {
-          playerRef.current.pause();
-        } catch {}
-      }
-    };
-  }, []);
 
   return (
     <div

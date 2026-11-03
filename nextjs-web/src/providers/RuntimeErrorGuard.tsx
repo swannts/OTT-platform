@@ -28,29 +28,64 @@ export function isHarmlessTeardownRejection(reason: unknown): boolean {
   );
 }
 
-// Immediate capture-phase registration at module load time (before React renders)
+// Immediate capture-phase registration and addEventListener wrapper
 if (typeof window !== 'undefined') {
-  window.addEventListener(
-    'unhandledrejection',
-    (event: PromiseRejectionEvent) => {
-      if (isHarmlessTeardownRejection(event.reason)) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
+  try {
+    const origAdd = window.addEventListener;
+    window.addEventListener = function (
+      type: string,
+      listener: EventListenerOrEventListenerObject,
+      options?: boolean | AddEventListenerOptions
+    ) {
+      if (type === 'unhandledrejection' && typeof listener === 'function') {
+        const wrapped = function (this: unknown, e: PromiseRejectionEvent) {
+          if (isHarmlessTeardownRejection(e?.reason)) {
+            if (e.preventDefault) e.preventDefault();
+            if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+            return;
+          }
+          return (listener as (e: PromiseRejectionEvent) => void).apply(this, [e]);
+        };
+        return origAdd.call(this, type, wrapped as EventListener, options);
       }
-    },
-    true
-  );
+      if (type === 'error' && typeof listener === 'function') {
+        const wrapped = function (this: unknown, e: ErrorEvent) {
+          if (isHarmlessTeardownRejection(e?.error || e?.message)) {
+            if (e.preventDefault) e.preventDefault();
+            if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+            return;
+          }
+          return (listener as (e: ErrorEvent) => void).apply(this, [e]);
+        };
+        return origAdd.call(this, type, wrapped as EventListener, options);
+      }
+      return origAdd.call(this, type, listener, options);
+    };
 
-  window.addEventListener(
-    'error',
-    (event: ErrorEvent) => {
-      if (isHarmlessTeardownRejection(event.error || event.message)) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-      }
-    },
-    true
-  );
+    origAdd.call(
+      window,
+      'unhandledrejection',
+      ((event: PromiseRejectionEvent) => {
+        if (isHarmlessTeardownRejection(event.reason)) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        }
+      }) as EventListener,
+      true
+    );
+
+    origAdd.call(
+      window,
+      'error',
+      ((event: ErrorEvent) => {
+        if (isHarmlessTeardownRejection(event.error || event.message)) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        }
+      }) as EventListener,
+      true
+    );
+  } catch {}
 }
 
 /**

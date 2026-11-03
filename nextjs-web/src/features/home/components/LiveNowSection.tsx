@@ -4,32 +4,41 @@ import React from 'react';
 import Link from 'next/link';
 import { Play, Crown, ArrowRight } from 'lucide-react';
 import { LiveChannel } from '@/types';
+import { useLanguage } from '@/providers';
 
 interface LiveNowSectionProps {
   channels?: LiveChannel[];
 }
 
 export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
+  const { t, locale } = useLanguage();
+
   if (!channels || channels.length === 0) {
     return null;
   }
 
+  const getChannelTitle = (ch: LiveChannel) => {
+    return locale === 'bn'
+      ? (ch.name_bn || ch.name || ch.details?.name_bn || ch.details?.name)
+      : (ch.name_en || ch.name || ch.details?.name_en || ch.details?.name);
+  };
+
   const featured = {
     id: channels[0].id,
-    title: channels[0].name || channels[0].details?.name || 'Live Broadcast',
-    location: channels[0].details?.category || 'Live Television',
+    title: getChannelTitle(channels[0]) || 'Live Broadcast',
+    location: channels[0].details?.category || channels[0].category || 'Live Television',
     thumbnail:
       channels[0].poster_image ||
       channels[0].thumbnail_image ||
       channels[0].poster_tv_image ||
       'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=800&auto=format&fit=crop&q=80',
-    watchUrl: `/watch/live/${channels[0].id}`,
+    watchUrl: '/live-tv',
   };
 
   const channelSlice = channels.slice(1, 5).map((ch, idx) => ({
     id: ch.id,
-    name: ch.name || ch.details?.name || `Channel ${ch.id}`,
-    subtitle: ch.details?.category || 'Live Channel',
+    name: getChannelTitle(ch) || `Channel ${ch.id}`,
+    subtitle: ch.details?.category || ch.category || 'Live Channel',
     logo:
       ch.poster_image ||
       ch.thumbnail_image ||
@@ -45,14 +54,14 @@ export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
         <div className="flex items-center">
           <span className="w-1 h-5 bg-[#E5B869] rounded-full inline-block mr-2.5 flex-shrink-0" />
           <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-            Live Now
+            {t('live_now', 'Live Now')}
           </h2>
         </div>
         <Link
           href="/live-tv"
           className="text-xs sm:text-sm text-[#E5B869] hover:text-[#f3cf8a] font-semibold transition-colors flex items-center space-x-1 group"
         >
-          <span>All Channels</span>
+          <span>{t('all_channels', 'All Channels')}</span>
           <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
         </Link>
       </div>

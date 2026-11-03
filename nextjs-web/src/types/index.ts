@@ -158,6 +158,8 @@ export interface CastMember {
 export interface LiveChannel {
   id: string | number;
   name: string;
+  name_en?: string;
+  name_bn?: string;
   slug?: string;
   access?: string;
   category?: string;
@@ -177,10 +179,12 @@ export interface LiveChannel {
   has_content_access?: boolean;
   details?: {
     name?: string;
+    name_en?: string;
+    name_bn?: string;
     category?: string;
     description?: string;
-  description_en?: string;
-  description_bn?: string;
+    description_en?: string;
+    description_bn?: string;
     poster_url?: string;
     poster_tv_image?: string;
     server_url?: string;
@@ -192,12 +196,26 @@ export interface LiveChannel {
 }
 
 export interface LiveTvPlaybackDetails {
+  id?: string | number;
   details: {
+    name?: string;
+    name_en?: string;
+    name_bn?: string;
+    type?: string;
+    access?: string;
+    category?: string;
+    description?: string;
+    description_en?: string;
+    description_bn?: string;
+    thumbnail_image?: string;
     has_content_access?: boolean | number;
+    required_plan_level?: number;
     server_url?: string | null;
     stream_type?: string | null;
+    [key: string]: unknown;
   };
   video_qualities: VideoQuality[];
+  suggested_content?: unknown[];
 }
 
 export interface PlanLimitation {

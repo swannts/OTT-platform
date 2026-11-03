@@ -4,6 +4,12 @@ export const bn: Record<TranslationKey, string> = {
   // Navigation
   nav_home: 'হোম',
   nav_live_tv: 'লাইভ টিভি',
+  live_tv_title: 'লাইভ ইসলামিক টেলিভিশন',
+  live_tv_desc: 'পবিত্র মক্কার মসজিদুল হারাম, মদিনার মসজিদে নববী ও আন্তর্জাতিক শিক্ষামূলক নেটওয়ার্ক থেকে ২৪/৭ সরাসরি সম্প্রচার।',
+  channel_guide: 'চ্যানেল তালিকা',
+  loading_channel: 'চ্যানেল লোড হচ্ছে…',
+  select_channel: 'স্ট্রিম শুরু করতে একটি চ্যানেল নির্বাচন করুন',
+  all_channels: 'সবগুলো চ্যানেল',
   nav_series: 'সিরিজ',
   nav_documentaries: 'প্রামাণ্যচিত্র',
   nav_journal: 'জার্নাল',

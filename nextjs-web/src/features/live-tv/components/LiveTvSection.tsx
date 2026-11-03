@@ -11,6 +11,7 @@ import { VideoPlayer } from '@/features/player';
 import { Radio, Tv } from 'lucide-react';
 import { LiveChannel } from '@/types';
 import { api } from '@/lib/api';
+import { useLanguage } from '@/providers';
 
 interface LiveTvSectionProps {
   initialChannels: LiveChannel[];
@@ -18,6 +19,7 @@ interface LiveTvSectionProps {
 
 export default function LiveTvSection({ initialChannels }: LiveTvSectionProps) {
   const dispatch = useAppDispatch();
+  const { t, locale } = useLanguage();
   const { channels: reduxChannels, selectedChannel } = useAppSelector(selectLiveTvState);
   const [playback, setPlayback] = useState<{ channelId: string | number; url: string; urlType: string; hasAccess: boolean } | null>(null);
 
@@ -41,18 +43,26 @@ export default function LiveTvSection({ initialChannels }: LiveTvSectionProps) {
         setPlayback({
           channelId: activeChannelId,
           url: result.video_qualities[0]?.url || result.details.server_url || '',
-          urlType: result.video_qualities[0]?.url_type || result.details.stream_type || 'HLS',
+          urlType: result.video_qualities[0]?.url_type || result.details.stream_type || 'YouTube',
           hasAccess: result.details.has_content_access === true || result.details.has_content_access === 1,
         });
       })
       .catch(() => {
-        if (!cancelled) setPlayback({ channelId: activeChannelId, url: '', urlType: 'HLS', hasAccess: false });
+        if (!cancelled) setPlayback({ channelId: activeChannelId, url: '', urlType: 'YouTube', hasAccess: false });
       });
 
     return () => { cancelled = true; };
   }, [activeChannelId]);
 
   const activePlayback = playback?.channelId === activeChannel?.id ? playback : null;
+
+  const getChannelName = (ch: LiveChannel) => {
+    return locale === 'bn' ? (ch.name_bn || ch.name) : (ch.name_en || ch.name);
+  };
+
+  const getChannelDescription = (ch: LiveChannel) => {
+    return locale === 'bn' ? (ch.description_bn || ch.description) : (ch.description_en || ch.description);
+  };
 
   return (
     <div className="min-h-screen pt-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pb-20 select-none">
@@ -61,9 +71,11 @@ export default function LiveTvSection({ initialChannels }: LiveTvSectionProps) {
           <Radio className="w-5 h-5 animate-pulse" />
         </div>
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white">Live Islamic Television</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
+            {t('live_tv_title', 'Live Islamic Television')}
+          </h1>
           <p className="text-xs sm:text-sm text-gray-400">
-            24/7 direct sacred broadcasts from Makkah Al-Mukarramah, Madinah Al-Munawwarah, and educational Islamic networks.
+            {t('live_tv_desc', '24/7 direct sacred broadcasts from Makkah Al-Mukarramah, Madinah Al-Munawwarah, and educational Islamic networks.')}
           </p>
         </div>
       </div>
@@ -76,23 +88,24 @@ export default function LiveTvSection({ initialChannels }: LiveTvSectionProps) {
             <div>
               {!activePlayback ? (
                 <div className="aspect-video rounded-2xl bg-[#0c1218] flex items-center justify-center text-gray-400" role="status">
-                  Loading channel…
+                  {t('loading_channel', 'Loading channel…')}
                 </div>
               ) : <VideoPlayer
                 key={`livetv:${activeChannel.id}`}
                 contentId={activeChannel.id}
                 contentType="livetv"
-                title={activeChannel.name}
+                title={getChannelName(activeChannel)}
                 videoUrl={activePlayback?.url || ''}
-                urlType={activePlayback?.urlType || 'HLS'}
+                urlType={activePlayback?.urlType || 'YouTube'}
                 hasAccess={activePlayback?.hasAccess === true}
                 poster={activeChannel.poster_image}
+                isLive={true}
               />}
-              <div className="mt-4 bg-[#0c1218] border border-white/10 p-5 rounded-2xl space-y-2 shadow-lg">
+              <div className="glass-card mt-4 bg-[#0c1218] border border-white/10 p-5 rounded-2xl space-y-2 shadow-lg" data-testid="channel-details-card">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-bold text-white flex items-center space-x-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping inline-block mr-2" />
-                    <span>{activeChannel.name}</span>
+                    <span>{getChannelName(activeChannel)}</span>
                   </h2>
                   {activeChannel.category && (
                     <span className="text-xs bg-white/10 text-gray-300 px-3 py-1 rounded-full font-medium border border-white/5">
@@ -100,16 +113,16 @@ export default function LiveTvSection({ initialChannels }: LiveTvSectionProps) {
                     </span>
                   )}
                 </div>
-                {activeChannel.description && (
+                {getChannelDescription(activeChannel) && (
                   <p className="text-xs sm:text-sm text-gray-300 leading-relaxed">
-                    {activeChannel.description}
+                    {getChannelDescription(activeChannel)}
                   </p>
                 )}
               </div>
             </div>
           ) : (
             <div className="aspect-video bg-[#0c1218] border border-white/10 rounded-2xl flex items-center justify-center text-gray-400">
-              Select a channel to start streaming
+              {t('select_channel', 'Select a channel to start streaming')}
             </div>
           )}
         </div>
@@ -118,12 +131,13 @@ export default function LiveTvSection({ initialChannels }: LiveTvSectionProps) {
         <div className="space-y-4">
           <h3 className="text-sm font-bold text-gray-300 uppercase tracking-wider flex items-center space-x-2">
             <Tv className="w-4 h-4 text-[#E5B869]" />
-            <span>Channel Guide ({channels.length})</span>
+            <span>{t('channel_guide', 'Channel Guide')} ({channels.length})</span>
           </h3>
 
           <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
             {channels.map((channel) => {
               const isSelected = activeChannel?.id === channel.id;
+              const channelTitle = getChannelName(channel);
               return (
                 <button
                   key={channel.id}
@@ -137,7 +151,7 @@ export default function LiveTvSection({ initialChannels }: LiveTvSectionProps) {
                 >
                   <img
                     src={channel.poster_image || channel.thumbnail_image || 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=100&auto=format&fit=crop&q=80'}
-                    alt={channel.name}
+                    alt={channelTitle}
                     className="w-14 h-14 rounded-lg object-cover flex-shrink-0 bg-neutral-900 border border-white/10"
                   />
                   <div className="min-w-0 flex-1">
@@ -148,7 +162,7 @@ export default function LiveTvSection({ initialChannels }: LiveTvSectionProps) {
                       </span>
                     </div>
                     <h4 className="text-sm font-semibold text-white truncate mt-0.5">
-                      {channel.name}
+                      {channelTitle}
                     </h4>
                     {channel.category && (
                       <span className="text-[10px] text-gray-400 truncate block">

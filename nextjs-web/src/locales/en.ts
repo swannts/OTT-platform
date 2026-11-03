@@ -2,6 +2,12 @@ export const en = {
   // Navigation
   nav_home: 'Home',
   nav_live_tv: 'Live TV',
+  live_tv_title: 'Live Islamic Television',
+  live_tv_desc: '24/7 direct sacred broadcasts from Makkah Al-Mukarramah, Madinah Al-Munawwarah, and educational Islamic networks.',
+  channel_guide: 'Channel Guide',
+  loading_channel: 'Loading channel…',
+  select_channel: 'Select a channel to start streaming',
+  all_channels: 'All Channels',
   nav_series: 'Series',
   nav_documentaries: 'Documentaries',
   nav_journal: 'Journal',

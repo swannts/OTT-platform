@@ -88,6 +88,61 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className={`dark ${playfair.variable} ${inter.variable}`}>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                if (typeof window === 'undefined') return;
+                function isHarmless(r) {
+                  if (!r) return false;
+                  var m = typeof r === 'string' ? r : (r && r.message) || String(r);
+                  var l = m.toLowerCase();
+                  return l.indexOf('provider destroyed') !== -1 ||
+                         l.indexOf('interrupted by a call to pause') !== -1 ||
+                         l.indexOf('interrupted by a new load request') !== -1 ||
+                         l.indexOf('the play() request was interrupted') !== -1 ||
+                         l.indexOf('the play() request was canceled') !== -1 ||
+                         l.indexOf('the fetching process for the media resource was aborted') !== -1 ||
+                         l.indexOf('aborterror') !== -1;
+                }
+                var origAdd = window.addEventListener;
+                window.addEventListener = function(t, l, o) {
+                  if (t === 'unhandledrejection' && typeof l === 'function') {
+                    var wrapped = function(e) {
+                      if (isHarmless(e && e.reason)) {
+                        if (e.preventDefault) e.preventDefault();
+                        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+                        return;
+                      }
+                      return l.apply(this, arguments);
+                    };
+                    return origAdd.call(this, t, wrapped, o);
+                  }
+                  if (t === 'error' && typeof l === 'function') {
+                    var wrappedErr = function(e) {
+                      if (isHarmless(e && (e.error || e.message))) {
+                        if (e.preventDefault) e.preventDefault();
+                        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+                        return;
+                      }
+                      return l.apply(this, arguments);
+                    };
+                    return origAdd.call(this, t, wrappedErr, o);
+                  }
+                  return origAdd.apply(this, arguments);
+                };
+                origAdd.call(window, 'unhandledrejection', function(e) {
+                  if (isHarmless(e && e.reason)) {
+                    if (e.preventDefault) e.preventDefault();
+                    if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+                  }
+                }, true);
+              })();
+            `,
+          }}
+        />
+      </head>
       <body suppressHydrationWarning className="bg-[#070a0e] text-[#f8fafc] font-sans min-h-screen flex flex-col antialiased selection:bg-[#e5b869]/30 selection:text-[#e5b869]">
         <RuntimeErrorGuard>
           <StoreProvider>
