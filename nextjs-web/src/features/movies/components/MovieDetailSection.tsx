@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { ContentDetails } from '@/types';
+import { ContentDetails, LocalizedGenre } from '@/types';
 import { Play, Plus, Check, Star, Clock, Calendar } from 'lucide-react';
 import { MediaRow, ReviewSection } from '@/components/shared';
 import { useAuth } from '@/context/AuthContext';
@@ -22,6 +22,7 @@ export default function MovieDetailSection({ initialMovie }: MovieDetailSectionP
 
   const displayName = locale === 'bn' ? (movie.name_bn || movie.name) : (movie.name_en || movie.name);
   const displayDescription = locale === 'bn' ? (movie.description_bn || movie.description) : (movie.description_en || movie.description);
+  const genreItems: LocalizedGenre[] = movie.genre_items || (movie.genre_data || []).map((name) => ({ id: name, name, name_bn: name, name_en: name }));
 
   const backdropUrl =
     movie.banner_image ||
@@ -69,13 +70,13 @@ export default function MovieDetailSection({ initialMovie }: MovieDetailSectionP
             <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-gray-300">
               {movie.access === 'paid' && (
                 <span className="bg-[#E5B869] text-black px-2.5 py-0.5 rounded-full font-bold">
-                  VIP Required
+                  {t('vip_required', 'VIP Required')}
                 </span>
               )}
               {movie.imdb_rating && (
                 <div className="flex items-center text-[#E5B869] bg-black/60 px-2 py-0.5 rounded border border-white/10">
                   <Star className="w-3.5 h-3.5 fill-current mr-1" />
-                  <span>{movie.imdb_rating} IMDb</span>
+                  <span>{movie.imdb_rating} {t('imdb_label', 'IMDb')}</span>
                 </div>
               )}
               {movie.release_year && (
@@ -108,7 +109,7 @@ export default function MovieDetailSection({ initialMovie }: MovieDetailSectionP
                 className="flex items-center space-x-2 bg-[#E5B869] hover:bg-[#f3cf8a] text-black font-bold px-7 py-3 rounded-full shadow-lg shadow-[#E5B869]/30 transition-transform active:scale-95 cursor-pointer"
               >
                 <Play className="w-5 h-5 fill-black" />
-                <span>Play Movie</span>
+                <span>{t('play_movie', 'Play Movie')}</span>
               </Link>
 
               <button
@@ -122,7 +123,7 @@ export default function MovieDetailSection({ initialMovie }: MovieDetailSectionP
                 ) : (
                   <Plus className="w-4 h-4" />
                 )}
-                <span>{inWatchlist ? 'In Watchlist' : 'Add to Watchlist'}</span>
+                <span>{inWatchlist ? t('in_watchlist', 'In Watchlist') : t('add_to_watchlist', 'Add to Watchlist')}</span>
               </button>
             </div>
           </div>
@@ -134,20 +135,20 @@ export default function MovieDetailSection({ initialMovie }: MovieDetailSectionP
         {/* Storyline & Overview */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 bg-[#0c1218] border border-white/10 p-6 sm:p-8 rounded-2xl shadow-xl">
           <div className="md:col-span-2 space-y-4">
-            <h2 className="text-lg font-bold text-white tracking-tight">Storyline</h2>
-            <p className="text-sm text-gray-300 leading-relaxed">{movie.description}</p>
+            <h2 className="text-lg font-bold text-white tracking-tight">{t('storyline', 'Storyline')}</h2>
+            <p className="text-sm text-gray-300 leading-relaxed">{displayDescription}</p>
           </div>
 
           <div className="space-y-4 border-t md:border-t-0 md:border-l border-white/10 md:pl-8 pt-4 md:pt-0">
             <div>
-              <span className="text-xs text-gray-400 block mb-1.5 uppercase font-semibold tracking-wider">Genres</span>
+              <span className="text-xs text-gray-400 block mb-1.5 uppercase font-semibold tracking-wider">{t('genres', 'Genres')}</span>
               <div className="flex flex-wrap gap-1.5">
-                {(movie.genre_data || []).map((genre, i) => (
+                {genreItems.map((genre) => (
                   <span
-                    key={i}
+                    key={genre.id}
                     className="bg-white/5 border border-white/10 text-gray-200 text-xs px-2.5 py-1 rounded-md"
                   >
-                    {genre}
+                    {locale === 'bn' ? genre.name_bn || genre.name : genre.name_en || genre.name}
                   </span>
                 ))}
               </div>
@@ -156,7 +157,7 @@ export default function MovieDetailSection({ initialMovie }: MovieDetailSectionP
             {movie.casts && movie.casts.length > 0 && (
               <div>
                 <span className="text-xs text-gray-400 block mb-1.5 uppercase font-semibold tracking-wider">
-                  Scholars & Narrators
+                  {t('cast', 'Cast')}
                 </span>
                 <p className="text-sm text-gray-200 font-medium">
                   {movie.casts.map((c) => c.name).join(', ')}
@@ -175,7 +176,7 @@ export default function MovieDetailSection({ initialMovie }: MovieDetailSectionP
 
         {/* More Like This / Recommended */}
         {movie.more_items && movie.more_items.length > 0 && (
-          <MediaRow title="More Like This" items={movie.more_items} aspectRatio="backdrop" />
+          <MediaRow title={t('more_like_this', 'More Like This')} items={movie.more_items} aspectRatio="backdrop" />
         )}
       </div>
     </div>

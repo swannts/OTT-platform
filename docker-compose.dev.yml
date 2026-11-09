@@ -1,0 +1,31 @@
+# Development Override Compose File
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+services:
+  frontend:
+    build:
+      context: ./nextjs-web
+      dockerfile: Dockerfile
+      target: dev
+    image: swann-frontend:dev
+    environment:
+      NODE_ENV: development
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - ./nextjs-web:/app
+      - /app/node_modules
+      - /app/.next
+
+  backend:
+    image: swann-backend:dev
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+    volumes:
+      - ./swann-laravel-web:/var/www/html
+      - /var/www/html/vendor
+
+  worker:
+    image: swann-worker:dev
+    environment:
+      APP_ENV: development
+

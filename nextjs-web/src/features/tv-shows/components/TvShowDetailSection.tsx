@@ -12,9 +12,6 @@ import {
   Check,
   Clock,
   Share2,
-  ShieldCheck,
-  Layers,
-  Sparkles,
   ChevronRight,
   Info,
 } from 'lucide-react';
@@ -35,7 +32,7 @@ export default function TvShowDetailSection({
   initialEpisodes,
 }: TvShowDetailSectionProps) {
   const { user } = useAuth();
-  const { t, locale } = useLanguage();
+  const { locale } = useLanguage();
   const [show] = useState<ContentDetails>(initialShow);
   const [episodes] = useState<EpisodeItem[]>(initialEpisodes);
   const [inWatchlist, setInWatchlist] = useState<boolean>(initialShow.is_watchlist || false);
@@ -44,7 +41,7 @@ export default function TvShowDetailSection({
   const displayName = locale === 'bn' ? (show.name_bn || show.name) : (show.name_en || show.name);
   const displayDescription = locale === 'bn' ? (show.description_bn || show.description) : (show.description_en || show.description);
   const [copiedShare, setCopiedShare] = useState(false);
-  const [selectedSeason, setSelectedSeason] = useState<number>(1);
+  const [selectedSeason, setSelectedSeason] = useState<string>('all');
 
   const backdropUrl =
     (show.banner_image && show.banner_image.trim()) ||
@@ -87,11 +84,26 @@ export default function TvShowDetailSection({
     }
   };
 
-  const genres = Array.isArray(show.genre_data)
-    ? show.genre_data
-    : typeof show.genre_data === 'string'
-      ? (show.genre_data as string).split(',').map((g) => g.trim())
-      : ['Islamic History', 'Docuseries'];
+  const genres = show.genre_data || [];
+  const seasons = show.seasons || [];
+  const visibleEpisodes = selectedSeason === 'all'
+    ? episodes
+    : episodes.filter((episode) => String(episode.season_id || '') === selectedSeason);
+  const hasSeasonEpisodeCounts = seasons.length > 0 && seasons.every((season) => season.total_episodes !== undefined);
+  const totalEpisodeCount = hasSeasonEpisodeCounts
+    ? seasons.reduce((total, season) => total + (season.total_episodes || 0), 0)
+    : episodes.length;
+  const people = [
+    ...(show.casts || []).map((person) => ({ ...person, role: person.role || 'Cast' })),
+    ...(show.directors || []).map((person) => ({ ...person, role: person.role || 'Director' })),
+  ];
+  const accessLabel = show.access === 'paid'
+    ? 'Subscription'
+    : show.access === 'pay-per-view'
+      ? 'Rental'
+      : show.access === 'free'
+        ? 'Free'
+        : null;
 
   return (
     <div className="min-h-screen pb-24 select-none bg-[#070a0e] text-white">
@@ -116,10 +128,12 @@ export default function TvShowDetailSection({
           <div className="max-w-3xl space-y-4 sm:space-y-5">
             {/* Badges Row */}
             <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 text-xs font-semibold">
-              <span className="inline-flex items-center space-x-1.5 bg-[#E5B869] text-black px-3 py-1 rounded-full font-extrabold uppercase tracking-wider text-[11px] shadow-lg shadow-[#E5B869]/20">
-                <Sparkles className="w-3.5 h-3.5 fill-black" />
-                <span>Featured Islamic Series</span>
-              </span>
+              {accessLabel && (
+                <span className="inline-flex items-center space-x-1.5 bg-[#E5B869] text-black px-3 py-1 rounded-full font-extrabold uppercase tracking-wider text-[11px] shadow-lg shadow-[#E5B869]/20">
+                  <Tv className="w-3.5 h-3.5" />
+                  <span>{accessLabel}</span>
+                </span>
+              )}
 
               {show.imdb_rating && (
                 <div className="flex items-center text-[#E5B869] bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-full border border-[#E5B869]/30 shadow-sm">
@@ -136,15 +150,7 @@ export default function TvShowDetailSection({
                 </div>
               )}
 
-              <div className="flex items-center text-emerald-400 bg-emerald-950/60 backdrop-blur-md px-2.5 py-1 rounded-full border border-emerald-500/30 text-[11px] font-semibold">
-                <ShieldCheck className="w-3.5 h-3.5 mr-1" />
-                <span>100% Halal Verified</span>
-              </div>
-
-              <div className="flex items-center text-gray-300 bg-white/10 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10 text-[11px]">
-                <Layers className="w-3.5 h-3.5 mr-1 text-[#E5B869]" />
-                <span>Season 1 • {episodes.length} Episodes</span>
-              </div>
+              {show.content_rating && <span className="text-xs text-gray-300 bg-white/10 px-2.5 py-1 rounded-full">{show.content_rating}</span>}
             </div>
 
             {/* Title */}
@@ -162,9 +168,7 @@ export default function TvShowDetailSection({
                   {g}
                 </span>
               ))}
-              <span className="text-xs text-gray-400 bg-white/5 border border-white/10 px-3 py-1 rounded-lg backdrop-blur-sm">
-                English / Arabic Audio
-              </span>
+              {show.language && <span className="text-xs text-gray-400 bg-white/5 border border-white/10 px-3 py-1 rounded-lg backdrop-blur-sm">{show.language}</span>}
             </div>
 
             {/* Synopsis */}
@@ -235,38 +239,47 @@ export default function TvShowDetailSection({
 
             <div className="flex items-center space-x-2">
               <span className="text-xs font-semibold text-[#E5B869] bg-[#E5B869]/10 border border-[#E5B869]/30 px-3.5 py-1.5 rounded-full">
-                {episodes.length} Episodes Available
+                {totalEpisodeCount} {totalEpisodeCount === 1 ? 'Episode' : 'Episodes'}
               </span>
             </div>
           </div>
 
-          {/* Season Tabs Navigation */}
-          <div className="flex items-center space-x-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setSelectedSeason(1)}
-              className={`px-5 py-2 rounded-full text-xs font-bold transition-all ${
-                selectedSeason === 1
-                  ? 'bg-[#E5B869] text-black shadow-lg shadow-[#E5B869]/20'
-                  : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 border border-white/5'
-              }`}
-            >
-              Season 1
-            </button>
-          </div>
+          {seasons.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setSelectedSeason('all')}
+                className={`px-5 py-2 rounded-full text-xs font-bold transition-all ${selectedSeason === 'all' ? 'bg-[#E5B869] text-black' : 'bg-white/5 text-gray-400 border border-white/5'}`}
+              >
+                All Episodes
+              </button>
+              {seasons.map((season, index) => {
+                const seasonId = String(season.id);
+                const seasonName = season.name || (season.season_number ? `Season ${season.season_number}` : `Season ${index + 1}`);
+                return (
+                  <button
+                    key={seasonId}
+                    type="button"
+                    onClick={() => setSelectedSeason(seasonId)}
+                    className={`px-5 py-2 rounded-full text-xs font-bold transition-all ${selectedSeason === seasonId ? 'bg-[#E5B869] text-black' : 'bg-white/5 text-gray-400 border border-white/5'}`}
+                  >
+                    {seasonName}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* 3. Cinema-Grade Episode Cards List */}
-        {episodes.length === 0 ? (
+        {visibleEpisodes.length === 0 ? (
           <div className="py-16 text-center text-gray-400 text-sm bg-white/[0.02] border border-white/5 rounded-3xl p-8">
             <Info className="w-8 h-8 text-gray-500 mx-auto mb-3" />
-            <p className="text-white font-semibold">No episodes currently found.</p>
-            <p className="text-xs text-gray-400 mt-1">Episodes are being prepared for release.</p>
+            <p className="text-white font-semibold">No episodes are available for this selection.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:gap-6">
-            {episodes.map((ep, idx) => {
-              const epNum = typeof ep.episode_number === 'number' ? ep.episode_number : idx + 1;
+            {visibleEpisodes.map((ep) => {
               const epThumb =
                 (ep.poster_image && ep.poster_image.trim()) ||
                 backdropUrl ||
@@ -274,8 +287,8 @@ export default function TvShowDetailSection({
 
               return (
                 <Link
-                  key={ep.id || idx}
-                  href={`/watch/episode/${ep.id || epNum}`}
+                  key={ep.id}
+                  href={`/watch/episode/${ep.id}`}
                   className="group relative flex flex-col md:flex-row items-stretch gap-5 sm:gap-6 p-4 sm:p-5 rounded-2xl bg-[#0c1218]/90 border border-white/[0.07] hover:border-[#E5B869]/50 hover:bg-[#111922] transition-all duration-300 shadow-xl overflow-hidden cursor-pointer"
                 >
                   {/* Thumbnail Container (16:9 Cinema Aspect) */}
@@ -292,7 +305,7 @@ export default function TvShowDetailSection({
 
                     {/* Episode Number Pill */}
                     <div className="absolute top-2.5 left-2.5 z-10 bg-black/85 backdrop-blur-md border border-[#E5B869]/40 text-[#E5B869] text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-md tracking-wider shadow">
-                      EPISODE {epNum}
+                      {ep.episode_number !== undefined ? `EPISODE ${ep.episode_number}` : 'EPISODE'}
                     </div>
 
                     {/* Duration Badge */}
@@ -316,7 +329,7 @@ export default function TvShowDetailSection({
                     <div className="space-y-2">
                       <div className="flex items-start justify-between gap-3">
                         <h3 className="text-base sm:text-lg font-black text-white group-hover:text-[#E5B869] transition-colors leading-snug">
-                          {ep.name}
+                          {ep.name || (ep.episode_number !== undefined ? `Episode ${ep.episode_number}` : 'Episode')}
                         </h3>
                       </div>
 
@@ -324,11 +337,7 @@ export default function TvShowDetailSection({
                         <p className="text-xs sm:text-sm text-gray-300 leading-relaxed font-normal">
                           {ep.description}
                         </p>
-                      ) : (
-                        <p className="text-xs text-gray-500 italic">
-                          Documentary chapter following historical events and scholarly insights.
-                        </p>
-                      )}
+                      ) : null}
                     </div>
 
                     {/* Action & Quality Footer */}
@@ -337,13 +346,7 @@ export default function TvShowDetailSection({
                         <span className="inline-flex items-center font-bold text-[#E5B869] group-hover:underline">
                           Watch Episode <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
                         </span>
-                        <span className="hidden sm:inline text-gray-600">•</span>
-                        <span className="hidden sm:inline bg-white/5 px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider text-gray-300 border border-white/5">
-                          HD 1080p
-                        </span>
-                        <span className="hidden sm:inline bg-white/5 px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider text-gray-300 border border-white/5">
-                          Halal Certified
-                        </span>
+                        {ep.access && <span className="capitalize text-gray-400">{ep.access}</span>}
                       </div>
 
                       {ep.duration && (
@@ -359,37 +362,19 @@ export default function TvShowDetailSection({
           </div>
         )}
 
-        {/* 4. Series Information Grid (Cast, Scholars, Overview) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-white/10">
-          <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-[#E5B869]">
-              Scholarly Advisors & Historians
-            </h4>
-            <p className="text-sm text-gray-300 leading-relaxed">
-              Dr. Tariq Ramadan, Shaykh Yasir Qadhi, Dr. Jonathan Brown, Imam Zaid Shakir
-            </p>
-          </div>
-
-          <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-[#E5B869]">
-              Available Audio & Subtitles
-            </h4>
-            <p className="text-sm text-gray-300 leading-relaxed">
-              Audio: Arabic, English, Bengali, Urdu
-              <br />
-              Subtitles: English [CC], Arabic, Bengali, French
-            </p>
-          </div>
-
-          <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-[#E5B869]">
-              Maturity & Content Guidance
-            </h4>
-            <p className="text-sm text-gray-300 leading-relaxed">
-              100% Family Safe • Zero inappropriate depictions • Authentic Islamic historiography
-            </p>
-          </div>
-        </div>
+        {people.length > 0 && (
+          <section className="pt-6 border-t border-white/10">
+            <h2 className="text-xl font-bold text-white mb-4">Cast & Crew</h2>
+            <ul className="flex flex-wrap gap-3">
+              {people.map((person) => (
+                <li key={`${person.role}-${person.id}`} className="px-4 py-2 rounded-xl bg-white/[0.04] border border-white/10">
+                  <span className="text-white">{person.name}</span>
+                  <span className="ml-2 text-xs text-gray-400">{person.role}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {/* 5. Viewer Reviews & Star Ratings */}
         <ReviewSection

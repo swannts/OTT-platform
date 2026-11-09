@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useCallback, useMemo, useSyncExternalStore } from 'react';
 import { locales, type Locale, type TranslationKey, availableLocales } from '@/locales';
 import { api } from '@/lib/api';
 
@@ -15,37 +15,51 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'noor_locale';
+const LOCALE_CHANGE_EVENT = 'noor-locale-change';
+
+function subscribeToLocaleChanges(onChange: () => void) {
+  window.addEventListener('storage', onChange);
+  window.addEventListener(LOCALE_CHANGE_EVENT, onChange);
+  return () => {
+    window.removeEventListener('storage', onChange);
+    window.removeEventListener(LOCALE_CHANGE_EVENT, onChange);
+  };
+}
+
+function getStoredLocale(): Locale {
+  try {
+    const savedLocale = localStorage.getItem(STORAGE_KEY);
+    if (savedLocale === 'en' || savedLocale === 'bn') return savedLocale;
+  } catch {
+    // Fall back to the cookie when localStorage is unavailable.
+  }
+
+  return document.cookie.match(/(?:^|;\s*)noor_locale=(en|bn)(?:;|$)/)?.[1] === 'en' ? 'en' : 'bn';
+}
+
+function getDefaultLocale(): Locale {
+  return 'bn';
+}
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>('en');
-  const [isMounted, setIsMounted] = useState(false);
+  const locale = useSyncExternalStore(subscribeToLocaleChanges, getStoredLocale, getDefaultLocale);
 
-  // Initialize from localStorage or cookie on mount
   useEffect(() => {
-    setIsMounted(true);
-    try {
-      const savedLocale = localStorage.getItem(STORAGE_KEY) as Locale | null;
-      if (savedLocale === 'en' || savedLocale === 'bn') {
-        setLocaleState(savedLocale);
-        api.setLocale(savedLocale);
-        document.documentElement.lang = savedLocale;
-      }
-    } catch {
-      // Ignore localStorage read errors in restricted environments
-    }
-  }, []);
+    api.setLocale(locale);
+    document.documentElement.lang = locale;
+  }, [locale]);
 
   const setLocale = useCallback((newLocale: Locale) => {
-    setLocaleState(newLocale);
     api.setLocale(newLocale);
+    document.documentElement.lang = newLocale;
 
     try {
       localStorage.setItem(STORAGE_KEY, newLocale);
-      document.cookie = `${STORAGE_KEY}=${newLocale}; path=/; max-age=31536000; SameSite=Lax`;
-      document.documentElement.lang = newLocale;
     } catch {
-      // Ignore storage errors
+      // Cookie persistence can still work when localStorage is unavailable.
     }
+    document.cookie = `${STORAGE_KEY}=${newLocale}; path=/; max-age=31536000; SameSite=Lax`;
+    window.dispatchEvent(new Event(LOCALE_CHANGE_EVENT));
   }, []);
 
   const t = useCallback(

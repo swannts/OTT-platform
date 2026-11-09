@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { DEFAULT_FALLBACK_IMAGE } from '@/constants';
 import { blurHashToDataURL } from '@/lib/blurhash';
+import { Skeleton } from './Skeleton';
 
 export const DEFAULT_ISLAMIC_FALLBACK = DEFAULT_FALLBACK_IMAGE;
 
@@ -14,6 +15,7 @@ export interface SafeImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageEl
   aspectRatio?: 'poster' | 'backdrop' | 'square' | 'banner' | 'auto';
   containerClassName?: string;
   priority?: boolean;
+  showSkeleton?: boolean;
 }
 
 const aspectClasses = {
@@ -31,6 +33,7 @@ export default function SafeImage({
   blurhash,
   aspectRatio = 'auto',
   priority = false,
+  showSkeleton = false,
   className,
   containerClassName,
   ...props
@@ -175,6 +178,10 @@ export default function SafeImage({
           style={{ backgroundImage: `url(${blurDataUrl})` }}
           aria-hidden="true"
         />
+      ) : null}
+
+      {showSkeleton && !isLoaded ? (
+        <Skeleton className="absolute inset-0 z-[5] h-full w-full rounded-none bg-white/[0.035] pointer-events-none" />
       ) : null}
 
       {/* 3. Primary Image Layer */}

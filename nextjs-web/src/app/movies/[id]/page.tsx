@@ -103,10 +103,10 @@ export default async function MovieDetailPage({ params }: PageProps) {
     name: movie.name,
     description: movie.description,
     image: movie.poster_image || movie.banner_image,
-    datePublished: movie.release_year ? `${movie.release_year}-01-01` : '2026-01-01',
+    ...(movie.release_year ? { datePublished: String(movie.release_year) } : {}),
     duration: movie.duration,
     genre: movie.genre_data,
-    inLanguage: 'en',
+    ...(movie.language ? { inLanguage: movie.language } : {}),
     provider: {
       '@type': 'Organization',
       name: 'NOOR Islamic Cinema',
@@ -117,7 +117,7 @@ export default async function MovieDetailPage({ params }: PageProps) {
         '@type': 'AggregateRating',
         ratingValue: movie.imdb_rating,
         bestRating: '10',
-        ratingCount: '1500',
+        ...(movie.rating_count ? { ratingCount: movie.rating_count } : {}),
       },
     }),
     ...(movie.casts &&

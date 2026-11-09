@@ -3,22 +3,21 @@ services:
     build:
       context: ./nextjs-web
       dockerfile: Dockerfile
-    image: swann-frontend:dev
+      target: runner
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api}
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Swann OTT}
+    image: swann-frontend:prod
     container_name: swann-frontend
-    restart: unless-stopped
+    restart: always
     ports:
-      - "3000:3000"
+      - "${FRONTEND_PORT:-3000}:3000"
     environment:
-      NODE_ENV: development
-      NEXT_PUBLIC_API_URL: http://localhost:8000/api
-      INTERNAL_API_URL: http://backend:8000/api
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api}
+      INTERNAL_API_URL: ${INTERNAL_API_URL:-http://backend:8000/api}
       PORT: 3000
       HOSTNAME: "0.0.0.0"
-      WATCHPACK_POLLING: "true"
-    volumes:
-      - ./nextjs-web:/app
-      - frontend-node-modules:/app/node_modules
-      - frontend-next:/app/.next
     networks:
       - ott-net
     depends_on:
@@ -28,18 +27,19 @@ services:
     build:
       context: ./swann-laravel-web
       dockerfile: Dockerfile
-    image: swann-backend:dev
+    image: swann-backend:prod
     container_name: swann-backend
-    restart: unless-stopped
+    restart: always
     extra_hosts:
       - host.docker.internal:host-gateway
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8000}:8000"
     environment:
-      APP_ENV: local
-      APP_DEBUG: "true"
-      APP_URL: http://localhost:8000
-      FRONTEND_URL: http://localhost:3000
+      APP_ENV: ${APP_ENV:-production}
+      APP_DEBUG: "${APP_DEBUG:-false}"
+      APP_URL: ${APP_URL:-http://localhost:8000}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      APP_KEY: ${APP_KEY:-base64:eOBE3Er2LEKZXYIYsvdDITgCkheE7RBU+nDRQMQTpLA=}
       DB_CONNECTION: mysql
       DB_HOST: mysql
       DB_PORT: 3306
@@ -54,8 +54,8 @@ services:
       RABBITMQ_PASSWORD: ${RABBITMQ_PASS:-guest}
       MEILISEARCH_HOST: http://meilisearch:7700
     volumes:
-      - ./swann-laravel-web:/var/www/html
-      - backend-vendor:/var/www/html/vendor
+      # In production, only persist storage/app/public for uploaded media
+      - ./swann-laravel-web/storage/app/public:/var/www/html/storage/app/public
     networks:
       - ott-net
     depends_on:
@@ -68,13 +68,39 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  worker:
+    build:
+      context: ./go-worker
+      dockerfile: Dockerfile
+    image: swann-worker:prod
+    container_name: swann-worker
+    restart: always
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672/
+      DB_DSN: ${DB_USERNAME:-root}:${DB_PASSWORD:-}@tcp(mysql:3306)/${DB_DATABASE:-swann}?charset=utf8mb4&parseTime=True&loc=Local
+      REDIS_ADDR: redis:6379
+      STORAGE_DRIVER: local
+      STORAGE_LOCAL_PATH: /var/www/html/public/storage
+    volumes:
+      - ./swann-laravel-web/storage/app/public:/var/www/html/public/storage
+    networks:
+      - ott-net
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
     container_name: swann-rabbitmq
-    restart: unless-stopped
+    restart: always
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
@@ -92,19 +118,20 @@ services:
   mysql:
     image: mysql/mysql-server:8.0
     container_name: swann-mysql
-    restart: unless-stopped
+    restart: always
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306"
     environment:
       MYSQL_ROOT_HOST: "%"
       MYSQL_DATABASE: ${DB_DATABASE:-swann}
-      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_ROOT_PASSWORD: "${DB_PASSWORD:-}"
+      MYSQL_ALLOW_EMPTY_PASSWORD: "${MYSQL_ALLOW_EMPTY_PASSWORD:-yes}"
     volumes:
       - mysql-data:/var/lib/mysql
     networks:
       - ott-net
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot --silent"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot --password=$${MYSQL_ROOT_PASSWORD} --silent || mysqladmin ping -h localhost -uroot --silent"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -113,9 +140,9 @@ services:
   redis:
     image: redis:alpine
     container_name: swann-redis
-    restart: unless-stopped
+    restart: always
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis-data:/data
     networks:
@@ -129,9 +156,9 @@ services:
   meilisearch:
     image: getmeili/meilisearch:latest
     container_name: swann-meilisearch
-    restart: unless-stopped
+    restart: always
     ports:
-      - "7700:7700"
+      - "127.0.0.1:7700:7700"
     volumes:
       - meilisearch-data:/data.ms
     networks:
@@ -142,32 +169,6 @@ services:
       timeout: 5s
       retries: 10
       start_period: 20s
-
-  worker:
-    build:
-      context: ./go-worker
-      dockerfile: Dockerfile
-    image: swann-worker:dev
-    container_name: swann-worker
-    restart: unless-stopped
-    environment:
-      APP_ENV: development
-      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
-      DB_DSN: root:@tcp(mysql:3306)/swann?charset=utf8mb4&parseTime=True&loc=Local
-      REDIS_ADDR: redis:6379
-      STORAGE_DRIVER: local
-      STORAGE_LOCAL_PATH: /var/www/html/public/storage
-    volumes:
-      - ./swann-laravel-web/storage/app/public:/var/www/html/public/storage
-    networks:
-      - ott-net
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      mysql:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
 
 networks:
   ott-net:
@@ -182,10 +183,3 @@ volumes:
     driver: local
   meilisearch-data:
     driver: local
-  backend-vendor:
-    driver: local
-  frontend-node-modules:
-    driver: local
-  frontend-next:
-    driver: local
-

@@ -50,16 +50,14 @@ export async function getHomeInitialDataDal(): Promise<HomeInitialData> {
       result.payPerView = getList(d?.pay_per_view);
       result.tvShows = getList(d?.tv_show);
 
-      // Robust fallback if dashboard top10 / latest is empty
+      // The catalogue endpoint is a valid source for latest titles when the
+      // dashboard omits that section. Do not relabel latest titles as Top 10.
       if (result.latestMovies.length === 0) {
         try {
           const mRes = await api.getMovies({ page: 1 });
           const mList = Array.isArray(mRes) ? mRes : (mRes as { data?: unknown[] })?.data || [];
           if (Array.isArray(mList) && mList.length > 0) {
             result.latestMovies = mList.map(normalizeMediaItem);
-            if (result.top10.length === 0) {
-              result.top10 = result.latestMovies.slice(0, 10);
-            }
           }
         } catch {
           // Fallback ignore
@@ -81,14 +79,14 @@ export async function getHomeInitialDataDal(): Promise<HomeInitialData> {
       const seen = new Set();
       const unique: LiveChannel[] = [];
       for (const c of rawChannels) {
-        if (!c || seen.has(c.id)) continue;
+        const name = c?.details?.name || c?.name;
+        if (!c || !name || seen.has(c.id)) continue;
         seen.add(c.id);
         unique.push({
           id: c.id,
-          name: c.details?.name || c.name || `Live Channel ${c.id}`,
-          category: c.details?.category || c.category || 'Live Stream',
+          name,
+          category: c.details?.category || c.category,
           poster_image: c.poster_url || c.details?.poster_url || '',
-          server_url: c.details?.server_url || c.details?.stream_url || c.server_url || c.stream_url || '',
         });
       }
       result.liveChannels = unique;

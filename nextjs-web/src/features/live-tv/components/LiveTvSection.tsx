@@ -149,11 +149,17 @@ export default function LiveTvSection({ initialChannels }: LiveTvSectionProps) {
                       : 'bg-[#0c1218] hover:bg-white/5 border-white/[0.08]'
                   }`}
                 >
-                  <img
-                    src={channel.poster_image || channel.thumbnail_image || 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=100&auto=format&fit=crop&q=80'}
-                    alt={channelTitle}
-                    className="w-14 h-14 rounded-lg object-cover flex-shrink-0 bg-neutral-900 border border-white/10"
-                  />
+                  {channel.poster_image || channel.thumbnail_image ? (
+                    <img
+                      src={channel.poster_image || channel.thumbnail_image}
+                      alt={channelTitle}
+                      className="w-14 h-14 rounded-lg object-cover flex-shrink-0 bg-neutral-900 border border-white/10"
+                    />
+                  ) : (
+                    <span className="w-14 h-14 rounded-lg flex items-center justify-center flex-shrink-0 bg-neutral-900 border border-white/10 text-[#E5B869]" aria-hidden="true">
+                      <Radio className="w-6 h-6" />
+                    </span>
+                  )}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center space-x-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />

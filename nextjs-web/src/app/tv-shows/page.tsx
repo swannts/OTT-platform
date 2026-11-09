@@ -3,25 +3,22 @@ import type { Metadata } from 'next';
 import { getTvShowsCursorDal } from '@/server/dal';
 import { TvShowsSection } from '@/features/tv-shows';
 
-export const revalidate = 60; // ISR cache for 60 seconds
+export const revalidate = 3600; // The catalog changes infrequently; refresh it hourly.
+
+const pageDescription = 'Browse TV shows and series currently available to stream on NOOR.';
 
 export const metadata: Metadata = {
-  title: 'Islamic TV Shows & Docuseries | NOOR',
-  description:
-    'Watch inspiring Prophetic chronicles, Islamic history docuseries, and faith-based family series on NOOR. Pure, ad-free halal video entertainment.',
+  title: 'TV Shows & Series | NOOR',
+  description: pageDescription,
   keywords: [
-    'Islamic TV shows',
-    'Prophetic chronicles',
-    'Islamic docuseries',
-    'Halal series',
-    'Islamic history',
-    'Seerah series',
-    'NOOR Islamic Cinema',
+    'TV shows',
+    'TV series',
+    'streaming series',
+    'NOOR',
   ],
   openGraph: {
-    title: 'Islamic TV Shows & Docuseries | NOOR',
-    description:
-      'Watch inspiring Prophetic chronicles, Islamic history docuseries, and faith-based family series on NOOR.',
+    title: 'TV Shows & Series | NOOR',
+    description: pageDescription,
     url: 'https://noorcinema.com/tv-shows',
     siteName: 'NOOR Islamic Cinema',
     type: 'website',
@@ -30,15 +27,14 @@ export const metadata: Metadata = {
         url: 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=1200&auto=format&fit=crop&q=80',
         width: 1200,
         height: 630,
-        alt: 'Islamic TV Shows & Series - NOOR',
+        alt: 'TV Shows & Series - NOOR',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Islamic TV Shows & Docuseries | NOOR',
-    description:
-      'Watch inspiring Prophetic chronicles, Islamic history docuseries, and faith-based family series on NOOR.',
+    title: 'TV Shows & Series | NOOR',
+    description: pageDescription,
     images: ['https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=1200&auto=format&fit=crop&q=80'],
   },
   alternates: {
@@ -53,8 +49,8 @@ export default async function TvShowsPage() {
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
-    name: 'Islamic TV Shows & Series',
-    description: 'Inspirational Prophetic chronicles, historical educational docuseries, and faith-based family series on NOOR.',
+    name: 'TV Shows & Series',
+    description: pageDescription,
     url: 'https://noorcinema.com/tv-shows',
     isPartOf: {
       '@type': 'WebSite',

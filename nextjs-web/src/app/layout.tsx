@@ -87,7 +87,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`dark ${playfair.variable} ${inter.variable}`}>
+    <html lang="bn" suppressHydrationWarning className={`dark ${playfair.variable} ${inter.variable}`}>
       <head>
         <script
           dangerouslySetInnerHTML={{

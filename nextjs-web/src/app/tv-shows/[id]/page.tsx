@@ -15,19 +15,20 @@ interface PageProps {
 interface RawEpisodeResponse {
   id: string | number;
   name?: string;
-  episode_number?: number;
+  episode_number?: number | string;
+  season_id?: string | number;
   description?: string;
+  short_desc?: string;
   duration?: string;
   poster_image?: string;
   poster_tv_image?: string;
-  has_content_access?: boolean;
+  access?: string;
+  release_date?: string;
+  content_rating?: string;
   details?: {
-    name?: string;
-    description?: string;
-    short_description?: string;
-    duration?: string;
-    poster_image?: string;
-    has_content_access?: boolean;
+    access?: string;
+    release_date?: string;
+    tv_show_data?: { season_id?: string | number };
   };
 }
 
@@ -45,17 +46,22 @@ async function getTvShowData(id: string): Promise<{ show: ContentDetails; episod
   }
 
   try {
-    const epData = await api.getEpisodes(id);
+    const epData = await api.getEpisodes(id, undefined, 100);
     const list = Array.isArray(epData) ? epData : ((epData as { data?: RawEpisodeResponse[] })?.data || []);
     if (Array.isArray(list) && list.length > 0) {
-      episodes = (list as RawEpisodeResponse[]).map((ep, idx) => ({
+      episodes = (list as RawEpisodeResponse[]).map((ep) => ({
         id: ep.id,
-        name: ep.name || ep.details?.name || `Episode ${idx + 1}`,
-        episode_number: typeof ep.episode_number === 'number' ? ep.episode_number : (idx + 1),
-        description: ep.description || ep.details?.description || ep.details?.short_description || '',
-        poster_image: ep.poster_image || ep.details?.poster_image || ep.poster_tv_image || show?.poster_image || '',
-        duration: ep.duration || ep.details?.duration || '',
-        has_content_access: Boolean(ep.has_content_access ?? ep.details?.has_content_access ?? true),
+        name: ep.name || '',
+        ...(ep.episode_number !== undefined && ep.episode_number !== '' && Number.isFinite(Number(ep.episode_number))
+          ? { episode_number: Number(ep.episode_number) }
+          : {}),
+        season_id: ep.season_id || ep.details?.tv_show_data?.season_id,
+        description: ep.description || ep.short_desc || '',
+        poster_image: ep.poster_image || ep.poster_tv_image || show?.poster_image || '',
+        duration: ep.duration || '',
+        access: ep.access || ep.details?.access,
+        release_date: ep.release_date || ep.details?.release_date,
+        content_rating: ep.content_rating,
       }));
     }
   } catch (err) {
@@ -86,7 +92,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     show.seo?.meta_description ||
     show.meta_description ||
     show.description ||
-    'Watch inspiring Islamic TV shows, Prophetic chronicles, and historical docuseries on NOOR.';
+    `View details and available episodes for ${show.name} on NOOR.`;
 
   const rawKeywords = show.seo?.meta_keywords || show.meta_keywords || show.genre_data;
   const keywords = Array.isArray(rawKeywords)
@@ -144,6 +150,11 @@ export default async function TvShowDetailPage({ params }: PageProps) {
   }
 
   const { show, episodes } = data;
+  const seasons = show.seasons || [];
+  const hasSeasonEpisodeCounts = seasons.length > 0 && seasons.every((season) => season.total_episodes !== undefined);
+  const totalEpisodeCount = hasSeasonEpisodeCounts
+    ? seasons.reduce((total, season) => total + (season.total_episodes || 0), 0)
+    : episodes.length;
 
   // Schema.org TVSeries Structured JSON-LD
   const jsonLd = {
@@ -152,37 +163,30 @@ export default async function TvShowDetailPage({ params }: PageProps) {
     name: show.name,
     description: show.description,
     image: show.poster_image || show.banner_image,
-    datePublished: show.release_year ? `${show.release_year}-01-01` : '2026-01-01',
+    ...(show.release_year ? { datePublished: String(show.release_year) } : {}),
     genre: show.genre_data,
-    numberOfEpisodes: episodes.length,
-    inLanguage: 'en',
+    numberOfEpisodes: totalEpisodeCount,
+    ...(show.language ? { inLanguage: show.language } : {}),
     provider: {
       '@type': 'Organization',
       name: 'NOOR Islamic Cinema',
       url: 'https://noorcinema.com',
     },
-    ...(show.imdb_rating && {
-      aggregateRating: {
-        '@type': 'AggregateRating',
-        ratingValue: show.imdb_rating,
-        bestRating: '10',
-        ratingCount: '2100',
-      },
-    }),
-    containsSeason: [
-      {
+    ...(seasons.length ? {
+      containsSeason: seasons.map((season) => ({
         '@type': 'TVSeason',
-        seasonNumber: 1,
-        numberOfEpisodes: episodes.length,
-        episode: episodes.map((ep, idx) => ({
+        ...(season.name ? { name: season.name } : {}),
+        ...(season.season_number !== undefined ? { seasonNumber: season.season_number } : {}),
+        numberOfEpisodes: season.total_episodes ?? episodes.filter((episode) => String(episode.season_id) === String(season.id)).length,
+        episode: episodes.filter((episode) => String(episode.season_id) === String(season.id) && episode.name).map((ep) => ({
           '@type': 'TVEpisode',
-          episodeNumber: ep.episode_number || idx + 1,
+          ...(ep.episode_number !== undefined ? { episodeNumber: ep.episode_number } : {}),
           name: ep.name,
           description: ep.description,
           duration: ep.duration,
         })),
-      },
-    ],
+      })),
+    } : {}),
   };
 
   return (

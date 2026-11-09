@@ -3,7 +3,8 @@ import type { Metadata } from 'next';
 import { getHomeInitialDataDal } from '@/server/dal';
 import { HomeSection } from '@/features/home';
 
-export const revalidate = 60; // ISR revalidate every 60s for high-speed SEO caching
+// Home catalog and hero content changes infrequently; regenerate at most hourly.
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: 'NOOR - Islamic Video Streaming & Live TV | Halal Cinema & Sacred Documentaries',

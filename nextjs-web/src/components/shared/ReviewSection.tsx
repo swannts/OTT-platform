@@ -41,7 +41,7 @@ export default function ReviewSection({
   const { user } = useAuth();
   const { t } = useLanguage();
 
-  const [reviews, setReviews] = useState<ReviewItem[]>(initialReviews?.other_reviews || []);
+  const [reviews] = useState<ReviewItem[]>(initialReviews?.other_reviews || []);
   const [myReview, setMyReview] = useState<ReviewItem | null>(initialReviews?.my_review || null);
   const [totalCount, setTotalCount] = useState<number>(
     initialReviews?.total_reviews ?? (initialReviews?.other_reviews?.length || 0)
@@ -70,16 +70,7 @@ export default function ReviewSection({
         review: comment.trim() || undefined,
       });
 
-      const savedItem: ReviewItem = res.data || {
-        id: myReview?.id || Date.now(),
-        rating,
-        review: comment.trim(),
-        username: user.name,
-        profile_image: user.avatar,
-        updated_at: 'Just now',
-      };
-
-      setMyReview(savedItem);
+      if (res.data) setMyReview(res.data);
       if (!myReview) {
         setTotalCount((prev) => prev + 1);
       }
@@ -105,15 +96,6 @@ export default function ReviewSection({
     }
   };
 
-  // Derive average rating score
-  const allRatings = [
-    ...(myReview ? [myReview.rating] : []),
-    ...reviews.map((r) => r.rating),
-  ];
-  const averageScore = allRatings.length > 0
-    ? (allRatings.reduce((a, b) => a + b, 0) / allRatings.length).toFixed(1)
-    : null;
-
   return (
     <div className="bg-[#0c1218] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-xl space-y-6">
       {/* Header with aggregate score */}
@@ -130,14 +112,8 @@ export default function ReviewSection({
           </p>
         </div>
 
-        {averageScore && (
-          <div className="flex items-center space-x-3 bg-white/[0.04] border border-white/10 px-4 py-2 rounded-xl">
-            <div className="flex items-center text-[#E5B869]">
-              <Star className="w-5 h-5 fill-[#E5B869] text-[#E5B869]" />
-              <span className="text-lg font-black ml-1.5 text-white">{averageScore}</span>
-              <span className="text-xs text-gray-400 ml-1">/ 5</span>
-            </div>
-            <span className="text-gray-500 text-xs">&bull;</span>
+        {totalCount > 0 && (
+          <div className="flex items-center bg-white/[0.04] border border-white/10 px-4 py-2 rounded-xl">
             <span className="text-xs text-gray-300 font-medium">
               {totalCount} {t('reviews_count_suffix', 'reviews')}
             </span>
@@ -265,7 +241,7 @@ export default function ReviewSection({
                       {t('your_review', 'You')}
                     </span>
                   </div>
-                  <span className="text-[10px] text-gray-400">{myReview.updated_at || 'Recently'}</span>
+                  {myReview.updated_at && <span className="text-[10px] text-gray-400">{myReview.updated_at}</span>}
                 </div>
               </div>
 
@@ -304,9 +280,7 @@ export default function ReviewSection({
                         {r.username || r.user_name || 'Community Member'}
                       </p>
                       <span className="text-[10px] text-gray-500">
-                        {r.created_at || r.updated_at
-                          ? formatDhakaDateTime(r.created_at || r.updated_at)
-                          : 'Recent review'}
+                        {(r.created_at || r.updated_at) && formatDhakaDateTime(r.created_at || r.updated_at)}
                       </span>
                     </div>
                   </div>

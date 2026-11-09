@@ -54,6 +54,9 @@ export interface MediaItem {
   release_date?: string;
   duration?: string;
   imdb_rating?: string | number;
+  rating_count?: string | number;
+  language?: string;
+  content_rating?: string;
   rating?: number;
   access?: 'free' | 'paid' | 'pay-per-view' | 'unlock';
   plan_level?: number;
@@ -97,11 +100,15 @@ export interface ContentDetails {
   release_year?: string | number;
   duration?: string;
   imdb_rating?: string | number;
+  rating_count?: string | number;
+  language?: string;
+  content_rating?: string;
   access: string;
   has_content_access: boolean;
   is_watchlist?: boolean;
   required_plan_level?: number;
   genre_data?: string[];
+  genre_items?: LocalizedGenre[];
   casts?: CastMember[];
   directors?: CastMember[];
   clips?: ClipItem[];
@@ -119,23 +126,35 @@ export interface ContentDetails {
   reviews?: ReviewListResponse;
 }
 
+export interface LocalizedGenre {
+  id: string | number;
+  name: string;
+  name_bn?: string;
+  name_en?: string;
+}
+
 export interface SeasonItem {
   id: string | number;
   name: string;
-  season_number: number;
+  season_number?: number;
+  total_episodes?: number;
   episodes: EpisodeItem[];
 }
 
 export interface EpisodeItem {
   id: string | number;
   name: string;
-  episode_number: number;
+  episode_number?: number;
+  season_id?: string | number;
   description?: string;
   description_en?: string;
   description_bn?: string;
   poster_image?: string;
   blurhash?: string;
   duration?: string;
+  access?: string;
+  release_date?: string;
+  content_rating?: string;
   has_content_access?: boolean;
 }
 

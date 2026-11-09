@@ -11,7 +11,6 @@ import { MediaGrid } from '@/components/shared';
 import { Tv, Sparkles, Filter, Loader2, CheckCircle2 } from 'lucide-react';
 import { MediaItem } from '@/types';
 import { SectionHeader, EmptyState } from '@/components/ui';
-import { TV_SERIES_CATEGORIES } from '@/constants';
 
 interface TvShowsSectionProps {
   initialShows: MediaItem[];
@@ -83,13 +82,14 @@ export default function TvShowsSection({
     };
   }, [canLoadMore, handleLoadMore]);
 
-  const filteredShows = shows.filter((show) => {
-    if (selectedCategory === 'all') return true;
-    const cat = TV_SERIES_CATEGORIES.find((c) => c.id === selectedCategory);
-    if (!cat?.keywords) return true;
-    const text = `${show.name || ''} ${show.description || ''}`.toLowerCase();
-    return cat.keywords.some((kw) => text.includes(kw));
-  });
+  const availableGenres = Array.from(new Set(shows.flatMap((show) => show.genre_data || []))).sort((a, b) => a.localeCompare(b));
+  const filteredShows = selectedCategory === 'all'
+    ? shows
+    : shows.filter((show) => show.genre_data?.some((genre) => genre.toLocaleLowerCase() === selectedCategory.toLocaleLowerCase()));
+  const categories = [
+    { id: 'all', label: 'All Series' },
+    ...availableGenres.map((genre) => ({ id: genre, label: genre })),
+  ];
 
   return (
     <div className="min-h-screen pt-24 sm:pt-28 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pb-24 select-none">
@@ -97,18 +97,18 @@ export default function TvShowsSection({
       <div className="mb-8 border-b border-white/10 pb-6">
         <SectionHeader
           className="mb-0 border-b-0 pb-0"
-          badgeText="Sacred Series & Docuseries"
+          badgeText="TV SERIES"
           badgeIcon={<Sparkles className="w-3.5 h-3.5 text-[#E5B869]" />}
           title="Islamic TV Shows & Series"
           titleIcon={<Tv className="w-7 h-7 sm:w-8 sm:h-8 text-[#E5B869]" />}
-          description="Inspirational Prophetic chronicles, historical educational docuseries, and faith-based family series."
-          counterText={`${filteredShows.length} Series Available`}
+          description="Browse shows and episodes currently available in the catalog."
+          counterText={`${filteredShows.length} Series Shown`}
         />
 
         {/* Category Filter Pills */}
         <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar pt-6 pb-1">
           <Filter className="w-4 h-4 text-gray-400 flex-shrink-0 mr-1" />
-          {TV_SERIES_CATEGORIES.map((cat) => {
+          {categories.map((cat) => {
             const isSelected = selectedCategory === cat.id;
             return (
               <button

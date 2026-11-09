@@ -26,6 +26,8 @@ import {
   AppConfiguration,
   ReviewItem,
   ReviewListResponse,
+  SeasonItem,
+  LocalizedGenre,
 } from '@/types';
 
 export function normalizeMediaItem(raw: unknown): MediaItem {
@@ -99,7 +101,7 @@ const getApiBaseUrl = (): string => {
 };
 
 class ApiClient {
-  private currentLocale: string = 'en';
+  private currentLocale: string = 'bn';
 
   public setLocale(locale: string) {
     this.currentLocale = locale;
@@ -153,7 +155,7 @@ class ApiClient {
     }
   }
 
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  private async request<T>(endpoint: string, options: RequestInit & { next?: { revalidate?: number; tags?: string[] } } = {}): Promise<T> {
     const baseUrl = getApiBaseUrl();
     const url = `${baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
     const token = this.getToken();
@@ -369,7 +371,15 @@ class ApiClient {
 
   // ── Discovery & Catalog ───────────────────────────────────────────────────
   async getBannerData(bannerFor: string = 'home'): Promise<MediaItem[]> {
-    const res = await this.request<{ slider?: unknown[]; [key: string]: unknown } | unknown[]>(`/v3/banner-data?banner_for=${bannerFor}`);
+    const res = await this.request<{ slider?: unknown[]; [key: string]: unknown } | unknown[]>(
+      `/v3/banner-data?banner_for=${encodeURIComponent(bannerFor)}`,
+      {
+        next: {
+          revalidate: 3600,
+          tags: [`banner-data-${bannerFor}`],
+        },
+      },
+    );
     const items = (res && !Array.isArray(res) && Array.isArray((res as { slider?: unknown[] }).slider))
       ? (res as { slider: unknown[] }).slider
       : (Array.isArray(res) ? res : []);
@@ -433,6 +443,49 @@ class ApiClient {
     const more = ((raw?.suggested_content || raw?.more_items || []) as unknown[]).map(normalizeMediaItem);
     const casts = ((raw?.actors || raw?.casts || []) as Array<Record<string, unknown>>);
     const directors = ((raw?.directors || []) as Array<Record<string, unknown>>);
+    const rawGenres = details.genres || raw?.genre_data || [];
+    const genreData = Array.isArray(rawGenres)
+      ? rawGenres
+          .map((genre) => (typeof genre === 'string' ? genre : genre && typeof genre === 'object' && 'name' in genre ? String((genre as { name: unknown }).name) : ''))
+          .filter(Boolean)
+      : typeof rawGenres === 'string'
+        ? rawGenres.split(',').map((genre) => genre.trim()).filter(Boolean)
+        : [];
+    const genreItems: LocalizedGenre[] = Array.isArray(rawGenres)
+      ? (rawGenres as unknown[]).reduce<LocalizedGenre[]>((items, genre, index) => {
+          if (typeof genre === 'string') {
+            items.push({ id: genre, name: genre });
+            return items;
+          }
+          if (!genre || typeof genre !== 'object') return items;
+          const item = genre as Record<string, unknown>;
+          const name = typeof item.name === 'string' ? item.name : '';
+          if (!name) return items;
+          items.push({
+            id: (item.id as string | number) || `${name}-${index}`,
+            name,
+            name_bn: typeof item.name_bn === 'string' ? item.name_bn : undefined,
+            name_en: typeof item.name_en === 'string' ? item.name_en : undefined,
+          });
+          return items;
+        }, [])
+      : genreData.map((name) => ({ id: name, name, name_en: name }));
+    const rawSeasons = raw?.tvShowLinks || raw?.seasons || details.season_data || [];
+    const seasons = Array.isArray(rawSeasons)
+      ? rawSeasons
+          .filter((season): season is Record<string, unknown> => Boolean(season) && typeof season === 'object')
+          .map((season, index) => ({
+            id: (season.season_id as string | number) || (season.id as string | number) || String(index + 1),
+            name: String(season.name || ''),
+            season_number: typeof season.season_number === 'number'
+              ? season.season_number
+              : typeof season.season_index === 'number'
+                ? season.season_index
+                : undefined,
+            total_episodes: typeof season.total_episodes === 'number' ? season.total_episodes : undefined,
+            episodes: Array.isArray(season.episodes) ? season.episodes as SeasonItem['episodes'] : [],
+          }))
+      : [];
 
     const seoRaw = (raw?.seo as Record<string, unknown>) || (details?.seo as Record<string, unknown>) || {};
     const seoObj: SeoMetadata = {
@@ -467,9 +520,12 @@ class ApiClient {
       release_year: details.release_date ? String(details.release_date).substring(0, 4) : (raw?.release_year as string | number | undefined),
       duration: String(details.duration || raw?.duration || ''),
       imdb_rating: (details.imdb_rating as string | number | undefined) || (raw?.imdb_rating as string | number | undefined) || '',
-      access: String(details.access || raw?.access || 'free'),
+      language: String(details.language || raw?.language || ''),
+      content_rating: String(details.content_rating || raw?.content_rating || ''),
+      access: String(details.access || raw?.access || raw?.movie_access || 'unknown'),
       has_content_access: Boolean(details.has_content_access ?? raw?.has_content_access ?? false),
-      genre_data: Array.isArray(details.genres) ? (details.genres as string[]) : ((raw?.genre_data as string[]) || []),
+      genre_data: genreData,
+      genre_items: genreItems,
       casts: casts.map((c) => ({
         id: (c.id as string | number) || '',
         name: String(c.name || ''),
@@ -486,7 +542,7 @@ class ApiClient {
       more_items: more,
       video_qualities: (raw?.video_qualities as ContentDetails['video_qualities']) || [],
       video_default_quality: (raw?.video_qualities as ContentDetails['video_qualities'])?.[0],
-      seasons: (raw?.seasons as ContentDetails['seasons']) || (details?.season_data as ContentDetails['seasons']) || [],
+      seasons,
       seo: seoObj,
       meta_title: seoObj.meta_title,
       meta_description: seoObj.meta_description,
@@ -501,12 +557,13 @@ class ApiClient {
     return this.request<SeoMetadata>('/v3/seo-settings');
   }
 
-  async getEpisodes(tvShowId: number | string, seasonId?: number | string): Promise<{ data?: Episode[]; [key: string]: unknown } | Episode[]> {
+  async getEpisodes(tvShowId: number | string, seasonId?: number | string, perPage?: number): Promise<{ data?: Episode[]; [key: string]: unknown } | Episode[]> {
     const q = new URLSearchParams({
       tv_show_id: tvShowId.toString(),
       tvshow_id: tvShowId.toString(),
     });
     if (seasonId) q.append('season_id', seasonId.toString());
+    if (perPage) q.append('per_page', perPage.toString());
     return this.request<{ data?: Episode[]; [key: string]: unknown } | Episode[]>(`/v3/episode-list?${q.toString()}`);
   }
 

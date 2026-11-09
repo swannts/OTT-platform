@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Play, Crown, ArrowRight } from 'lucide-react';
+import { Play, Crown, ArrowRight, Radio } from 'lucide-react';
 import { LiveChannel } from '@/types';
 import { useLanguage } from '@/providers';
 
@@ -25,26 +25,24 @@ export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
 
   const featured = {
     id: channels[0].id,
-    title: getChannelTitle(channels[0]) || 'Live Broadcast',
-    location: channels[0].details?.category || channels[0].category || 'Live Television',
+    title: getChannelTitle(channels[0]),
+    location: channels[0].details?.category || channels[0].category,
     thumbnail:
       channels[0].poster_image ||
       channels[0].thumbnail_image ||
-      channels[0].poster_tv_image ||
-      'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=800&auto=format&fit=crop&q=80',
+      channels[0].poster_tv_image,
     watchUrl: '/live-tv',
   };
 
-  const channelSlice = channels.slice(1, 5).map((ch, idx) => ({
+  const channelSlice = channels.slice(1, 5).map((ch) => ({
     id: ch.id,
-    name: getChannelTitle(ch) || `Channel ${ch.id}`,
-    subtitle: ch.details?.category || ch.category || 'Live Channel',
+    name: getChannelTitle(ch),
+    subtitle: ch.details?.category || ch.category,
     logo:
       ch.poster_image ||
       ch.thumbnail_image ||
       ch.poster_tv_image ||
       '',
-    color: ['border-blue-500/30 text-blue-400 bg-blue-900/20', 'border-amber-500/30 text-amber-400 bg-amber-900/20', 'border-emerald-500/30 text-emerald-400 bg-emerald-900/20', 'border-red-500/30 text-red-400 bg-red-900/20'][idx % 4],
   }));
 
   return (
@@ -73,11 +71,13 @@ export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
           href={featured.watchUrl}
           className="group relative lg:col-span-3 rounded-2xl overflow-hidden border border-white/10 hover:border-[#E5B869]/50 shadow-xl transition-all duration-300 block min-h-[160px] sm:min-h-[190px]"
         >
-          <img
-            src={featured.thumbnail}
-            alt={featured.title}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-          />
+          {featured.thumbnail ? (
+            <img src={featured.thumbnail} alt={featured.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center bg-[#10201d]" aria-hidden="true">
+              <Radio className="h-12 w-12 text-[#E5B869]/70" />
+            </div>
+          )}
 
           {/* Vignette */}
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-90 group-hover:opacity-95 transition-opacity" />
@@ -94,7 +94,7 @@ export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
               <h3 className="font-bold text-white text-xs sm:text-sm line-clamp-1 group-hover:text-[#E5B869] transition-colors">
                 {featured.title}
               </h3>
-              <p className="text-[11px] text-gray-300 mt-0.5 truncate">{featured.location}</p>
+              {featured.location && <p className="text-[11px] text-gray-300 mt-0.5 truncate">{featured.location}</p>}
             </div>
 
             <div className="w-8 h-8 rounded-full bg-white/20 group-hover:bg-[#E5B869] text-white group-hover:text-black flex items-center justify-center backdrop-blur-md transition-all shadow-lg flex-shrink-0">
@@ -105,13 +105,7 @@ export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
 
         {/* 2. Live TV Channels (From Backend) */}
         <div className="lg:col-span-5 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-3.5">
-          {channelSlice.map((ch) => {
-            const isPeace = ch.name.toLowerCase().includes('peace');
-            const isHuda = ch.name.toLowerCase().includes('huda');
-            const isItv = ch.name.toLowerCase().includes('itv');
-            const isAtn = ch.name.toLowerCase().includes('atn');
-
-            return (
+          {channelSlice.map((ch) => (
               <Link
                 key={ch.id}
                 href={`/live-tv`}
@@ -119,42 +113,15 @@ export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
               >
                 {/* Channel Logo / Icon Container */}
                 <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center font-black text-sm mb-3 shadow-inner overflow-hidden flex-shrink-0">
-                  {isPeace ? (
-                    <div className="w-full h-full bg-[#0d2a4a] border border-blue-400/40 rounded-2xl flex flex-col items-center justify-center p-1 text-center">
-                      <svg className="w-7 h-7 text-sky-400" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
-                      </svg>
-                    </div>
-                  ) : isHuda ? (
-                    <div className="w-full h-full bg-[#2a1d08] border border-amber-500/40 rounded-2xl flex flex-col items-center justify-center p-1 text-center">
-                      <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-amber-600 to-yellow-300 flex items-center justify-center shadow-lg shadow-amber-500/30">
-                        <span className="w-3.5 h-3.5 rounded-full bg-[#2a1d08]" />
-                      </div>
-                    </div>
-                  ) : isItv ? (
-                    <div className="w-full h-full bg-[#0a522a] border border-emerald-400/40 rounded-2xl flex items-center justify-center">
-                      <span className="text-white font-black text-xl tracking-tighter lowercase">
-                        itv
-                      </span>
-                    </div>
-                  ) : isAtn ? (
-                    <div className="w-full h-full bg-[#1e2329] border border-red-500/30 rounded-2xl flex flex-col items-center justify-center p-1">
-                      <div className="text-[11px] font-black tracking-tighter bg-gradient-to-r from-red-500 to-emerald-400 bg-clip-text text-transparent uppercase">
-                        ATN
-                      </div>
-                      <span className="text-[9px] text-gray-300 font-semibold">Bangla</span>
-                    </div>
-                  ) : ch.logo ? (
+                  {ch.logo ? (
                     <img
                       src={ch.logo}
                       alt={ch.name}
                       className="w-full h-full object-cover rounded-2xl"
                     />
                   ) : (
-                    <div className={`w-full h-full rounded-2xl flex items-center justify-center ${ch.color}`}>
-                      <span className="text-xs font-bold leading-tight px-1 uppercase">
-                        {ch.name.substring(0, 5)}
-                      </span>
+                    <div className="w-full h-full rounded-2xl flex items-center justify-center bg-white/5 text-[#E5B869]">
+                      <Radio className="h-6 w-6" aria-hidden="true" />
                     </div>
                   )}
                 </div>
@@ -162,10 +129,9 @@ export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
                 <h4 className="text-xs sm:text-[13px] font-bold text-white group-hover:text-[#E5B869] transition-colors truncate max-w-full">
                   {ch.name}
                 </h4>
-                <p className="text-[10.5px] text-gray-400 mt-0.5 truncate max-w-full">Live Channel</p>
+                {ch.subtitle && <p className="text-[10.5px] text-gray-400 mt-0.5 truncate max-w-full">{ch.subtitle}</p>}
               </Link>
-            );
-          })}
+          ))}
         </div>
 
         {/* 3. Go Premium Promo Card (Luxury Golden Islamic Card) */}
