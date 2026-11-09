@@ -4,6 +4,7 @@ import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { SHOWCASE_MODE } from '@/lib/showcase';
 import { useAuth } from '@/context/AuthContext';
 import { Spinner } from '@/components/ui';
 import { CheckCircle2, Crown, Sparkles, ArrowRight } from 'lucide-react';
@@ -90,11 +91,13 @@ function PaymentSuccessContent() {
       <div className="space-y-2">
         <div className="inline-flex items-center space-x-1.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
           <Crown className="w-3.5 h-3.5" />
-          <span>VIP Member Activated</span>
+          <span>{SHOWCASE_MODE ? 'Showcase Membership' : 'VIP Member Activated'}</span>
         </div>
-        <h1 className="text-3xl font-black text-white">Payment Successful!</h1>
+        <h1 className="text-3xl font-black text-white">{SHOWCASE_MODE ? 'Checkout Simulation Complete' : 'Payment Successful!'}</h1>
         <p className="text-sm text-gray-300">
-          Your subscription is now active. You have unlimited access to movies, series, and live television.
+          {SHOWCASE_MODE
+            ? 'This is a frontend showcase. No payment was processed and no subscription was purchased.'
+            : 'Your subscription is now active. You have unlimited access to movies, series, and live television.'}
         </p>
       </div>
 

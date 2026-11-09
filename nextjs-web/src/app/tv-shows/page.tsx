@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     type: 'website',
     images: [
       {
-        url: 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=1200&auto=format&fit=crop&q=80',
+        url: '/showcase/posters/path-of-light.svg',
         width: 1200,
         height: 630,
         alt: 'TV Shows & Series - NOOR',
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'TV Shows & Series | NOOR',
     description: pageDescription,
-    images: ['https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=1200&auto=format&fit=crop&q=80'],
+    images: ['/showcase/posters/path-of-light.svg'],
   },
   alternates: {
     canonical: '/tv-shows',

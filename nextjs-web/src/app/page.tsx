@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     siteName: 'NOOR Islamic Cinema',
     images: [
       {
-        url: 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=1200&auto=format&fit=crop&q=80',
+        url: '/showcase/posters/path-of-light.svg',
         width: 1200,
         height: 630,
         alt: 'Holy Kaaba Makkah - NOOR Islamic Cinema',
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     title: 'NOOR - Islamic Video Streaming & Live TV',
     description:
       'Stream exclusive Islamic series, documentaries, live sacred broadcasts from Makkah and Madinah, and spiritual lectures.',
-    images: ['https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=1200&auto=format&fit=crop&q=80'],
+    images: ['/showcase/posters/path-of-light.svg'],
   },
   alternates: {
     canonical: '/',
@@ -87,7 +87,7 @@ export default async function HomePage() {
         '@id': 'https://noorcinema.com/#organization',
         name: 'NOOR Islamic Cinema',
         url: 'https://noorcinema.com',
-        logo: 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=300&auto=format&fit=crop&q=80',
+        logo: '/showcase/posters/path-of-light.svg',
       },
     ],
   };

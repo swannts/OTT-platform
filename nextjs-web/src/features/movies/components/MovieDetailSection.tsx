@@ -27,7 +27,7 @@ export default function MovieDetailSection({ initialMovie }: MovieDetailSectionP
   const backdropUrl =
     movie.banner_image ||
     movie.poster_image ||
-    'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=1600&auto=format&fit=crop&q=80';
+    '/showcase/posters/path-of-light.svg';
   const watchUrl = `/watch/movie/${movie.id}`;
 
   const handleToggleWatchlist = async () => {

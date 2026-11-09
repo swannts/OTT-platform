@@ -51,7 +51,7 @@ export default function BottomPlayerBar() {
     (activeItem.thumbnail_image && activeItem.thumbnail_image.trim()) ||
     (activeItem.poster_image && activeItem.poster_image.trim()) ||
     (activeItem.banner_image && activeItem.banner_image.trim()) ||
-    'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=200&auto=format&fit=crop&q=80';
+    '/showcase/posters/path-of-light.svg';
 
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
     if (progressBarRef.current) {

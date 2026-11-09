@@ -7,6 +7,7 @@ import { PriceCalculation, PaymentMethodsData, AppConfiguration } from '@/types'
 import { useAuth, useLanguage } from '@/providers';
 import { Spinner } from '@/components/ui';
 import { Crown, Tag, Shield, CreditCard, Lock, ArrowRight, Wallet, CheckCircle2 } from 'lucide-react';
+import { SHOWCASE_MODE } from '@/lib/showcase';
 
 interface GatewayOption {
   id: string;
@@ -217,6 +218,11 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen pt-24 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto pb-24">
+      {SHOWCASE_MODE && (
+        <p className="mb-6 rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-100" role="status">
+          Showcase checkout: submitting only simulates success. No payment details are collected and no charge is made.
+        </p>
+      )}
       <div className="mb-8">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
           {t('complete_order', 'Complete Your Order')}

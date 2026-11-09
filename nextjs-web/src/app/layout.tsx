@@ -6,6 +6,8 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import NavigationProgress from '@/components/layout/NavigationProgress';
 import { api } from '@/lib/api';
+import { SHOWCASE_MODE } from '@/lib/showcase';
+import ShowcaseNotice from '@/components/shared/ShowcaseNotice';
 
 const playfair = Playfair_Display({
   subsets: ['latin'],
@@ -150,6 +152,7 @@ export default function RootLayout({
               <LanguageProvider>
                 <NavigationProgress />
                 <Navbar />
+                {SHOWCASE_MODE && <ShowcaseNotice />}
                 <main className="flex-1 pb-12">
                   {children}
                 </main>

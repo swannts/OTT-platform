@@ -8,6 +8,7 @@ import { setActiveItem } from '@/store/slices/playerSlice';
 import { Play, Info, ChevronLeft, ChevronRight, Star, Clock } from 'lucide-react';
 import { SafeImage } from '@/components/ui';
 import { useLanguage } from '@/providers';
+import { SHOWCASE_HERO_ARTWORK } from '@/constants/showcase-artwork';
 
 interface HeroBannerProps {
   items: MediaItem[];
@@ -109,10 +110,11 @@ export default function HeroBanner({ items }: HeroBannerProps) {
       {slides.map((slide, idx) => {
         const isCurrent = idx === currentIndex;
         const imgUrl =
+          SHOWCASE_HERO_ARTWORK[String(slide.id)] ||
           (slide.banner_image && slide.banner_image.trim()) ||
           (slide.poster_image && slide.poster_image.trim()) ||
           (slide.thumbnail_image && slide.thumbnail_image.trim()) ||
-          'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=1920&auto=format&fit=crop&q=85';
+          '/showcase/posters/path-of-light.svg';
 
         return (
           <div

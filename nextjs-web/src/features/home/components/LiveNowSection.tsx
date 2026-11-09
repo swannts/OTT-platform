@@ -2,12 +2,28 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Play, Crown, ArrowRight, Radio } from 'lucide-react';
+import { Play, Crown, ArrowRight } from 'lucide-react';
 import { LiveChannel } from '@/types';
 import { useLanguage } from '@/providers';
+import {
+  SHOWCASE_CHANNEL_ARTWORK,
+  SHOWCASE_CHANNEL_ARTWORK_BY_ID,
+} from '@/constants/showcase-artwork';
 
 interface LiveNowSectionProps {
   channels?: LiveChannel[];
+}
+
+function getChannelArtwork(channel: LiveChannel, index: number): string {
+  return (
+    channel.poster_image ||
+    channel.thumbnail_image ||
+    channel.poster_tv_image ||
+    channel.poster_url ||
+    channel.details?.poster_url ||
+    SHOWCASE_CHANNEL_ARTWORK_BY_ID[String(channel.id)] ||
+    SHOWCASE_CHANNEL_ARTWORK[index % SHOWCASE_CHANNEL_ARTWORK.length]
+  );
 }
 
 export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
@@ -27,22 +43,15 @@ export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
     id: channels[0].id,
     title: getChannelTitle(channels[0]),
     location: channels[0].details?.category || channels[0].category,
-    thumbnail:
-      channels[0].poster_image ||
-      channels[0].thumbnail_image ||
-      channels[0].poster_tv_image,
+    thumbnail: getChannelArtwork(channels[0], 0),
     watchUrl: '/live-tv',
   };
 
-  const channelSlice = channels.slice(1, 5).map((ch) => ({
+  const channelSlice = channels.slice(1, 5).map((ch, index) => ({
     id: ch.id,
     name: getChannelTitle(ch),
     subtitle: ch.details?.category || ch.category,
-    logo:
-      ch.poster_image ||
-      ch.thumbnail_image ||
-      ch.poster_tv_image ||
-      '',
+    logo: getChannelArtwork(ch, index + 1),
   }));
 
   return (
@@ -71,13 +80,17 @@ export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
           href={featured.watchUrl}
           className="group relative lg:col-span-3 rounded-2xl overflow-hidden border border-white/10 hover:border-[#E5B869]/50 shadow-xl transition-all duration-300 block min-h-[160px] sm:min-h-[190px]"
         >
-          {featured.thumbnail ? (
-            <img src={featured.thumbnail} alt={featured.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-[#10201d]" aria-hidden="true">
-              <Radio className="h-12 w-12 text-[#E5B869]/70" />
-            </div>
-          )}
+          <img
+            src={featured.thumbnail}
+            alt={featured.title}
+            onError={(event) => {
+              event.currentTarget.onerror = null;
+              event.currentTarget.src =
+                SHOWCASE_CHANNEL_ARTWORK_BY_ID[String(featured.id)] ||
+                SHOWCASE_CHANNEL_ARTWORK[0];
+            }}
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+          />
 
           {/* Vignette */}
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-90 group-hover:opacity-95 transition-opacity" />
@@ -113,17 +126,17 @@ export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
               >
                 {/* Channel Logo / Icon Container */}
                 <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center font-black text-sm mb-3 shadow-inner overflow-hidden flex-shrink-0">
-                  {ch.logo ? (
-                    <img
-                      src={ch.logo}
-                      alt={ch.name}
-                      className="w-full h-full object-cover rounded-2xl"
-                    />
-                  ) : (
-                    <div className="w-full h-full rounded-2xl flex items-center justify-center bg-white/5 text-[#E5B869]">
-                      <Radio className="h-6 w-6" aria-hidden="true" />
-                    </div>
-                  )}
+                  <img
+                    src={ch.logo}
+                    alt={ch.name}
+                    onError={(event) => {
+                      event.currentTarget.onerror = null;
+                      event.currentTarget.src =
+                        SHOWCASE_CHANNEL_ARTWORK_BY_ID[String(ch.id)] ||
+                        SHOWCASE_CHANNEL_ARTWORK[1];
+                    }}
+                    className="w-full h-full object-cover rounded-2xl"
+                  />
                 </div>
 
                 <h4 className="text-xs sm:text-[13px] font-bold text-white group-hover:text-[#E5B869] transition-colors truncate max-w-full">
@@ -142,7 +155,7 @@ export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
             className="absolute inset-y-0 right-0 w-3/5 opacity-40 pointer-events-none bg-cover bg-center mix-blend-screen"
             style={{
               backgroundImage:
-                'url(https://images.unsplash.com/photo-1518684079-3c830dcef090?w=600&auto=format&fit=crop&q=80)',
+                'url(/showcase/posters/path-of-light.svg)',
             }}
           />
           <div className="absolute inset-0 bg-gradient-to-r from-[#071c18] via-[#071c18]/80 to-transparent pointer-events-none" />

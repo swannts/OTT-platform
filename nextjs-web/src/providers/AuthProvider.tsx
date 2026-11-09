@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { SubscriptionStatus, User } from '@/types';
+import { getShowcaseUser, SHOWCASE_MODE } from '@/lib/showcase';
 
 interface AuthContextType {
   user: User | null;
@@ -44,9 +45,9 @@ function normalizeUser(raw: unknown): User | null {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => SHOWCASE_MODE ? getShowcaseUser() : null);
   const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!SHOWCASE_MODE);
 
   const refreshSubscription = async () => {
     try {
@@ -73,6 +74,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    if (SHOWCASE_MODE) {
+      api.removeToken();
+      void api.getUserSubscription()
+        .then(setSubscription, () => setSubscription(null))
+        .finally(() => setIsLoading(false));
+      return;
+    }
+
     const initializeAuth = async () => {
       try {
         const storedUser = localStorage.getItem('user');

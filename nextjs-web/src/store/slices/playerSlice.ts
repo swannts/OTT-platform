@@ -47,7 +47,7 @@ export const loadActiveTrack = createAsyncThunk<MediaItem | null, void>(
         id: '01940000-0004-7000-8000-000000000006',
         name: 'The Message: Desert Journey',
         type: 'movie',
-        poster_image: 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=400&auto=format&fit=crop&q=80',
+        poster_image: '/showcase/posters/path-of-light.svg',
         genres: ['Historical', 'Documentary'],
         duration: '2h 15m',
       } as MediaItem;

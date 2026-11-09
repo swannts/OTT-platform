@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { SHOWCASE_MODE } from '@/lib/showcase';
 
 const YOUTUBE_SEARCH_ENDPOINT = 'https://www.googleapis.com/youtube/v3/search';
 
@@ -14,11 +15,6 @@ type YouTubeSearchItem = {
 };
 
 export async function GET(request: NextRequest) {
-  const apiKey = process.env.YOUTUBE_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: 'YouTube integration is not configured.' }, { status: 503 });
-  }
-
   const query = request.nextUrl.searchParams.get('q')?.trim();
   if (!query) {
     return NextResponse.json({ error: 'A search query is required.' }, { status: 400 });
@@ -28,6 +24,20 @@ export async function GET(request: NextRequest) {
     Math.max(Number(request.nextUrl.searchParams.get('maxResults') ?? 12) || 12, 1),
     50,
   );
+
+  if (SHOWCASE_MODE) {
+    return NextResponse.json({
+      items: [
+        { videoId: 'showcase-sample-1', title: `নমুনা ভিডিও: ${query}`, description: 'Showcase preview item. No external video search was performed.', channelTitle: 'NOOR Showcase', publishedAt: '2025-01-01T00:00:00Z', thumbnailUrl: null, url: 'https://www.youtube.com/watch?v=showcase-sample-1' },
+        { videoId: 'showcase-sample-2', title: `প্রদর্শনী ক্লিপ: ${query}`, description: 'Sample result for the frontend showcase.', channelTitle: 'NOOR Showcase', publishedAt: '2025-01-01T00:00:00Z', thumbnailUrl: null, url: 'https://www.youtube.com/watch?v=showcase-sample-2' },
+      ].slice(0, maxResults),
+    });
+  }
+
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json({ error: 'YouTube integration is not configured.' }, { status: 503 });
+  }
   const params = new URLSearchParams({
     key: apiKey,
     part: 'snippet',

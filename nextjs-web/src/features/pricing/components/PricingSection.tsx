@@ -57,7 +57,7 @@ export default function PricingSection({ initialPlans }: PricingSectionProps) {
 
                 <div className="flex items-baseline mb-4">
                   <span className="text-4xl sm:text-5xl font-black text-white">
-                    ${plan.price}
+                    ৳{plan.price}
                   </span>
                   <span className="text-gray-400 text-sm ml-2 font-medium">
                     /{plan.duration_value} {plan.duration}

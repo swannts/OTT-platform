@@ -29,6 +29,7 @@ import {
   SeasonItem,
   LocalizedGenre,
 } from '@/types';
+import { getShowcaseResponse, SHOWCASE_MODE } from '@/lib/showcase';
 
 export function normalizeMediaItem(raw: unknown): MediaItem {
   if (!raw || typeof raw !== 'object') {
@@ -82,7 +83,7 @@ export function normalizeMediaItem(raw: unknown): MediaItem {
     access: resolvedAccess,
     genres: genreList,
     genre_data: genreList,
-    has_content_access: Boolean(details.has_content_access ?? r.has_content_access),
+    has_content_access: SHOWCASE_MODE || Boolean(details.has_content_access ?? r.has_content_access),
     is_watchlist: Boolean(details.is_in_watchlist ?? r.is_watch_list ?? r.is_watchlist),
     blurhash: (r.blurhash as string) || (details.blurhash as string) || undefined,
   };
@@ -156,6 +157,12 @@ class ApiClient {
   }
 
   private async request<T>(endpoint: string, options: RequestInit & { next?: { revalidate?: number; tags?: string[] } } = {}): Promise<T> {
+    if (SHOWCASE_MODE) {
+      // Showcase mode is deliberately frontend-only: every API call is
+      // answered by local fixtures and simulated actions without fetch().
+      return getShowcaseResponse(endpoint, options) as T;
+    }
+
     const baseUrl = getApiBaseUrl();
     const url = `${baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
     const token = this.getToken();
