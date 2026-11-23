@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    agentUpgrade: "security",
+  },
   transpilePackages: ['@videojs/react', '@videojs/hlsjs-video', 'video.js'],
   images: {
     remotePatterns: [
