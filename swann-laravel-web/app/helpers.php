@@ -1054,11 +1054,13 @@ function gettmdbapiKey()
 
 function getCurrentProfile(?int $user_id, Request $request)  : int | null
 {
-    $device_id = $request->ip();
- 
+    $token = $request->user()?->currentAccessToken();
+    if (!$token instanceof \Laravel\Sanctum\PersonalAccessToken) {
+        return null;
+    }
 
     return Device::where('user_id', $user_id)
-        ->where('device_id', $device_id)
+        ->where('sanctum_token_id', $token->getKey())
         ->value('active_profile');
 }
 

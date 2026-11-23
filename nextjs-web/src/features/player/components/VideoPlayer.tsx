@@ -6,6 +6,7 @@ import LockedPlayer from './LockedPlayer';
 import { VideoQuality } from '@/types';
 import { isYouTubeVideo } from '@/lib/youtube';
 import { getSavedProgress } from '../utils/playbackProgress';
+import { api } from '@/lib/api';
 
 export interface VideoPlayerProps {
   contentId: string | number;
@@ -14,6 +15,7 @@ export interface VideoPlayerProps {
   videoUrl?: string;
   urlType?: string;
   qualities?: VideoQuality[];
+  playbackSessionId?: string;
   hasAccess?: boolean;
   initialTime?: number;
   poster?: string;
@@ -28,22 +30,44 @@ export default function VideoPlayer({
   videoUrl = '',
   urlType = 'URL',
   qualities = [],
+  playbackSessionId,
   hasAccess = true,
   initialTime = 0,
   poster,
   isLive = false,
   onBack,
 }: VideoPlayerProps) {
-  // 1. Locked VIP Subscription State
-  if (!hasAccess) {
-    return <LockedPlayer title={title} poster={poster} />;
-  }
-
   const [selectedQualityUrl, setSelectedQualityUrl] = useState<string>(videoUrl);
   const [selectedQualityType, setSelectedQualityType] = useState<string>(urlType);
   const [isQualitySwitch, setIsQualitySwitch] = useState<boolean>(false);
   const currentTimeRef = useRef<number>(initialTime);
+  const selectedQualityUrlRef = useRef<string>(videoUrl);
   const [resumeTime, setResumeTime] = useState<number>(initialTime);
+  const [sessionValid, setSessionValid] = useState(true);
+
+  useEffect(() => {
+    if (!playbackSessionId) return;
+    setSessionValid(true);
+    const timer = window.setInterval(() => {
+      void api.heartbeatPlaybackSession(playbackSessionId).then((refreshed) => {
+        if (refreshed.media_url && refreshed.media_url !== selectedQualityUrlRef.current) {
+          selectedQualityUrlRef.current = refreshed.media_url;
+          setResumeTime(currentTimeRef.current);
+          setIsQualitySwitch(true);
+          setSelectedQualityUrl(refreshed.media_url);
+          setSelectedQualityType('HLS');
+        }
+      }).catch(() => setSessionValid(false));
+    }, 45_000);
+    return () => {
+      window.clearInterval(timer);
+      void api.endPlaybackSession(playbackSessionId).catch(() => undefined);
+    };
+  }, [playbackSessionId]);
+
+  useEffect(() => {
+    selectedQualityUrlRef.current = selectedQualityUrl;
+  }, [selectedQualityUrl]);
 
   useEffect(() => {
     setSelectedQualityUrl(videoUrl);
@@ -51,6 +75,10 @@ export default function VideoPlayer({
   }, [videoUrl, urlType]);
 
   const isCurrentYouTube = isYouTubeVideo(selectedQualityUrl, selectedQualityType);
+
+  if (!hasAccess || !sessionValid) {
+    return <LockedPlayer title={title} poster={poster} />;
+  }
 
   const handleQualityChange = useCallback(
     (url: string, qualityType: string) => {

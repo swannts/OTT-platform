@@ -75,6 +75,12 @@ export interface VideoQuality {
   url_type: string;
 }
 
+export interface PlaybackSession {
+  session_id: string;
+  expires_at: string;
+  media_url?: string;
+}
+
 export interface SeoMetadata {
   meta_title?: string;
   meta_description?: string;
@@ -115,6 +121,7 @@ export interface ContentDetails {
   more_items?: MediaItem[];
   video_qualities?: VideoQuality[];
   video_default_quality?: VideoQuality;
+  playback_session?: PlaybackSession;
   seasons?: SeasonItem[];
   watched_time?: string | number;
   seo?: SeoMetadata;
@@ -494,6 +501,3 @@ export interface ReviewListResponse {
   other_reviews?: ReviewItem[];
   data?: ReviewItem[];
 }
-
-
-

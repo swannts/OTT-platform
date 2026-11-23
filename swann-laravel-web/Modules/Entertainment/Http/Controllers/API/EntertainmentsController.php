@@ -59,6 +59,11 @@ use Modules\Frontend\Models\PayPerView;
 use App\Services\RecommendationServiceV3;
 use App\Models\User;
 use Modules\Entertainment\Services\PlaybackEntitlementService;
+use Modules\Entertainment\Services\PlaybackSessionService;
+use Modules\Entertainment\Services\PlaybackMediaUrlService;
+use App\Services\Media\MediaReadinessService;
+use App\Models\MediaAsset;
+use Laravel\Sanctum\PersonalAccessToken;
 class EntertainmentsController extends Controller
 {
     protected $recommendationService;
@@ -68,7 +73,7 @@ class EntertainmentsController extends Controller
         $this->recommendationService = $recommendationService;
     }
 
-    public function playbackDetails(Request $request, PlaybackEntitlementService $entitlements)
+    public function playbackDetails(Request $request, PlaybackEntitlementService $entitlements, PlaybackSessionService $sessions, PlaybackMediaUrlService $mediaUrls, MediaReadinessService $mediaReadiness)
     {
         $validated = $request->validate([
             'id' => ['required', 'string', 'max:64'],
@@ -90,6 +95,15 @@ class EntertainmentsController extends Controller
         }
 
         $content = $result['content'];
+        $mediaAsset = null;
+        if ($content->media_asset_id) {
+            $mediaAsset = MediaAsset::query()->whereKey($content->media_asset_id)->where('status', 'ready')->first();
+            if (!$mediaAsset || !$mediaReadiness->inspect($mediaAsset)['ready']) {
+                return ApiResponse::error('The linked media asset is not ready for protected playback.', 503);
+            }
+        } elseif (!in_array(strtolower((string) ($content->movie_access ?? $content->access ?? 'free')), ['', 'free'], true)) {
+            return ApiResponse::error('Protected playback requires a private, signed media asset.', 503);
+        }
         $qualityRows = collect();
         if ($validated['type'] === 'movie' || $validated['type'] === 'tvshow') {
             $qualityRows = EntertainmentStreamContentMapping::query()
@@ -124,16 +138,93 @@ class EntertainmentsController extends Controller
             ];
         }
 
-        if (empty($qualities[0]['url'])) {
+        if (!$mediaAsset && empty($qualities[0]['url'])) {
             return ApiResponse::error('Playback is not configured for this title.', 404);
         }
+
+        $token = $request->user()->currentAccessToken();
+        if (!$token instanceof PersonalAccessToken) {
+            return ApiResponse::error('A registered playback session is required.', 401);
+        }
+        try {
+            $session = $sessions->start(
+                $request->user(),
+                $token,
+                (int) $result['profile']->id,
+                (string) $content->id,
+                $type
+            );
+        } catch (\Illuminate\Auth\Access\AuthorizationException $exception) {
+            return ApiResponse::error($exception->getMessage(), 403);
+        }
+
+        if ($mediaAsset) {
+            $manifestUrl = $mediaUrls->sign((int) $mediaAsset->id, 'master.m3u8', $session['session_id']);
+            $qualities = [[
+                'quality' => 'Auto',
+                'url_type' => 'HLS',
+                'url' => $manifestUrl,
+            ]];
+            $session['media_url'] = $manifestUrl;
+        }
+
+        \Illuminate\Support\Facades\Log::info('Customer playback session started.', [
+            'user_id' => $request->user()->id,
+            'playback_session_id' => $session['session_id'],
+            'content_id' => (string) $content->id,
+            'content_type' => $type,
+            'profile_id' => (int) $result['profile']->id,
+        ]);
 
         return ApiResponse::success([
             'content_id' => $content->id,
             'content_type' => $type,
             'profile_id' => $result['profile']->id,
+            'playback_session' => $session,
             'video_qualities' => $qualities,
         ], 'Playback authorized.', 200);
+    }
+
+    public function heartbeatPlayback(Request $request, string $sessionId, PlaybackSessionService $sessions, PlaybackMediaUrlService $mediaUrls)
+    {
+        $token = $request->user()->currentAccessToken();
+        if (!$token instanceof PersonalAccessToken) {
+            return ApiResponse::error('A registered playback session is required.', 401);
+        }
+        try {
+            $expiresAt = $sessions->heartbeat($request->user(), $token, $sessionId);
+        } catch (\Illuminate\Auth\Access\AuthorizationException $exception) {
+            return ApiResponse::error($exception->getMessage(), 403);
+        }
+        $response = ['expires_at' => $expiresAt];
+        $session = DB::table('playback_sessions')->where('session_id', $sessionId)->where('user_id', $request->user()->id)->first();
+        if ($session) {
+            $model = match ($session->content_type) {
+                'movie', 'tvshow' => Entertainment::class,
+                'episode' => Episode::class,
+                'video' => Video::class,
+                default => null,
+            };
+            $assetId = $model ? $model::query()->whereKey($session->content_id)->value('media_asset_id') : null;
+            if ($assetId) {
+                $response['media_url'] = $mediaUrls->sign((int) $assetId, 'master.m3u8', $sessionId);
+            }
+        }
+        return ApiResponse::success($response, 'Playback session refreshed.', 200);
+    }
+
+    public function endPlayback(Request $request, string $sessionId, PlaybackSessionService $sessions)
+    {
+        $token = $request->user()->currentAccessToken();
+        if (!$token instanceof PersonalAccessToken) {
+            return ApiResponse::error('A registered playback session is required.', 401);
+        }
+        try {
+            $sessions->end($request->user(), $token, $sessionId);
+        } catch (\Illuminate\Auth\Access\AuthorizationException $exception) {
+            return ApiResponse::error($exception->getMessage(), 403);
+        }
+        return ApiResponse::success(null, 'Playback session ended.', 200);
     }
 
     public function movieListV3(Request $request)

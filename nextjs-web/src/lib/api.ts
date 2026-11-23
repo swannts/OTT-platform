@@ -29,6 +29,7 @@ import {
   SeasonItem,
   LocalizedGenre,
   VideoQuality,
+  PlaybackSession,
 } from '@/types';
 
 export function normalizeMediaItem(raw: unknown): MediaItem {
@@ -560,7 +561,7 @@ class ApiClient {
     };
   }
 
-  async getPlaybackDetails(id: number | string, type: 'movie' | 'tvshow' | 'episode' | 'video'): Promise<VideoQuality[]> {
+  async getPlaybackDetails(id: number | string, type: 'movie' | 'tvshow' | 'episode' | 'video'): Promise<{ video_qualities: VideoQuality[]; playback_session?: PlaybackSession }> {
     if (typeof window === 'undefined') {
       throw new Error('Playback authorization is available only in the browser.');
     }
@@ -568,11 +569,26 @@ class ApiClient {
     if (!profileId) {
       throw new Error('Select a viewing profile before playback.');
     }
-    const result = await this.request<{ video_qualities?: VideoQuality[] }>('/v3/playback/details', {
+    const result = await this.request<{ video_qualities?: VideoQuality[]; playback_session?: PlaybackSession }>('/v3/playback/details', {
       method: 'POST',
       body: JSON.stringify({ id, type, profile_id: profileId }),
     });
-    return Array.isArray(result.video_qualities) ? result.video_qualities : [];
+    return {
+      video_qualities: Array.isArray(result.video_qualities) ? result.video_qualities : [],
+      playback_session: result.playback_session,
+    };
+  }
+
+  async heartbeatPlaybackSession(sessionId: string): Promise<{ media_url?: string }> {
+    return this.request<{ media_url?: string }>(`/playback/sessions/${encodeURIComponent(sessionId)}/heartbeat`, {
+      method: 'POST',
+    });
+  }
+
+  async endPlaybackSession(sessionId: string): Promise<void> {
+    await this.request(`/playback/sessions/${encodeURIComponent(sessionId)}/end`, {
+      method: 'POST',
+    });
   }
 
   async getSeoSettings(): Promise<SeoMetadata> {

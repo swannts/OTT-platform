@@ -208,34 +208,25 @@ private function getSubscriptionProfileLimit($user)
         }
 
     }
+    $token = $request->user()?->currentAccessToken();
+    if (!$token instanceof \Laravel\Sanctum\PersonalAccessToken) {
+        return ApiResponse::error('A registered device session is required.', 401);
+    }
     $device = Device::where('user_id', $user_id)
-                    ->where('device_id', $request->ip())
+                    ->where('sanctum_token_id', $token->getKey())
                     ->orderBy('id','DESC')
                     ->first();
 
     if ($device) {
 
         Device::where('user_id', $user_id)
-                ->where('device_id', $request->ip())
+                ->where('sanctum_token_id', $token->getKey())
                 ->where('id','!=',$device->id)
                 ->delete();
 
         $device->update(['active_profile' => $id]);
     } else {
-        $agent = new Agent();
-        $device_id = $request->getClientIp();
-        $device_name =  $agent->browser();
-        $platform = $agent->platform();
-
-        $device = Device::create([
-                'user_id' => $user_id,
-                'device_id' => $device_id,
-                'device_name' => $device_name,
-                'platform' => $platform,
-                  'session_id' => session()->getId(),
-                'last_activity' => now(),
-                'active_profile' => $id
-            ]);
+        return ApiResponse::error('Register this device before selecting a profile.', 409);
 
     }
 

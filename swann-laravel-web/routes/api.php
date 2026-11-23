@@ -230,10 +230,14 @@ Route::prefix('v3')->middleware(['auth:sanctum', 'throttle:api'])->group(functio
 
     // Playback URLs are returned only after Laravel verifies profile ownership and entitlement.
     Route::post('playback/details', [EntertainmentsController::class, 'playbackDetails'])->middleware('throttle:30,1');
+    Route::post('playback/sessions/{sessionId}/heartbeat', [EntertainmentsController::class, 'heartbeatPlayback'])->whereUuid('sessionId')->middleware('throttle:120,1');
+    Route::post('playback/sessions/{sessionId}/end', [EntertainmentsController::class, 'endPlayback'])->whereUuid('sessionId')->middleware('throttle:30,1');
 });
 
 
 Route::get('app-configuration', [APISettingController::class, 'appConfiguraton']);
+Route::get('v3/playback/media/{assetId}/{file}', [Modules\Entertainment\Http\Controllers\API\PlaybackMediaController::class, 'show'])
+    ->where('file', '.*')->middleware('signed')->name('playback.media');
 
 Route::prefix('tv')->group(function () {
     Route::get('/initiate-session', [TvAuthController::class, 'initiateSession']);

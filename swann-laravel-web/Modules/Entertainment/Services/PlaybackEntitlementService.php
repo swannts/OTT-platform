@@ -12,6 +12,7 @@ use Modules\Episode\Models\Episode;
 use Modules\Frontend\Models\PayPerView;
 use Modules\Subscriptions\Models\Subscription;
 use Modules\Video\Models\Video;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class PlaybackEntitlementService
 {
@@ -27,13 +28,21 @@ class PlaybackEntitlementService
             throw new AuthorizationException('The selected profile is unavailable.');
         }
 
-        $activeProfileId = Device::query()
+        $token = $user->currentAccessToken();
+        if (!$token instanceof PersonalAccessToken) {
+            throw new AuthorizationException('A registered playback session is required.');
+        }
+
+        $device = Device::query()
             ->where('user_id', $user->id)
-            ->where('device_id', $request->ip())
-            ->value('active_profile');
-        if ((string) $activeProfileId !== (string) $profile->id) {
+            ->where('sanctum_token_id', $token->getKey())
+            ->where('active_profile', $profile->id)
+            ->whereNull('deleted_at')
+            ->first();
+        if (!$device) {
             throw new AuthorizationException('Select this profile on the current device before playback.');
         }
+        $device->forceFill(['last_activity' => now()])->save();
 
         $model = match ($type) {
             'movie', 'tvshow' => Entertainment::class,
@@ -78,7 +87,22 @@ class PlaybackEntitlementService
                     $query->selectRaw('1')
                         ->from('payperviewstransactions')
                         ->whereColumn('payperviewstransactions.pay_per_view_id', 'pay_per_views.id')
-                        ->where('payperviewstransactions.payment_status', 'paid');
+                        ->where(function ($transaction) {
+                            $transaction->where(function ($free) {
+                                $free->where('payperviewstransactions.payment_type', 'free')
+                                    ->where('payperviewstransactions.amount', 0);
+                            })->orWhereExists(function ($receipt) {
+                                $receipt->selectRaw('1')
+                                    ->from('verified_payments')
+                                    ->whereColumn('verified_payments.gateway', 'payperviewstransactions.payment_type')
+                                    ->whereColumn('verified_payments.provider_reference', 'payperviewstransactions.transaction_id')
+                                    ->whereColumn('verified_payments.user_id', 'payperviewstransactions.user_id')
+                                    ->where('verified_payments.purchase_type', 'pay_per_view')
+                                    ->where('verified_payments.fulfillment_type', 'pay_per_view')
+                                    ->whereColumn('verified_payments.fulfillment_id', 'payperviewstransactions.pay_per_view_id')
+                                    ->whereNotNull('verified_payments.fulfilled_at');
+                            });
+                        });
                 })
                 ->where(function ($query) {
                     $query->whereNull('view_expiry_date')->orWhere('view_expiry_date', '>', now());
@@ -98,7 +122,7 @@ class PlaybackEntitlementService
                 ->where('user_id', $user->id)
                 ->where('status', 'active')
                 ->where(function ($query) {
-                    $query->whereNull('end_date')->orWhereDate('end_date', '>=', now()->toDateString());
+                    $query->whereNull('end_date')->orWhere('end_date', '>', now());
                 })
                 ->latest('id')
                 ->first();

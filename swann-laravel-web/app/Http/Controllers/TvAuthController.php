@@ -67,7 +67,7 @@ class TvAuthController extends Controller
         'session_id' => 'required|uuid'
     ]);
 
-    $session = TvLoginSession::where('session_id', $request->session_id)
+        $session = TvLoginSession::where('session_id', $request->session_id)
         ->whereNotNull('confirmed_at')
         ->whereColumn('confirmed_at', '<', 'expires_at')
         ->first();
@@ -77,6 +77,11 @@ class TvAuthController extends Controller
     }
 
     if ($session->confirmed_at && $session->user_id) {
+
+        $claimed = TvLoginSession::query()->whereKey($session->id)->whereNull('consumed_at')->update(['consumed_at' => now()]);
+        if ($claimed !== 1) {
+            return response()->json(['status' => 'consumed'], 409);
+        }
 
         $user = User::with(['subscriptionPackage', 'userMultiProfile'])->find($session->user_id);
 
@@ -122,7 +127,7 @@ class TvAuthController extends Controller
                                         $device = (int)$limitData;
                                     }
 
-                                    if ($count == $device) {
+                                    if ($count >= $device) {
                                         $formattedDevices = collect($other_device)->map(function ($device) {
                                             return [
                                                 'id' => $device->id,
@@ -151,7 +156,7 @@ class TvAuthController extends Controller
                 }
                }else{
 
-                    if ($count ==1) {
+                    if ($count >= 1) {
                         $formattedDevices = collect($other_device)->map(function ($device) {
                             return [
                                 'id' => $device->id,
@@ -182,31 +187,29 @@ class TvAuthController extends Controller
 
         // Save the user
         $user->save();
-        $user['api_token'] = $user->createToken(setting('app_name'))->plainTextToken;
+        $issuedToken = $user->createToken(setting('app_name'));
+        $user['api_token'] = $issuedToken->plainTextToken;
 
         if ($user->is_subscribe == 1) {
             $user['plan_details'] = $user->subscriptionPackage;
         }
 
-        $device_id = $request->device_id;
-        $device_name = $request->device_name;
-        $platform = $request->platform;
+        $device_id = (string) \Illuminate\Support\Str::uuid();
+        $device_name = $request->input('device_name', 'TV device');
+        $platform = $request->input('platform', 'tv');
 
         $profile = $user->userMultiProfile->first();
 
-        if (!empty($device_id) && !empty($device_name)) {
-            $device = Device::updateOrCreate(
-                [
-                    'user_id' => $user->id,
-                    'device_id' => $device_id
-                ],
-                [
-                    'device_name' => $device_name,
-                    'platform' => $platform,
-                    'active_profile'=> $profile->id ?? null,
-                ]
-            );
-        }
+        Device::create([
+            'user_id' => $user->id,
+            'sanctum_token_id' => $issuedToken->accessToken->getKey(),
+            'device_id' => $device_id,
+            'device_name' => $device_name,
+            'platform' => $platform,
+            'active_profile' => $profile->id ?? null,
+            'session_id' => $session->session_id,
+            'last_activity' => now(),
+        ]);
         $user->session_id = $session->session_id;
         $loginResource = new LoginResource($user);
 

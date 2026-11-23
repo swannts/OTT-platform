@@ -23,7 +23,7 @@ class PlaybackEntitlementTest extends TestCase
         $contentId = $this->createContent('free');
         $request = request()->duplicate();
         $request->setUserResolver(fn () => $user);
-        $this->activateProfile($user, $profile, $request->ip());
+        $this->activateProfile($user, $profile);
 
         $result = app(PlaybackEntitlementService::class)->authorize($user, $contentId, 'movie', $profile->id, $request);
         $this->assertSame($contentId, $result['content']->id);
@@ -38,6 +38,32 @@ class PlaybackEntitlementTest extends TestCase
         }
     }
 
+    public function test_two_accounts_on_the_same_ip_use_separate_server_issued_device_bindings(): void
+    {
+        $contentId = $this->createContent('free');
+        $request = request()->duplicate();
+
+        foreach ([User::factory()->create(), User::factory()->create()] as $user) {
+            $profile = $this->createProfile($user, false);
+            $this->activateProfile($user, $profile);
+            $request->setUserResolver(fn () => $user);
+
+            $result = app(PlaybackEntitlementService::class)->authorize($user, $contentId, 'movie', $profile->id, $request);
+            $this->assertSame($profile->id, $result['profile']->id);
+        }
+    }
+
+    public function test_playback_rejects_requests_without_a_server_issued_sanctum_device(): void
+    {
+        $user = User::factory()->create();
+        $profile = $this->createProfile($user, false);
+        $request = request()->duplicate();
+        $request->setUserResolver(fn () => $user);
+
+        $this->expectException(AuthorizationException::class);
+        app(PlaybackEntitlementService::class)->authorize($user, $this->createContent('free'), 'movie', $profile->id, $request);
+    }
+
     public function test_child_profile_cannot_play_restricted_title_even_when_it_is_free(): void
     {
         $user = User::factory()->create();
@@ -45,7 +71,7 @@ class PlaybackEntitlementTest extends TestCase
         $contentId = $this->createContent('free', 1);
         $request = request()->duplicate();
         $request->setUserResolver(fn () => $user);
-        $this->activateProfile($user, $profile, $request->ip());
+        $this->activateProfile($user, $profile);
 
         $this->expectException(AuthorizationException::class);
         app(PlaybackEntitlementService::class)->authorize($user, $contentId, 'movie', $profile->id, $request);
@@ -58,7 +84,7 @@ class PlaybackEntitlementTest extends TestCase
         $contentId = $this->createContent('paid');
         $request = request()->duplicate();
         $request->setUserResolver(fn () => $user);
-        $this->activateProfile($user, $profile, $request->ip());
+        $this->activateProfile($user, $profile);
 
         $this->expectException(AuthorizationException::class);
         app(PlaybackEntitlementService::class)->authorize($user, $contentId, 'movie', $profile->id, $request);
@@ -70,7 +96,7 @@ class PlaybackEntitlementTest extends TestCase
         $profile = $this->createProfile($user, false);
         $request = request()->duplicate();
         $request->setUserResolver(fn () => $user);
-        $this->activateProfile($user, $profile, $request->ip());
+        $this->activateProfile($user, $profile);
 
         $planId = DB::table('plan')->insertGetId([
             'name' => 'Playback test plan',
@@ -95,13 +121,13 @@ class PlaybackEntitlementTest extends TestCase
         $this->assertSame($contentId, $result['content']->id);
     }
 
-    public function test_paid_ppv_requires_a_paid_transaction_and_valid_access_window(): void
+    public function test_paid_ppv_requires_a_provider_verified_receipt_and_valid_access_window(): void
     {
         $user = User::factory()->create();
         $profile = $this->createProfile($user, false);
         $request = request()->duplicate();
         $request->setUserResolver(fn () => $user);
-        $this->activateProfile($user, $profile, $request->ip());
+        $this->activateProfile($user, $profile);
         $contentId = $this->createContent('pay-per-view');
         $purchaseId = DB::table('pay_per_views')->insertGetId([
             'user_id' => $user->id,
@@ -119,6 +145,29 @@ class PlaybackEntitlementTest extends TestCase
             'amount' => 5,
             'payment_type' => 'test',
             'payment_status' => 'paid',
+            'transaction_id' => 'verified-ppv-1',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        try {
+            app(PlaybackEntitlementService::class)->authorize($user, $contentId, 'movie', $profile->id, $request);
+            $this->fail('A legacy paid transaction without a verified provider receipt must not grant playback.');
+        } catch (AuthorizationException) {
+            $this->assertTrue(true);
+        }
+
+        DB::table('verified_payments')->insert([
+            'gateway' => 'test',
+            'provider_reference' => 'verified-ppv-1',
+            'user_id' => $user->id,
+            'purchase_type' => 'pay_per_view',
+            'purchase_id' => $contentId,
+            'amount_minor' => 500,
+            'currency' => 'USD',
+            'fulfillment_type' => 'pay_per_view',
+            'fulfillment_id' => $purchaseId,
+            'fulfilled_at' => now(),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -143,11 +192,14 @@ class PlaybackEntitlementTest extends TestCase
         ]);
     }
 
-    private function activateProfile(User $user, UserMultiProfile $profile, string $ip): void
+    private function activateProfile(User $user, UserMultiProfile $profile): void
     {
+        $token = $user->createToken('playback-test')->accessToken;
+        $user->withAccessToken($token);
         Device::create([
             'user_id' => $user->id,
-            'device_id' => $ip,
+            'sanctum_token_id' => $token->getKey(),
+            'device_id' => (string) \Illuminate\Support\Str::uuid(),
             'active_profile' => $profile->id,
             'device_name' => 'Test browser',
             'platform' => 'web',

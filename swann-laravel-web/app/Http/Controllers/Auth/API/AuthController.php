@@ -85,7 +85,19 @@ class AuthController extends Controller
             );
         }
 
-        $success['token'] = $user->createToken(setting('app_name'))->plainTextToken;
+        $issuedToken = $user->createToken(setting('app_name'));
+        $user->api_token = $issuedToken->plainTextToken;
+        $profile = $user->userMultiProfile()->first();
+        Device::create([
+            'user_id' => $user->id,
+            'sanctum_token_id' => $issuedToken->accessToken->getKey(),
+            'device_id' => (string) \Illuminate\Support\Str::uuid(),
+            'device_name' => $request->input('device_name', 'OTT device'),
+            'platform' => $request->input('platform', 'unknown'),
+            'active_profile' => $profile?->id,
+            'session_id' => session()->getId(),
+            'last_activity' => now(),
+        ]);
         $success['name'] = $user->name;
         $userResource = new RegisterResource($user);
 
@@ -151,15 +163,15 @@ class AuthController extends Controller
 
         if ($request->has('is_ajax') && $request->is_ajax == 1) {
             $agent = new Agent();
-            $device_id = $request->getClientIp();
             $device_name = $agent->browser();
             $platform = $agent->platform();
         } else {
-            $device_id = $request->device_id;
-            $device_name = $request->device_name;
-            $platform = $request->platform;
+            $device_name = $request->input('device_name', 'OTT device');
+            $platform = $request->input('platform', 'unknown');
         }
-        $response = $this->checkDeviceLimit($user, $device_id, true);
+        // Device identifiers supplied by clients (or inferred from IP addresses) are not
+        // identity. A fresh Sanctum token ID is the server-issued device binding.
+        $response = $this->checkDeviceLimit($user, null, true);
         if ($response) {
             return $response;
         }
@@ -171,9 +183,9 @@ class AuthController extends Controller
 
         // Save the user
         $user->save();
-        // Name token by device_id so we can revoke per-device later
-        $tokenName = !empty($device_id) ? (string)$device_id : setting('app_name');
-        $user['api_token'] = $user->createToken($tokenName)->plainTextToken;
+        $issuedToken = $user->createToken(setting('app_name'));
+        $device_id = (string) \Illuminate\Support\Str::uuid();
+        $user['api_token'] = $issuedToken->plainTextToken;
         $user['short_drama_session_token'] = $this->issueShortDramaSessionTokenIfAvailable((int) $user->id);
 
         if ($user->is_subscribe == 1) {
@@ -190,21 +202,16 @@ class AuthController extends Controller
         $profile = $user->userMultiProfile->first();
         
 
-        if (!empty($device_id) && !empty($device_name)) {
-            $device = Device::updateOrCreate(
-                [
-                    'user_id' => $user->id,
-                    'device_id' => $device_id
-                ],
-                [
-                    'device_name' => $device_name,
-                    'platform' => $platform,
-                    'active_profile' => $profile->id ?? null,
-                    'session_id' => session()->getId(),
-                    'last_activity' => now(),
-                ]
-            );
-        }
+        Device::create([
+            'user_id' => $user->id,
+            'sanctum_token_id' => $issuedToken->accessToken->getKey(),
+            'device_id' => $device_id,
+            'device_name' => $device_name,
+            'platform' => $platform,
+            'active_profile' => $profile->id ?? null,
+            'session_id' => session()->getId(),
+            'last_activity' => now(),
+        ]);
 
         $loginResource = new LoginResource($user);
         $message = __('messages.user_login');
@@ -239,7 +246,7 @@ class AuthController extends Controller
 
     if ($user_data != null) {
 
-        $response = $this->checkDeviceLimit($user_data, $request->device_id, false);
+        $response = $this->checkDeviceLimit($user_data, null, true);
         if ($response) {
             return $response;
         }
@@ -316,24 +323,18 @@ class AuthController extends Controller
         $message = trans('messages.save_form', ['form' => $input['user_type']]);
     }
 
-    if (!empty($request->device_id) && !empty($request->device_name)) {
-        $device = Device::updateOrCreate(
-            [
-                'user_id' => $user_data->id,
-                'device_id' => $request->device_id,
-            ],
-            [
-                'device_name' => $request->device_name,
-                'platform' => $request->platform,
-                'session_id' => session()->getId(),
-                'last_activity' => now(),
-            ]
-        );
-    }
-
-
-    $tokenName = $request->device_id ?: 'auth_token';
-    $user_data['api_token'] = $user_data->createToken($tokenName)->plainTextToken;
+    $issuedToken = $user_data->createToken(setting('app_name'));
+    $user_data['api_token'] = $issuedToken->plainTextToken;
+    Device::create([
+        'user_id' => $user_data->id,
+        'sanctum_token_id' => $issuedToken->accessToken->getKey(),
+        'device_id' => (string) \Illuminate\Support\Str::uuid(),
+        'device_name' => $request->input('device_name', 'OTT device'),
+        'platform' => $request->input('platform', 'unknown'),
+        'active_profile' => $user_data->userMultiProfile()->value('id'),
+        'session_id' => session()->getId(),
+        'last_activity' => now(),
+    ]);
     $user_data['short_drama_session_token'] = $this->issueShortDramaSessionTokenIfAvailable((int) $user_data->id);
 
     if ($user_data->is_subscribe == 1) {
@@ -345,7 +346,7 @@ class AuthController extends Controller
     return $this->sendResponse($socialLogin, $message);
 }
 
-protected function checkDeviceLimit(User $user, string $deviceId = null, bool $isLoginFlow = true): ?JsonResponse 
+protected function checkDeviceLimit(User $user, ?string $deviceId = null, bool $isLoginFlow = true): ?JsonResponse
 {
     // For login flow: delete old devices first, then check if existing device exists
     if ($isLoginFlow) {
@@ -513,18 +514,20 @@ protected function checkDeviceLimit(User $user, string $deviceId = null, bool $i
 
         $user = Auth::guard('sanctum')->user();
         $currentToken = $user->currentAccessToken();
-        if ($currentToken && method_exists($currentToken, 'delete')) {
-            $currentToken->delete();
-        }
-
-
+        $currentDeviceId = $currentToken && method_exists($currentToken, 'getKey')
+            ? $currentToken->getKey()
+            : null;
         $tvsession = TvLoginSession::where('user_id', $user->id)->first();
         if($tvsession){
             $tvsession->delete();
         }
 
-        $deviceId = $request->filled('device_id') ? $request->device_id : $request->ip();
-        Device::where('user_id', $user->id)->where('device_id', $deviceId)->delete();
+        if ($currentDeviceId) {
+            Device::where('user_id', $user->id)->where('sanctum_token_id', $currentDeviceId)->delete();
+        }
+        if ($currentToken && method_exists($currentToken, 'delete')) {
+            $currentToken->delete();
+        }
 
         if ($request->is('api*')) {
             return ApiResponse::success(null, __('messages.user_logout'), 200);
@@ -603,8 +606,9 @@ protected function checkDeviceLimit(User $user, string $deviceId = null, bool $i
             'old_password' => 'required',
             'new_password' => 'required|min:8',
         ]);
-        $user = \Auth::user();
-        $user = User::where('id', $user->id)->first();
+        $authenticatedUser = \Auth::user();
+        $currentToken = $authenticatedUser?->currentAccessToken();
+        $user = User::where('id', $authenticatedUser?->id)->first();
         if ($user == '') {
             return ApiResponse::error(__('messages.user_notfound'), 400);
         }
@@ -621,11 +625,27 @@ protected function checkDeviceLimit(User $user, string $deviceId = null, bool $i
         
         if ($match) {
 
+            if ($currentToken && method_exists($currentToken, 'getKey')) {
+                Device::where('user_id', $user->id)->where('sanctum_token_id', $currentToken->getKey())->delete();
+                $currentToken->delete();
+            }
+
             $user->fill([
                 'password' => Hash::make($request->new_password),
             ])->save();
 
-            $success['api_token'] = $user->createToken(setting('app_name'))->plainTextToken;
+            $issuedToken = $user->createToken(setting('app_name'));
+            $success['api_token'] = $issuedToken->plainTextToken;
+            Device::create([
+                'user_id' => $user->id,
+                'sanctum_token_id' => $issuedToken->accessToken->getKey(),
+                'device_id' => (string) \Illuminate\Support\Str::uuid(),
+                'device_name' => $request->input('device_name', 'OTT device'),
+                'platform' => $request->input('platform', 'unknown'),
+                'active_profile' => $user->userMultiProfile()->value('id'),
+                'session_id' => session()->getId(),
+                'last_activity' => now(),
+            ]);
             $success['name'] = $user->name;
 
             $data = [

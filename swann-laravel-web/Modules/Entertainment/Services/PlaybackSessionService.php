@@ -1,0 +1,142 @@
+<?php
+
+namespace Modules\Entertainment\Services;
+
+use App\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Laravel\Sanctum\PersonalAccessToken;
+use Modules\Subscriptions\Models\Subscription;
+
+class PlaybackSessionService
+{
+    private const HEARTBEAT_TTL_SECONDS = 120;
+
+    /** @return array{session_id:string, expires_at:string} */
+    public function start(User $user, PersonalAccessToken $token, int $profileId, string $contentId, string $contentType): array
+    {
+        return DB::transaction(function () use ($user, $token, $profileId, $contentId, $contentType): array {
+            // Serialize starts per account so simultaneous requests cannot exceed the limit.
+            DB::table('users')->where('id', $user->id)->lockForUpdate()->first();
+            $now = now();
+            DB::table('playback_sessions')
+                ->where('user_id', $user->id)
+                ->whereNull('ended_at')
+                ->where('expires_at', '<=', $now)
+                ->update(['ended_at' => $now, 'updated_at' => $now]);
+
+            $active = DB::table('playback_sessions')
+                ->where('user_id', $user->id)
+                ->whereNull('ended_at')
+                ->where('expires_at', '>', $now)
+                ->where('device_token_id', $token->getKey())
+                ->where('profile_id', $profileId)
+                ->where('content_id', $contentId)
+                ->where('content_type', $contentType)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$active) {
+                $limit = $this->concurrentStreamLimit($user);
+                $activeCount = DB::table('playback_sessions')
+                    ->where('user_id', $user->id)
+                    ->whereNull('ended_at')
+                    ->where('expires_at', '>', $now)
+                    ->count();
+                if ($activeCount >= $limit) {
+                    throw new AuthorizationException('The simultaneous stream limit has been reached.');
+                }
+
+                $sessionId = (string) Str::uuid();
+                DB::table('playback_sessions')->insert([
+                    'session_id' => $sessionId,
+                    'user_id' => $user->id,
+                    'device_token_id' => $token->getKey(),
+                    'profile_id' => $profileId,
+                    'content_id' => $contentId,
+                    'content_type' => $contentType,
+                    'last_heartbeat_at' => $now,
+                    'expires_at' => $now->copy()->addSeconds(self::HEARTBEAT_TTL_SECONDS),
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            } else {
+                $sessionId = $active->session_id;
+                DB::table('playback_sessions')->where('id', $active->id)->update([
+                    'last_heartbeat_at' => $now,
+                    'expires_at' => $now->copy()->addSeconds(self::HEARTBEAT_TTL_SECONDS),
+                    'updated_at' => $now,
+                ]);
+            }
+
+            return [
+                'session_id' => $sessionId,
+                'expires_at' => $now->copy()->addSeconds(self::HEARTBEAT_TTL_SECONDS)->toIso8601String(),
+            ];
+        }, 3);
+    }
+
+    public function heartbeat(User $user, PersonalAccessToken $token, string $sessionId): string
+    {
+        $now = now();
+        $updated = DB::table('playback_sessions')
+            ->where('session_id', $sessionId)
+            ->where('user_id', $user->id)
+            ->where('device_token_id', $token->getKey())
+            ->whereNull('ended_at')
+            ->where('expires_at', '>', $now)
+            ->update([
+                'last_heartbeat_at' => $now,
+                'expires_at' => $now->copy()->addSeconds(self::HEARTBEAT_TTL_SECONDS),
+                'updated_at' => $now,
+            ]);
+
+        if ($updated !== 1) {
+            throw new AuthorizationException('Playback session has expired or was revoked.');
+        }
+
+        return $now->copy()->addSeconds(self::HEARTBEAT_TTL_SECONDS)->toIso8601String();
+    }
+
+    public function end(User $user, PersonalAccessToken $token, string $sessionId): void
+    {
+        $session = DB::table('playback_sessions')
+            ->where('session_id', $sessionId)
+            ->where('user_id', $user->id)
+            ->where('device_token_id', $token->getKey())
+            ->first();
+
+        if (!$session) {
+            throw new AuthorizationException('Playback session has expired or was revoked.');
+        }
+
+        if (!$session->ended_at) {
+            DB::table('playback_sessions')->where('id', $session->id)->update([
+                'ended_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+
+    private function concurrentStreamLimit(User $user): int
+    {
+        $subscription = Subscription::query()
+            ->where('user_id', $user->id)
+            ->where('status', 'active')
+            ->where(fn ($query) => $query->whereNull('end_date')->orWhere('end_date', '>', now()))
+            ->latest('id')
+            ->first();
+        $limitations = json_decode((string) ($subscription?->plan_type ?? ''), true);
+        if (is_array($limitations)) {
+            foreach ($limitations as $limitation) {
+                if (in_array($limitation['slug'] ?? '', ['simultaneous-streams', 'concurrent-streams'], true)
+                    && (int) ($limitation['limitation_value'] ?? 0) === 1) {
+                    $value = $limitation['limit']['value'] ?? $limitation['limit'] ?? 1;
+                    return max(1, min(10, (int) $value));
+                }
+            }
+        }
+        return 1;
+    }
+}

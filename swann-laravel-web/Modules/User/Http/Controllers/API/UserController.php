@@ -52,18 +52,16 @@ class UserController extends Controller
         $your_device = null;
         $other_device = [];
 
-        // Prefer explicit device_id from request, then current token name, finally subscription device
-        if ($request->filled('device_id')) {
-            $currentDeviceId = $request->device_id;
-        } elseif ($request->user() && $request->user()->currentAccessToken()) {
-            $currentDeviceId = $request->user()->currentAccessToken()->name;
+        // The token row is server-issued; request device IDs and token names are labels only.
+        if ($request->user() && $request->user()->currentAccessToken() instanceof \Laravel\Sanctum\PersonalAccessToken) {
+            $currentDeviceId = $request->user()->currentAccessToken()->getKey();
         } else {
-            $currentDeviceId = $user->subscriptionPackage->device_id ?? null;
+            $currentDeviceId = null;
         }
 
         if ($devices->isNotEmpty()) {
             foreach ($devices as $device) {
-                if ($currentDeviceId && $device->device_id === $currentDeviceId) {
+                if ($currentDeviceId && (int) $device->sanctum_token_id === (int) $currentDeviceId) {
                     $your_device = $device;
                 } else {
                     $other_device[] = $device;
@@ -71,7 +69,7 @@ class UserController extends Controller
             }
 
             // Fallback only when we truly don't know the current device (no id info)
-            if (!$your_device && !$request->filled('device_id')) {
+            if (!$your_device && !$currentDeviceId) {
                 $your_device = $devices->sortByDesc('updated_at')->first();
                 $other_device = $devices->where('id', '!=', optional($your_device)->id)->values();
             }
@@ -98,21 +96,11 @@ public function deviceLogout(Request $request)
 {
 
     $userId = $request->user()->id;
-    $request->validate([
-        'id' => ['required_without:device_id', 'integer', 'min:1'],
-        'device_id' => ['required_without:id', 'string', 'max:255'],
-    ]);
+    $request->validate(['id' => ['required', 'integer', 'min:1']]);
 
     $deviceQuery = Device::where('user_id', $userId);
 
-    $deviceQuery->where(function ($query) use ($request) {
-        if ($request->filled('device_id')) {
-            $query->where('device_id', $request->device_id);
-        }
-        if ($request->filled('id')) {
-            $request->filled('device_id') ? $query->orWhere('id', $request->id) : $query->where('id', $request->id);
-        }
-    });
+    $deviceQuery->whereKey($request->integer('id'));
 
     $device = $deviceQuery->first();
 
@@ -120,14 +108,14 @@ public function deviceLogout(Request $request)
         return ApiResponse::error(__('users.device_not_found'), 404);
     }
 
-    $deviceIdToLogout = $device->device_id;
+    $deviceIdToLogout = $device->sanctum_token_id;
 
-    // Revoke sanctum tokens for this specific device (token name = device_id)
+    // Device IDs are the primary keys of the server-issued Sanctum tokens.
     try {
         $user = $request->user();
         if ($user && class_exists('Laravel\\Sanctum\\PersonalAccessToken')) {
             \Laravel\Sanctum\PersonalAccessToken::where('tokenable_id', $userId)
-                ->where('name', $deviceIdToLogout)
+                ->whereKey($deviceIdToLogout)
                 ->delete();
         }
     } catch (\Throwable $e) {
@@ -139,7 +127,7 @@ public function deviceLogout(Request $request)
     try {
         DB::table('sessions')
             ->where('user_id', $userId)
-            ->where('ip_address', $deviceIdToLogout)
+            ->where('id', $device->session_id)
             ->delete();
     } catch (\Throwable $e) {
         // ignore if sessions table not present
