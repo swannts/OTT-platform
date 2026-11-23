@@ -45,6 +45,18 @@ export const navData = [
     items: [
       { title: 'Overview', path: paths.dashboard.root, icon: ICONS.dashboard },
       {
+        title: 'Content approval',
+        path: '/dashboard/content/review',
+        icon: ICONS.blog,
+        permissions: ['content.submit', 'content.review', 'content.approve', 'content.publish'],
+      },
+      {
+        title: 'Operations & reports',
+        path: '/dashboard/operations',
+        icon: ICONS.analytics,
+        permissions: ['media.view', 'subscriptions.view', 'finance.payments.view', 'marketing.campaigns.manage', 'analytics.audience.view', 'operations.health.view'],
+      },
+      {
         title: 'Roles',
         path: '/dashboard/access/roles',
         icon: ICONS.lock,

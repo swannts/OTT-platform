@@ -30,4 +30,15 @@ export const rbacApi = {
   },
   acceptInvitation: (data) =>
     axios.post('/api/admin/invitations/accept', data).then((response) => response.data),
+  contentReviewQueue: (params) => axios.get(`${base}/content/review-queue`, { params }).then((response) => response.data),
+  submitContent: (id) => axios.post(`${base}/content/${encodeURIComponent(id)}/submit`).then((response) => response.data),
+  approveContent: (id, data) => axios.post(`${base}/content/reviews/${id}/approve`, data).then((response) => response.data),
+  rejectContent: (id, data) => axios.post(`${base}/content/reviews/${id}/reject`, data).then((response) => response.data),
+  publishContent: (id) => axios.post(`${base}/content/reviews/${id}/publish`).then((response) => response.data),
+  mediaOverview: () => axios.get(`${base}/media/overview`).then((response) => response.data),
+  subscriptionsOverview: () => axios.get(`${base}/subscriptions/overview`).then((response) => response.data),
+  financeOverview: () => axios.get(`${base}/finance/overview`).then((response) => response.data),
+  marketingOverview: () => axios.get(`${base}/marketing/overview`).then((response) => response.data),
+  analyticsOverview: () => axios.get(`${base}/analytics/overview`).then((response) => response.data),
+  operationsOverview: () => axios.get(`${base}/operations/overview`).then((response) => response.data),
 };

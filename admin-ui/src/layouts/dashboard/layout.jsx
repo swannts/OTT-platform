@@ -29,8 +29,8 @@ import { useAuthContext } from 'src/auth/hooks';
 import { usePathname } from 'src/routes/hooks';
 import {
   filterNavigationByPermissions,
-  hasPermission,
-  requiredPermissionForPath,
+  hasAnyPermission,
+  requiredPermissionsForPath,
 } from 'src/features/rbac/permissions';
 import { AccessDeniedView } from 'src/features/rbac/components/AccessDeniedView';
 
@@ -49,7 +49,7 @@ export function DashboardLayout({ sx, children, data }) {
 
   const { user } = useAuthContext();
   const pathname = usePathname();
-  const requiredPermission = requiredPermissionForPath(pathname);
+  const requiredPermissions = requiredPermissionsForPath(pathname);
   const navData = useMemo(
     () => filterNavigationByPermissions(data?.nav ?? dashboardNavData, user),
     [data?.nav, user]
@@ -200,7 +200,7 @@ export function DashboardLayout({ sx, children, data }) {
         }}
       >
         <Main isNavHorizontal={isNavHorizontal}>
-          {requiredPermission && !hasPermission(user, requiredPermission) ? (
+          {requiredPermissions.length > 0 && !hasAnyPermission(user, requiredPermissions) ? (
             <AccessDeniedView />
           ) : (
             children

@@ -95,6 +95,19 @@ Route::prefix('admin')->group(function () {
 
         Route::get('audit-logs', [\App\Http\Controllers\API\AdminAuditController::class, 'index'])->middleware('explicit.permission:audit.view');
         Route::get('audit-logs/export', [\App\Http\Controllers\API\AdminAuditController::class, 'export'])->middleware('explicit.permission:audit.export');
+
+        Route::get('content/review-queue', [\App\Http\Controllers\API\AdminContentWorkflowController::class, 'queue']);
+        Route::post('content/{content}/submit', [\App\Http\Controllers\API\AdminContentWorkflowController::class, 'submit'])->middleware('explicit.permission:content.submit');
+        Route::post('content/reviews/{submission}/approve', [\App\Http\Controllers\API\AdminContentWorkflowController::class, 'approve'])->middleware('explicit.permission:content.approve');
+        Route::post('content/reviews/{submission}/reject', [\App\Http\Controllers\API\AdminContentWorkflowController::class, 'reject'])->middleware('explicit.permission:content.reject');
+        Route::post('content/reviews/{submission}/publish', [\App\Http\Controllers\API\AdminContentWorkflowController::class, 'publish'])->middleware('explicit.permission:content.publish');
+
+        Route::get('media/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'media'])->middleware('explicit.permission:media.view');
+        Route::get('subscriptions/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'subscriptions'])->middleware('explicit.permission:subscriptions.view');
+        Route::get('finance/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'finance'])->middleware('explicit.permission:finance.payments.view');
+        Route::get('marketing/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'marketing'])->middleware('explicit.permission:marketing.campaigns.manage');
+        Route::get('analytics/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'analytics'])->middleware('explicit.permission:analytics.audience.view');
+        Route::get('operations/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'operations'])->middleware('explicit.permission:operations.health.view');
     });
 });
 
