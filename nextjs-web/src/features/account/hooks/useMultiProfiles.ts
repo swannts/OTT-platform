@@ -99,6 +99,12 @@ export function useMultiProfiles() {
 
   const currentProfile = profiles.find((p) => p.is_active) || profiles[0] || null;
 
+  useEffect(() => {
+    if (currentProfile?.id && typeof window !== 'undefined') {
+      window.localStorage.setItem('noor_profile_id', String(currentProfile.id));
+    }
+  }, [currentProfile?.id]);
+
   const saveProfile = async (input: MultiProfileInput & { id?: number | string }) => {
     setActionLoading(true);
     try {

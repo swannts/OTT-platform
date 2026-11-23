@@ -58,6 +58,7 @@ use Modules\LiveTV\Transformers\LiveTvChannelResourceV3;
 use Modules\Frontend\Models\PayPerView;
 use App\Services\RecommendationServiceV3;
 use App\Models\User;
+use Modules\Entertainment\Services\PlaybackEntitlementService;
 class EntertainmentsController extends Controller
 {
     protected $recommendationService;
@@ -65,6 +66,67 @@ class EntertainmentsController extends Controller
     public function __construct(RecommendationServiceV3 $recommendationService)
     {
         $this->recommendationService = $recommendationService;
+    }
+
+    public function playbackDetails(Request $request, PlaybackEntitlementService $entitlements)
+    {
+        $validated = $request->validate([
+            'id' => ['required', 'string', 'max:64'],
+            'type' => ['required', 'in:movie,tvshow,episode,video'],
+            'profile_id' => ['required', 'integer', 'min:1'],
+        ]);
+
+        try {
+            $result = $entitlements->authorize($request->user(), $validated['id'], $validated['type'], (int) $validated['profile_id'], $request);
+        } catch (\Illuminate\Auth\Access\AuthorizationException $exception) {
+            return ApiResponse::error($exception->getMessage(), 403);
+        }
+
+        $content = $result['content'];
+        $qualityRows = collect();
+        if ($validated['type'] === 'movie' || $validated['type'] === 'tvshow') {
+            $qualityRows = EntertainmentStreamContentMapping::query()
+                ->where('entertainment_id', $content->id)
+                ->get(['id', 'type as url_type', 'url', 'quality']);
+        } elseif ($validated['type'] === 'episode') {
+            $qualityRows = EpisodeStreamContentMapping::query()
+                ->where('episode_id', $content->id)
+                ->get(['id', 'type as url_type', 'url', 'quality']);
+        } else {
+            $qualityRows = VideoStreamContentMapping::query()
+                ->where('video_id', $content->id)
+                ->get(['id', 'type as url_type', 'url', 'quality']);
+        }
+
+        $type = $validated['type'];
+        $qualities = [[
+            'quality' => 'default_quality',
+            'url' => ($content->video_upload_type ?? '') === 'Local'
+                ? setBaseUrlWithFileName(trim((string) $content->video_url_input), 'video', $type)
+                : trim((string) $content->video_url_input),
+            'url_type' => trim((string) ($content->video_upload_type ?? 'URL')),
+        ]];
+        foreach ($qualityRows as $quality) {
+            $qualities[] = [
+                'id' => $quality->id,
+                'quality' => trim((string) $quality->quality),
+                'url_type' => trim((string) $quality->url_type),
+                'url' => $quality->url_type === 'Local'
+                    ? setBaseUrlWithFileName(trim((string) $quality->url), 'video', $type)
+                    : trim((string) $quality->url),
+            ];
+        }
+
+        if (empty($qualities[0]['url'])) {
+            return ApiResponse::error('Playback is not configured for this title.', 404);
+        }
+
+        return ApiResponse::success([
+            'content_id' => $content->id,
+            'content_type' => $type,
+            'profile_id' => $result['profile']->id,
+            'video_qualities' => $qualities,
+        ], 'Playback authorized.', 200);
     }
 
     public function movieListV3(Request $request)

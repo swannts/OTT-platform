@@ -28,6 +28,7 @@ import {
   ReviewListResponse,
   SeasonItem,
   LocalizedGenre,
+  VideoQuality,
 } from '@/types';
 
 export function normalizeMediaItem(raw: unknown): MediaItem {
@@ -174,6 +175,7 @@ class ApiClient {
 
     const res = await fetch(url, {
       ...options,
+      credentials: typeof window !== 'undefined' ? 'same-origin' : options.credentials,
       headers,
     });
 

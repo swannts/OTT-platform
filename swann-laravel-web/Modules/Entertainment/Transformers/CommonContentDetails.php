@@ -65,8 +65,10 @@ class CommonContentDetails  extends JsonResource
                     'url' => $this->trailer_url,
                     'poster_image' => $this->posterImage
                 ],
-                'video_qualities' => $this->has_content_access ? $this->video_qualities : [],
-                'download_data' => $this->has_content_access ? $this->download_data : ['download_enable' => 0, 'download_quality' => []],
+                // Source URLs are issued by the authenticated playback endpoint after an
+                // entitlement check; catalog/details responses are not playback grants.
+                'video_qualities' => [],
+                'download_data' => ['download_enable' => 0, 'download_quality' => []],
                 'rental_data'=> $this->rental,
                 'subtitle_info' => collect($this->subtitles)->map(function ($subtitle) {
                     return [

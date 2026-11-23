@@ -217,8 +217,8 @@ Route::prefix('v3')->middleware(['auth:sanctum', 'throttle:api'])->group(functio
     Route::post('pay-per-view/process-payment', [WebPaymentApiController::class, 'processPayPerViewPayment']);
     Route::post('pay-per-view/verify-payment', [WebPaymentApiController::class, 'verifyPayPerViewPayment']);
 
-    // Video stream URL decryption
-    Route::post('video/decrypt-url', [WebPaymentApiController::class, 'decryptUrl']);
+    // Playback URLs are returned only after Laravel verifies profile ownership and entitlement.
+    Route::post('playback/details', [EntertainmentsController::class, 'playbackDetails'])->middleware('throttle:30,1');
 });
 
 

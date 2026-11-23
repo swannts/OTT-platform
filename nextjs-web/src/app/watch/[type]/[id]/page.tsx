@@ -52,7 +52,17 @@ export default function WatchPage() {
           ? (type as 'movie' | 'tvshow' | 'episode' | 'video')
           : 'movie';
         const data = await api.getContentDetails(id, contentType);
-        setContent(data);
+        try {
+          const qualities = await api.getPlaybackDetails(id, contentType);
+          setContent({
+            ...data,
+            video_qualities: qualities,
+            video_default_quality: qualities[0],
+            has_content_access: qualities.length > 0,
+          });
+        } catch {
+          setContent({ ...data, video_qualities: [], video_default_quality: undefined, has_content_access: false });
+        }
       } catch {
         setContent(null);
         setLoadError(true);
@@ -170,4 +180,3 @@ export default function WatchPage() {
     </div>
   );
 }
-
