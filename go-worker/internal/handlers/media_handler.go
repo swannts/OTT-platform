@@ -14,14 +14,16 @@ import (
 )
 
 type MediaHandler struct {
-	db          *sql.DB
-	storagePath string
+	db                 *sql.DB
+	storagePath        string
+	privateStoragePath string
 }
 
-func NewMediaHandler(db *sql.DB, storagePath string) *MediaHandler {
+func NewMediaHandler(db *sql.DB, storagePath, privateStoragePath string) *MediaHandler {
 	return &MediaHandler{
-		db:          db,
-		storagePath: storagePath,
+		db:                 db,
+		storagePath:        storagePath,
+		privateStoragePath: privateStoragePath,
 	}
 }
 
@@ -40,6 +42,8 @@ func (h *MediaHandler) Handle(body []byte) error {
 
 	case "media.blurhash.backfill":
 		return h.handleBackfill()
+	case "media.transcode.requested":
+		return h.handleTranscode(env.Payload)
 
 	default:
 		// Attempt fallback parsing
@@ -53,8 +57,7 @@ func (h *MediaHandler) Handle(body []byte) error {
 			return h.handleMediaUpload(env.Payload)
 		}
 
-		log.Warn().Str("event", env.Event).Msg("Unknown media event received, skipping")
-		return nil
+		return fmt.Errorf("unsupported media event: %s", env.Event)
 	}
 }
 

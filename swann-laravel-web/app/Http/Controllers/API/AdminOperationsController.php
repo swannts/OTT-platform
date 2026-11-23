@@ -18,6 +18,10 @@ class AdminOperationsController extends Controller
             'published_videos' => $this->countWhere('videos', 'status', 1),
             'published_catalog_items' => $this->countWhere('entertainments', 'status', 1),
             'pending_reviews' => $this->countWhere('admin_content_review_submissions', 'status', 'in_review'),
+            'media_assets' => Schema::hasTable('media_assets') ? DB::table('media_assets')->whereNull('deleted_at')->count() : 0,
+            'processing_jobs' => $this->countWhere('media_processing_jobs', 'status', 'processing'),
+            'failed_media_jobs' => $this->countWhere('media_processing_jobs', 'status', 'failed'),
+            'private_media_storage_bytes' => Schema::hasTable('media_assets') ? (int) DB::table('media_assets')->whereNull('deleted_at')->sum('size_bytes') : 0,
         ]]);
     }
 

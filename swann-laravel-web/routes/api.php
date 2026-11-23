@@ -100,6 +100,18 @@ Route::prefix('admin')->group(function () {
         Route::post('content/reviews/{submission}/publish', [\App\Http\Controllers\API\AdminContentWorkflowController::class, 'publish'])->middleware('explicit.permission:content.publish');
 
         Route::get('media/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'media'])->middleware('explicit.permission:media.view');
+        Route::get('media/assets', [\App\Http\Controllers\API\AdminMediaController::class, 'index'])->middleware('explicit.permission:media.view');
+        Route::get('media/assets/{asset}', [\App\Http\Controllers\API\AdminMediaController::class, 'show'])->middleware('explicit.permission:media.view');
+        Route::get('media/assets/{asset}/quality', [\App\Http\Controllers\API\AdminMediaController::class, 'quality'])->middleware('explicit.permission:media.view');
+        Route::put('media/assets/{asset}/content', [\App\Http\Controllers\API\AdminMediaController::class, 'attachToContent']);
+        Route::post('media/uploads', [\App\Http\Controllers\API\AdminMediaController::class, 'beginUpload'])->middleware(['explicit.permission:media.upload', 'throttle:20,1']);
+        Route::put('media/uploads/{session}/chunks/{index}', [\App\Http\Controllers\API\AdminMediaController::class, 'uploadChunk'])->whereNumber('index')->middleware(['explicit.permission:media.upload', 'throttle:120,1']);
+        Route::post('media/uploads/{session}/complete', [\App\Http\Controllers\API\AdminMediaController::class, 'completeUpload'])->middleware(['explicit.permission:media.upload', 'throttle:5,1']);
+        Route::post('media/assets/{asset}/retry', [\App\Http\Controllers\API\AdminMediaController::class, 'retry'])->middleware(['explicit.permission:media.transcode.retry', 'throttle:5,1']);
+        Route::delete('media/assets/{asset}', [\App\Http\Controllers\API\AdminMediaController::class, 'destroy'])->middleware('explicit.permission:media.delete');
+        Route::post('media/assets/{asset}/tracks', [\App\Http\Controllers\API\AdminMediaController::class, 'addTrack'])->middleware('throttle:20,1');
+        Route::delete('media/assets/{asset}/tracks/{track}', [\App\Http\Controllers\API\AdminMediaController::class, 'deleteTrack'])->whereNumber('track');
+        Route::get('media/drm', [\App\Http\Controllers\API\AdminMediaController::class, 'drmConfiguration'])->middleware('explicit.permission:media.drm.configure');
         Route::get('subscriptions/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'subscriptions'])->middleware('explicit.permission:subscriptions.view');
         Route::get('finance/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'finance'])->middleware('explicit.permission:finance.payments.view');
         Route::get('marketing/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'marketing'])->middleware('explicit.permission:marketing.campaigns.manage');

@@ -12,6 +12,7 @@ class Kernel extends ConsoleKernel
         'Modules\Subscriptions\Console\Commands\CheckSubscription',
         \App\Console\Commands\OptimizeImages::class,
         \App\Console\Commands\CleanLatestMovies::class,
+        \App\Console\Commands\CleanExpiredMediaUploads::class,
     ];
 
     /**
@@ -30,6 +31,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('reminder:notify')->dailyAt('10:00')->description('Send upcoming content reminders');
         $schedule->command('continuewatch:notify')->dailyAt('11:00')->description('Send continue watching reminders');
         $schedule->command('swann:clean-latest-movies')->dailyAt('11:00')->description('Remove old movies from latest-movies list');
+        $schedule->command('media:uploads-clean-expired')->hourly()->withoutOverlapping()->description('Clean expired private media upload chunks');
 
         $schedule->call(function () {
             \App\Models\Device::whereNotNull('session_id')

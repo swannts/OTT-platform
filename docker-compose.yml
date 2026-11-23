@@ -74,6 +74,7 @@ services:
     volumes:
       # In production, only persist storage/app/public for uploaded media
       - ./swann-laravel-web/storage/app/public:/var/www/html/storage/app/public
+      - ./swann-laravel-web/storage/app/private:/var/www/html/storage/app/private
     networks:
       - ott-net
     depends_on:
@@ -100,8 +101,10 @@ services:
       REDIS_ADDR: redis:6379
       STORAGE_DRIVER: local
       STORAGE_LOCAL_PATH: /var/www/html/public/storage
+      PRIVATE_STORAGE_PATH: /var/www/html/storage/app/private
     volumes:
       - ./swann-laravel-web/storage/app/public:/var/www/html/public/storage
+      - ./swann-laravel-web/storage/app/private:/var/www/html/storage/app/private
     networks:
       - ott-net
     depends_on:

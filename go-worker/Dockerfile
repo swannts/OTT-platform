@@ -16,6 +16,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /worker ./cmd/worker
 # Stage 2: Minimal runtime image
 FROM alpine:3.19
 
+RUN apk add --no-cache ffmpeg
+
 WORKDIR /app
 
 COPY --from=builder /worker /app/worker

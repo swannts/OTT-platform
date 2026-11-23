@@ -53,7 +53,7 @@ func main() {
 	defer b.Close()
 
 	// 4. Initialize Handlers
-	mediaH := handlers.NewMediaHandler(db, cfg.StoragePath)
+	mediaH := handlers.NewMediaHandler(db, cfg.StoragePath, cfg.PrivateStoragePath)
 	notifyH := handlers.NewNotificationHandler()
 	cronH := handlers.NewCronHandler(db)
 
@@ -94,4 +94,3 @@ func main() {
 
 	log.Info().Msg("OTT Go Background Worker Service exited cleanly.")
 }
-

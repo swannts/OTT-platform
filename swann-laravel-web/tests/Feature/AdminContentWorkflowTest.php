@@ -6,6 +6,7 @@ use App\Models\User;
 use Database\Seeders\RbacFoundationSeeder;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -104,6 +105,38 @@ class AdminContentWorkflowTest extends TestCase
         foreach ($domainRoutes as $path) {
             $this->actingAs($reviewer, 'sanctum')->getJson($path)->assertForbidden();
         }
+    }
+
+    public function test_attached_media_must_be_fully_packaged_before_content_publication(): void
+    {
+        Storage::fake('private');
+        $editor = User::factory()->create();
+        $editor->assignRole('content_editor');
+        $reviewer = User::factory()->create();
+        $reviewer->assignRole('content_reviewer');
+        $publisher = User::factory()->create();
+        $publisher->assignRole('content_manager');
+        $contentId = $this->createContent();
+        $asset = \App\Models\MediaAsset::query()->create([
+            'uploaded_by' => $publisher->id, 'original_name' => 'film.mp4', 'disk' => 'private',
+            'source_path' => 'media/originals/unready/source.mp4', 'mime_type' => 'video/mp4',
+            'extension' => 'mp4', 'size_bytes' => 1024, 'sha256' => str_repeat('d', 64), 'status' => 'queued',
+        ]);
+
+        $this->actingAs($publisher, 'sanctum')->putJson("/api/admin/media/assets/{$asset->id}/content", ['content_id' => $contentId])->assertOk();
+        $submissionId = $this->actingAs($editor, 'sanctum')->postJson("/api/admin/content/{$contentId}/submit")->assertCreated()->json('data.id');
+        $this->actingAs($reviewer, 'sanctum')->postJson("/api/admin/content/reviews/{$submissionId}/approve", [])->assertOk();
+        $this->actingAs($publisher, 'sanctum')->postJson("/api/admin/content/reviews/{$submissionId}/publish")->assertStatus(409);
+
+        $asset->update([
+            'status' => 'ready', 'rendition_path' => 'media/renditions/'.$asset->id.'/1',
+            'metadata' => ['Format' => ['duration' => '10'], 'Streams' => [['codec_type' => 'video', 'width' => 640, 'height' => 360]]],
+        ]);
+        Storage::disk('private')->put($asset->source_path, 'source');
+        foreach (['master.m3u8', 'manifest.mpd', 'poster.jpg'] as $file) {
+            Storage::disk('private')->put($asset->rendition_path.'/'.$file, 'ready');
+        }
+        $this->postJson("/api/admin/content/reviews/{$submissionId}/publish")->assertOk();
     }
 
     private function createContent(): string

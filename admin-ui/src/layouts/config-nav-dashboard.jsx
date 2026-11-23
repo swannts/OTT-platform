@@ -51,6 +51,12 @@ export const navData = [
         permissions: ['content.submit', 'content.review', 'content.approve', 'content.publish'],
       },
       {
+        title: 'Media library',
+        path: '/dashboard/media',
+        icon: ICONS.blog,
+        permission: 'media.view',
+      },
+      {
         title: 'Operations & reports',
         path: '/dashboard/operations',
         icon: ICONS.analytics,
