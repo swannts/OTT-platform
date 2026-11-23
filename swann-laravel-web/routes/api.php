@@ -73,10 +73,28 @@ Route::post('check-mobile-exists', [OTPController::class, 'checkMobileExists'])-
 
 Route::prefix('admin')->group(function () {
     Route::post('login', [\App\Http\Controllers\API\AdminApiController::class, 'login'])->middleware('throttle:5,1');
+    Route::post('invitations/accept', [\App\Http\Controllers\API\AdminInvitationController::class, 'accept'])->middleware('throttle:5,1');
     Route::middleware(['auth:sanctum', 'explicit.permission:admin.access'])->group(function () {
         Route::get('me', [\App\Http\Controllers\API\AdminApiController::class, 'me']);
         Route::post('logout', [\App\Http\Controllers\API\AdminApiController::class, 'logout']);
         Route::get('dashboard', [\App\Http\Controllers\API\AdminApiController::class, 'dashboard'])->middleware('explicit.permission:admin.dashboard.view');
+
+        Route::get('roles', [\App\Http\Controllers\API\AdminRoleManagementController::class, 'index']);
+        Route::post('roles', [\App\Http\Controllers\API\AdminRoleManagementController::class, 'store']);
+        Route::get('roles/{role}', [\App\Http\Controllers\API\AdminRoleManagementController::class, 'show']);
+        Route::put('roles/{role}', [\App\Http\Controllers\API\AdminRoleManagementController::class, 'update']);
+        Route::delete('roles/{role}', [\App\Http\Controllers\API\AdminRoleManagementController::class, 'destroy']);
+        Route::get('permissions', [\App\Http\Controllers\API\AdminPermissionController::class, 'index'])->middleware('explicit.permission:admin.permissions.view');
+
+        Route::get('staff', [\App\Http\Controllers\API\AdminStaffController::class, 'index'])->middleware('explicit.permission:admin.staff.view');
+        Route::post('staff/invitations', [\App\Http\Controllers\API\AdminInvitationController::class, 'store'])->middleware('explicit.permission:admin.staff.invite');
+        Route::put('staff/{user}/roles', [\App\Http\Controllers\API\AdminStaffController::class, 'updateRoles'])->middleware('explicit.permission:admin.staff.roles.update');
+        Route::patch('staff/{user}/status', [\App\Http\Controllers\API\AdminStaffController::class, 'updateStatus'])->middleware('explicit.permission:admin.staff.status.update');
+        Route::post('staff/{user}/sessions/revoke', [\App\Http\Controllers\API\AdminStaffController::class, 'revokeSessions'])->middleware('explicit.permission:admin.staff.sessions.revoke');
+        Route::get('staff/{user}/permissions', [\App\Http\Controllers\API\AdminStaffController::class, 'effectivePermissions'])->middleware('explicit.permission:admin.staff.view');
+
+        Route::get('audit-logs', [\App\Http\Controllers\API\AdminAuditController::class, 'index'])->middleware('explicit.permission:audit.view');
+        Route::get('audit-logs/export', [\App\Http\Controllers\API\AdminAuditController::class, 'export'])->middleware('explicit.permission:audit.export');
     });
 });
 

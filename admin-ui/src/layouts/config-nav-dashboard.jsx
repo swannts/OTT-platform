@@ -39,7 +39,35 @@ const ICONS = {
 
 // ----------------------------------------------------------------------
 
-export const navData = [{
-  subheader: 'OTT platform',
-  items: [{ title: 'Overview', path: paths.dashboard.root, icon: ICONS.dashboard }],
-}];
+export const navData = [
+  {
+    subheader: 'OTT platform',
+    items: [
+      { title: 'Overview', path: paths.dashboard.root, icon: ICONS.dashboard },
+      {
+        title: 'Roles',
+        path: '/dashboard/access/roles',
+        icon: ICONS.lock,
+        permission: 'admin.roles.view',
+      },
+      {
+        title: 'Staff',
+        path: '/dashboard/access/staff',
+        icon: ICONS.user,
+        permission: 'admin.staff.view',
+      },
+      {
+        title: 'Permissions',
+        path: '/dashboard/access/permissions',
+        icon: ICONS.parameter,
+        permission: 'admin.permissions.view',
+      },
+      {
+        title: 'Audit log',
+        path: '/dashboard/access/audit',
+        icon: ICONS.file,
+        permission: 'audit.view',
+      },
+    ],
+  },
+];

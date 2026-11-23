@@ -20,7 +20,7 @@ final class ExplicitPermission
         }
 
         return $user->permissions()->whereKey($permission->getKey())->exists()
-            || $user->roles()->whereHas('permissions', static function ($query) use ($permission): void {
+            || $user->roles()->where('roles.is_active', true)->whereHas('permissions', static function ($query) use ($permission): void {
                 $query->whereKey($permission->getKey());
             })->exists();
     }

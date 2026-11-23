@@ -61,11 +61,18 @@ class AdminApiController extends Controller
 
     private function userPayload(User $user): array
     {
+        $roles = $user->roles()->where('roles.is_active', true)->where('roles.is_admin_role', true)->get();
+        $permissions = $user->getDirectPermissions()->pluck('name')
+            ->merge($roles->load('permissions')->flatMap(fn ($role) => $role->permissions->pluck('name')))
+            ->unique()->sort()->values();
+
         return [
             'id' => $user->id,
             'name' => trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')) ?: $user->email,
             'email' => $user->email,
-            'role' => $user->getRoleNames()->first(),
+            'role' => $roles->first()?->name,
+            'roles' => $roles->pluck('name')->values(),
+            'permissions' => $permissions,
         ];
     }
 }

@@ -32,6 +32,7 @@ class RbacFoundationSeeder extends Seeder
                     ['title' => $title, 'is_fixed' => true],
                 );
                 $role->forceFill(['title' => $title, 'is_fixed' => true])->save();
+                $role->forceFill(['is_admin_role' => true, 'is_active' => true])->save();
                 // The canonical mappings are authoritative. Existing user-to-role
                 // assignments remain untouched; only this role's permission set is reconciled.
                 $role->syncPermissions(array_map(
@@ -46,6 +47,7 @@ class RbacFoundationSeeder extends Seeder
                 $legacyRole = Role::query()->where('name', $legacyRoleName)->where('guard_name', 'web')->first();
                 if ($legacyRole) {
                     $legacyRole->givePermissionTo($permissions['admin.access'], $permissions['admin.dashboard.view']);
+                    $legacyRole->forceFill(['is_admin_role' => true])->save();
                 }
             }
         });

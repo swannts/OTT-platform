@@ -25,6 +25,14 @@ import { HeaderBase } from '../core/header-base';
 import { _workspaces } from '../config-nav-workspace';
 import { LayoutSection } from '../core/layout-section';
 import { navData as dashboardNavData } from '../config-nav-dashboard';
+import { useAuthContext } from 'src/auth/hooks';
+import { usePathname } from 'src/routes/hooks';
+import {
+  filterNavigationByPermissions,
+  hasPermission,
+  requiredPermissionForPath,
+} from 'src/features/rbac/permissions';
+import { AccessDeniedView } from 'src/features/rbac/components/AccessDeniedView';
 
 // ----------------------------------------------------------------------
 
@@ -39,7 +47,13 @@ export function DashboardLayout({ sx, children, data }) {
 
   const layoutQuery = 'lg';
 
-  const navData = data?.nav ?? dashboardNavData;
+  const { user } = useAuthContext();
+  const pathname = usePathname();
+  const requiredPermission = requiredPermissionForPath(pathname);
+  const navData = useMemo(
+    () => filterNavigationByPermissions(data?.nav ?? dashboardNavData, user),
+    [data?.nav, user]
+  );
 
   const isNavMini = settings.navLayout === 'mini';
 
@@ -185,7 +199,13 @@ export function DashboardLayout({ sx, children, data }) {
           ...sx,
         }}
       >
-        <Main isNavHorizontal={isNavHorizontal}>{children}</Main>
+        <Main isNavHorizontal={isNavHorizontal}>
+          {requiredPermission && !hasPermission(user, requiredPermission) ? (
+            <AccessDeniedView />
+          ) : (
+            children
+          )}
+        </Main>
       </LayoutSection>
     </>
   );

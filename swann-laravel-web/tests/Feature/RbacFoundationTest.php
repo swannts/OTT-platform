@@ -48,7 +48,7 @@ class RbacFoundationTest extends TestCase
     public function test_role_policy_uses_explicit_permissions_and_protects_fixed_roles(): void
     {
         $permission = Permission::create(['name' => 'admin.roles.update', 'guard_name' => 'web', 'is_fixed' => true]);
-        $role = Role::create(['name' => 'custom_role', 'title' => 'Custom Role', 'guard_name' => 'web', 'is_fixed' => false]);
+        $role = Role::create(['name' => 'custom_role', 'title' => 'Custom Role', 'guard_name' => 'web', 'is_fixed' => false, 'is_admin_role' => true, 'is_active' => true]);
         $fixedRole = Role::create(['name' => 'platform_admin', 'title' => 'Platform Admin', 'guard_name' => 'web', 'is_fixed' => true]);
         $user = User::factory()->create();
         $user->givePermissionTo($permission);
