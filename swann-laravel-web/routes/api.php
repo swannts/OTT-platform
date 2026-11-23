@@ -73,10 +73,10 @@ Route::post('check-mobile-exists', [OTPController::class, 'checkMobileExists'])-
 
 Route::prefix('admin')->group(function () {
     Route::post('login', [\App\Http\Controllers\API\AdminApiController::class, 'login'])->middleware('throttle:5,1');
-    Route::middleware(['auth:sanctum', 'role:admin|super-admin|demo_admin'])->group(function () {
+    Route::middleware(['auth:sanctum', 'explicit.permission:admin.access'])->group(function () {
         Route::get('me', [\App\Http\Controllers\API\AdminApiController::class, 'me']);
         Route::post('logout', [\App\Http\Controllers\API\AdminApiController::class, 'logout']);
-        Route::get('dashboard', [\App\Http\Controllers\API\AdminApiController::class, 'dashboard']);
+        Route::get('dashboard', [\App\Http\Controllers\API\AdminApiController::class, 'dashboard'])->middleware('explicit.permission:admin.dashboard.view');
     });
 });
 
