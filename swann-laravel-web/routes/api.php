@@ -52,8 +52,6 @@ Route::post('webhooks/razorpay', [WebPaymentApiController::class, 'razorpayWebho
 Route::post('webhooks/revenuecat', [WebPaymentApiController::class, 'revenueCatWebhook'])->middleware('throttle:300,1');
 
 
-Route::get('user-detail', [AuthController::class, 'userDetails']);
-
 Route::get('/optimize', [QueryOptimizeController::class, 'optimize'])->name('optimize');
 
 Route::middleware(['auth:sanctum', 'checkApiDevice'])->get('/user', function (Request $request) {
@@ -65,7 +63,6 @@ Route::controller(AuthController::class)->group(function () {
     Route::post('login', 'login');
     Route::post('social-login', 'socialLogin');
     Route::post('forgot-password', 'forgotPassword');
-    Route::get('logout', 'logout');
     Route::get('csrf-token', 'getCsrfToken');
 });
 
@@ -137,6 +134,8 @@ Route::get('tvshows/{tvshow}/plan-level', function ($tvshowId) {
 });
 
 Route::middleware(['auth:sanctum', 'checkApiDevice', 'throttle:api'])->group(function () {
+    Route::get('logout', [AuthController::class, 'logout']);
+    Route::get('user-detail', [AuthController::class, 'userDetails']);
     Route::post('/web-qr-scan', [WebQrLoginController::class, 'scan'])->name('api.web-qr.scan');
 
     Route::apiResource('setting', SettingController::class);

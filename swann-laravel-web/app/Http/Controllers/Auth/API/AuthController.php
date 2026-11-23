@@ -512,8 +512,10 @@ protected function checkDeviceLimit(User $user, string $deviceId = null, bool $i
         }
 
         $user = Auth::guard('sanctum')->user();
-
-        $user->tokens()->delete();
+        $currentToken = $user->currentAccessToken();
+        if ($currentToken && method_exists($currentToken, 'delete')) {
+            $currentToken->delete();
+        }
 
 
         $tvsession = TvLoginSession::where('user_id', $user->id)->first();
@@ -521,13 +523,8 @@ protected function checkDeviceLimit(User $user, string $deviceId = null, bool $i
             $tvsession->delete();
         }
 
-        if ($request->has('device_id') && !empty($request->device_id)) {
-            // Delete the specific device record if device_id is provided
-            Device::where('user_id', $user->id)->where('device_id', $request->device_id)->delete();
-        } else {
-            // Delete all devices associated with the user
-            Device::where('user_id', $user->id)->delete();
-        }
+        $deviceId = $request->filled('device_id') ? $request->device_id : $request->ip();
+        Device::where('user_id', $user->id)->where('device_id', $deviceId)->delete();
 
         if ($request->is('api*')) {
             return ApiResponse::success(null, __('messages.user_logout'), 200);
@@ -728,18 +725,16 @@ protected function checkDeviceLimit(User $user, string $deviceId = null, bool $i
 
     public function userDetails(Request $request)
     {
-        $userID = $request->id;
-        $user = User::find($userID);
+        $user = $request->user();
+        if (!$user) {
+            return ApiResponse::error(__('messages.user_not_logged_in'), 401);
+        }
         $user['about_self'] = $user->profile->about_self ?? null;
         $user['expert'] = $user->profile->expert ?? null;
         $user['facebook_link'] = $user->profile->facebook_link ?? null;
         $user['instagram_link'] = $user->profile->instagram_link ?? null;
         $user['twitter_link'] = $user->profile->twitter_link ?? null;
         $user['dribbble_link'] = $user->profile->dribbble_link ?? null;
-
-        if (!$user) {
-            return ApiResponse::error(__('messages.user_notfound'), 404);
-        }
 
         return ApiResponse::success($user, __('messages.user_details_successfull'), 200);
     }
@@ -839,27 +834,29 @@ protected function checkDeviceLimit(User $user, string $deviceId = null, bool $i
         ]);
 
         $request->validate([
-            'pin' => 'required|min:4|max:4',
-            'confirm_pin' => 'required_with:pin|same:pin|min:4|max:4'
+            'pin' => 'required|digits:4',
+            'confirm_pin' => 'required_with:pin|same:pin|digits:4'
         ]);
 
-        $userId = isset($request->user_id) ? $request->user_id : auth()->user()->id;
+        $userId = $request->user()->id;
 
         if(empty($userId)){
             return ApiResponse::error(__('frontend.something_went_wrong'), 400);
         }
         $user = User::find($userId);
 
-        if (!empty($user->pin) && $user->pin === $request->pin) {
+        $storedPin = (string) ($user->pin_hash ?: $user->pin);
+        if ($storedPin !== '' && $this->pinMatches($storedPin, (string) $request->pin)) {
             return ApiResponse::error(__('frontend.new_pin_must_be_different'), 400);
         }
 
         $message = (!empty($user->otp)) ? __('messages.change_pin_successfull') : __('messages.set_pin_successfull');
         
-        $isNewPin = empty($user->pin);
+        $isNewPin = empty($user->pin_hash) && empty($user->pin);
         
         $updateData = [
-            'pin' => $request->pin,
+            'pin_hash' => Hash::make((string) $request->pin),
+            'pin' => null,
         ];
         
         if ($isNewPin) {
@@ -883,7 +880,7 @@ protected function checkDeviceLimit(User $user, string $deviceId = null, bool $i
      */
     public function sendOtp(Request $request)
     {
-        $userId = isset($request->user_id) ? $request->user_id : auth()->user()->id;
+        $userId = $request->user()->id;
         if(empty($userId)){
             return ApiResponse::error('Something went wrong please try again.!', 422);
         }
@@ -923,7 +920,7 @@ protected function checkDeviceLimit(User $user, string $deviceId = null, bool $i
      */
     public function verifyOtp(Request $request)
     {
-        $userId = isset($request->user_id) ? $request->user_id : auth()->user()->id;
+        $userId = $request->user()->id;
         if(empty($userId)){
             return ApiResponse::error(__('messages.something_went_wrong'), 422);
         }
@@ -939,7 +936,7 @@ protected function checkDeviceLimit(User $user, string $deviceId = null, bool $i
 
         $user  = User::where([['id','=',$userId],['otp','=',$request->otp]])->first();
         if($user){
-
+            $user->update(['otp' => null]);
             return ApiResponse::success(null, __('messages.otp_verified_successfully'), 200);
         } else{
             return ApiResponse::error(__('messages.invalid_otp'), 200);
@@ -954,7 +951,7 @@ protected function checkDeviceLimit(User $user, string $deviceId = null, bool $i
     public function verifyPin(Request $request)
     {
 
-        $userId = isset($request->user_id) ? $request->user_id : auth()->user()->id;
+        $userId = $request->user()->id;
         if(empty($userId)){
             return ApiResponse::error('Something went wrong please try again.!', 422);
         }
@@ -968,12 +965,29 @@ protected function checkDeviceLimit(User $user, string $deviceId = null, bool $i
             'pin' => 'required'
         ]);
 
-        $user  = User::where([['id','=',$userId],['pin','=',$request->pin]])->first();
-        if($user){
+        $user = User::find($userId);
+        $storedPin = (string) ($user?->pin_hash ?: $user?->pin);
+        if ($user && $this->pinMatches($storedPin, (string) $request->pin)) {
+            if (!$user->pin_hash) {
+                $user->forceFill(['pin_hash' => Hash::make((string) $request->pin), 'pin' => null])->save();
+            }
             return ApiResponse::success(null, "Pin verified successfully", 200);
         } else{
             return ApiResponse::error('Invalid Pin', 400);
         }
+    }
+
+    private function pinMatches(string $storedPin, string $providedPin): bool
+    {
+        if ($storedPin === '') {
+            return false;
+        }
+
+        if (str_starts_with($storedPin, '$2y$') || str_starts_with($storedPin, '$argon2')) {
+            return Hash::check($providedPin, $storedPin);
+        }
+
+        return hash_equals($storedPin, $providedPin);
     }
 
     /**
@@ -983,7 +997,7 @@ protected function checkDeviceLimit(User $user, string $deviceId = null, bool $i
      */
     public function changeParentalLock(Request $request)
     {
-        $userId = isset($request->user_id) ? $request->user_id : auth()->user()->id;
+        $userId = $request->user()->id;
         if(empty($userId)){
             return ApiResponse::error('Something went wrong please try again.!', 422);
         }

@@ -16,14 +16,16 @@ class UserSearchHistoryController extends Controller
 {
     public function searchHistoryList(Request $request)
     {
-        $user_id = !empty($request->user_id)? $request->user_id :auth()->user()->id;
+        $user_id = $request->user()->id;
+        $activeProfileId = getCurrentProfile($user_id, $request);
+        if (!$activeProfileId) return ApiResponse::error('Select an active viewing profile.', 403);
 
         $perPage = $request->input('per_page', 10);
         $search_data = UserSearchHistory::query();
 
         if ($request->has('search') && $request->search != '') {
 
-            $profile_id = getCurrentProfile($user_id, $request);
+            $profile_id = $activeProfileId;
 
             $search_data->where('user_id', $user_id)
                         ->where('profile_id', $profile_id)
@@ -31,11 +33,7 @@ class UserSearchHistoryController extends Controller
                         ->distinct('search_query');
         }
 
-        if( $request->has('profile_id') && $request->profile_id !=''){
-
-            $search_data = $search_data->where('profile_id', $request->profile_id);
-
-          }
+        $search_data->where('profile_id', $activeProfileId);
 
         $search_data = $search_data->where('user_id', operator: $user_id)->orderBy('id', 'desc')->paginate($perPage);
 
@@ -46,8 +44,7 @@ class UserSearchHistoryController extends Controller
 
     public function searchHistoryListV3(Request $request)
     {
-        $header = request()->headers->all();
-        $user_id = !empty($request->user_id)? $request->user_id :auth()->user()->id;
+        $user_id = $request->user()->id;
         // $device_type = !empty($header['device-type'])? $header['device-type'][0] : []; //for tv
         $device_type = getDeviceType($request);
 
@@ -55,12 +52,13 @@ class UserSearchHistoryController extends Controller
         $searchQuery = $request->input('search', '');
         $page = $request->input('page', 1);
 
-        $profile_id = $request->input('profile_id', '');
+        $profile_id = getCurrentProfile($user_id, $request);
+        if (!$profile_id) return ApiResponse::error('Select an active viewing profile.', 403);
         $searchQuery = is_array($searchQuery) ? implode(',', $searchQuery) : $searchQuery;
         $cacheKey = "searchHistoryListV3:user:$user_id:profile:$profile_id:search:$searchQuery:device:$device_type:perPage:$perPage:page:$page";
         $ttl =300;
 
-        $responseData = cacheApiResponse($cacheKey, $ttl, function () use ($user_id, $request, $perPage, $device_type) {
+        $responseData = cacheApiResponse($cacheKey, $ttl, function () use ($user_id, $request, $perPage, $device_type, $profile_id) {
             $search_data = UserSearchHistory::query();
 
             if ($request->filled('search')) {
@@ -71,9 +69,7 @@ class UserSearchHistoryController extends Controller
                             ->distinct('search_query');
             }
 
-            if ($request->filled('profile_id')) {
-                $search_data->where('profile_id', $request->profile_id);
-            }
+            $search_data->where('profile_id', $profile_id);
 
             $search_data = $search_data->where('user_id', $user_id)
                                     ->orderBy('id', 'desc')
@@ -112,16 +108,12 @@ class UserSearchHistoryController extends Controller
 
     public function popularSearchListV3(Request $request)
     {
-        $user = auth()->user();
-        $user_id = $request->input('user_id', $user?->id);
-        $profile_id = $request->input('profile_id');
-        if (!$profile_id && $user_id) {
-            $profile_id = getCurrentProfile($user_id, $request);
-        }
+        $user_id = $request->user()->id;
+        $profile_id = getCurrentProfile($user_id, $request);
 
         $isChildProfile = false;
         if ($profile_id) {
-            $profile = UserMultiProfile::find($profile_id);
+            $profile = UserMultiProfile::query()->where('user_id', $user_id)->whereKey($profile_id)->first();
             $isChildProfile = (bool) ($profile?->is_child_profile);
         }
 
@@ -193,8 +185,11 @@ class UserSearchHistoryController extends Controller
     public function saveSearchHistory(Request $request)
     {
         $user = auth()->user();
-        $data = $request->all();
-        $profile_id = $data['profile_id'] ?? getCurrentProfile($user->id, $request);
+        $data = $request->validate(['search_query' => ['required', 'string', 'max:200']]);
+        $profile_id = getCurrentProfile($user->id, $request);
+        if (!$profile_id || ($request->filled('profile_id') && (string) $request->profile_id !== (string) $profile_id)) {
+            return ApiResponse::error(__('messages.profile_not_found') ?? 'Select an active viewing profile.', 403);
+        }
 
         $existingSearch = UserSearchHistory::where('user_id', $user->id)
         ->where('profile_id',   $profile_id )
@@ -208,7 +203,7 @@ class UserSearchHistoryController extends Controller
        if(!$existingSearch) {
 
            // fallback profile_id from current session/profile helper
-           $currentProfileId = $data['profile_id'] ?? getCurrentProfile($user->id, $request);
+           $currentProfileId = $profile_id;
            $searchQuery = $data['search_query'] ?? null;
 
             $search_id = null;
@@ -253,9 +248,10 @@ class UserSearchHistoryController extends Controller
     {
         $user = auth()->user();
 
-        $currentprofile=GetCurrentprofile($user->id, $request);
-
-        $profile_id=$request->has('profile_id')?$request->profile_id:  $currentprofile;
+        $profile_id = getCurrentProfile($user->id, $request);
+        if (!$profile_id || ($request->filled('profile_id') && (string) $request->profile_id !== (string) $profile_id)) {
+            return ApiResponse::error(__('messages.profile_not_found') ?? 'Select an active viewing profile.', 403);
+        }
 
         if($request->type == 'clear_all'){
             $search_history = UserSearchHistory::where('user_id', $user->id)

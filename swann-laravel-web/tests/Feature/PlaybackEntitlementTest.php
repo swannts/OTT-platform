@@ -95,6 +95,38 @@ class PlaybackEntitlementTest extends TestCase
         $this->assertSame($contentId, $result['content']->id);
     }
 
+    public function test_paid_ppv_requires_a_paid_transaction_and_valid_access_window(): void
+    {
+        $user = User::factory()->create();
+        $profile = $this->createProfile($user, false);
+        $request = request()->duplicate();
+        $request->setUserResolver(fn () => $user);
+        $this->activateProfile($user, $profile, $request->ip());
+        $contentId = $this->createContent('pay-per-view');
+        $purchaseId = DB::table('pay_per_views')->insertGetId([
+            'user_id' => $user->id,
+            'movie_id' => $contentId,
+            'type' => 'movie',
+            'content_price' => 5,
+            'price' => 5,
+            'view_expiry_date' => now()->addDay(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('payperviewstransactions')->insert([
+            'user_id' => $user->id,
+            'pay_per_view_id' => $purchaseId,
+            'amount' => 5,
+            'payment_type' => 'test',
+            'payment_status' => 'paid',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $result = app(PlaybackEntitlementService::class)->authorize($user, $contentId, 'movie', $profile->id, $request);
+        $this->assertSame($contentId, $result['content']->id);
+    }
+
     public function test_legacy_decrypt_endpoint_is_not_registered(): void
     {
         $this->assertFalse(collect(\Route::getRoutes())->contains(function ($route) {

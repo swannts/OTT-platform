@@ -33,8 +33,6 @@ class UserProfileResource extends JsonResource
             'is_banned' => $this->is_banned,
             'is_subscribe' => $this->is_subscribe,
             'status' => $this->status,
-            'pin' => $this->pin,
-            'otp' => $this->otp,
             'last_notification_seen' => $this->last_notification_seen,
             'is_user_exist' => true,
             'profile_image' => setBaseUrlWithFileName($this->file_url, 'image', 'users'),

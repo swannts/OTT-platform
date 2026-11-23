@@ -97,8 +97,8 @@ const getApiBaseUrl = (): string => {
     }
     return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
   }
-  // Client-side inside user's browser
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+  // Browser requests use the same-origin BFF; the bearer credential stays HttpOnly.
+  return '/api/backend';
 };
 
 class ApiClient {
@@ -123,10 +123,9 @@ class ApiClient {
   private getToken(): string | null {
     if (typeof window === 'undefined') return null;
     try {
-      const local = localStorage.getItem('token');
-      if (local) return local;
-      const match = document.cookie.match(/(?:^|;\s*)noor_token=([^;]+)/);
-      return match ? decodeURIComponent(match[1]) : null;
+      localStorage.removeItem('token');
+      document.cookie = 'noor_token=; path=/; max-age=0; SameSite=Lax';
+      return null;
     } catch {
       return null;
     }
@@ -135,9 +134,9 @@ class ApiClient {
   public setToken(token: string) {
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem('token', token);
-        const isSecure = window.location.protocol === 'https:';
-        document.cookie = `noor_token=${encodeURIComponent(token)}; path=/; max-age=2592000; SameSite=Lax${isSecure ? '; Secure' : ''}`;
+        void token;
+        localStorage.removeItem('token');
+        document.cookie = 'noor_token=; path=/; max-age=0; SameSite=Lax';
       } catch {
         // ignore storage errors
       }
@@ -150,6 +149,7 @@ class ApiClient {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         document.cookie = 'noor_token=; path=/; max-age=0; SameSite=Lax';
+        void fetch('/api/auth/session', { method: 'DELETE', credentials: 'same-origin' });
       } catch {
         // ignore
       }
@@ -558,6 +558,21 @@ class ApiClient {
       canonical_url: seoObj.canonical_url,
       reviews: reviewData,
     };
+  }
+
+  async getPlaybackDetails(id: number | string, type: 'movie' | 'tvshow' | 'episode' | 'video'): Promise<VideoQuality[]> {
+    if (typeof window === 'undefined') {
+      throw new Error('Playback authorization is available only in the browser.');
+    }
+    const profileId = window.localStorage.getItem('noor_profile_id');
+    if (!profileId) {
+      throw new Error('Select a viewing profile before playback.');
+    }
+    const result = await this.request<{ video_qualities?: VideoQuality[] }>('/v3/playback/details', {
+      method: 'POST',
+      body: JSON.stringify({ id, type, profile_id: profileId }),
+    });
+    return Array.isArray(result.video_qualities) ? result.video_qualities : [];
   }
 
   async getSeoSettings(): Promise<SeoMetadata> {

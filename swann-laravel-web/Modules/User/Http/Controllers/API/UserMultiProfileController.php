@@ -10,18 +10,17 @@ use Modules\User\Transformers\UserMultiProfileResource;
 use Illuminate\Http\Request;
 use Jenssegers\Agent\Agent;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 
 class UserMultiProfileController extends Controller
 {
     public function profileList(Request $request)
     {
-        $user_id = !empty($request->user_id)? $request->user_id :auth()->user()->id;
-
-        $perPage = $request->input('per_page', 10);
-        $profiles = UserMultiProfile::with('user');
-
-        $profiles = $profiles->where('user_id', operator: $user_id)->paginate($perPage);
+        $perPage = min(max((int) $request->input('per_page', 10), 1), 50);
+        $profiles = UserMultiProfile::query()
+            ->where('user_id', $request->user()->id)
+            ->paginate($perPage);
 
         $responseData = UserMultiProfileResource::collection($profiles);
 
@@ -31,7 +30,13 @@ class UserMultiProfileController extends Controller
     public function saveProfile(Request $request)
     {
         $user = auth()->user();
-        $data = $request->all();
+        $data = $request->validate([
+            'id' => ['sometimes', 'integer', 'min:1'],
+            'name' => ['required', 'string', 'max:12'],
+            'is_child_profile' => ['sometimes', 'boolean'],
+            'avatar' => ['sometimes', 'nullable', 'string', 'max:2048'],
+            'file_url' => ['sometimes', 'file', 'image', 'max:5120'],
+        ]);
 
         if (isset($data['name']) && strlen(trim($data['name'])) > 12) {
             return ApiResponse::error(__('messages.name_max_12_characters'), 422);
@@ -153,7 +158,11 @@ private function getSubscriptionProfileLimit($user)
     public function getprofile(Request $request, int $id)    
     {
         
-        $profile = UserMultiProfile::where('id', $request->id)->first();
+        $profile = UserMultiProfile::where('user_id', $request->user()->id)->where('id', $id)->first();
+
+        if (!$profile) {
+            return ApiResponse::error(__('messages.profile_not_found') ?? 'Profile not found.', 404);
+        }
 
         $responseData = New UserMultiProfileResource($profile);
 
@@ -162,16 +171,13 @@ private function getSubscriptionProfileLimit($user)
 
     public function SelectProfile(Request $request, int $id)    
 {
-    // Profile selection is user-specific, no cache clearing needed
-    $user_id = $request->user_id ?? auth()->id();
-
-    if($user_id)
-    {
-        $user = User::where('id', $user_id)->first();
-    }
+    // The authenticated account is the sole authority for profile ownership.
+    $user = $request->user();
+    $user_id = $user->id;
+    $request->validate(['pin' => ['sometimes', 'array', 'max:8'], 'pin.*' => ['digits:1']]);
 
     $currentProfile = getCurrentProfileSession();
-    $is_child_profile = $currentProfile['is_child_profile'] ?? 0;
+    $is_child_profile = $currentProfile->is_child_profile ?? 0;
 
     // Look up the target profile to check if it's a parent profile
     $targetProfile = UserMultiProfile::where('user_id', $user_id)->where('id', $id)->first();
@@ -179,15 +185,26 @@ private function getSubscriptionProfileLimit($user)
 
     // PIN is only required when switching FROM a child profile TO a parent profile
     // (matches the frontend pin-verification.js isPinRequired logic)
-    if ($is_child_profile == 1 && $isTargetParent && $user->is_parental_lock_enable == 1) {
+    if (!$targetProfile) {
+        return ApiResponse::error(__('messages.profile_not_found') ?? 'Profile not found.', 404);
+    }
+
+    if ($isTargetParent && $user->is_parental_lock_enable == 1) {
         $pin = $request->pin ?? null;
         if (!$pin) {
             return ApiResponse::error(__('messages.parental_lock'), 406);
         }
         $pinString = implode('', $pin);
-        $verfiy = User::where([['id','=',$user_id],['pin','=',$pinString]])->first();
-        if(!$verfiy){
+        $storedPin = (string) ($user->pin_hash ?: $user->pin);
+        $pinMatches = str_starts_with($storedPin, '$2y$') || str_starts_with($storedPin, '$argon2')
+            ? Hash::check($pinString, $storedPin)
+            : hash_equals($storedPin, $pinString);
+        if (!$pinMatches) {
             return ApiResponse::error(__('messages.lbl_invalid_pin'), 406);
+        }
+
+        if (!$user->pin_hash) {
+            $user->forceFill(['pin_hash' => Hash::make($pinString), 'pin' => null])->save();
         }
 
     }

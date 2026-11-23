@@ -25,9 +25,13 @@ use Illuminate\Support\Facades\Auth;
 class UserController extends Controller
 {
     public function profileDetails(Request $request){
-        $userId = $request->user_id ? $request->user_id : auth()->user()->id;
+        $userId = $request->user()->id;
 
-        $user = User::with('subscriptionPackage', 'watchList', 'continueWatch')->where('id', $userId)->first();
+        $profileId = getCurrentProfile($userId, $request);
+        $user = User::with('subscriptionPackage')
+            ->with(['watchList' => fn ($query) => $query->where('profile_id', $profileId)])
+            ->with(['continueWatch' => fn ($query) => $query->where('profile_id', $profileId)])
+            ->findOrFail($userId);
 
         if($user->is_subscribe == 1){
             $user['plan_details'] = $user->subscriptionPackage;
@@ -90,20 +94,25 @@ class UserController extends Controller
 
         return ApiResponse::success($responseData, __('users.account_setting'), 200);
     }
-  public function deviceLogout(Request $request)
+public function deviceLogout(Request $request)
 {
 
-    $userId = auth()->check() ? auth()->user()->id : $request->input('user_id');
+    $userId = $request->user()->id;
+    $request->validate([
+        'id' => ['required_without:device_id', 'integer', 'min:1'],
+        'device_id' => ['required_without:id', 'string', 'max:255'],
+    ]);
 
     $deviceQuery = Device::where('user_id', $userId);
 
-    if ($request->has('device_id')) {
-        $deviceQuery->where('device_id', $request->device_id);
-    }
-
-    if ($request->has('id')) {
-        $deviceQuery->orWhere('id', $request->id);
-    }
+    $deviceQuery->where(function ($query) use ($request) {
+        if ($request->filled('device_id')) {
+            $query->where('device_id', $request->device_id);
+        }
+        if ($request->filled('id')) {
+            $request->filled('device_id') ? $query->orWhere('id', $request->id) : $query->where('id', $request->id);
+        }
+    });
 
     $device = $deviceQuery->first();
 
@@ -115,7 +124,7 @@ class UserController extends Controller
 
     // Revoke sanctum tokens for this specific device (token name = device_id)
     try {
-        $user = \App\Models\User::find($userId);
+        $user = $request->user();
         if ($user && class_exists('Laravel\\Sanctum\\PersonalAccessToken')) {
             \Laravel\Sanctum\PersonalAccessToken::where('tokenable_id', $userId)
                 ->where('name', $deviceIdToLogout)
@@ -156,7 +165,7 @@ class UserController extends Controller
 
     public function logoutAll(Request $request)
     {
-        $userId = auth()->check() ? auth()->user()->id : $request->input('user_id');
+        $userId = $request->user()->id;
         
         if (!$userId) {
             return ApiResponse::error(__('users.user_not_found'), 404);
@@ -298,11 +307,16 @@ class UserController extends Controller
     public function saveWatchHistory(Request $request)
     {
         $user = auth()->user();
-        $data = $request->all();
+        $data = $request->validate([
+            'entertainment_id' => ['required', 'string', 'max:64'],
+            'entertainment_type' => ['required', 'in:movie,tvshow,episode,video'],
+            'profile_id' => ['sometimes', 'integer', 'min:1'],
+        ]);
 
-        $profile_id=$request->has('profile_id') && $request->profile_id
-        ? $request->profile_id
-        : getCurrentProfile($user->id, $request);
+        $profile_id = getCurrentProfile($user->id, $request);
+        if (!$profile_id || ($request->filled('profile_id') && (string) $request->profile_id !== (string) $profile_id)) {
+            return ApiResponse::error(__('messages.profile_not_found') ?? 'Select an active viewing profile.', 403);
+        }
 
         $data['profile_id']=$profile_id;
 
@@ -323,9 +337,8 @@ class UserController extends Controller
 
     public function profileDetailsV2(Request $request)
     {
-        $userId = $request->user_id ? $request->user_id : auth()->user()->id;
-
-        $profile_id = isset($request->profile_id) ? $request->profile_id : NULL;
+        $userId = $request->user()->id;
+        $profile_id = getCurrentProfile($userId, $request);
 
         $user = User::with('subscriptionPackage')
         ->with(['watchList' => function($q) use($userId,$profile_id){
@@ -350,8 +363,8 @@ class UserController extends Controller
 
     public function profileDetailsV3(Request $request)
     {
-        $userId = $request->user_id ? $request->user_id : auth()->user()->id;
-        $profile_id = isset($request->profile_id) ? $request->profile_id : NULL;
+        $userId = $request->user()->id;
+        $profile_id = getCurrentProfile($userId, $request);
         $device_type = getDeviceType($request);
        
         $user = User::with('subscriptionPackage')
@@ -366,7 +379,7 @@ class UserController extends Controller
             }])
             ->where('id', $userId)->first();
          
-        if($user->is_subscribe == 1){
+        if($user && $user->is_subscribe == 1){
             $user['plan_details'] = $user->subscriptionPackage;
         }
 

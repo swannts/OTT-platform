@@ -18,7 +18,6 @@ class UserMultiProfileResource extends JsonResource
             'avatar' => $this->avatar,
             'is_active' => $this->activeprofile !== null ? 1 : 0,
             'is_child_profile' => $this->is_child_profile,
-            'profile_pin' => $this->is_child_profile == 1 ? null : ($this->user->pin ?? null),
             'is_protected_profile' => $this->is_child_profile == 1 ? 0 : ($this->user->is_parental_lock_enable ?? 0),
         ];
     }

@@ -79,6 +79,13 @@ class EntertainmentsController extends Controller
         try {
             $result = $entitlements->authorize($request->user(), $validated['id'], $validated['type'], (int) $validated['profile_id'], $request);
         } catch (\Illuminate\Auth\Access\AuthorizationException $exception) {
+            \Illuminate\Support\Facades\Log::notice('Customer playback authorization denied.', [
+                'user_id' => $request->user()->id,
+                'content_id' => $validated['id'],
+                'content_type' => $validated['type'],
+                'profile_id' => (int) $validated['profile_id'],
+                'reason' => $exception->getMessage(),
+            ]);
             return ApiResponse::error($exception->getMessage(), 403);
         }
 
@@ -132,7 +139,7 @@ class EntertainmentsController extends Controller
     public function movieListV3(Request $request)
     {
         $perPage = $request->input('per_page', 10);
-        $user_id = $request->input('user_id') ?? auth()->id();
+        $user_id = auth()->id();
         $profile_id = getCurrentProfile($user_id, $request);
        
         // OPTIMIZATION: Limit select columns to reduce data transfer
@@ -285,8 +292,8 @@ class EntertainmentsController extends Controller
     public function tvshowListV3(Request $request)
     {
         $perPage   = $request->input('per_page', 10);
-        $userId    = $request->input('user_id') ?? auth()->id();
-        $profileId = $request->input('profile_id') ?? getCurrentProfile($userId, $request);
+        $userId    = auth()->id();
+        $profileId = $userId ? getCurrentProfile($userId, $request) : null;
     
         /**
          * IMPORTANT:
@@ -2805,13 +2812,17 @@ class EntertainmentsController extends Controller
 
         // Create unique cache key based on all relevant parameters including user_id and locale
         $userId = auth()->id();
-        $cacheKey = 'common_content_detail_v3_'.$id . '_' . $request->profile_id . '_' . $request->type . '_' . ($userId ?? 0) . '_' . app()->getLocale();
+        $profileId = $userId ? getCurrentProfile($userId, $request) : 0;
+        $isChildProfile = $userId && $profileId
+            ? (int) (\App\Models\UserMultiProfile::query()->where('user_id', $userId)->whereKey($profileId)->value('is_child_profile') ?? 0) === 1
+            : false;
+        $cacheKey = 'common_content_detail_v3_'.$id . '_' . $profileId . '_' . $request->type . '_' . ($userId ?? 0) . '_' . app()->getLocale();
 
-         $responseData = cacheApiResponse($cacheKey, 10, function () use ($request, $id,$device_type, $userId) {
+         $responseData = cacheApiResponse($cacheKey, 10, function () use ($request, $id,$device_type, $userId, $profileId, $isChildProfile) {
 
 
             $user_id = $userId ?? 0;
-            $profile_id = isset($request->profile_id) ? $request->profile_id : 0;
+            $profile_id = $profileId;
             $device_id = isset($request->device_id) ? $request->device_id : 0;
 
             $getDeviceTypeData = Subscription::checkPlanSupportDevice($userId,$device_type);
@@ -2854,6 +2865,9 @@ class EntertainmentsController extends Controller
                             'status' => false,
                             'message' => 'Content not found.'
                         ];
+                    }
+                    if ($isChildProfile && (int) $movie->is_restricted === 1) {
+                        return ['status' => false, 'message' => 'This title is not available for a child profile.'];
                     }
 
                     // Check if movie is inactive
@@ -3047,6 +3061,9 @@ class EntertainmentsController extends Controller
                             'message' => 'TV Show not found.'
                         ];
                     }
+                    if ($isChildProfile && (int) $movie->is_restricted === 1) {
+                        return ['status' => false, 'message' => 'This title is not available for a child profile.'];
+                    }
 
                     // Check if TV show is inactive
                     if ($movie->status != 1) {
@@ -3233,6 +3250,9 @@ class EntertainmentsController extends Controller
                             'message' => 'Episode not found.'
                         ];
                     }
+                    if ($isChildProfile && (int) $movie->is_restricted === 1) {
+                        return ['status' => false, 'message' => 'This title is not available for a child profile.'];
+                    }
 
                     // Optimized: Use already loaded entertainmentGenerMappings instead of separate query
                     $activeGenres = $movie->entertainmentdata && $movie->entertainmentdata->relationLoaded('entertainmentGenerMappings')
@@ -3356,6 +3376,9 @@ class EntertainmentsController extends Controller
                             'status' => false,
                             'message' => 'Video not found.'
                         ];
+                    }
+                    if ($isChildProfile && (int) $movie->is_restricted === 1) {
+                        return ['status' => false, 'message' => 'This title is not available for a child profile.'];
                     }
 
                     // Check if video is inactive
@@ -3764,7 +3787,7 @@ class EntertainmentsController extends Controller
     public function contentListV3(Request $request){
         $device_type = getDeviceType($request);
 
-        $user_id = isset($request->user_id) ? $request->user_id : 0;
+        $user_id = auth()->id();
         $profile_id = getCurrentProfile($user_id, $request);
 
         // Support both `content_type` (new) and `type` (backward compatibility)

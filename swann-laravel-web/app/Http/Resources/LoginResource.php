@@ -63,8 +63,6 @@ class LoginResource extends JsonResource
             'short_drama_session_token' => $this->short_drama_session_token ?? null,
             'api_token' => $this->api_token,
             'full_name' => $this->full_name,
-            'pin' => $this->pin ?? "",
-            'otp' => $this->otp,
             'is_user_exist' => true,
             'profile_image' => setBaseUrlWithFileName($this->file_url, 'image', 'users'), //$this->media->pluck('original_url')->first(),
             'country_code' => $this->country_code,

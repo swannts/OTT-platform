@@ -27,25 +27,14 @@ class WatchlistController extends Controller
         $perPage = $request->input('per_page', 10);
         $type = $request->input('type', 'all');
 
-        $profile_id = $request->input('profile_id');
-        if (!$profile_id || $profile_id == 'null' || $profile_id == '') {
-            $profile_id = getCurrentProfile($user_id, $request);
-        }
+        $profile_id = $this->resolveActiveProfile($user_id, $request);
+        if (!$profile_id) return ApiResponse::error('Select an active viewing profile.', 403);
         
         
         $query = Watchlist::where('user_id', $user_id)->whereNull('deleted_at');
         
         if ($profile_id) {
             $query->where('profile_id', $profile_id);
-        } else {
-            $query->where(function($q) use ($user_id) {
-                $q->whereNull('profile_id')
-                  ->orWhereIn('profile_id', function($subQuery) use ($user_id) {
-                      $subQuery->select('id')
-                               ->from('user_multi_profiles')
-                               ->where('user_id', $user_id);
-                  });
-            });
         }
 
         if ($type === 'movie') {
@@ -137,16 +126,15 @@ class WatchlistController extends Controller
 
     public function watchListV3(Request $request)
     {
-        $user_id = auth()->user()->id ?? $request->user_id;
+        $user_id = $request->user()->id;
         $device_type = getDeviceType($request);
 
         $perPage = $request->input('per_page', 10);
         $page = $request->input('page', 1);
         $type = $request->input('type'); // optional: movie, tvshow, video, all
 
-        $profile_id=$request->has('profile_id') && $request->profile_id
-        ? $request->profile_id
-        : getCurrentProfile($user_id, $request);
+        $profile_id = $this->resolveActiveProfile($user_id, $request);
+        if (!$profile_id) return ApiResponse::error('Select an active viewing profile.', 403);
 
         // Create unique cache key based on all relevant parameters including type and page
         $cacheKey = 'watchlist_v3_'. md5(json_encode([
@@ -192,7 +180,7 @@ class WatchlistController extends Controller
             ->orderBy('updated_at', 'desc')
             ->paginate($perPage);
 
-            $userId = $request->user_id ?? auth()->id();
+            $userId = $request->user()->id;
             $getDeviceTypeData = Subscription::checkPlanSupportDevice($userId, $device_type);
             $deviceTypeResponse = json_decode($getDeviceTypeData->getContent(), true);
             $userLevel = Subscription::select('plan_id')->where(['user_id' => $user_id, 'status' => 'active'])->latest()->first();
@@ -294,7 +282,7 @@ class WatchlistController extends Controller
                 foreach($responseData->toArray($request) as $watchData) {
                     $userId = auth()->id();
                     if ($userId) {
-                        $profile_id = $request->input('profile_id') ?: getCurrentProfile($userId, $request);
+                        $profile_id = $this->resolveActiveProfile($userId, $request);
                         $contentType = $watchData['entertainment_type'] ?? 'movie';
                         $isInWatchList = Watchlist::where('entertainment_id', $watchData['entertainment_id'])
                                                    ->where('user_id', $userId)
@@ -356,9 +344,8 @@ class WatchlistController extends Controller
         
         $entertainmentId = $request->input('entertainment_id');
 
-        $profile_id=$request->has('profile_id') && $request->profile_id
-        ? $request->profile_id
-        : getCurrentProfile($user->id, $request);
+        $profile_id = $this->resolveActiveProfile($user->id, $request);
+        if (!$profile_id) return ApiResponse::error('Select an active viewing profile.', 403);
 
         $watchlistData = $request->except('user_id');
 
@@ -404,9 +391,8 @@ class WatchlistController extends Controller
         try {
             $user = auth()->user();
 
-            $profile_id = $request->has('profile_id') && $request->profile_id
-                ? $request->profile_id
-                : getCurrentProfile($user->id, $request);
+            $profile_id = $this->resolveActiveProfile($user->id, $request);
+            if (!$profile_id) return ApiResponse::error('Select an active viewing profile.', 403);
 
             $id_param = $request->id;
             $ids = is_array($id_param) ? $id_param : explode(',', (string)$id_param);
@@ -473,9 +459,8 @@ class WatchlistController extends Controller
     {
         try {
             $user = auth()->user();
-            $profile_id = $request->has('profile_id') && $request->profile_id
-                ? $request->profile_id
-                : getCurrentProfile($user->id, $request);
+            $profile_id = $this->resolveActiveProfile($user->id, $request);
+            if (!$profile_id) return ApiResponse::error('Select an active viewing profile.', 403);
 
             $type = $request->input('type');
 
@@ -560,9 +545,8 @@ class WatchlistController extends Controller
             ->whereNotNull('total_watched_time')
             ->with(['entertainment', 'episode', 'video']);
 
-        $profile_id = $request->has('profile_id') && $request->profile_id
-            ? $request->profile_id
-            : getCurrentProfile($user_id, $request);
+        $profile_id = $this->resolveActiveProfile($user_id, $request);
+        if (!$profile_id) return ApiResponse::error('Select an active viewing profile.', 403);
 
         $continuewatch = $continuewatchList
             ->where('user_id', $user_id)
@@ -604,9 +588,8 @@ class WatchlistController extends Controller
         $watch_data['user_id'] = $user->id;
         $watch_data['entertainment_type'] = $type;
 
-        $profile_id=$request->has('profile_id') && $request->profile_id
-        ? $request->profile_id
-        : getCurrentProfile($user->id, $request);
+        $profile_id = $this->resolveActiveProfile($user->id, $request);
+        if (!$profile_id) return ApiResponse::error('Select an active viewing profile.', 403);
 
         $watch_data['profile_id'] =  $profile_id;
 
@@ -649,12 +632,6 @@ class WatchlistController extends Controller
             }
         }
 
-        if ($request->has('profile_id')) {
-            $profile_id = $request->profile_id;
-        } else {
-            $profile_id = getCurrentProfile($user->id, $request);
-        }
-
         clearDashboardCache();
         
         return ApiResponse::success(null, __('movie.save_msg'), 200);
@@ -662,9 +639,8 @@ class WatchlistController extends Controller
     public function deleteContinueWatch(Request $request)
     {
         $userId = auth()->id();
-        $profileId = $request->has('profile_id') && $request->profile_id
-            ? $request->profile_id
-            : getCurrentProfile($userId, $request);
+        $profileId = $this->resolveActiveProfile($userId, $request);
+        if (!$profileId) return ApiResponse::error('Select an active viewing profile.', 403);
 
         $id_param = $request->id;
         if (!empty($id_param)) {
@@ -750,9 +726,8 @@ class WatchlistController extends Controller
              })
              ->with(['entertainment', 'episode.seasondata', 'video']);
 
-            $profile_id=$request->has('profile_id') && $request->profile_id
-            ? $request->profile_id
-            : getCurrentProfile($user_id, $request);
+            $profile_id = $this->resolveActiveProfile($user_id, $request);
+            if (!$profile_id) return ApiResponse::error('Select an active viewing profile.', 403);
 
             $continuewatch = $continuewatchList
                 ->where('user_id', $user_id)
@@ -816,5 +791,15 @@ class WatchlistController extends Controller
 
         // Return cached response
         // return response()->json($cachedResponse['data'], 200);
+    }
+
+    private function resolveActiveProfile(int $userId, Request $request): ?int
+    {
+        $activeProfileId = getCurrentProfile($userId, $request);
+        if (!$activeProfileId || ($request->filled('profile_id') && (string) $request->profile_id !== (string) $activeProfileId)) {
+            return null;
+        }
+
+        return (int) $activeProfileId;
     }
 }

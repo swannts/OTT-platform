@@ -1780,7 +1780,8 @@ function getLoggedUserPin($profileId)
         return "no";
     }
     ### check pin is empty or not
-    $pincheck = DB::table('users')->where('id', auth()->user()->id)->pluck('pin')->first();
+    $pincheck = DB::table('users')->where('id', auth()->user()->id)->value('pin_hash')
+        ?? DB::table('users')->where('id', auth()->user()->id)->value('pin');
     if (empty($pincheck)) {
         return "no";
     }

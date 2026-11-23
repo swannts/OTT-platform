@@ -27,8 +27,6 @@ class SocialLoginResource extends JsonResource
             'is_banned' => $this->is_banned,
             'is_subscribe' => $this->is_subscribe,
             'status' => $this->status,
-            'pin' => $this->pin,
-            'otp' => $this->otp,
             'last_notification_seen' => $this->last_notification_seen,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
