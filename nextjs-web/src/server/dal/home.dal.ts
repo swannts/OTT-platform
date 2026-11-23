@@ -86,7 +86,16 @@ export async function getHomeInitialDataDal(): Promise<HomeInitialData> {
           id: c.id,
           name,
           category: c.details?.category || c.category,
-          poster_image: c.poster_url || c.details?.poster_url || '',
+          // The v3 live-TV endpoint returns poster_image/poster_tv_image;
+          // poster_url is not present on its slider/category resources.
+          poster_image:
+            c.poster_tv_image ||
+            c.poster_image ||
+            c.thumbnail_image ||
+            c.poster_url ||
+            c.details?.poster_tv_image ||
+            c.details?.poster_url ||
+            '',
         });
       }
       result.liveChannels = unique;

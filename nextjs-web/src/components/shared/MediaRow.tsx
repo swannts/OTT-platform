@@ -3,7 +3,7 @@
 import React, { useRef } from 'react';
 import { MediaItem } from '@/types';
 import MediaCard from './MediaCard';
-import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
+import { ChevronRight, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { Heading, MediaCardSkeleton } from '@/components/ui';
 import { useLanguage } from '@/providers';
@@ -28,12 +28,12 @@ export default function MediaRow({
   const rowRef = useRef<HTMLDivElement>(null);
   const { t } = useLanguage();
 
-  const handleScroll = (direction: 'left' | 'right') => {
+  const handleScrollNext = () => {
     if (rowRef.current) {
       const { scrollLeft, clientWidth } = rowRef.current;
       const scrollAmount = clientWidth * 0.75;
       rowRef.current.scrollTo({
-        left: direction === 'left' ? scrollLeft - scrollAmount : scrollLeft + scrollAmount,
+        left: scrollLeft + scrollAmount,
         behavior: 'smooth',
       });
     }
@@ -72,7 +72,7 @@ export default function MediaRow({
           </Heading>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center">
           {moreHref && (
             <Link
               href={moreHref}
@@ -83,37 +83,11 @@ export default function MediaRow({
             </Link>
           )}
 
-          {/* Clean header scroll buttons (always accessible, never obscuring poster art) */}
-          <div className="hidden sm:flex items-center space-x-1.5">
-            <button
-              onClick={() => handleScroll('left')}
-              className="w-7 h-7 rounded-lg bg-white/5 hover:bg-[#E5B869] hover:text-black text-gray-400 hover:border-[#E5B869] border border-white/10 flex items-center justify-center transition-colors cursor-pointer"
-              aria-label="Scroll left"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => handleScroll('right')}
-              className="w-7 h-7 rounded-lg bg-white/5 hover:bg-[#E5B869] hover:text-black text-gray-400 hover:border-[#E5B869] border border-white/10 flex items-center justify-center transition-colors cursor-pointer"
-              aria-label="Scroll right"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
         </div>
       </div>
 
       {/* Row Carousel Wrapper */}
       <div className="relative">
-        {/* Left Floating Arrow Button with Pointer-Event Safety */}
-        <button
-          onClick={() => handleScroll('left')}
-          className="absolute -left-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full bg-black/85 hover:bg-[#E5B869] hover:text-black text-white flex items-center justify-center opacity-0 pointer-events-none group-hover/row:opacity-100 group-hover/row:pointer-events-auto transition-all backdrop-blur-md shadow-2xl border border-white/15 cursor-pointer hover:scale-105 active:scale-95"
-          aria-label="Scroll left"
-        >
-          <ChevronLeft className="w-6 h-6" />
-        </button>
-
         {/* Scrollable Container with breathing room for fade-up hover elevation */}
         <div
           ref={rowRef}
@@ -132,7 +106,7 @@ export default function MediaRow({
 
         {/* Right Floating Arrow Button with Pointer-Event Safety */}
         <button
-          onClick={() => handleScroll('right')}
+          onClick={handleScrollNext}
           className="absolute -right-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full bg-black/85 hover:bg-[#E5B869] hover:text-black text-white flex items-center justify-center opacity-0 pointer-events-none group-hover/row:opacity-100 group-hover/row:pointer-events-auto transition-all backdrop-blur-md shadow-2xl border border-white/15 cursor-pointer hover:scale-105 active:scale-95"
           aria-label="Scroll right"
         >

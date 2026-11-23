@@ -387,7 +387,12 @@ class ApiClient {
   }
 
   async getDashboard(): Promise<{ data?: DashboardData } & DashboardData> {
-    return this.request<{ data?: DashboardData } & DashboardData>('/v3/dashboard-detail');
+    return this.request<{ data?: DashboardData } & DashboardData>('/v3/dashboard-detail', {
+      next: {
+        revalidate: 3600,
+        tags: ['dashboard-detail'],
+      },
+    });
   }
 
   async getDashboardDetailData(page: number = 1): Promise<DashboardData> {
@@ -568,7 +573,12 @@ class ApiClient {
   }
 
   async getLiveTvDashboard(): Promise<{ slider: LiveChannel[]; category_data: LiveCategory[] }> {
-    return this.request<{ slider: LiveChannel[]; category_data: LiveCategory[] }>('/v3/livetv-dashboard');
+    return this.request<{ slider: LiveChannel[]; category_data: LiveCategory[] }>('/v3/livetv-dashboard', {
+      next: {
+        revalidate: 3600,
+        tags: ['livetv-dashboard'],
+      },
+    });
   }
 
   async getLiveTvDetails(channelId: number | string): Promise<LiveTvPlaybackDetails> {
@@ -738,4 +748,3 @@ class ApiClient {
 }
 
 export const api = new ApiClient();
-

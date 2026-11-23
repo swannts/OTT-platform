@@ -15,7 +15,7 @@ class PageResource extends JsonResource
             'id'   => $this->id,
             'slug' => $this->slug,
             'name' => $this->name,
-            'url'  => route('backend.copyurl', ['slug' =>  $this->slug])
+            'url'  => rtrim((string) config('services.frontend_url'), '/') . '/pages/' . rawurlencode($this->slug),
         ];
     }
 }

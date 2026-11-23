@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Play, Crown, ArrowRight, Radio } from 'lucide-react';
 import { LiveChannel } from '@/types';
 import { useLanguage } from '@/providers';
@@ -38,7 +39,7 @@ export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
     id: ch.id,
     name: getChannelTitle(ch),
     subtitle: ch.details?.category || ch.category,
-    logo:
+    image:
       ch.poster_image ||
       ch.thumbnail_image ||
       ch.poster_tv_image ||
@@ -71,12 +72,21 @@ export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
           href={featured.watchUrl}
           className="group relative lg:col-span-3 rounded-2xl overflow-hidden border border-white/10 hover:border-[#E5B869]/50 shadow-xl transition-all duration-300 block min-h-[160px] sm:min-h-[190px]"
         >
-          {featured.thumbnail ? (
-            <img src={featured.thumbnail} alt={featured.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-[#10201d]" aria-hidden="true">
-              <Radio className="h-12 w-12 text-[#E5B869]/70" />
-            </div>
+          <div className="absolute inset-0 flex items-center justify-center bg-[#10201d]" aria-hidden="true">
+            <Radio className="h-12 w-12 text-[#E5B869]/70" />
+          </div>
+          {featured.thumbnail && (
+            <Image
+              src={featured.thumbnail ?? ''}
+              alt={featured.title ?? ''}
+              fill
+              sizes="(max-width: 1024px) 100vw, 25vw"
+              unoptimized
+              onError={(event) => {
+                event.currentTarget.style.display = 'none';
+              }}
+              className="object-cover transition-transform duration-700 group-hover:scale-105"
+            />
           )}
 
           {/* Vignette */}
@@ -109,27 +119,33 @@ export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
               <Link
                 key={ch.id}
                 href={`/live-tv`}
-                className="group glass-card rounded-2xl p-3 sm:p-3.5 border border-white/5 hover:border-[#E5B869]/40 flex flex-col items-center justify-center text-center transition-all duration-300 hover:scale-[1.03] min-h-[160px] sm:min-h-[190px]"
+                className="group relative glass-card rounded-2xl overflow-hidden border border-white/10 hover:border-[#E5B869]/50 flex flex-col justify-end text-left transition-all duration-300 hover:scale-[1.03] min-h-[160px] sm:min-h-[190px]"
               >
-                {/* Channel Logo / Icon Container */}
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center font-black text-sm mb-3 shadow-inner overflow-hidden flex-shrink-0">
-                  {ch.logo ? (
-                    <img
-                      src={ch.logo}
-                      alt={ch.name}
-                      className="w-full h-full object-cover rounded-2xl"
-                    />
-                  ) : (
-                    <div className="w-full h-full rounded-2xl flex items-center justify-center bg-white/5 text-[#E5B869]">
-                      <Radio className="h-6 w-6" aria-hidden="true" />
-                    </div>
-                  )}
+                {/* Channel artwork fills the card; keep an icon behind broken/missing images. */}
+                <div className="absolute inset-0 flex items-center justify-center bg-[#10201d] text-[#E5B869]/80" aria-hidden="true">
+                  <Radio className="h-8 w-8" />
                 </div>
-
-                <h4 className="text-xs sm:text-[13px] font-bold text-white group-hover:text-[#E5B869] transition-colors truncate max-w-full">
-                  {ch.name}
-                </h4>
-                {ch.subtitle && <p className="text-[10.5px] text-gray-400 mt-0.5 truncate max-w-full">{ch.subtitle}</p>}
+                {ch.image && (
+                  <Image
+                    src={ch.image ?? ''}
+                    alt={ch.name ?? ''}
+                    fill
+                    sizes="(max-width: 768px) 50vw, 12vw"
+                    unoptimized
+                    loading="lazy"
+                    onError={(event) => {
+                      event.currentTarget.style.display = 'none';
+                    }}
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/10" aria-hidden="true" />
+                <div className="relative z-10 p-3 sm:p-3.5 w-full">
+                  <h4 className="text-xs sm:text-[13px] font-bold text-white group-hover:text-[#E5B869] transition-colors truncate max-w-full">
+                    {ch.name}
+                  </h4>
+                  {ch.subtitle && <p className="text-[10.5px] text-gray-300 mt-0.5 truncate max-w-full">{ch.subtitle}</p>}
+                </div>
               </Link>
           ))}
         </div>

@@ -27,21 +27,9 @@ class RouteServiceProvider extends ServiceProvider
      */
     public function map(): void
     {
+        // End-user web pages are served by Next.js. Keep Laravel's API routes
+        // available to the web and mobile clients without registering Blade UI routes.
         $this->mapApiRoutes();
-
-        $this->mapWebRoutes();
-    }
-
-    /**
-     * Define the "web" routes for the application.
-     *
-     * These routes all receive session state, CSRF protection, etc.
-     */
-    protected function mapWebRoutes(): void
-    {
-        Route::middleware('web')
-            ->namespace($this->moduleNamespace)
-            ->group(module_path('Frontend', '/Routes/web.php'));
     }
 
     /**

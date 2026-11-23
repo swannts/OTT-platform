@@ -22,8 +22,6 @@ use Modules\Page\Http\Controllers\Backend\PagesController;
 * --------------------------------------------------------------------
 */
 
-Route::get('page/{slug}', [PagesController::class,'page'])->name('backend.copyurl');
-Route::get('/{slug}', [PagesController::class, 'show'])->name('page.show');
 Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['auth','admin']], function () {
     /*
     * These routes need view-backend permission

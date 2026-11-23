@@ -337,7 +337,7 @@ class UsersController extends Controller
     public function changepassword(int $id){
 
         if(getCurrentProfileSession('is_child_profile') == 1){
-            return redirect()->route('user.login');
+            abort(403);
         }
 
         $id = $id;

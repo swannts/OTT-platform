@@ -3,8 +3,10 @@ import type { Metadata } from 'next';
 import { getHomeInitialDataDal } from '@/server/dal';
 import { HomeSection } from '@/features/home';
 
-// Home catalog and hero content changes infrequently; regenerate at most hourly.
-export const revalidate = 3600;
+// Render against the backend at request time so a build without backend access
+// cannot bake an empty hero into the production homepage. Public data remains
+// cached by its individual API requests for one hour.
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: 'NOOR - Islamic Video Streaming & Live TV | Halal Cinema & Sacred Documentaries',

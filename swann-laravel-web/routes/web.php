@@ -10,14 +10,11 @@ use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\RolePermission;
 use App\Http\Controllers\SearchController;
-use App\Providers\RouteServiceProvider;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Artisan;
 use App\Http\Controllers\Backend\MobileSettingController;
 use Modules\Setting\Http\Controllers\Backend\SettingsController;
 use App\Http\Controllers\Backend\ShortDramaPluginInstallerController;
-use Modules\Frontend\Http\Controllers\FrontendController;
-use App\Http\Controllers\Auth\WebQrLoginController;
 
 /*
 |--------------------------------------------------------------------------
@@ -35,11 +32,6 @@ require __DIR__ . '/auth.php';
 
 
 Route::group(['middleware' => ['checkInstallation']], function () {
-
-Route::get('/', [FrontendController::class, 'index'])->name('user.login');
-
-Route::get('/web-qr-status/{id}', [WebQrLoginController::class, 'checkStatus'])->name('web-qr-status');
-
 
 Route::group(['prefix' => 'app', ['middleware' => ['auth','admin']]], function () {
     // Language Switch
@@ -188,4 +180,3 @@ Route::middleware(['web'])->group(function () {
             Route::post('installer/uninstall', [ShortDramaPluginInstallerController::class, 'uninstall'])->name('installer.uninstall');
         });
 });
-

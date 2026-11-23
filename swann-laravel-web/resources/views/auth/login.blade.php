@@ -12,7 +12,7 @@
                 $logo = GetSettingValue('dark_logo')  ? setBaseUrlWithFileName(GetSettingValue('dark_logo'),'image','logos')  : asset('img/logo/dark_logo.png');    
             @endphp
 
-            <a href="{{ route('user.login') }}">
+            <a href="{{ route('admin-login') }}">
                 <img src="{{ $logo }}" class="img-fluid logo h-4 mb-4">
             </a>
         </x-slot>

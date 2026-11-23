@@ -15,7 +15,7 @@
                             @php
                                 $logo = GetSettingValue('dark_logo') ? setBaseUrlWithFileName(GetSettingValue('dark_logo'), 'image', 'logos') : asset('img/logo/dark_logo.png');
                             @endphp
-                            <a href="{{ route('user.login') }}" class="d-inline-block">
+                            <a href="{{ route('admin-login') }}" class="d-inline-block">
                                 <img src="{{ $logo }}" class="img-fluid logo h-4 mb-4" alt="{{ app_name() }}">
                             </a>
                             <h5 class="mb-2">{{ __('messages.reset_password_title') }}</h5>

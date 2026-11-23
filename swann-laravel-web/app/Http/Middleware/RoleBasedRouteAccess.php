@@ -13,7 +13,7 @@ class RoleBasedRouteAccess
      * Handle an incoming request.
      * Prevents role switching via URL manipulation.
      * - Admin users accessing non-admin routes (without /app/) -> redirect to admin dashboard
-     * - User accessing admin routes (with /app/) -> redirect to user home
+     * - User accessing admin routes (with /app/) -> forbidden
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -36,7 +36,7 @@ class RoleBasedRouteAccess
 
         // User trying to access admin routes (/app/ routes)
         if ($user->hasRole('user') && $isAdminRoute) {
-            return redirect()->route('user.login');
+            abort(403);
         }
 
         if ($user->hasRole('user')) {

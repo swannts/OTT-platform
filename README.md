@@ -15,32 +15,22 @@ An over-the-top (OTT) video streaming platform featuring a decoupled architectur
 
 ---
 
-## Next.js Frontend Page Coverage (100% Converted from Blade)
+Next.js is the only end-user web frontend. Laravel's public Blade page routes are disabled; Laravel continues to provide its API and admin CMS, and its root URL has no customer-facing page or redirect. `FRONTEND_URL` is used by Laravel payment flows when returning customers to Next.js.
 
-| Next.js Route | Equivalent Blade View | Description |
-| :--- | :--- | :--- |
-| `/` | `index.blade.php` | Home page: Hero banner, Top 10 carousel, Continue Watching, Genres |
-| `/movies` | `movie.blade.php` | Movies catalog with category filtering |
-| `/movies/[id]` | `movieDetail.blade.php` | Movie details, cast, reviews, related titles |
-| `/tv-shows` | `tvShow.blade.php` | TV Shows catalog with category filtering |
-| `/tv-shows/[id]` | `tvshowDetail.blade.php` | TV series details, seasons selector, episode browser |
-| `/watch/[type]/[id]` | *Embedded Player* | Adaptive HLS.js video player, VIP paywall & rental access gate |
-| `/live-tv` | `livetv.blade.php` | Live TV dashboard, categories, live stream launcher |
-| `/pricing` | `subscriptionplan.blade.php` | Subscription tiers, duration toggle, feature comparison |
-| `/checkout/[planId]` | `subscriptionPayment.blade.php` | Gateway checkout, coupon validation, price calculation |
-| `/payment-success` | `paymentSuccess.blade.php` | Order receipt confirmation & status |
-| `/search` | `search.blade.php` | Real-time multi-type search across movies, shows, and channels |
-| `/watchlist` | `watchlist.blade.php` | Saved movies and series collection |
-| `/videos` | `video.blade.php` | Short clips, backstage previews, and trailers |
-| `/cast/[id]` | `castCrewDetail.blade.php` | Actor / Director biography and complete filmography credits |
-| `/account` | `accountSetting.blade.php` | Profile settings, display name, contact info, password change |
-| `/account/billing` | `paymentHistory.blade.php` | Active membership, subscription receipts, PPV rental history |
-| `/account/security` | `securityControl.blade.php` | Parental control PIN restriction & remote device session logout |
-| `/profiles` | `profileManagement.blade.php` | Multi-profile "Who's Watching?" switcher & Kids profile mode |
-| `/notifications` | `notifications/list.blade.php` | In-app notification center with release alerts |
-| `/login` | `auth/login.blade.php` | User sign-in with Sanctum authentication |
-| `/register` | `auth/registration.blade.php` | User registration |
-| `/pages/[slug]` | `privacyPolicy.blade.php`, `termsOfUse.blade.php`, `faq.blade.php` | Dynamic CMS pages & policy viewer |
+## Next.js End-User Web Routes
+
+| Next.js Route | Description |
+| :--- | :--- |
+| `/` | Home page: hero banner, content carousels, and live TV |
+| `/movies`, `/movies/[id]` | Movie catalog and details |
+| `/tv-shows`, `/tv-shows/[id]` | TV series, seasons, and episodes |
+| `/watch/[type]/[id]` | Adaptive video player and access checks |
+| `/live-tv` | Live channel catalog and playback |
+| `/pricing`, `/checkout/[planId]`, `/payment-success` | Subscription plans, checkout, and order status |
+| `/search`, `/watchlist`, `/videos`, `/cast/[id]` | Discovery and saved content |
+| `/account`, `/account/billing`, `/account/security`, `/profiles`, `/notifications` | Viewer account and profile management |
+| `/login`, `/register` | Viewer authentication |
+| `/pages/[slug]` | CMS pages and policies |
 
 ---
 

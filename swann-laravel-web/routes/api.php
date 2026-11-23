@@ -70,6 +70,16 @@ Route::controller(AuthController::class)->group(function () {
 });
 
 Route::post('check-mobile-exists', [OTPController::class, 'checkMobileExists'])->name('api.check.mobile.exists');
+
+Route::prefix('admin')->group(function () {
+    Route::post('login', [\App\Http\Controllers\API\AdminApiController::class, 'login'])->middleware('throttle:5,1');
+    Route::middleware(['auth:sanctum', 'role:admin|super-admin|demo_admin'])->group(function () {
+        Route::get('me', [\App\Http\Controllers\API\AdminApiController::class, 'me']);
+        Route::post('logout', [\App\Http\Controllers\API\AdminApiController::class, 'logout']);
+        Route::get('dashboard', [\App\Http\Controllers\API\AdminApiController::class, 'dashboard']);
+    });
+});
+
 Route::post('/store-access-token', [SettingController::class, 'storeToken']);
 Route::post('/token-revoke', [SettingController::class, 'revokeToken']);
 Route::get('get-tranding-data', [DashboardController::class, 'getTrandingData']);

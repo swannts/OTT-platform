@@ -1,4 +1,21 @@
 services:
+  admin-ui:
+    build:
+      context: ./admin-ui
+      dockerfile: Dockerfile
+    image: swann-admin-ui:prod
+    container_name: swann-admin-ui
+    restart: always
+    ports:
+      - "${ADMIN_PORT:-3032}:3032"
+    environment:
+      NODE_ENV: production
+      LARAVEL_API_URL: http://backend:8000
+    networks:
+      - ott-net
+    depends_on:
+      - backend
+
   frontend:
     build:
       context: ./nextjs-web
