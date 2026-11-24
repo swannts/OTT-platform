@@ -18,10 +18,12 @@ readiness.
   role scope. Sensitive role operations require explicit permissions and the
   role policy prevents assignment of inactive/non-admin roles and protects fixed
   roles.
-- RevenueCat webhook processing verifies the raw-body signature and timestamp,
-  requires a provider event ID, and records events through the existing provider
-  event ledger to make duplicate deliveries idempotent. Focused signature and
-  replay tests are included.
+- Stripe, Razorpay, Paystack, and RevenueCat webhook handlers verify their
+  provider signatures and record deliveries through the provider event ledger to
+  make duplicate event IDs idempotent. RevenueCat also enforces a signed-body
+  timestamp window and requires a provider event ID. Focused signature rejection
+  and replay-deduplication tests cover all four handlers; they use signed
+  non-payment events and do not establish payment fulfillment or reconciliation.
 - CORS origins can be set explicitly with `CORS_ALLOWED_ORIGINS`. The production
   Compose overlay requires exact browser origins and secure session cookies.
 - Import-job diagnostics no longer write raw user rows, email addresses, local
@@ -44,7 +46,7 @@ readiness.
 
 ## Validation performed
 
-- Laravel PHPUnit suite: **96 tests, 461 assertions passed**; one existing
+- Laravel PHPUnit suite: **99 tests, 482 assertions passed**; one existing
   PHPUnit deprecation remains.
 - Admin RBAC feature suite: **6 tests, 32 assertions passed**, including the
   login rate limit.
@@ -149,9 +151,9 @@ readiness.
   available; see [Milestone 14](milestone-14-flutter-compatibility.md).
 - Repository-wide Next.js lint has the findings listed above. The changed admin
   BFF files pass focused lint, but full lint acceptance is not met.
-- Webhook tests cover RevenueCat signature rejection and replay deduplication;
-  provider-backed delivery, refund reconciliation, and settlement reconciliation
-  remain unverified.
+- Webhook tests cover signature rejection and replay deduplication for all four
+  providers. Provider-backed payment fulfillment, refund reconciliation, and
+  settlement reconciliation remain unverified.
 
 This document records partial local verification only. Milestone 15 and the
 overall milestones 6–15 goal remain incomplete until the external and repository
