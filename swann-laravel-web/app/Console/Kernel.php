@@ -32,6 +32,13 @@ class Kernel extends ConsoleKernel
         $schedule->command('continuewatch:notify')->dailyAt('11:00')->description('Send continue watching reminders');
         $schedule->command('swann:clean-latest-movies')->dailyAt('11:00')->description('Remove old movies from latest-movies list');
         $schedule->command('media:uploads-clean-expired')->hourly()->withoutOverlapping()->description('Clean expired private media upload chunks');
+        $schedule->call(function () {
+            if (\Illuminate\Support\Facades\Schema::hasTable('subscription_coupon_reservations')) {
+                \Illuminate\Support\Facades\DB::table('subscription_coupon_reservations')
+                    ->where('status', 'pending')->where('expires_at', '<=', now())
+                    ->update(['status' => 'expired', 'updated_at' => now()]);
+            }
+        })->hourly()->withoutOverlapping()->description('Expire unused subscription coupon checkout reservations');
 
         $schedule->call(function () {
             \App\Models\Device::whereNotNull('session_id')

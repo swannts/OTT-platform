@@ -27,6 +27,7 @@ export function requiredPermissionForPath(pathname) {
     '/dashboard/access/staff': 'admin.staff.view',
     '/dashboard/access/audit': 'audit.view',
     '/dashboard/media': 'media.view',
+    '/dashboard/subscriptions': 'subscriptions.view',
   };
   return routePermissions[pathname] || null;
 }

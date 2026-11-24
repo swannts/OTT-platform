@@ -113,6 +113,17 @@ Route::prefix('admin')->group(function () {
         Route::delete('media/assets/{asset}/tracks/{track}', [\App\Http\Controllers\API\AdminMediaController::class, 'deleteTrack'])->whereNumber('track');
         Route::get('media/drm', [\App\Http\Controllers\API\AdminMediaController::class, 'drmConfiguration'])->middleware('explicit.permission:media.drm.configure');
         Route::get('subscriptions/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'subscriptions'])->middleware('explicit.permission:subscriptions.view');
+        Route::get('subscriptions/plans', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'index'])->middleware('explicit.permission:subscriptions.view');
+        Route::post('subscriptions/plans', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'store'])->middleware('explicit.permission:subscriptions.plans.create');
+        Route::put('subscriptions/plans/{plan}', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'update'])->middleware('explicit.permission:subscriptions.plans.update');
+        Route::post('subscriptions/plans/{plan}/archive', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'archive'])->middleware('explicit.permission:subscriptions.plans.archive');
+        Route::get('subscriptions/subscribers', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'subscribers'])->middleware('explicit.permission:subscriptions.subscribers.view');
+        Route::get('subscriptions/performance', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'performance'])->middleware('explicit.permission:subscriptions.view');
+        Route::post('subscriptions/entitlement-simulation', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'simulate'])->middleware('explicit.permission:subscriptions.view');
+        Route::get('subscriptions/coupons', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'coupons'])->middleware('explicit.permission:subscriptions.coupons.manage');
+        Route::post('subscriptions/coupons', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'storeCoupon'])->middleware('explicit.permission:subscriptions.coupons.manage');
+        Route::put('subscriptions/coupons/{coupon}', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'updateCoupon'])->middleware('explicit.permission:subscriptions.coupons.manage');
+        Route::post('subscriptions/coupons/{coupon}/archive', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'archiveCoupon'])->middleware('explicit.permission:subscriptions.coupons.manage');
         Route::get('finance/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'finance'])->middleware('explicit.permission:finance.payments.view');
         Route::get('marketing/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'marketing'])->middleware('explicit.permission:marketing.campaigns.manage');
         Route::get('analytics/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'analytics'])->middleware('explicit.permission:analytics.audience.view');

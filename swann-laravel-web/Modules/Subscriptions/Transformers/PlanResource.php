@@ -26,6 +26,7 @@ class PlanResource extends JsonResource
             'level' => $this->level,
             'duration' => $this->duration,
             'duration_value' => $this->duration_value,
+            'trial_days' => (int) ($this->trial_days ?? 0),
             'description' => strip_tags($this->description),
             'plan_type' => PlanlimitationMappingResource::collection($this->planLimitation),
             'android_identifier' => $this->android_identifier,

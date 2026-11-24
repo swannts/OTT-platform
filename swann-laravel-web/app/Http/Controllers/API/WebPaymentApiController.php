@@ -76,8 +76,8 @@ class WebPaymentApiController extends Controller
 
         // Check coupon if provided
         $couponQuery = Coupon::where('status', 1)
-            ->where('start_date', '<=', now())
-            ->where('expire_date', '>=', now())
+            ->where(fn ($query) => $query->whereNull('start_date')->orWhereDate('start_date', '<=', today()))
+            ->where(fn ($query) => $query->whereNull('expire_date')->orWhereDate('expire_date', '>=', today()))
             ->whereHas('CouponPlanMappings', function ($q) use ($plan) {
                 $q->where('subscription_plan_id', $plan->id);
             });
@@ -90,6 +90,9 @@ class WebPaymentApiController extends Controller
 
         $coupon = $couponQuery->first();
         if ($coupon) {
+            if (!$this->couponUsageAvailable($coupon, Auth::id())) {
+                return ApiResponse::error('This coupon has reached its redemption limit.', 422);
+            }
             if ($coupon->discount_type === 'fixed') {
                 $couponDiscountAmount = min($basePrice, (float) $coupon->discount);
             } else {
@@ -162,6 +165,21 @@ class WebPaymentApiController extends Controller
 
         $user = Auth::user();
         $purchaseType = $request->string('purchase_type')->toString();
+        if ($purchaseType === 'subscription') {
+            $trialPlan = Plan::query()->whereKey($request->integer('plan_id'))->where('status', 1)->first();
+            if ($trialPlan && (int) ($trialPlan->trial_days ?? 0) > 0) {
+                $trial = $this->startEligibleTrial($user, $trialPlan);
+                if (!$trial) {
+                    return ApiResponse::error('This free trial is available only to accounts with no prior subscription.', 409);
+                }
+                return ApiResponse::success([
+                    'purchase_type' => 'subscription',
+                    'is_trial' => true,
+                    'trial_days' => (int) $trialPlan->trial_days,
+                    'subscription' => new SubscriptionResource($trial),
+                ], 'Free trial activated successfully.', 200);
+            }
+        }
         $pricingRequest = $purchaseType === 'subscription'
             ? new Request(['plan_id' => $request->integer('plan_id'), 'coupon_code' => $request->input('coupon_code'), 'coupon_id' => $request->input('coupon_id')])
             : new Request(['movie_id' => $request->integer('movie_id'), 'type' => $request->input('type')]);
@@ -185,6 +203,15 @@ class WebPaymentApiController extends Controller
         $purchaseId = $purchaseType === 'subscription'
             ? (int) $request->plan_id
             : (int) $request->movie_id;
+        $promotionId = $purchaseType === 'subscription' ? (int) ($pricingData['coupon']['id'] ?? 0) : 0;
+        $reservationToken = null;
+        if ($promotionId > 0) {
+            try {
+                $reservationToken = $this->reserveCouponForCheckout($promotionId, (int) $user->id);
+            } catch (\RuntimeException $exception) {
+                return ApiResponse::error($exception->getMessage(), 409);
+            }
+        }
         $stripe = new StripeClient(GetpaymentMethod('stripe_secretkey'));
 
         try {
@@ -198,9 +225,12 @@ class WebPaymentApiController extends Controller
                     'purchase_type' => $purchaseType,
                     'purchase_id' => (string) $purchaseId,
                     'content_type' => (string) $request->input('type', ''),
-                    'promotion_id' => (string) ($pricingData['coupon']['id'] ?? ''),
+                    'promotion_id' => (string) ($promotionId ?: ''),
+                    'coupon_reservation' => (string) ($reservationToken ?? ''),
                 ],
             ]);
+
+            $this->bindCouponReservation($reservationToken, 'stripe', $intent->id);
 
             VerifiedPayment::query()->firstOrCreate(
                 ['gateway' => 'stripe', 'provider_reference' => $intent->id],
@@ -221,6 +251,7 @@ class WebPaymentApiController extends Controller
                 'currency' => $currency,
             ], 'Payment intent created.', 200);
         } catch (Exception $e) {
+            $this->releaseCouponReservation($reservationToken);
             Log::error('Mobile Stripe payment intent creation failed.', ['exception' => $e::class]);
             return ApiResponse::error('Unable to start payment. Please try again.', 502);
         }
@@ -260,7 +291,8 @@ class WebPaymentApiController extends Controller
                 (int) $receipt->amount_minor,
                 $receipt->currency,
                 !empty($metadata->promotion_id) ? (int) $metadata->promotion_id : null,
-                (string) ($metadata->content_type ?? '')
+                (string) ($metadata->content_type ?? ''),
+                !empty($metadata->coupon_reservation) ? (string) $metadata->coupon_reservation : null
             );
 
             $data = $receipt->purchase_type === 'subscription'
@@ -302,6 +334,8 @@ class WebPaymentApiController extends Controller
             if ($event->type === 'payment_intent.succeeded') {
                 $payment = $object->toArray();
                 $this->fulfillStripeWebhookPayment($payment, (string) $payment['id'], (int) ($payment['amount_received'] ?? $payment['amount'] ?? 0));
+            } elseif (in_array($event->type, ['checkout.session.expired', 'payment_intent.canceled'], true)) {
+                $this->releaseCouponReservation((string) ($object->metadata->coupon_reservation ?? '') ?: null);
             } elseif (in_array($event->type, ['checkout.session.completed', 'checkout.session.async_payment_succeeded'], true)) {
                 $session = $object->toArray();
                 if (($session['payment_status'] ?? '') === 'paid' && ($session['mode'] ?? '') === 'payment') {
@@ -352,6 +386,17 @@ class WebPaymentApiController extends Controller
 
         try {
             $event = json_decode($payload, true, 512, JSON_THROW_ON_ERROR);
+            if (($event['event'] ?? '') === 'payment.failed') {
+                $entity = $event['payload']['payment']['entity'] ?? [];
+                $orderId = (string) ($entity['order_id'] ?? '');
+                if ($orderId !== '') {
+                    $api = new \Razorpay\Api\Api(GetpaymentMethod('razorpay_publickey'), GetpaymentMethod('razorpay_secretkey'));
+                    $order = $api->order->fetch($orderId);
+                    $notes = $order['notes'] ?? [];
+                    $this->releaseCouponReservation(!empty($notes['coupon_reservation']) ? (string) $notes['coupon_reservation'] : null);
+                }
+                return response()->json(['received' => true], 200);
+            }
             if (($event['event'] ?? '') !== 'payment.captured') {
                 return response()->json(['received' => true], 200);
             }
@@ -395,7 +440,8 @@ class WebPaymentApiController extends Controller
 
             $this->fulfillVerifiedPayment(
                 'razorpay', $paymentId, $userId, $purchaseType, $purchaseId,
-                (int) $payment->amount, strtoupper((string) $payment->currency), $promotionId, $contentType
+                (int) $payment->amount, strtoupper((string) $payment->currency), $promotionId, $contentType,
+                !empty($notes['coupon_reservation']) ? (string) $notes['coupon_reservation'] : null
             );
 
             return response()->json(['received' => true], 200);
@@ -581,7 +627,8 @@ class WebPaymentApiController extends Controller
         $this->fulfillVerifiedPayment(
             'stripe', $providerReference, $userId, $purchaseType, $purchaseId, $amountMinor,
             $currency, !empty($metadata['promotion_id']) ? (int) $metadata['promotion_id'] : null,
-            (string) ($metadata['content_type'] ?? '')
+            (string) ($metadata['content_type'] ?? ''),
+            !empty($metadata['coupon_reservation']) ? (string) $metadata['coupon_reservation'] : null
         );
     }
 
@@ -601,12 +648,15 @@ class WebPaymentApiController extends Controller
 
         $coupon = Coupon::where('code', $code)
             ->where('status', 1)
-            ->where('start_date', '<=', now())
-            ->where('expire_date', '>=', now())
+            ->where(fn ($query) => $query->whereNull('start_date')->orWhereDate('start_date', '<=', today()))
+            ->where(fn ($query) => $query->whereNull('expire_date')->orWhereDate('expire_date', '>=', today()))
             ->first();
 
         if (! $coupon) {
             return ApiResponse::error('Invalid or expired coupon code.', 404);
+        }
+        if (!$this->couponUsageAvailable($coupon, Auth::id())) {
+            return ApiResponse::error('This coupon has reached its redemption limit.', 422);
         }
 
         // If plan_id is provided, verify mapping
@@ -647,6 +697,19 @@ class WebPaymentApiController extends Controller
             return ApiResponse::error('Invalid or inactive plan.', 404);
         }
 
+        if ((int) ($plan->trial_days ?? 0) > 0) {
+            $trial = $this->startEligibleTrial($user, $plan);
+            if (!$trial) {
+                return ApiResponse::error('This free trial is available only to accounts with no prior subscription.', 409);
+            }
+            return ApiResponse::success([
+                'success' => true,
+                'is_trial' => true,
+                'trial_days' => (int) $plan->trial_days,
+                'subscription' => new SubscriptionResource($trial),
+            ], 'Free trial activated successfully.', 200);
+        }
+
         // Calculate pricing
         $calcRequest = new Request([
             'plan_id' => $plan->id,
@@ -663,21 +726,30 @@ class WebPaymentApiController extends Controller
         $finalPrice = (float) $calcData['total_amount'];
         $promotionId = $calcData['coupon']['id'] ?? null;
         $paymentMethod = strtolower($request->payment_method);
+        $couponReservationToken = null;
+        if ($promotionId) {
+            try {
+                $couponReservationToken = $this->reserveCouponForCheckout((int) $promotionId, (int) $user->id);
+            } catch (\RuntimeException $exception) {
+                return ApiResponse::error($exception->getMessage(), 409);
+            }
+        }
 
         if ($paymentMethod === 'free' && $finalPrice > 0) {
+            $this->releaseCouponReservation($couponReservationToken);
             return ApiResponse::error('This plan is not eligible for free checkout.', 422);
         }
 
         // If amount is 0, activate plan immediately
         if ($finalPrice <= 0) {
-            $subscription = $this->activateUserSubscription(
-                $user->id,
-                $plan,
-                0,
-                'free',
-                'FREE-' . strtoupper(uniqid()),
-                $promotionId
-            );
+            $subscription = DB::transaction(function () use ($user, $plan, $promotionId, $couponReservationToken) {
+                $subscription = $this->activateUserSubscription(
+                    $user->id, $plan, 0, 'free', 'FREE-' . strtoupper(\Illuminate\Support\Str::uuid()),
+                    $promotionId, strtoupper(GetcurrentCurrency() ?: 'USD')
+                );
+                if ($promotionId) $this->consumeCouponReservation($couponReservationToken, (int) $promotionId, (int) $user->id, (int) $subscription->id);
+                return $subscription;
+            });
 
             return ApiResponse::success([
                 'success' => true,
@@ -692,16 +764,16 @@ class WebPaymentApiController extends Controller
 
         switch ($paymentMethod) {
             case 'stripe':
-                return $this->createStripeSubscriptionSession($plan, $finalPrice, $currency, $user, $promotionId, $frontendUrl);
+                return $this->createStripeSubscriptionSession($plan, $finalPrice, $currency, $user, $promotionId, $frontendUrl, $couponReservationToken);
 
             case 'razorpay':
-                return $this->createRazorpaySubscriptionOrder($plan, $finalPrice, $currency, $user, $promotionId, $frontendUrl);
+                return $this->createRazorpaySubscriptionOrder($plan, $finalPrice, $currency, $user, $promotionId, $frontendUrl, $couponReservationToken);
 
             case 'paystack':
-                return $this->createPaystackSubscriptionTransaction($plan, $finalPrice, $currency, $user, $promotionId, $frontendUrl);
+                return $this->createPaystackSubscriptionTransaction($plan, $finalPrice, $currency, $user, $promotionId, $frontendUrl, $couponReservationToken);
 
             case 'paypal':
-                return $this->createPayPalSubscriptionPayment($plan, $finalPrice, $currency, $user, $promotionId, $frontendUrl);
+                return $this->createPayPalSubscriptionPayment($plan, $finalPrice, $currency, $user, $promotionId, $frontendUrl, $couponReservationToken);
 
             default:
                 return ApiResponse::error("Payment method [{$paymentMethod}] is not supported for web checkout.", 400);
@@ -746,7 +818,9 @@ class WebPaymentApiController extends Controller
                 $subscription = $this->fulfillVerifiedPayment(
                     'stripe', $transactionId, $user->id, 'subscription', $plan->id,
                     (int) $session->amount_total, strtoupper((string) $session->currency),
-                    !empty($metadata->promotion_id) ? (int) $metadata->promotion_id : null
+                    !empty($metadata->promotion_id) ? (int) $metadata->promotion_id : null,
+                    null,
+                    !empty($metadata->coupon_reservation) ? (string) $metadata->coupon_reservation : null
                 );
 
                 return ApiResponse::success(['subscription' => new SubscriptionResource($subscription)], 'Subscription activated successfully.', 200);
@@ -787,7 +861,9 @@ class WebPaymentApiController extends Controller
                 $subscription = $this->fulfillVerifiedPayment(
                     'razorpay', (string) $payment->id, $user->id, 'subscription', $plan->id,
                     (int) $payment->amount, strtoupper((string) $payment->currency),
-                    !empty($notes['promotion_id']) ? (int) $notes['promotion_id'] : null
+                    !empty($notes['promotion_id']) ? (int) $notes['promotion_id'] : null,
+                    null,
+                    !empty($notes['coupon_reservation']) ? (string) $notes['coupon_reservation'] : null
                 );
 
                 return ApiResponse::success(['subscription' => new SubscriptionResource($subscription)], 'Subscription activated successfully.', 200);
@@ -814,7 +890,9 @@ class WebPaymentApiController extends Controller
             $subscription = $this->fulfillVerifiedPayment(
                 'paystack', (string) $request->reference, $user->id, 'subscription', $plan->id,
                 (int) $data['amount'], strtoupper((string) $data['currency']),
-                !empty($data['metadata']['promotion_id']) ? (int) $data['metadata']['promotion_id'] : null
+                !empty($data['metadata']['promotion_id']) ? (int) $data['metadata']['promotion_id'] : null,
+                null,
+                !empty($data['metadata']['coupon_reservation']) ? (string) $data['metadata']['coupon_reservation'] : null
             );
 
             return ApiResponse::success(['subscription' => new SubscriptionResource($subscription)], 'Subscription activated successfully.', 200);
@@ -1202,9 +1280,10 @@ class WebPaymentApiController extends Controller
         int $amountMinor,
         string $currency,
         ?int $promotionId = null,
-        ?string $contentType = null
+        ?string $contentType = null,
+        ?string $couponReservationToken = null
     ) {
-        return DB::transaction(function () use ($gateway, $providerReference, $userId, $purchaseType, $purchaseId, $amountMinor, $currency, $promotionId, $contentType) {
+        return DB::transaction(function () use ($gateway, $providerReference, $userId, $purchaseType, $purchaseId, $amountMinor, $currency, $promotionId, $contentType, $couponReservationToken) {
             $receipt = VerifiedPayment::query()->firstOrCreate(
                 ['gateway' => $gateway, 'provider_reference' => $providerReference],
                 [
@@ -1234,7 +1313,10 @@ class WebPaymentApiController extends Controller
             $amount = $amountMinor / $this->currencyMultiplier($currency);
             if ($purchaseType === 'subscription') {
                 $plan = Plan::where('id', $purchaseId)->where('status', 1)->firstOrFail();
-                $fulfillment = $this->activateUserSubscription($userId, $plan, $amount, $gateway, $providerReference, $promotionId);
+                $fulfillment = $this->activateUserSubscription($userId, $plan, $amount, $gateway, $providerReference, $promotionId, strtoupper($currency));
+                if ($promotionId || $couponReservationToken) {
+                    $this->consumeCouponReservation($couponReservationToken, (int) $promotionId, $userId, (int) $fulfillment->id);
+                }
                 $receipt->fulfillment_type = 'subscription';
             } elseif ($purchaseType === 'pay_per_view') {
                 $content = $this->resolveContentModel((string) $contentType, $purchaseId);
@@ -1255,6 +1337,99 @@ class WebPaymentApiController extends Controller
         });
     }
 
+    private function couponUsageAvailable(Coupon $coupon, ?int $userId, ?string $exceptReservation = null): bool
+    {
+        $redeemed = DB::table('user_coupon_redeem')->where('coupon_id', $coupon->id);
+        $pending = DB::table('subscription_coupon_reservations')->where('coupon_id', $coupon->id)
+            ->where('status', 'pending')->where('expires_at', '>', now());
+        if ($exceptReservation) $pending->where('token', '<>', $exceptReservation);
+
+        $redeemedCount = (clone $redeemed)->count();
+        $pendingCount = (clone $pending)->count();
+        if ($coupon->max_redemptions !== null && $redeemedCount + $pendingCount >= (int) $coupon->max_redemptions) return false;
+
+        if ($userId !== null && $coupon->per_user_limit !== null) {
+            $userRedeemed = (clone $redeemed)->where('user_id', $userId)->count();
+            $userPending = (clone $pending)->where('user_id', $userId)->count();
+            if ($userRedeemed + $userPending >= (int) $coupon->per_user_limit) return false;
+        }
+
+        return true;
+    }
+
+    private function reserveCouponForCheckout(int $couponId, int $userId): string
+    {
+        return DB::transaction(function () use ($couponId, $userId): string {
+            $coupon = Coupon::query()->lockForUpdate()->find($couponId);
+            if (!$coupon || !$coupon->status
+                || ($coupon->start_date && Carbon::parse($coupon->start_date)->startOfDay()->isFuture())
+                || ($coupon->expire_date && Carbon::parse($coupon->expire_date)->endOfDay()->isPast())
+                || !$this->couponUsageAvailable($coupon, $userId)) {
+                throw new \RuntimeException('This coupon is no longer available or has reached its usage limit.');
+            }
+
+            $token = (string) \Illuminate\Support\Str::uuid();
+            DB::table('subscription_coupon_reservations')->insert([
+                'token' => $token, 'coupon_id' => $coupon->id, 'user_id' => $userId,
+                'status' => 'pending', 'expires_at' => now()->addHours(24),
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+            return $token;
+        });
+    }
+
+    private function bindCouponReservation(?string $token, string $provider, string $providerReference): void
+    {
+        if (!$token) return;
+        DB::table('subscription_coupon_reservations')->where('token', $token)->where('status', 'pending')->update([
+            'provider' => $provider, 'provider_reference' => $providerReference, 'updated_at' => now(),
+        ]);
+    }
+
+    private function releaseCouponReservation(?string $token): void
+    {
+        if (!$token) return;
+        DB::table('subscription_coupon_reservations')->where('token', $token)->where('status', 'pending')->update([
+            'status' => 'released', 'updated_at' => now(),
+        ]);
+    }
+
+    private function consumeCouponReservation(?string $token, int $couponId, int $userId, int $subscriptionId): void
+    {
+        $reservation = null;
+        if ($token) {
+            $reservation = DB::table('subscription_coupon_reservations')->where('token', $token)->lockForUpdate()->first();
+            if (!$reservation || (int) $reservation->user_id !== $userId
+                || ($couponId > 0 && (int) $reservation->coupon_id !== $couponId)) {
+                throw new \RuntimeException('Coupon checkout reservation does not match the verified subscription payment.');
+            }
+            if ($reservation->status === 'redeemed') {
+                if ((int) $reservation->subscription_id === $subscriptionId) return;
+                throw new \RuntimeException('Coupon reservation was already used for another subscription.');
+            }
+            if ($reservation->status !== 'pending') {
+                throw new \RuntimeException('Coupon checkout reservation is no longer available.');
+            }
+            $couponId = (int) $reservation->coupon_id;
+        }
+
+        if ($couponId <= 0) return;
+        $coupon = Coupon::query()->lockForUpdate()->find($couponId);
+        if (!$coupon) throw new \RuntimeException('The coupon associated with this payment no longer exists.');
+
+        DB::table('user_coupon_redeem')->insert([
+            'coupon_code' => $coupon->code, 'discount' => $coupon->discount,
+            'user_id' => $userId, 'coupon_id' => $coupon->id, 'booking_id' => $subscriptionId,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        if ($reservation) {
+            DB::table('subscription_coupon_reservations')->where('id', $reservation->id)->update([
+                'status' => 'redeemed', 'redeemed_at' => now(), 'subscription_id' => $subscriptionId, 'updated_at' => now(),
+            ]);
+        }
+    }
+
     private function currencyMultiplier(string $currency): int
     {
         $zeroDecimalCurrencies = ['BIF', 'CLP', 'DJF', 'GNF', 'JPY', 'KMF', 'KRW', 'MGA', 'PYG', 'RWF', 'UGX', 'VND', 'VUV', 'XAF', 'XOF', 'XPF'];
@@ -1262,7 +1437,7 @@ class WebPaymentApiController extends Controller
         return in_array(strtoupper($currency), $zeroDecimalCurrencies, true) ? 1 : 100;
     }
 
-    private function activateUserSubscription(int $userId, Plan $plan, float $amount, string $paymentType, string $transactionId, ?int $promotionId = null): Subscription
+    private function activateUserSubscription(int $userId, Plan $plan, float $amount, string $paymentType, string $transactionId, ?int $promotionId = null, string $currency = 'USD'): Subscription
     {
         // Deactivate previous active subscriptions
         Subscription::where('user_id', $userId)
@@ -1296,6 +1471,7 @@ class WebPaymentApiController extends Controller
             'subscriptions_id' => $subscription->id,
             'user_id' => $userId,
             'amount' => $amount,
+            'currency_code' => strtoupper($currency),
             'payment_type' => $paymentType,
             'payment_status' => 'paid',
             'transaction_id' => $transactionId,
@@ -1305,6 +1481,40 @@ class WebPaymentApiController extends Controller
         Cache::flush();
 
         return $subscription;
+    }
+
+    private function startEligibleTrial(User $user, Plan $plan): ?Subscription
+    {
+        return DB::transaction(function () use ($user, $plan): ?Subscription {
+            DB::table('users')->where('id', $user->id)->lockForUpdate()->first();
+            $existingTrial = Subscription::query()->where('user_id', $user->id)
+                ->where('plan_id', $plan->id)->where('is_trial', true)->where('status', 'active')->first();
+            if ($existingTrial) return $existingTrial;
+
+            if (Subscription::withTrashed()->where('user_id', $user->id)->exists()) return null;
+
+            $start = now();
+            $snapshot = PlanResource::collection([$plan]);
+            $subscription = Subscription::query()->create([
+                'plan_id' => $plan->id,
+                'user_id' => $user->id,
+                'start_date' => $start,
+                'end_date' => $start->copy()->addDays((int) $plan->trial_days),
+                'status' => 'active',
+                'is_trial' => true,
+                'amount' => $plan->price,
+                'total_amount' => 0,
+                'name' => $plan->name,
+                'identifier' => $plan->identifier,
+                'type' => 'trial',
+                'duration' => (int) $plan->trial_days,
+                'level' => $plan->level,
+                'plan_type' => json_encode($snapshot),
+            ]);
+            User::query()->whereKey($user->id)->update(['is_subscribe' => 1]);
+            Cache::flush();
+            return $subscription;
+        }, 3);
     }
 
     private function activatePayPerViewAccess(int $userId, $content, string $type, float $amount, string $paymentType, string $transactionId): PayPerView
@@ -1351,7 +1561,7 @@ class WebPaymentApiController extends Controller
         }
     }
 
-    private function createStripeSubscriptionSession(Plan $plan, float $price, string $currency, User $user, ?int $promotionId, string $frontendUrl)
+    private function createStripeSubscriptionSession(Plan $plan, float $price, string $currency, User $user, ?int $promotionId, string $frontendUrl, ?string $reservationToken = null)
     {
         $stripeSecret = GetpaymentMethod('stripe_secretkey');
         $stripe = new StripeClient($stripeSecret);
@@ -1376,23 +1586,35 @@ class WebPaymentApiController extends Controller
                 'metadata' => [
                     'plan_id' => (string) $plan->id,
                     'promotion_id' => (string) ($promotionId ?? ''),
+                    'coupon_reservation' => (string) ($reservationToken ?? ''),
                     'user_id' => (string) $user->id,
                 ],
+                'payment_intent_data' => ['metadata' => [
+                    'purchase_type' => 'subscription',
+                    'purchase_id' => (string) $plan->id,
+                    'plan_id' => (string) $plan->id,
+                    'promotion_id' => (string) ($promotionId ?? ''),
+                    'coupon_reservation' => (string) ($reservationToken ?? ''),
+                    'user_id' => (string) $user->id,
+                ]],
                 'success_url' => "{$frontendUrl}/payment-success?gateway=stripe&session_id={CHECKOUT_SESSION_ID}",
                 'cancel_url' => "{$frontendUrl}/pricing",
             ]);
+
+            $this->bindCouponReservation($reservationToken, 'stripe', $session->id);
 
             return ApiResponse::success([
                 'redirect_url' => $session->url,
                 'session_id' => $session->id,
             ], 'Stripe checkout session created successfully.', 200);
         } catch (Exception $e) {
+            $this->releaseCouponReservation($reservationToken);
             Log::error('Stripe session creation error', ['error' => $e->getMessage()]);
             return ApiResponse::error('Unable to start payment. Please try again.', 502);
         }
     }
 
-    private function createRazorpaySubscriptionOrder(Plan $plan, float $price, string $currency, User $user, ?int $promotionId, string $frontendUrl)
+    private function createRazorpaySubscriptionOrder(Plan $plan, float $price, string $currency, User $user, ?int $promotionId, string $frontendUrl, ?string $reservationToken = null)
     {
         $razorpayKey = GetpaymentMethod('razorpay_publickey');
         $razorpaySecret = GetpaymentMethod('razorpay_secretkey');
@@ -1409,8 +1631,11 @@ class WebPaymentApiController extends Controller
                     'user_id' => (string) $user->id,
                     'plan_id' => (string) $plan->id,
                     'promotion_id' => (string) ($promotionId ?? ''),
+                    'coupon_reservation' => (string) ($reservationToken ?? ''),
                 ],
             ]);
+
+            $this->bindCouponReservation($reservationToken, 'razorpay', (string) $order['id']);
 
             return ApiResponse::success([
                 'key' => $razorpayKey,
@@ -1428,12 +1653,13 @@ class WebPaymentApiController extends Controller
                 ],
             ], 'Razorpay order created successfully.', 200);
         } catch (Exception $e) {
+            $this->releaseCouponReservation($reservationToken);
             Log::error('Razorpay subscription order creation failed.', ['exception' => $e::class]);
             return ApiResponse::error('Unable to start payment. Please try again.', 502);
         }
     }
 
-    private function createPaystackSubscriptionTransaction(Plan $plan, float $price, string $currency, User $user, ?int $promotionId, string $frontendUrl)
+    private function createPaystackSubscriptionTransaction(Plan $plan, float $price, string $currency, User $user, ?int $promotionId, string $frontendUrl, ?string $reservationToken = null)
     {
         $secretKey = GetpaymentMethod('paystack_secretkey');
         $callbackUrl = "{$frontendUrl}/payment-success?gateway=paystack&plan_id={$plan->id}";
@@ -1448,24 +1674,27 @@ class WebPaymentApiController extends Controller
             'metadata' => [
                 'plan_id' => $plan->id,
                 'promotion_id' => $promotionId,
+                'coupon_reservation' => $reservationToken,
                 'user_id' => $user->id,
             ],
         ]);
 
         $body = $response->json();
         if ($body['status'] ?? false) {
+            $this->bindCouponReservation($reservationToken, 'paystack', (string) $body['data']['reference']);
             return ApiResponse::success([
                 'redirect_url' => $body['data']['authorization_url'],
                 'reference' => $body['data']['reference'],
             ], 'Paystack checkout initiated.', 200);
         }
 
+        $this->releaseCouponReservation($reservationToken);
         return ApiResponse::error($body['message'] ?? 'Paystack initiation failed.', 400);
     }
 
-    private function createPayPalSubscriptionPayment(Plan $plan, float $price, string $currency, User $user, ?int $promotionId, string $frontendUrl)
+    private function createPayPalSubscriptionPayment(Plan $plan, float $price, string $currency, User $user, ?int $promotionId, string $frontendUrl, ?string $reservationToken = null)
     {
+        $this->releaseCouponReservation($reservationToken);
         return ApiResponse::error('PayPal direct approval redirect requires standard client-side PayPal SDK order ID integration.', 400);
     }
 }
-
