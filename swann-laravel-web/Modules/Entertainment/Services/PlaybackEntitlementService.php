@@ -2,18 +2,19 @@
 
 namespace Modules\Entertainment\Services;
 
+use App\Models\ContentLicenseWindow;
+use App\Models\Device;
 use App\Models\User;
 use App\Models\UserMultiProfile;
-use App\Models\Device;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
+use Laravel\Sanctum\PersonalAccessToken;
 use Modules\Entertainment\Models\Entertainment;
 use Modules\Episode\Models\Episode;
 use Modules\Frontend\Models\PayPerView;
 use Modules\Subscriptions\Models\Subscription;
 use Modules\Subscriptions\Services\PlanEntitlementSnapshot;
 use Modules\Video\Models\Video;
-use Laravel\Sanctum\PersonalAccessToken;
 
 class PlaybackEntitlementService
 {
@@ -37,12 +38,12 @@ class PlaybackEntitlementService
             ->where('user_id', $user->id)
             ->first();
 
-        if (!$profile) {
+        if (! $profile) {
             throw new AuthorizationException('The selected profile is unavailable.');
         }
 
         $token = $user->currentAccessToken();
-        if (!$token instanceof PersonalAccessToken) {
+        if (! $token instanceof PersonalAccessToken) {
             throw new AuthorizationException('A registered playback session is required.');
         }
 
@@ -52,7 +53,7 @@ class PlaybackEntitlementService
             ->where('active_profile', $profile->id)
             ->whereNull('deleted_at')
             ->first();
-        if (!$device) {
+        if (! $device) {
             throw new AuthorizationException('Select this profile on the current device before playback.');
         }
         $device->forceFill(['last_activity' => now()])->save();
@@ -64,7 +65,7 @@ class PlaybackEntitlementService
             default => null,
         };
 
-        if (!$model) {
+        if (! $model) {
             throw new AuthorizationException('This content type is not available for playback.');
         }
 
@@ -78,9 +79,11 @@ class PlaybackEntitlementService
         }
         $content = $contentQuery->first();
 
-        if (!$content) {
+        if (! $content) {
             throw new AuthorizationException('This content is unavailable.');
         }
+
+        $this->assertWithinLicensingWindow($content, $type);
 
         if ((int) $profile->is_child_profile === 1 && (int) $content->is_restricted === 1) {
             throw new AuthorizationException('This title is not available for a child profile.');
@@ -151,5 +154,42 @@ class PlaybackEntitlementService
         }
 
         throw new AuthorizationException('This title does not have a valid access policy.');
+    }
+
+    private function assertWithinLicensingWindow(object $content, string $type): void
+    {
+        $contentType = match ($type) {
+            'movie', 'tvshow' => 'entertainment',
+            'episode' => 'episode',
+            'video' => 'video',
+        };
+
+        $windows = collect();
+        if ($type === 'episode' && $content->entertainment_id) {
+            $parentWindow = ContentLicenseWindow::query()
+                ->where('content_type', 'entertainment')
+                ->where('content_id', (string) $content->entertainment_id)
+                ->first();
+            if ($parentWindow) {
+                $windows->push($parentWindow);
+            }
+        }
+
+        $window = ContentLicenseWindow::query()
+            ->where('content_type', $contentType)
+            ->where('content_id', (string) $content->getKey())
+            ->first();
+        if ($window) {
+            $windows->push($window);
+        }
+
+        $now = now();
+        foreach ($windows as $licenseWindow) {
+            if (($licenseWindow->starts_at && $licenseWindow->starts_at->greaterThan($now))
+                || ($licenseWindow->ends_at && $licenseWindow->ends_at->lessThanOrEqualTo($now))
+                || ($licenseWindow->starts_at && $licenseWindow->ends_at && $licenseWindow->ends_at->lessThanOrEqualTo($licenseWindow->starts_at))) {
+                throw new AuthorizationException('This title is outside its licensed playback window.');
+            }
+        }
     }
 }

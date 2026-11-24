@@ -24,6 +24,7 @@ class AdminSupportController extends Controller
             ->selectRaw('TIMESTAMPDIFF(SECOND, created_at, resolved_at) as duration_seconds')->pluck('duration_seconds')->filter();
         $responseDurations = DB::table('support_tickets')->whereNotNull('first_response_at')
             ->selectRaw('TIMESTAMPDIFF(SECOND, created_at, first_response_at) as duration_seconds')->pluck('duration_seconds')->filter();
+
         return response()->json(['data' => [
             'open_tickets' => $open,
             'unassigned_tickets' => (clone $tickets)->whereNull('assigned_to')->whereNotIn('status', ['resolved', 'closed'])->count(),
@@ -40,12 +41,15 @@ class AdminSupportController extends Controller
         $data = $request->validate(['search' => ['required', 'string', 'min:2', 'max:120'], 'per_page' => ['sometimes', 'integer', 'min:1', 'max:50']]);
         $term = trim($data['search']);
         $customers = User::query()->whereDoesntHave('roles')->where(function ($query) use ($term): void {
-            if (ctype_digit($term)) $query->orWhere('id', (int) $term);
+            if (ctype_digit($term)) {
+                $query->orWhere('id', (int) $term);
+            }
             $query->orWhere('email', 'like', '%'.$term.'%')->orWhere('username', 'like', '%'.$term.'%')
                 ->orWhere('first_name', 'like', '%'.$term.'%')->orWhere('last_name', 'like', '%'.$term.'%');
         })->orderBy('id')->paginate($data['per_page'] ?? 25, ['id', 'first_name', 'last_name', 'username', 'email', 'status', 'is_banned', 'created_at']);
         $customers->getCollection()->transform(fn (User $user): array => $this->customerSummary($user));
         $audit->record($request->user(), 'support.customer.search', 'customer_search', null, null, ['query_hash' => hash('sha256', mb_strtolower($term)), 'result_count' => $customers->count()]);
+
         return response()->json($customers);
     }
 
@@ -59,6 +63,7 @@ class AdminSupportController extends Controller
                 ->limit(20)->get(['id', 'name', 'identifier', 'status', 'start_date', 'end_date', 'amount', 'level']);
         }
         $audit->record($request->user(), 'support.customer.viewed', 'customer', $customer, null, ['subscriptions_included' => array_key_exists('subscriptions', $data)]);
+
         return response()->json(['data' => $data]);
     }
 
@@ -88,6 +93,7 @@ class AdminSupportController extends Controller
             $payments = $payments->concat($legacyPayments)->sortByDesc('created_at')->values();
         }
         $audit->record($request->user(), 'support.customer.payments_viewed', 'customer', $customer, null, ['payment_count' => $payments->count(), 'masked' => true]);
+
         return response()->json(['data' => $payments]);
     }
 
@@ -103,6 +109,7 @@ class AdminSupportController extends Controller
                 'last_activity' => $device->last_activity, 'created_at' => $device->created_at,
             ]);
         $audit->record($request->user(), 'support.customer.devices_viewed', 'customer', $customer, null, ['device_count' => $devices->count()]);
+
         return response()->json(['data' => $devices]);
     }
 
@@ -111,10 +118,11 @@ class AdminSupportController extends Controller
         $this->authorizeSupport($request, 'support.playback.view');
         $this->findCustomer($customer);
         $sessions = DB::table('playback_sessions')->where('user_id', $customer)->orderByDesc('updated_at')->limit(50)
-            ->get(['session_id', 'profile_id', 'content_id', 'content_type', 'last_heartbeat_at', 'expires_at', 'ended_at']);
+            ->get(['id', 'session_id', 'profile_id', 'content_id', 'content_type', 'last_heartbeat_at', 'expires_at', 'ended_at']);
         $events = DB::table('playback_diagnostic_events')->where('user_id', $customer)->orderByDesc('occurred_at')->limit(100)
             ->get(['id', 'session_id', 'event_code', 'content_type', 'content_id', 'occurred_at']);
         $data = ['sessions' => $sessions->map(fn ($s) => [
+            'id' => (int) $s->id,
             'session_reference' => substr((string) $s->session_id, 0, 8), 'profile_id' => (int) $s->profile_id,
             'content_id' => $s->content_id, 'content_type' => $s->content_type, 'last_heartbeat_at' => $s->last_heartbeat_at,
             'expires_at' => $s->expires_at, 'ended_at' => $s->ended_at,
@@ -123,16 +131,44 @@ class AdminSupportController extends Controller
             'event_code' => $e->event_code, 'content_type' => $e->content_type, 'content_id' => $e->content_id, 'occurred_at' => $e->occurred_at,
         ])];
         $audit->record($request->user(), 'support.customer.playback_viewed', 'customer', $customer, null, ['session_count' => $sessions->count(), 'event_count' => $events->count()]);
+
         return response()->json(['data' => $data]);
+    }
+
+    public function revokePlaybackSession(Request $request, int $customer, int $session, AdminAuditLogger $audit): JsonResponse
+    {
+        $this->authorizeSupport($request, 'support.sessions.revoke');
+        $this->findCustomer($customer);
+        $result = DB::transaction(function () use ($customer, $session, $request, $audit): array {
+            $item = DB::table('playback_sessions')->where('user_id', $customer)->where('id', $session)->lockForUpdate()->first();
+            abort_if(! $item, 404);
+            $wasActive = $item->ended_at === null;
+            if ($wasActive) {
+                DB::table('playback_sessions')->where('id', $session)->update(['ended_at' => now(), 'updated_at' => now()]);
+            }
+            $audit->record($request->user(), 'support.playback_session.revoked', 'playback_session', $session,
+                ['ended' => ! $wasActive], ['ended' => true, 'customer_id' => $customer]);
+
+            return ['session_id' => $session, 'revoked' => $wasActive];
+        });
+
+        return response()->json(['data' => $result]);
     }
 
     public function tickets(Request $request): JsonResponse
     {
         $this->authorizeSupport($request, 'support.tickets.manage');
         $query = DB::table('support_tickets')->select(['id', 'public_id', 'customer_id', 'subject', 'category', 'priority', 'status', 'escalation_target', 'assigned_to', 'created_at']);
-        if ($request->filled('status')) $query->where('support_tickets.status', $request->string('status')->toString());
-        if ($request->filled('priority')) $query->where('support_tickets.priority', $request->string('priority')->toString());
-        if ($request->filled('escalated')) $query->whereNotNull('support_tickets.escalation_target');
+        if ($request->filled('status')) {
+            $query->where('support_tickets.status', $request->string('status')->toString());
+        }
+        if ($request->filled('priority')) {
+            $query->where('support_tickets.priority', $request->string('priority')->toString());
+        }
+        if ($request->filled('escalated')) {
+            $query->whereNotNull('support_tickets.escalation_target');
+        }
+
         return response()->json($query->orderByDesc('support_tickets.created_at')->paginate(min(max($request->integer('per_page', 25), 1), 100)));
     }
 
@@ -144,6 +180,7 @@ class AdminSupportController extends Controller
                 ->orWhereHas('roles', fn ($roles) => $roles->where('roles.is_active', true)->whereHas('permissions', fn ($permissions) => $permissions->where('name', 'support.tickets.manage')));
         })->orderBy('id')->get(['id', 'first_name', 'last_name', 'username', 'email'])
             ->map(fn (User $user): array => ['id' => (int) $user->id, 'name' => trim(($user->first_name ?? '').' '.($user->last_name ?? '')) ?: $user->username, 'email' => $user->email]);
+
         return response()->json(['data' => $users]);
     }
 
@@ -152,7 +189,9 @@ class AdminSupportController extends Controller
         $this->authorizeSupport($request, 'support.tickets.manage');
         $data = $request->validate(['customer_id' => ['required', 'integer', 'exists:users,id'], 'subject' => ['required', 'string', 'max:180'], 'description' => ['required', 'string', 'max:10000'], 'category' => ['sometimes', 'in:account,billing,playback,device,subscription,general'], 'priority' => ['sometimes', 'in:low,normal,high,urgent'], 'assigned_to' => ['nullable', 'integer', 'exists:users,id']]);
         $this->findCustomer((int) $data['customer_id']);
-        if (!empty($data['assigned_to'])) $this->assertSupportAssignee((int) $data['assigned_to']);
+        if (! empty($data['assigned_to'])) {
+            $this->assertSupportAssignee((int) $data['assigned_to']);
+        }
         $ticket = DB::transaction(function () use ($data, $request, $audit): object {
             $id = DB::table('support_tickets')->insertGetId([
                 'public_id' => (string) Str::uuid(), 'customer_id' => $data['customer_id'], 'created_by' => $request->user()->id,
@@ -161,8 +200,10 @@ class AdminSupportController extends Controller
                 'created_at' => now(), 'updated_at' => now(),
             ]);
             $audit->record($request->user(), 'support.ticket.created', 'support_ticket', $id, null, ['customer_id' => $data['customer_id'], 'status' => 'open']);
+
             return DB::table('support_tickets')->find($id);
         });
+
         return response()->json(['data' => $ticket], 201);
     }
 
@@ -170,9 +211,10 @@ class AdminSupportController extends Controller
     {
         $this->authorizeSupport($request, 'support.tickets.manage');
         $item = DB::table('support_tickets')->where('id', $ticket)->first();
-        abort_if(!$item, 404);
+        abort_if(! $item, 404);
         $item->notes = DB::table('support_ticket_notes')->where('ticket_id', $ticket)->orderBy('id')->get(['id', 'author_id', 'note', 'is_internal', 'created_at']);
         $audit->record($request->user(), 'support.ticket.viewed', 'support_ticket', $ticket, null, ['note_count' => $item->notes->count()]);
+
         return response()->json(['data' => $item]);
     }
 
@@ -180,18 +222,28 @@ class AdminSupportController extends Controller
     {
         $this->authorizeSupport($request, 'support.tickets.manage');
         $data = $request->validate(['status' => ['sometimes', 'in:open,in_progress,waiting_customer,escalated,resolved,closed'], 'priority' => ['sometimes', 'in:low,normal,high,urgent'], 'assigned_to' => ['sometimes', 'nullable', 'integer', 'exists:users,id']]);
-        if (array_key_exists('assigned_to', $data) && $data['assigned_to'] !== null) $this->assertSupportAssignee((int) $data['assigned_to']);
-        abort_if(!$data, 422);
+        if (array_key_exists('assigned_to', $data) && $data['assigned_to'] !== null) {
+            $this->assertSupportAssignee((int) $data['assigned_to']);
+        }
+        abort_if(! $data, 422);
         $result = DB::transaction(function () use ($ticket, $data, $request, $audit): object {
-            $row = DB::table('support_tickets')->where('id', $ticket)->lockForUpdate()->first(); abort_if(!$row, 404);
+            $row = DB::table('support_tickets')->where('id', $ticket)->lockForUpdate()->first();
+            abort_if(! $row, 404);
             $before = ['status' => $row->status, 'priority' => $row->priority, 'assigned_to' => $row->assigned_to];
             $updates = $data;
-            if (($data['status'] ?? null) === 'resolved') $updates['resolved_at'] = now();
-            if (isset($data['status']) && $data['status'] !== 'resolved') $updates['resolved_at'] = null;
-            $updates['updated_at'] = now(); DB::table('support_tickets')->where('id', $ticket)->update($updates);
+            if (($data['status'] ?? null) === 'resolved') {
+                $updates['resolved_at'] = now();
+            }
+            if (isset($data['status']) && $data['status'] !== 'resolved') {
+                $updates['resolved_at'] = null;
+            }
+            $updates['updated_at'] = now();
+            DB::table('support_tickets')->where('id', $ticket)->update($updates);
             $audit->record($request->user(), 'support.ticket.updated', 'support_ticket', $ticket, $before, $updates);
+
             return DB::table('support_tickets')->find($ticket);
         });
+
         return response()->json(['data' => $result]);
     }
 
@@ -200,13 +252,18 @@ class AdminSupportController extends Controller
         $this->authorizeSupport($request, 'support.tickets.manage');
         $data = $request->validate(['note' => ['required', 'string', 'max:10000']]);
         $result = DB::transaction(function () use ($ticket, $data, $request, $audit): object {
-            $row = DB::table('support_tickets')->where('id', $ticket)->lockForUpdate()->first(); abort_if(!$row, 404);
+            $row = DB::table('support_tickets')->where('id', $ticket)->lockForUpdate()->first();
+            abort_if(! $row, 404);
             $first = $row->first_response_at ? null : now();
             $noteId = DB::table('support_ticket_notes')->insertGetId(['ticket_id' => $ticket, 'author_id' => $request->user()->id, 'note' => trim($data['note']), 'is_internal' => true, 'created_at' => now(), 'updated_at' => now()]);
-            if ($first) DB::table('support_tickets')->where('id', $ticket)->update(['first_response_at' => $first, 'updated_at' => now()]);
+            if ($first) {
+                DB::table('support_tickets')->where('id', $ticket)->update(['first_response_at' => $first, 'updated_at' => now()]);
+            }
             $audit->record($request->user(), 'support.ticket.note_added', 'support_ticket', $ticket, null, ['note_id' => $noteId, 'internal' => true]);
+
             return DB::table('support_ticket_notes')->find($noteId);
         });
+
         return response()->json(['data' => $result], 201);
     }
 
@@ -215,12 +272,15 @@ class AdminSupportController extends Controller
         $this->authorizeSupport($request, 'support.tickets.manage');
         $data = $request->validate(['target' => ['required', 'in:finance,technical_operations'], 'reason' => ['required', 'string', 'max:2000']]);
         $updated = DB::transaction(function () use ($ticket, $data, $request, $audit): object {
-            $row = DB::table('support_tickets')->where('id', $ticket)->lockForUpdate()->first(); abort_if(!$row, 404);
+            $row = DB::table('support_tickets')->where('id', $ticket)->lockForUpdate()->first();
+            abort_if(! $row, 404);
             DB::table('support_tickets')->where('id', $ticket)->update(['escalation_target' => $data['target'], 'status' => 'escalated', 'updated_at' => now()]);
             DB::table('support_ticket_notes')->insert(['ticket_id' => $ticket, 'author_id' => $request->user()->id, 'note' => '[Escalation to '.$data['target'].'] '.trim($data['reason']), 'is_internal' => true, 'created_at' => now(), 'updated_at' => now()]);
             $audit->record($request->user(), 'support.ticket.escalated', 'support_ticket', $ticket, ['target' => $row->escalation_target], ['target' => $data['target']]);
+
             return DB::table('support_tickets')->find($ticket);
         });
+
         return response()->json(['data' => $updated]);
     }
 
@@ -237,8 +297,10 @@ class AdminSupportController extends Controller
             }
             $item->forceFill(['sanctum_token_id' => null, 'session_id' => null])->save();
             $audit->record($request->user(), 'support.device_session.revoked', 'device', $item->id, ['session_active' => (bool) $sessionId], ['session_active' => false]);
+
             return ['device_id' => $item->id, 'revoked' => (bool) $tokenId];
         });
+
         return response()->json(['data' => $result]);
     }
 
@@ -268,13 +330,19 @@ class AdminSupportController extends Controller
     private function maskReference(string $reference): string
     {
         $length = strlen($reference);
+
         return $length <= 4 ? str_repeat('*', $length) : substr($reference, 0, 2).str_repeat('*', min(12, $length - 4)).substr($reference, -2);
     }
 
     private function median(array $values): ?int
     {
-        sort($values); $count = count($values); if ($count === 0) return null;
+        sort($values);
+        $count = count($values);
+        if ($count === 0) {
+            return null;
+        }
         $middle = intdiv($count, 2);
+
         return $count % 2 ? $values[$middle] : (int) round(($values[$middle - 1] + $values[$middle]) / 2);
     }
 }

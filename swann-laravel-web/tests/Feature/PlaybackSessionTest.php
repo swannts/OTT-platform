@@ -2,15 +2,17 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
 use App\Models\Device;
 use App\Models\MediaAsset;
+use App\Models\User;
 use App\Models\UserMultiProfile;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
+use Modules\Entertainment\Services\PlaybackMediaUrlService;
 use Modules\Entertainment\Services\PlaybackSessionService;
 use Tests\TestCase;
 
@@ -42,7 +44,7 @@ class PlaybackSessionTest extends TestCase
     {
         $user = User::factory()->create();
         $planId = DB::table('plan')->insertGetId([
-            'name' => 'Two stream plan', 'identifier' => 'two-streams-'.\Illuminate\Support\Str::uuid(),
+            'name' => 'Two stream plan', 'identifier' => 'two-streams-'.Str::uuid(),
             'level' => 1, 'duration' => 'month', 'duration_value' => 1, 'price' => 10,
             'status' => 1, 'created_at' => now(), 'updated_at' => now(),
         ]);
@@ -86,6 +88,19 @@ class PlaybackSessionTest extends TestCase
         $this->assertNotNull(DB::table('playback_sessions')->where('session_id', $session['session_id'])->value('ended_at'));
     }
 
+    public function test_customer_end_endpoint_records_one_diagnostic_event_for_idempotent_end(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('playback-test');
+        $session = app(PlaybackSessionService::class)->start($user, $token->accessToken, 1, 'content-12', 'movie');
+
+        $this->withToken($token->plainTextToken)->postJson('/api/v3/playback/sessions/'.$session['session_id'].'/end')->assertOk();
+        $this->withToken($token->plainTextToken)->postJson('/api/v3/playback/sessions/'.$session['session_id'].'/end')->assertOk();
+
+        $this->assertSame(1, DB::table('playback_diagnostic_events')->where('session_id', $session['session_id'])->where('event_code', 'playback.session_ended')->count());
+        $this->assertDatabaseHas('playback_diagnostic_events', ['user_id' => $user->id, 'content_type' => 'movie', 'content_id' => 'content-12']);
+    }
+
     public function test_private_hls_manifest_signs_each_segment_and_revoked_session_is_denied(): void
     {
         Storage::fake('private');
@@ -95,7 +110,7 @@ class PlaybackSessionTest extends TestCase
         Device::create([
             'user_id' => $user->id,
             'sanctum_token_id' => $token->getKey(),
-            'device_id' => (string) \Illuminate\Support\Str::uuid(),
+            'device_id' => (string) Str::uuid(),
             'device_name' => 'Test device',
             'platform' => 'test',
             'active_profile' => $profile->id,
@@ -151,7 +166,7 @@ class PlaybackSessionTest extends TestCase
         $segmentResponse->assertOk();
         $this->assertSame('7', $segmentResponse->headers->get('Content-Length'));
 
-        $highQualityUrl = app(\Modules\Entertainment\Services\PlaybackMediaUrlService::class)->sign($asset->id, '1080p_00001.ts', $session['session_id']);
+        $highQualityUrl = app(PlaybackMediaUrlService::class)->sign($asset->id, '1080p_00001.ts', $session['session_id']);
         $this->get($highQualityUrl)->assertForbidden();
 
         app(PlaybackSessionService::class)->end($user, $token, $session['session_id']);

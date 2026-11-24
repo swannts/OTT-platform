@@ -217,14 +217,21 @@ class EntertainmentsController extends Controller
         return ApiResponse::success($response, 'Playback session refreshed.', 200);
     }
 
-    public function endPlayback(Request $request, string $sessionId, PlaybackSessionService $sessions)
+    public function endPlayback(Request $request, string $sessionId, PlaybackSessionService $sessions, PlaybackDiagnosticRecorder $diagnostics)
     {
         $token = $request->user()->currentAccessToken();
         if (!$token instanceof PersonalAccessToken) {
             return ApiResponse::error('A registered playback session is required.', 401);
         }
         try {
-            $sessions->end($request->user(), $token, $sessionId);
+            DB::transaction(function () use ($request, $token, $sessionId, $sessions, $diagnostics) {
+                $ended = $sessions->end($request->user(), $token, $sessionId);
+                if ($ended !== null) {
+                    $diagnostics->record($request->user(), 'playback.session_ended', $ended['content_type'], $ended['content_id'], $sessionId);
+                }
+
+                return $ended;
+            }, 3);
         } catch (\Illuminate\Auth\Access\AuthorizationException $exception) {
             return ApiResponse::error($exception->getMessage(), 403);
         }

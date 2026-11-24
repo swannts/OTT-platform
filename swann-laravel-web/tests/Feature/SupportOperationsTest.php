@@ -6,6 +6,7 @@ use App\Models\Device;
 use App\Models\User;
 use Database\Seeders\RbacFoundationSeeder;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -21,7 +22,8 @@ class SupportOperationsTest extends TestCase
 
     public function test_support_agent_can_open_ticket_add_internal_note_escalate_and_resolve_with_audit(): void
     {
-        $support = User::factory()->create(); $support->assignRole('customer_support');
+        $support = User::factory()->create();
+        $support->assignRole('customer_support');
         $customer = User::factory()->create();
         $ticket = $this->actingAs($support, 'sanctum')->postJson('/api/admin/support/tickets', [
             'customer_id' => $customer->id, 'subject' => 'Cannot watch a title', 'description' => 'Playback stopped.',
@@ -44,14 +46,16 @@ class SupportOperationsTest extends TestCase
 
     public function test_support_customer_views_are_explicit_and_never_return_sensitive_credentials(): void
     {
-        $support = User::factory()->create(); $support->assignRole('customer_support');
+        $support = User::factory()->create();
+        $support->assignRole('customer_support');
         $customer = User::factory()->create(['pin' => '1234']);
         $this->actingAs($support, 'sanctum')->getJson('/api/admin/support/customers?search='.$customer->email)
             ->assertOk()->assertJsonPath('data.0.email', $customer->email)->assertJsonMissing(['password' => $customer->password])->assertJsonMissing(['pin' => '1234']);
         $this->getJson('/api/admin/support/customers/'.$customer->id)->assertOk()
             ->assertJsonPath('data.customer.id', $customer->id)->assertJsonMissing(['password'])->assertJsonMissing(['pin']);
 
-        $staff = User::factory()->create(['email' => 'support-colleague@example.test']); $staff->assignRole('finance_manager');
+        $staff = User::factory()->create(['email' => 'support-colleague@example.test']);
+        $staff->assignRole('finance_manager');
         $this->getJson('/api/admin/support/customers?search=support-colleague@example.test')->assertOk()->assertJsonCount(0, 'data');
         $this->getJson('/api/admin/support/customers/'.$staff->id)->assertNotFound();
 
@@ -62,15 +66,16 @@ class SupportOperationsTest extends TestCase
 
     public function test_support_payment_view_masks_provider_reference_and_cannot_modify_financial_records(): void
     {
-        $support = User::factory()->create(); $support->assignRole('customer_support');
+        $support = User::factory()->create();
+        $support->assignRole('customer_support');
         $customer = User::factory()->create();
         $reference = 'secret-provider-reference-9876';
-        $paymentId = \Illuminate\Support\Facades\DB::table('verified_payments')->insertGetId([
+        $paymentId = DB::table('verified_payments')->insertGetId([
             'gateway' => 'stripe', 'provider_reference' => $reference, 'user_id' => $customer->id,
             'purchase_type' => 'subscription', 'purchase_id' => 82, 'amount_minor' => 1299,
             'currency' => 'USD', 'created_at' => now(), 'updated_at' => now(),
         ]);
-        $transactionId = \Illuminate\Support\Facades\DB::table('subscriptions_transactions')->insertGetId([
+        $transactionId = DB::table('subscriptions_transactions')->insertGetId([
             'user_id' => $customer->id, 'subscriptions_id' => 82, 'amount' => 12.99, 'payment_type' => 'stripe',
             'transaction_id' => 'failed-provider-reference-4567', 'payment_status' => 'failed', 'currency_code' => 'USD',
             'created_at' => now(), 'updated_at' => now(),
@@ -85,13 +90,14 @@ class SupportOperationsTest extends TestCase
 
     public function test_authorized_device_revocation_ends_playback_and_deletes_token_without_returning_it(): void
     {
-        $support = User::factory()->create(); $support->assignRole('customer_support');
+        $support = User::factory()->create();
+        $support->assignRole('customer_support');
         $customer = User::factory()->create();
         $token = $customer->createToken('customer-device');
         $tokenId = $token->accessToken->id;
         $device = Device::query()->create(['user_id' => $customer->id, 'sanctum_token_id' => $tokenId, 'device_id' => 'device-local-id', 'device_name' => 'Living room', 'platform' => 'tv', 'session_id' => 'session-local', 'last_activity' => now()]);
         $sessionId = (string) Str::uuid();
-        \Illuminate\Support\Facades\DB::table('playback_sessions')->insert([
+        DB::table('playback_sessions')->insert([
             'session_id' => $sessionId, 'user_id' => $customer->id, 'device_token_id' => $tokenId,
             'profile_id' => 1, 'content_id' => '44', 'content_type' => 'movie', 'last_heartbeat_at' => now(),
             'expires_at' => now()->addMinute(), 'created_at' => now(), 'updated_at' => now(),
@@ -99,13 +105,65 @@ class SupportOperationsTest extends TestCase
         $this->actingAs($support, 'sanctum')->postJson('/api/admin/support/customers/'.$customer->id.'/devices/'.$device->id.'/revoke')
             ->assertOk()->assertJsonPath('data.revoked', true)->assertJsonMissing(['token' => $token->plainTextToken]);
         $this->assertDatabaseMissing('personal_access_tokens', ['id' => $tokenId]);
-        $this->assertNotNull(\Illuminate\Support\Facades\DB::table('playback_sessions')->where('session_id', $sessionId)->value('ended_at'));
+        $this->assertNotNull(DB::table('playback_sessions')->where('session_id', $sessionId)->value('ended_at'));
         $this->assertDatabaseHas('devices', ['id' => $device->id, 'sanctum_token_id' => null, 'session_id' => null]);
+    }
+
+    public function test_support_agent_can_revoke_one_customer_playback_session_with_audit(): void
+    {
+        $support = User::factory()->create();
+        $support->assignRole('customer_support');
+        $customer = User::factory()->create();
+        $otherCustomer = User::factory()->create();
+        $makeSession = function (User $owner): string {
+            $id = (string) Str::uuid();
+            DB::table('playback_sessions')->insert([
+                'session_id' => $id, 'user_id' => $owner->id, 'device_token_id' => $owner->createToken('playback')->accessToken->id,
+                'profile_id' => 1, 'content_id' => '44', 'content_type' => 'movie', 'last_heartbeat_at' => now(),
+                'expires_at' => now()->addMinute(), 'created_at' => now(), 'updated_at' => now(),
+            ]);
+
+            return $id;
+        };
+        $targetId = $makeSession($customer);
+        $preservedId = $makeSession($customer);
+        $foreignId = $makeSession($otherCustomer);
+        $targetRowId = (int) DB::table('playback_sessions')->where('session_id', $targetId)->value('id');
+
+        $this->actingAs($support, 'sanctum')->getJson('/api/admin/support/customers/'.$customer->id.'/playback')
+            ->assertOk()->assertJsonFragment(['id' => $targetRowId, 'session_reference' => substr($targetId, 0, 8)]);
+        $this->postJson('/api/admin/support/customers/'.$customer->id.'/playback-sessions/'.$targetRowId.'/revoke')
+            ->assertOk()->assertJsonPath('data.revoked', true);
+
+        $this->assertNotNull(DB::table('playback_sessions')->where('session_id', $targetId)->value('ended_at'));
+        $this->assertNull(DB::table('playback_sessions')->where('session_id', $preservedId)->value('ended_at'));
+        $this->assertNull(DB::table('playback_sessions')->where('session_id', $foreignId)->value('ended_at'));
+        $this->assertDatabaseHas('admin_audit_logs', ['action' => 'support.playback_session.revoked', 'resource_id' => (string) $targetRowId]);
+    }
+
+    public function test_support_playback_session_revocation_requires_explicit_permission(): void
+    {
+        $support = User::factory()->create();
+        $support->assignRole('customer_support');
+        $customer = User::factory()->create();
+        $sessionId = (string) Str::uuid();
+        $token = $customer->createToken('playback')->accessToken;
+        $sessionRowId = DB::table('playback_sessions')->insertGetId([
+            'session_id' => $sessionId, 'user_id' => $customer->id, 'device_token_id' => $token->id,
+            'profile_id' => 1, 'content_id' => '44', 'content_type' => 'movie', 'last_heartbeat_at' => now(),
+            'expires_at' => now()->addMinute(), 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $support->removeRole('customer_support');
+        $support->givePermissionTo(['admin.access', 'support.playback.view']);
+
+        $this->actingAs($support, 'sanctum')->postJson('/api/admin/support/customers/'.$customer->id.'/playback-sessions/'.$sessionRowId.'/revoke')->assertForbidden();
+        $this->assertNull(DB::table('playback_sessions')->where('id', $sessionRowId)->value('ended_at'));
     }
 
     public function test_non_support_user_cannot_open_support_ticket_or_customer_search(): void
     {
-        $user = User::factory()->create(); $user->assignRole('content_editor');
+        $user = User::factory()->create();
+        $user->assignRole('content_editor');
         $this->actingAs($user, 'sanctum')->getJson('/api/admin/support/tickets')->assertForbidden();
         $this->getJson('/api/admin/support/customers?search=person@example.com')->assertForbidden();
     }
@@ -115,7 +173,7 @@ class SupportOperationsTest extends TestCase
         $customer = User::factory()->create();
         $token = $customer->createToken('playback-device');
         $sessionId = (string) Str::uuid();
-        \Illuminate\Support\Facades\DB::table('playback_sessions')->insert([
+        DB::table('playback_sessions')->insert([
             'session_id' => $sessionId, 'user_id' => $customer->id, 'device_token_id' => $token->accessToken->id,
             'profile_id' => 1, 'content_id' => 'content-77', 'content_type' => 'movie', 'last_heartbeat_at' => now(),
             'expires_at' => now()->addMinute(), 'created_at' => now(), 'updated_at' => now(),

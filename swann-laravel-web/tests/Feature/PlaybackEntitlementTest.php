@@ -77,6 +77,110 @@ class PlaybackEntitlementTest extends TestCase
         app(PlaybackEntitlementService::class)->authorize($user, $contentId, 'movie', $profile->id, $request);
     }
 
+    public function test_free_title_is_denied_when_its_license_window_has_expired(): void
+    {
+        $user = User::factory()->create();
+        $profile = $this->createProfile($user, false);
+        $contentId = $this->createContent('free');
+        $request = request()->duplicate();
+        $request->setUserResolver(fn () => $user);
+        $this->activateProfile($user, $profile);
+        DB::table('content_license_windows')->insert([
+            'content_type' => 'entertainment',
+            'content_id' => $contentId,
+            'starts_at' => now()->utc()->subDay()->format('Y-m-d H:i:s'),
+            'ends_at' => now()->utc()->subSecond()->format('Y-m-d H:i:s'),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->expectException(AuthorizationException::class);
+        app(PlaybackEntitlementService::class)->authorize($user, $contentId, 'movie', $profile->id, $request);
+    }
+
+    public function test_free_title_is_denied_before_its_license_window_starts(): void
+    {
+        $user = User::factory()->create();
+        $profile = $this->createProfile($user, false);
+        $contentId = $this->createContent('free');
+        $request = request()->duplicate();
+        $request->setUserResolver(fn () => $user);
+        $this->activateProfile($user, $profile);
+        DB::table('content_license_windows')->insert([
+            'content_type' => 'entertainment',
+            'content_id' => $contentId,
+            'starts_at' => now()->utc()->addDay()->format('Y-m-d H:i:s'),
+            'ends_at' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->expectException(AuthorizationException::class);
+        app(PlaybackEntitlementService::class)->authorize($user, $contentId, 'movie', $profile->id, $request);
+    }
+
+    public function test_episode_must_also_be_inside_its_parent_series_license_window(): void
+    {
+        $user = User::factory()->create();
+        $profile = $this->createProfile($user, false);
+        $seriesId = $this->createContent('free');
+        DB::table('entertainments')->where('id', $seriesId)->update(['type' => 'tvshow']);
+        $episodeId = (string) Str::uuid();
+        DB::table('episodes')->insert([
+            'id' => $episodeId,
+            'name' => 'Licensing test episode',
+            'entertainment_id' => $seriesId,
+            'access' => 'free',
+            'status' => 1,
+            'is_restricted' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('content_license_windows')->insert([
+            'content_type' => 'entertainment',
+            'content_id' => $seriesId,
+            'starts_at' => null,
+            'ends_at' => now()->utc()->subSecond()->format('Y-m-d H:i:s'),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $request = request()->duplicate();
+        $request->setUserResolver(fn () => $user);
+        $this->activateProfile($user, $profile);
+
+        $this->expectException(AuthorizationException::class);
+        app(PlaybackEntitlementService::class)->authorize($user, $episodeId, 'episode', $profile->id, $request);
+    }
+
+    public function test_video_is_denied_after_its_own_license_window_expires(): void
+    {
+        $user = User::factory()->create();
+        $profile = $this->createProfile($user, false);
+        $videoId = DB::table('videos')->insertGetId([
+            'name' => 'Licensing test video',
+            'type' => 'video',
+            'access' => 'free',
+            'status' => 1,
+            'is_restricted' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('content_license_windows')->insert([
+            'content_type' => 'video',
+            'content_id' => (string) $videoId,
+            'starts_at' => null,
+            'ends_at' => now()->utc()->subSecond()->format('Y-m-d H:i:s'),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $request = request()->duplicate();
+        $request->setUserResolver(fn () => $user);
+        $this->activateProfile($user, $profile);
+
+        $this->expectException(AuthorizationException::class);
+        app(PlaybackEntitlementService::class)->authorize($user, (string) $videoId, 'video', $profile->id, $request);
+    }
+
     public function test_paid_title_requires_an_active_subscription_with_sufficient_plan_level(): void
     {
         $user = User::factory()->create();
@@ -100,7 +204,7 @@ class PlaybackEntitlementTest extends TestCase
 
         $planId = DB::table('plan')->insertGetId([
             'name' => 'Playback test plan',
-            'identifier' => 'playback-test-' . Str::uuid(),
+            'identifier' => 'playback-test-'.Str::uuid(),
             'level' => 2,
             'status' => 1,
             'created_at' => now(),
@@ -199,7 +303,7 @@ class PlaybackEntitlementTest extends TestCase
         Device::create([
             'user_id' => $user->id,
             'sanctum_token_id' => $token->getKey(),
-            'device_id' => (string) \Illuminate\Support\Str::uuid(),
+            'device_id' => (string) Str::uuid(),
             'active_profile' => $profile->id,
             'device_name' => 'Test browser',
             'platform' => 'web',
@@ -222,6 +326,7 @@ class PlaybackEntitlementTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+
         return $id;
     }
 }

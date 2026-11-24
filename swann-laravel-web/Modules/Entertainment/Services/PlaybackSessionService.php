@@ -38,7 +38,7 @@ class PlaybackSessionService
                 ->lockForUpdate()
                 ->first();
 
-            if (!$active) {
+            if (! $active) {
                 $limit = $this->concurrentStreamLimit($user);
                 $activeCount = DB::table('playback_sessions')
                     ->where('user_id', $user->id)
@@ -100,24 +100,32 @@ class PlaybackSessionService
         return $now->copy()->addSeconds(self::HEARTBEAT_TTL_SECONDS)->toIso8601String();
     }
 
-    public function end(User $user, PersonalAccessToken $token, string $sessionId): void
+    /** @return array{content_type:string, content_id:string}|null Session details only when this call ended it. */
+    public function end(User $user, PersonalAccessToken $token, string $sessionId): ?array
     {
-        $session = DB::table('playback_sessions')
-            ->where('session_id', $sessionId)
-            ->where('user_id', $user->id)
-            ->where('device_token_id', $token->getKey())
-            ->first();
+        return DB::transaction(function () use ($user, $token, $sessionId): ?array {
+            $session = DB::table('playback_sessions')
+                ->where('session_id', $sessionId)
+                ->where('user_id', $user->id)
+                ->where('device_token_id', $token->getKey())
+                ->lockForUpdate()
+                ->first();
 
-        if (!$session) {
-            throw new AuthorizationException('Playback session has expired or was revoked.');
-        }
+            if (! $session) {
+                throw new AuthorizationException('Playback session has expired or was revoked.');
+            }
 
-        if (!$session->ended_at) {
+            if ($session->ended_at) {
+                return null;
+            }
+
             DB::table('playback_sessions')->where('id', $session->id)->update([
                 'ended_at' => now(),
                 'updated_at' => now(),
             ]);
-        }
+
+            return ['content_type' => (string) $session->content_type, 'content_id' => (string) $session->content_id];
+        }, 3);
     }
 
     private function concurrentStreamLimit(User $user): int
@@ -130,6 +138,7 @@ class PlaybackSessionService
             ->first();
         $limit = PlanEntitlementSnapshot::integerLimit($subscription?->plan_type, 'simultaneous-streams')
             ?? PlanEntitlementSnapshot::integerLimit($subscription?->plan_type, 'concurrent-streams');
+
         return $limit === null ? 1 : min(10, $limit);
     }
 }

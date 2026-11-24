@@ -110,6 +110,8 @@ Route::prefix('admin')->group(function () {
         Route::post('content/reviews/{submission}/approve', [\App\Http\Controllers\API\AdminContentWorkflowController::class, 'approve'])->middleware('explicit.permission:content.approve');
         Route::post('content/reviews/{submission}/reject', [\App\Http\Controllers\API\AdminContentWorkflowController::class, 'reject'])->middleware('explicit.permission:content.reject');
         Route::post('content/reviews/{submission}/publish', [\App\Http\Controllers\API\AdminContentWorkflowController::class, 'publish'])->middleware('explicit.permission:content.publish');
+        Route::get('content/{contentType}/{contentId}/license-window', [\App\Http\Controllers\API\AdminContentLicensingController::class, 'show']);
+        Route::put('content/{contentType}/{contentId}/license-window', [\App\Http\Controllers\API\AdminContentLicensingController::class, 'update'])->middleware('explicit.permission:content.schedule');
 
         Route::get('media/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'media'])->middleware('explicit.permission:media.view');
         Route::get('media/assets', [\App\Http\Controllers\API\AdminMediaController::class, 'index'])->middleware('explicit.permission:media.view');
@@ -190,6 +192,7 @@ Route::prefix('admin')->group(function () {
             Route::get('customers/{customer}/payments', [\App\Http\Controllers\API\AdminSupportController::class, 'payments'])->whereNumber('customer')->middleware('explicit.permission:support.payments.view');
             Route::get('customers/{customer}/devices', [\App\Http\Controllers\API\AdminSupportController::class, 'devices'])->whereNumber('customer')->middleware('explicit.permission:support.devices.view');
             Route::get('customers/{customer}/playback', [\App\Http\Controllers\API\AdminSupportController::class, 'playback'])->whereNumber('customer')->middleware('explicit.permission:support.playback.view');
+            Route::post('customers/{customer}/playback-sessions/{session}/revoke', [\App\Http\Controllers\API\AdminSupportController::class, 'revokePlaybackSession'])->whereNumber(['customer', 'session'])->middleware('explicit.permission:support.sessions.revoke');
             Route::post('customers/{customer}/devices/{device}/revoke', [\App\Http\Controllers\API\AdminSupportController::class, 'revokeDeviceSession'])->whereNumber(['customer', 'device'])->middleware('explicit.permission:support.sessions.revoke');
             Route::get('tickets', [\App\Http\Controllers\API\AdminSupportController::class, 'tickets'])->middleware('explicit.permission:support.tickets.manage');
             Route::get('assignees', [\App\Http\Controllers\API\AdminSupportController::class, 'assignees'])->middleware('explicit.permission:support.tickets.manage');

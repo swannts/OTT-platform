@@ -10,6 +10,7 @@ export const supportApi = {
   devices: (id) => axios.get(`${API}/customers/${id}/devices`).then((r) => r.data.data),
   playback: (id) => axios.get(`${API}/customers/${id}/playback`).then((r) => r.data.data),
   revoke: (customerId, deviceId) => axios.post(`${API}/customers/${customerId}/devices/${deviceId}/revoke`),
+  revokePlaybackSession: (customerId, sessionId) => axios.post(`${API}/customers/${customerId}/playback-sessions/${sessionId}/revoke`),
   tickets: (params = {}) => axios.get(`${API}/tickets`, { params }).then((r) => r.data),
   assignees: () => axios.get(`${API}/assignees`).then((r) => r.data.data),
   ticket: (id) => axios.get(`${API}/tickets/${id}`).then((r) => r.data.data),
