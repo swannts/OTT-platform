@@ -52,6 +52,25 @@ export default function VideoPlayer({
   const [resumeTime, setResumeTime] = useState<number>(initialTime);
   const [sessionState, setSessionState] = useState({ playbackSessionId, valid: true });
   const sessionValid = sessionState.playbackSessionId === playbackSessionId ? sessionState.valid : true;
+  const lastReportedErrorRef = useRef<string | null>(null);
+
+  const reportPlayerError = useCallback((event: Event) => {
+    if (!playbackSessionId) return;
+
+    const code = (event as CustomEvent<{ code?: number }>).detail?.code;
+    const errorCode = code === 2
+      ? 'network_error'
+      : code === 3
+        ? 'decoder_error'
+        : code === 4
+          ? 'manifest_error'
+          : 'unknown_error';
+    const deduplicationKey = `${playbackSessionId}:${errorCode}`;
+    if (lastReportedErrorRef.current === deduplicationKey) return;
+
+    lastReportedErrorRef.current = deduplicationKey;
+    void api.recordPlaybackError(playbackSessionId, errorCode).catch(() => undefined);
+  }, [playbackSessionId]);
 
   useEffect(() => {
     if (!playbackSessionId) return;
@@ -120,6 +139,7 @@ export default function VideoPlayer({
         poster={poster}
         isLive={isLive || contentType === 'livetv'}
         onBack={onBack}
+        onError={reportPlayerError}
         onQualityChange={handleQualityChange}
         onTimeUpdate={(t) => {
           currentTimeRef.current = t;

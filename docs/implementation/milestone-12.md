@@ -10,7 +10,7 @@
 - The legacy Laravel admin backup screen now lists each configured destination, supports remote-disk downloads, requires POST plus CSRF for creation/deletion, validates archive names, and reports command failures without displaying internal output.
 - The operations health response and admin dashboard now report bounded Laravel-container memory, cumulative CPU, and local storage availability where Linux cgroup/filesystem data is readable. These metrics are explicitly container-scoped, not host-wide telemetry.
 - Failed Laravel jobs are paginated and expose only queue, connection, basic job type, failure time, and an explicit retryable flag. The retry endpoint accepts only the two campaign jobs whose handlers recheck consent/publication and use idempotent delivery records.
-- Playback diagnostic events are aggregated by event code over a fixed 24-hour window and require `analytics.playback.view`.
+- Playback diagnostic events are aggregated by event code over a fixed 24-hour window and require `analytics.playback.view`; the customer player now submits deduplicated standardized failures tied to its active session.
 - Incidents support open, acknowledge, resolve, and reopen transitions. Updates are transactional and audited; summaries are bounded and affected service names are allowlisted.
 - Optional queued email alerts route newly opened or state-changed incidents at or above a configurable severity threshold. Alert messages contain only the incident ID, status, and severity; recipients and SMTP delivery must be configured through deployment secrets.
 - Added an internal Go worker health endpoint that reports process, RabbitMQ connection, Redis TCP reachability, and database ping. Docker Compose exposes it only on the internal network.

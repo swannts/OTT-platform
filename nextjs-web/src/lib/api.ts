@@ -591,6 +591,16 @@ class ApiClient {
     });
   }
 
+  async recordPlaybackError(
+    sessionId: string,
+    errorCode: 'network_error' | 'decoder_error' | 'manifest_error' | 'license_error' | 'unknown_error'
+  ): Promise<void> {
+    await this.request('/v3/playback/diagnostics', {
+      method: 'POST',
+      body: JSON.stringify({ session_id: sessionId, error_code: errorCode }),
+    });
+  }
+
   async getSeoSettings(): Promise<SeoMetadata> {
     return this.request<SeoMetadata>('/v3/seo-settings');
   }

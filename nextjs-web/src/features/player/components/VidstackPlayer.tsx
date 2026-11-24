@@ -37,6 +37,7 @@ export interface VidstackPlayerProps {
   poster?: string;
   isLive?: boolean;
   onBack?: () => void;
+  onError?: (event: Event) => void;
   onQualityChange?: (url: string, qualityType: string) => void;
   onTimeUpdate?: (time: number) => void;
 }
@@ -550,6 +551,7 @@ export default function VidstackPlayer({
   poster,
   isLive = false,
   onBack,
+  onError,
   onQualityChange,
   onTimeUpdate,
 }: VidstackPlayerProps) {
@@ -589,8 +591,8 @@ export default function VidstackPlayer({
         playsInline
         crossOrigin
         className="w-full h-full relative"
-        onError={() => {
-          // Gracefully suppress player teardown rejections
+        onError={(event) => {
+          onError?.(event);
         }}
         onAutoPlayFail={() => {
           // Gracefully handle browser policy autoplay restrictions

@@ -10,6 +10,7 @@
 - Added standardized playback diagnostics for entitlement denial, media readiness, successful session starts, and client-reported player errors. Client reports must match the authenticated customer’s active session and use an allowlisted error code; free-form messages, URLs, and credentials are not stored.
 - Added audit events for ticket changes and sensitive customer, payment, device, playback, and ticket-detail views. Customer search audit records contain a query hash and result count, not the searched email or name.
 - Added the admin workspace at `/dashboard/support` with ticket inbox/detail, customer search, subscription/payment summaries, device/session inspection, playback diagnostics, assignment, escalation, and session revocation controls.
+- The Next.js customer player now reports deduplicated, standardized network, decoder, manifest, or unknown playback errors against its active playback session. Provider messages, raw URLs, and free-form error detail are not sent.
 - Added the narrow `support.payments.view` permission to the Customer Support role. Kept the Finance Manager refund review workflow and Media Manager DRM workflow permissions aligned with the OTT role specification; the RBAC policy assertions now match those role capabilities.
 
 ## Data and API
@@ -24,4 +25,4 @@ Admin endpoints are under `/api/admin/support`; each uses `admin.access` plus th
 - Focused Laravel tests cover ticket workflow/audit, authorization, sensitive field projections, masked payments, refund denial, device/token revocation, and session-bound client diagnostics.
 - Admin UI production build includes `/dashboard/support`.
 
-The API accepts only standardized client error codes; frontend playback clients must call the diagnostics endpoint when their player detects an error to populate those event rows. Sensitive account recovery remains outside this milestone; no recovery or impersonation action is exposed.
+The API accepts only standardized client error codes and checks that each report belongs to the caller's active playback session. Sensitive account recovery remains outside this milestone; no recovery or impersonation action is exposed.
