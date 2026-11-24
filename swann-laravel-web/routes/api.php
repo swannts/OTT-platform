@@ -49,6 +49,7 @@ Route::get('v3/seo-settings', [\Modules\SEO\Http\Controllers\SEOController::clas
 // Provider-signed callbacks are verified by their dedicated controller handlers.
 Route::post('webhooks/stripe', [WebPaymentApiController::class, 'stripeWebhook'])->middleware('throttle:300,1');
 Route::post('webhooks/razorpay', [WebPaymentApiController::class, 'razorpayWebhook'])->middleware('throttle:300,1');
+Route::post('webhooks/paystack', [WebPaymentApiController::class, 'paystackWebhook'])->middleware('throttle:300,1');
 Route::post('webhooks/revenuecat', [WebPaymentApiController::class, 'revenueCatWebhook'])->middleware('throttle:300,1');
 
 
@@ -125,6 +126,21 @@ Route::prefix('admin')->group(function () {
         Route::put('subscriptions/coupons/{coupon}', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'updateCoupon'])->middleware('explicit.permission:subscriptions.coupons.manage');
         Route::post('subscriptions/coupons/{coupon}/archive', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'archiveCoupon'])->middleware('explicit.permission:subscriptions.coupons.manage');
         Route::get('finance/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'finance'])->middleware('explicit.permission:finance.payments.view');
+        Route::get('finance/dashboard', [\App\Http\Controllers\API\AdminFinanceController::class, 'overview'])->middleware('explicit.permission:finance.payments.view');
+        Route::get('finance/payments', [\App\Http\Controllers\API\AdminFinanceController::class, 'payments'])->middleware('explicit.permission:finance.payments.view');
+        Route::get('finance/payments/export', [\App\Http\Controllers\API\AdminFinanceController::class, 'export'])->middleware('explicit.permission:finance.reports.export');
+        Route::get('finance/payments/{payment}/invoice', [\App\Http\Controllers\API\AdminFinanceController::class, 'invoice'])->middleware('explicit.permission:finance.invoices.view');
+        Route::post('finance/payments/{payment}/reconcile', [\App\Http\Controllers\API\AdminFinanceController::class, 'reconcilePayment'])->middleware('explicit.permission:finance.reconciliation.view');
+        Route::get('finance/payments/{payment}', [\App\Http\Controllers\API\AdminFinanceController::class, 'paymentDetail'])->middleware('explicit.permission:finance.payments.view');
+        Route::get('finance/refunds', [\App\Http\Controllers\API\AdminFinanceController::class, 'refunds'])->middleware('explicit.permission:finance.payments.view');
+        Route::post('finance/refunds', [\App\Http\Controllers\API\AdminFinanceController::class, 'requestRefund'])->middleware('explicit.permission:finance.refunds.request');
+        Route::post('finance/refunds/{refund}/review', [\App\Http\Controllers\API\AdminFinanceController::class, 'reviewRefund'])->middleware('explicit.permission:finance.refunds.approve');
+        Route::post('finance/refunds/{refund}/execute', [\App\Http\Controllers\API\AdminFinanceController::class, 'executeRefund'])->middleware('explicit.permission:finance.refunds.approve');
+        Route::get('finance/disputes', [\App\Http\Controllers\API\AdminFinanceController::class, 'disputes'])->middleware('explicit.permission:finance.payments.view');
+        Route::get('finance/failed-events', [\App\Http\Controllers\API\AdminFinanceController::class, 'failedProviderEvents'])->middleware('explicit.permission:finance.payments.view');
+        Route::get('finance/reconciliation', [\App\Http\Controllers\API\AdminFinanceController::class, 'reconciliation'])->middleware('explicit.permission:finance.reconciliation.view');
+        Route::get('finance/reconciliation/history', [\App\Http\Controllers\API\AdminFinanceController::class, 'reconciliationHistory'])->middleware('explicit.permission:finance.reconciliation.view');
+        Route::get('finance/reports', [\App\Http\Controllers\API\AdminFinanceController::class, 'report'])->middleware('explicit.permission:finance.reconciliation.view');
         Route::get('marketing/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'marketing'])->middleware('explicit.permission:marketing.campaigns.manage');
         Route::get('analytics/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'analytics'])->middleware('explicit.permission:analytics.audience.view');
         Route::get('operations/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'operations'])->middleware('explicit.permission:operations.health.view');

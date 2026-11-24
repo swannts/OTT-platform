@@ -63,6 +63,12 @@ export const navData = [
         permission: 'subscriptions.view',
       },
       {
+        title: 'Finance',
+        path: '/dashboard/finance',
+        icon: ICONS.invoice,
+        permission: 'finance.payments.view',
+      },
+      {
         title: 'Operations & reports',
         path: '/dashboard/operations',
         icon: ICONS.analytics,

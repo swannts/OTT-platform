@@ -28,6 +28,7 @@ export function requiredPermissionForPath(pathname) {
     '/dashboard/access/audit': 'audit.view',
     '/dashboard/media': 'media.view',
     '/dashboard/subscriptions': 'subscriptions.view',
+    '/dashboard/finance': 'finance.payments.view',
   };
   return routePermissions[pathname] || null;
 }

@@ -98,7 +98,9 @@ final class RbacRegistry
         $all = array_keys(self::permissions());
 
         return [
-            'super-admin' => $all,
+            // Super Admin receives the catalog except the refund approval grant. Financial approvals
+            // always require an explicit staff assignment and the maker-checker guard still applies.
+            'super-admin' => array_values(array_diff($all, ['finance.refunds.approve'])),
             'platform_admin' => [
                 'admin.access', 'admin.dashboard.view', 'admin.users.view', 'admin.users.create',
                 'admin.users.update', 'admin.users.suspend', 'content.view', 'subscriptions.view',
@@ -111,7 +113,7 @@ final class RbacRegistry
             'content_reviewer' => ['admin.access', 'admin.dashboard.view', 'content.view', 'content.review', 'content.approve', 'content.reject'],
             'media_manager' => ['admin.access', 'admin.dashboard.view', 'content.view', 'media.view', 'media.upload', 'media.update', 'media.delete', 'media.transcode', 'media.transcode.retry', 'media.subtitles.manage', 'media.audio.manage', 'media.drm.configure'],
             'subscription_manager' => ['admin.access', 'admin.dashboard.view', 'subscriptions.view', 'subscriptions.subscribers.view', 'subscriptions.plans.create', 'subscriptions.plans.update', 'subscriptions.plans.archive', 'subscriptions.coupons.manage', 'subscriptions.trials.manage'],
-            'finance_manager' => ['admin.access', 'admin.dashboard.view', 'finance.payments.view', 'finance.invoices.view', 'finance.refunds.request', 'finance.reconciliation.view', 'finance.reports.export', 'analytics.revenue.view'],
+            'finance_manager' => ['admin.access', 'admin.dashboard.view', 'finance.payments.view', 'finance.invoices.view', 'finance.refunds.request', 'finance.refunds.approve', 'finance.reconciliation.view', 'finance.reports.export', 'analytics.revenue.view'],
             'marketing_manager' => ['admin.access', 'admin.dashboard.view', 'content.view', 'marketing.banners.manage', 'marketing.campaigns.manage', 'marketing.notifications.manage', 'marketing.promotions.manage'],
             'customer_support' => ['admin.access', 'admin.dashboard.view', 'support.accounts.view', 'support.tickets.manage', 'support.playback.view', 'support.devices.view', 'support.sessions.revoke', 'subscriptions.view'],
             'analytics_manager' => ['admin.access', 'admin.dashboard.view', 'analytics.audience.view', 'analytics.subscriptions.view', 'analytics.content.view', 'analytics.revenue.view', 'analytics.playback.view', 'analytics.export'],

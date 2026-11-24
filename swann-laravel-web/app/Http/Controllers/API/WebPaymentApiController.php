@@ -5,6 +5,8 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\User;
+use App\Models\PaymentDispute;
+use App\Models\RefundRequest;
 use App\Models\VerifiedPayment;
 use Carbon\Carbon;
 use Exception;
@@ -329,6 +331,14 @@ class WebPaymentApiController extends Controller
             return ApiResponse::error('Invalid Stripe webhook signature or payload.', 400);
         }
 
+        $stripeObject = $event->data->object;
+        $stripeData = $stripeObject->toArray();
+        $providerReference = (string) ($stripeData['payment_intent'] ?? $stripeData['id'] ?? '');
+        $eventId = (string) $event->id;
+        if (!$this->beginProviderEvent('stripe', $eventId, (string) $event->type, $providerReference, $request->getContent())) {
+            return response()->json(['received' => true, 'duplicate' => true], 200);
+        }
+
         try {
             $object = $event->data->object;
             if ($event->type === 'payment_intent.succeeded') {
@@ -361,10 +371,16 @@ class WebPaymentApiController extends Controller
                         'currency' => $session['currency'] ?? '',
                     ], $paymentReference, (int) ($session['amount_total'] ?? 0));
                 }
+            } elseif (in_array($event->type, ['refund.created', 'refund.updated', 'refund.failed'], true)) {
+                $this->syncStripeRefundEvent($event->type, $object->toArray());
+            } elseif (in_array($event->type, ['charge.dispute.created', 'charge.dispute.updated', 'charge.dispute.closed'], true)) {
+                $this->syncStripeDisputeEvent($event->type, $object->toArray());
             }
 
+            $this->finishProviderEvent('stripe', $eventId, 'processed');
             return response()->json(['received' => true], 200);
         } catch (Exception $e) {
+            $this->finishProviderEvent('stripe', $eventId, 'failed', $e::class);
             Log::error('Stripe webhook fulfillment failed.', [
                 'event_id' => $event->id,
                 'event_type' => $event->type,
@@ -386,6 +402,14 @@ class WebPaymentApiController extends Controller
 
         try {
             $event = json_decode($payload, true, 512, JSON_THROW_ON_ERROR);
+            $eventType = (string) ($event['event'] ?? 'unknown');
+            $entityForReference = $event['payload']['payment']['entity']
+                ?? $event['payload']['refund']['entity']
+                ?? $event['payload']['dispute']['entity'] ?? [];
+            $eventId = (string) $request->header('X-Razorpay-Event-Id', hash('sha256', $payload));
+            if (!$this->beginProviderEvent('razorpay', $eventId, $eventType, (string) ($entityForReference['id'] ?? ''), $payload)) {
+                return response()->json(['received' => true, 'duplicate' => true], 200);
+            }
             if (($event['event'] ?? '') === 'payment.failed') {
                 $entity = $event['payload']['payment']['entity'] ?? [];
                 $orderId = (string) ($entity['order_id'] ?? '');
@@ -395,9 +419,12 @@ class WebPaymentApiController extends Controller
                     $notes = $order['notes'] ?? [];
                     $this->releaseCouponReservation(!empty($notes['coupon_reservation']) ? (string) $notes['coupon_reservation'] : null);
                 }
+                $this->finishProviderEvent('razorpay', $eventId, 'processed');
                 return response()->json(['received' => true], 200);
             }
             if (($event['event'] ?? '') !== 'payment.captured') {
+                $this->syncRazorpayFinanceEvent($eventType, $event);
+                $this->finishProviderEvent('razorpay', $eventId, 'processed');
                 return response()->json(['received' => true], 200);
             }
 
@@ -444,10 +471,50 @@ class WebPaymentApiController extends Controller
                 !empty($notes['coupon_reservation']) ? (string) $notes['coupon_reservation'] : null
             );
 
+            $this->finishProviderEvent('razorpay', $eventId, 'processed');
             return response()->json(['received' => true], 200);
         } catch (Exception $e) {
+            if (isset($eventId)) $this->finishProviderEvent('razorpay', $eventId, 'failed', $e::class);
             Log::error('Razorpay webhook fulfillment failed.', ['exception' => $e::class]);
             return ApiResponse::error('Razorpay webhook processing failed.', 500);
+        }
+    }
+
+    /** Verify provider signature, confirm through Paystack, then fulfill once. */
+    public function paystackWebhook(Request $request)
+    {
+        $payload = $request->getContent();
+        $secret = (string) GetpaymentMethod('paystack_secretkey');
+        $signature = (string) $request->header('x-paystack-signature');
+        if ($secret === '' || $signature === '' || !hash_equals(hash_hmac('sha512', $payload, $secret), $signature)) {
+            return ApiResponse::error('Invalid Paystack webhook signature.', 400);
+        }
+
+        $eventId = null;
+        try {
+            $event = json_decode($payload, true, 512, JSON_THROW_ON_ERROR);
+            $type = (string) ($event['event'] ?? 'unknown');
+            $data = $event['data'] ?? [];
+            $reference = (string) ($data['reference'] ?? $data['transaction']['reference'] ?? '');
+            $eventId = $type.':'.(string) (($data['id'] ?? '') ?: ($reference ?: hash('sha256', $payload)));
+            if (!$this->beginProviderEvent('paystack', $eventId, $type, $reference, $payload)) {
+                return response()->json(['received' => true, 'duplicate' => true], 200);
+            }
+
+            if ($type === 'charge.success') {
+                $this->fulfillPaystackWebhookPayment($data);
+            } elseif (in_array($type, ['refund.pending', 'refund.processing', 'refund.processed', 'refund.failed', 'refund.needs-attention'], true)) {
+                $this->syncPaystackRefundEvent($type, $data);
+            } elseif (in_array($type, ['charge.dispute.create', 'charge.dispute.remind', 'charge.dispute.resolve'], true)) {
+                $this->syncPaystackDisputeEvent($type, $data);
+            }
+
+            $this->finishProviderEvent('paystack', $eventId, 'processed');
+            return response()->json(['received' => true], 200);
+        } catch (Exception $e) {
+            if ($eventId) $this->finishProviderEvent('paystack', $eventId, 'failed', $e::class);
+            Log::error('Paystack webhook processing failed.', ['exception' => $e::class]);
+            return ApiResponse::error('Paystack webhook processing failed.', 500);
         }
     }
 
@@ -1337,6 +1404,180 @@ class WebPaymentApiController extends Controller
         });
     }
 
+    private function beginProviderEvent(string $gateway, string $eventId, string $eventType, string $providerReference, string $payload): bool
+    {
+        DB::table('payment_provider_events')->insertOrIgnore([
+            'gateway' => $gateway, 'event_id' => $eventId, 'event_type' => $eventType,
+            'provider_reference' => $providerReference !== '' ? $providerReference : null,
+            'payload_sha256' => hash('sha256', $payload), 'status' => 'received',
+            'attempts' => 0, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        return DB::transaction(function () use ($gateway, $eventId): bool {
+            $event = DB::table('payment_provider_events')->where('gateway', $gateway)->where('event_id', $eventId)->lockForUpdate()->first();
+            if ($event->status === 'processed') return false;
+            if ($event->status === 'processing' && Carbon::parse($event->updated_at)->gt(now()->subMinutes(5))) {
+                abort(409, 'This provider event is already being processed.');
+            }
+            DB::table('payment_provider_events')->where('id', $event->id)->update([
+                'status' => 'processing', 'attempts' => (int) $event->attempts + 1,
+                'failure_code' => null, 'updated_at' => now(),
+            ]);
+            return true;
+        }, 3);
+    }
+
+    private function finishProviderEvent(string $gateway, string $eventId, string $status, ?string $failureCode = null): void
+    {
+        DB::table('payment_provider_events')->where('gateway', $gateway)->where('event_id', $eventId)->update([
+            'status' => $status, 'failure_code' => $failureCode ? substr($failureCode, 0, 100) : null,
+            'processed_at' => $status === 'processed' ? now() : null, 'updated_at' => now(),
+        ]);
+    }
+
+    private function syncStripeRefundEvent(string $eventType, array $refund): void
+    {
+        $local = null;
+        if (!empty($refund['metadata']['refund_request_id'])) {
+            $local = RefundRequest::query()->find((int) $refund['metadata']['refund_request_id']);
+        }
+        $local ??= RefundRequest::query()->where('provider_refund_id', $refund['id'] ?? '')->first();
+        if (!$local) return;
+        $status = $this->mapRefundStatus((string) ($refund['status'] ?? $eventType));
+        $local->forceFill([
+            'status' => $status, 'provider_refund_id' => $refund['id'] ?? $local->provider_refund_id,
+            'executed_at' => $local->executed_at ?? now(),
+            'failure_code' => $refund['failure_reason'] ?? null,
+        ])->save();
+    }
+
+    private function syncStripeDisputeEvent(string $eventType, array $dispute): void
+    {
+        $paymentIntent = $dispute['payment_intent'] ?? null;
+        if (is_array($paymentIntent)) $paymentIntent = $paymentIntent['id'] ?? null;
+        $payment = is_string($paymentIntent) ? VerifiedPayment::query()->where('gateway', 'stripe')->where('provider_reference', $paymentIntent)->first() : null;
+        $status = (string) ($dispute['status'] ?? str_replace('charge.dispute.', '', $eventType));
+        PaymentDispute::query()->updateOrCreate(
+            ['gateway' => 'stripe', 'provider_dispute_id' => (string) $dispute['id']],
+            [
+                'provider_reference' => is_string($paymentIntent) ? $paymentIntent : null,
+                'verified_payment_id' => $payment?->id,
+                'amount_minor' => isset($dispute['amount']) ? (int) $dispute['amount'] : null,
+                'currency' => isset($dispute['currency']) ? strtoupper((string) $dispute['currency']) : null,
+                'status' => $status, 'reason' => $dispute['reason'] ?? null,
+                'evidence_due_at' => isset($dispute['evidence_details']['due_by']) ? Carbon::createFromTimestamp((int) $dispute['evidence_details']['due_by']) : null,
+                'resolved_at' => in_array($status, ['won', 'lost'], true) ? now() : null,
+            ]
+        );
+    }
+
+    private function syncRazorpayFinanceEvent(string $eventType, array $event): void
+    {
+        if (str_starts_with($eventType, 'refund.')) {
+            $refund = $event['payload']['refund']['entity'] ?? [];
+            $notes = $refund['notes'] ?? [];
+            $local = !empty($notes['refund_request_id']) ? RefundRequest::query()->find((int) $notes['refund_request_id']) : null;
+            $local ??= RefundRequest::query()->where('provider_refund_id', $refund['id'] ?? '')->first();
+            if (!$local) return;
+            $local->forceFill([
+                'status' => $this->mapRefundStatus((string) ($refund['status'] ?? $eventType)),
+                'provider_refund_id' => $refund['id'] ?? $local->provider_refund_id,
+                'executed_at' => $local->executed_at ?? now(),
+            ])->save();
+            return;
+        }
+
+        if (!str_starts_with($eventType, 'payment.dispute.')) return;
+        $dispute = $event['payload']['dispute']['entity'] ?? [];
+        $reference = (string) ($dispute['payment_id'] ?? '');
+        $payment = $reference !== '' ? VerifiedPayment::query()->where('gateway', 'razorpay')->where('provider_reference', $reference)->first() : null;
+        $status = (string) ($dispute['status'] ?? str_replace('payment.dispute.', '', $eventType));
+        PaymentDispute::query()->updateOrCreate(
+            ['gateway' => 'razorpay', 'provider_dispute_id' => (string) ($dispute['id'] ?? '')],
+            [
+                'provider_reference' => $reference ?: null, 'verified_payment_id' => $payment?->id,
+                'amount_minor' => isset($dispute['amount']) ? (int) $dispute['amount'] : null,
+                'currency' => isset($dispute['currency']) ? strtoupper((string) $dispute['currency']) : null,
+                'status' => $status, 'reason' => $dispute['reason_code'] ?? null,
+                'resolved_at' => in_array($status, ['won', 'lost', 'closed'], true) ? now() : null,
+            ]
+        );
+    }
+
+    private function fulfillPaystackWebhookPayment(array $webhookData): void
+    {
+        $reference = (string) ($webhookData['reference'] ?? '');
+        $metadata = $webhookData['metadata'] ?? [];
+        $userId = (int) ($metadata['user_id'] ?? 0);
+        $planId = (int) ($metadata['plan_id'] ?? 0);
+        if ($reference === '' || $userId <= 0 || $planId <= 0 || ($metadata['purchase_type'] ?? 'subscription') !== 'subscription') {
+            throw new \RuntimeException('Paystack subscription metadata is incomplete.');
+        }
+        $response = Http::withToken((string) GetpaymentMethod('paystack_secretkey'))
+            ->get('https://api.paystack.co/transaction/verify/'.rawurlencode($reference));
+        $verified = $response->json('data', []);
+        $user = User::query()->find($userId);
+        if (!$response->successful() || !($response->json('status') ?? false) || ($verified['status'] ?? '') !== 'success'
+            || (string) ($verified['reference'] ?? '') !== $reference
+            || (string) ($verified['metadata']['user_id'] ?? '') !== (string) $userId
+            || (int) ($verified['amount'] ?? 0) !== (int) ($webhookData['amount'] ?? -1)
+            || strtoupper((string) ($verified['currency'] ?? '')) !== strtoupper((string) ($webhookData['currency'] ?? ''))
+            || !$user || strtolower((string) ($verified['customer']['email'] ?? '')) !== strtolower((string) $user->email)) {
+            throw new \RuntimeException('Paystack transaction could not be independently verified.');
+        }
+        $plan = Plan::query()->whereKey($planId)->where('status', 1)->firstOrFail();
+        $this->fulfillVerifiedPayment(
+            'paystack', $reference, $userId, 'subscription', $planId, (int) $verified['amount'],
+            strtoupper((string) $verified['currency']), !empty($metadata['promotion_id']) ? (int) $metadata['promotion_id'] : null,
+            null, !empty($metadata['coupon_reservation']) ? (string) $metadata['coupon_reservation'] : null
+        );
+    }
+
+    private function syncPaystackRefundEvent(string $eventType, array $data): void
+    {
+        $reference = (string) ($data['reference'] ?? '');
+        $token = str_starts_with($reference, 'refund-') ? substr($reference, 7) : '';
+        $local = $token !== '' ? RefundRequest::query()->where('idempotency_key', $token)->first() : null;
+        $local ??= isset($data['id']) ? RefundRequest::query()->where('provider_refund_id', (string) $data['id'])->first() : null;
+        if (!$local) return;
+        $status = $this->mapRefundStatus((string) ($data['status'] ?? $eventType));
+        $local->forceFill([
+            'status' => $status, 'provider_refund_id' => isset($data['id']) ? (string) $data['id'] : $local->provider_refund_id,
+            'executed_at' => $local->executed_at ?? now(),
+        ])->save();
+    }
+
+    private function syncPaystackDisputeEvent(string $eventType, array $data): void
+    {
+        $transaction = $data['transaction'] ?? [];
+        if (is_numeric($transaction)) $reference = (string) $transaction;
+        elseif (is_array($transaction)) $reference = (string) ($transaction['reference'] ?? '');
+        else $reference = '';
+        $payment = $reference !== '' ? VerifiedPayment::query()->where('gateway', 'paystack')->where('provider_reference', $reference)->first() : null;
+        $disputeId = (string) ($data['id'] ?? $data['dispute_id'] ?? '');
+        if ($disputeId === '') return;
+        $status = (string) ($data['status'] ?? str_replace('charge.dispute.', '', $eventType));
+        PaymentDispute::query()->updateOrCreate(
+            ['gateway' => 'paystack', 'provider_dispute_id' => $disputeId],
+            [
+                'provider_reference' => $reference ?: null, 'verified_payment_id' => $payment?->id,
+                'amount_minor' => isset($data['amount']) ? (int) $data['amount'] : null,
+                'currency' => isset($data['currency']) ? strtoupper((string) $data['currency']) : null,
+                'status' => $status, 'reason' => $data['reason'] ?? null,
+                'resolved_at' => in_array($status, ['resolved', 'won', 'lost'], true) ? now() : null,
+            ]
+        );
+    }
+
+    private function mapRefundStatus(string $status): string
+    {
+        return match (strtolower($status)) {
+            'succeeded', 'processed', 'success' => 'succeeded',
+            'failed', 'canceled', 'cancelled', 'rejected', 'needs-attention' => 'failed',
+            default => 'processing',
+        };
+    }
+
     private function couponUsageAvailable(Coupon $coupon, ?int $userId, ?string $exceptReservation = null): bool
     {
         $redeemed = DB::table('user_coupon_redeem')->where('coupon_id', $coupon->id);
@@ -1672,6 +1913,7 @@ class WebPaymentApiController extends Controller
             'currency' => strtoupper($currency),
             'callback_url' => $callbackUrl,
             'metadata' => [
+                'purchase_type' => 'subscription',
                 'plan_id' => $plan->id,
                 'promotion_id' => $promotionId,
                 'coupon_reservation' => $reservationToken,
