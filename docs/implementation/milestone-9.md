@@ -17,7 +17,7 @@
 - Reconciled the canonical admin roles and permissions with `RbacFoundationSeeder`; this does not change user-to-role assignments.
 - Focused marketing, finance, subscription, and playback PHPUnit suites: 34 tests and 147 assertions passed. PHPUnit reported one existing deprecation.
 - Admin UI `npm run build` passed on Next.js 15.5.29. Existing warnings concern dynamic exports in unrelated pages and the Node `url.parse()` deprecation.
-- `admin-ui` still has no ESLint configuration, so its declared lint command remains unavailable.
+- At the time of this milestone, `admin-ui` had no ESLint configuration, so its declared lint command was unavailable. Milestone 15 added `admin-ui/eslint.config.mjs` and recorded a clean full lint scan; this historical limitation is resolved.
 - `php artisan schedule:list` confirms `marketing:publish-scheduled` runs every minute.
 
 ## Operational setup and limits

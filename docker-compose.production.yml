@@ -52,7 +52,7 @@ services:
     ports: !override
       - "127.0.0.1:${ADMIN_PORT:?Set ADMIN_PORT for the local TLS proxy}:3032"
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3032').then(r => process.exit(r.status < 500 ? 0 : 1)).catch(() => process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3032').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -68,7 +68,7 @@ services:
     ports: !override
       - "127.0.0.1:${FRONTEND_PORT:?Set FRONTEND_PORT for the local TLS proxy}:3000"
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r => process.exit(r.status < 500 ? 0 : 1)).catch(() => process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 30s
       timeout: 5s
       retries: 3

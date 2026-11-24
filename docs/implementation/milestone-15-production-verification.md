@@ -76,6 +76,8 @@ readiness.
   leaves MySQL, Redis, RabbitMQ, and Meilisearch ports unpublished. It adds
   HTTP health checks for Laravel and both Next.js services; the existing
   infrastructure health checks remain enabled.
+- The admin and customer Next.js health probes require a successful 2xx response;
+  a 3xx/4xx response no longer passes merely because it is below HTTP 500.
 - Added a Laravel scheduler sidecar and a distinct private S3-compatible backup
   destination. Laravel backups encrypt and verify archives, gzip database dumps,
   and schedule daily backup, cleanup, and freshness checks. Production Compose
@@ -135,6 +137,9 @@ readiness.
   infrastructure ports private, and injects the customer API URL into the
   frontend image build and runtime. Laravel and both Next.js services also have
   configured HTTP health checks.
+- After tightening the Next.js probes to require 2xx, `docker compose ... config
+  --quiet` passed using non-secret placeholder values from the production
+  example. No build or tests were run for this change.
 - Rebuilding the admin container exposed two Next.js 16 runtime failures missed
   by static compilation: the global settings and language loaders read async
   cookies synchronously. Both now await `cookies()`. The admin image also uses
