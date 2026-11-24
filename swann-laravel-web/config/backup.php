@@ -1,5 +1,11 @@
 <?php
 
+$backupDisks = array_values(array_filter(array_map(
+    static fn (string $disk): string => trim($disk),
+    explode(',', (string) env('BACKUP_DISKS', 'local'))
+)));
+$backupNotificationChannels = trim((string) env('BACKUP_NOTIFICATION_EMAIL', '')) !== '' ? ['mail'] : [];
+
 return [
 
     'backup' => [
@@ -27,8 +33,19 @@ return [
                  * Directories used by the backup process will automatically be excluded.
                  */
                 'exclude' => [
+                    base_path('.env'),
+                    base_path('.env.testing'),
+                    base_path('.env.example'),
+                    base_path('.env.production.example'),
+                    base_path('.git'),
+                    base_path('bootstrap/cache'),
                     base_path('vendor'),
                     base_path('node_modules'),
+                    storage_path('framework'),
+                    storage_path('logs'),
+                    storage_path('app/backup-temp'),
+                    storage_path('app/backups'),
+                    storage_path('app/laravel-backup'),
                 ],
 
                 /*
@@ -95,7 +112,7 @@ return [
          *
          * If you do not want any compressor at all, set it to null.
          */
-        'database_dump_compressor' => null,
+        'database_dump_compressor' => \Spatie\DbDumper\Compressors\GzipCompressor::class,
 
         /*
          * The file extension used for the database dump files.
@@ -115,9 +132,7 @@ return [
             /*
              * The disk names on which the backups will be stored.
              */
-            'disks' => [
-                'local',
-            ],
+            'disks' => $backupDisks,
         ],
 
         /*
@@ -139,6 +154,7 @@ return [
          * available on your system.
          */
         'encryption' => 'default',
+        'verify_backup' => true,
     ],
 
     /*
@@ -151,12 +167,12 @@ return [
     'notifications' => [
 
         'notifications' => [
-            \Spatie\Backup\Notifications\Notifications\BackupHasFailedNotification::class => ['mail'],
-            \Spatie\Backup\Notifications\Notifications\UnhealthyBackupWasFoundNotification::class => ['mail'],
-            \Spatie\Backup\Notifications\Notifications\CleanupHasFailedNotification::class => ['mail'],
-            \Spatie\Backup\Notifications\Notifications\BackupWasSuccessfulNotification::class => ['mail'],
-            \Spatie\Backup\Notifications\Notifications\HealthyBackupWasFoundNotification::class => ['mail'],
-            \Spatie\Backup\Notifications\Notifications\CleanupWasSuccessfulNotification::class => ['mail'],
+            \Spatie\Backup\Notifications\Notifications\BackupHasFailedNotification::class => $backupNotificationChannels,
+            \Spatie\Backup\Notifications\Notifications\UnhealthyBackupWasFoundNotification::class => $backupNotificationChannels,
+            \Spatie\Backup\Notifications\Notifications\CleanupHasFailedNotification::class => $backupNotificationChannels,
+            \Spatie\Backup\Notifications\Notifications\BackupWasSuccessfulNotification::class => $backupNotificationChannels,
+            \Spatie\Backup\Notifications\Notifications\HealthyBackupWasFoundNotification::class => $backupNotificationChannels,
+            \Spatie\Backup\Notifications\Notifications\CleanupWasSuccessfulNotification::class => $backupNotificationChannels,
         ],
 
         /*
@@ -166,7 +182,7 @@ return [
         'notifiable' => \Spatie\Backup\Notifications\Notifiable::class,
 
         'mail' => [
-            'to' => 'your@example.com',
+            'to' => env('BACKUP_NOTIFICATION_EMAIL', ''),
 
             'from' => [
                 'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
@@ -205,10 +221,10 @@ return [
     'monitor_backups' => [
         [
             'name' => env('APP_NAME', 'laravel-backup'),
-            'disks' => ['local'],
+            'disks' => $backupDisks,
             'health_checks' => [
                 \Spatie\Backup\Tasks\Monitor\HealthChecks\MaximumAgeInDays::class => 1,
-                \Spatie\Backup\Tasks\Monitor\HealthChecks\MaximumStorageInMegabytes::class => 5000,
+                \Spatie\Backup\Tasks\Monitor\HealthChecks\MaximumStorageInMegabytes::class => (int) env('BACKUP_MAX_STORAGE_MB', 500000),
             ],
         ],
 
@@ -267,7 +283,7 @@ return [
              * After cleaning up the backups remove the oldest backup until
              * this amount of megabytes has been reached.
              */
-            'delete_oldest_backups_when_using_more_megabytes_than' => 5000,
+            'delete_oldest_backups_when_using_more_megabytes_than' => (int) env('BACKUP_MAX_STORAGE_MB', 500000),
         ],
     ],
 

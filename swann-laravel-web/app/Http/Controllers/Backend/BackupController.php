@@ -5,12 +5,13 @@ namespace App\Http\Controllers\Backend;
 use App\Authorizable;
 use App\Http\Controllers\Controller;
 use Carbon\Carbon;
-use Exception;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laracasts\Flash\Flash;
+use Throwable;
 
 class BackupController extends Controller
 {
@@ -46,30 +47,34 @@ class BackupController extends Controller
 
         $module_action = 'List';
 
-        $disk = Storage::disk('local');
-
-        $files = $disk->files(config('backup.backup.name'));
-
         $$module_name = [];
 
-        // make an array of backup files, with their filesize and creation date
-        foreach ($files as $k => $f) {
-            // only take the zip files into account
-            if (substr($f, -4) == '.zip' && $disk->exists($f)) {
-                $$module_name[] = [
-                    'file_path' => $f,
-                    'file_name' => str_replace(config('backup.backup.name') . '/', '', $f),
-                    'file_size_byte' => $disk->size($f),
-                    'file_size' => humanFilesize($disk->size($f)),
-                    'last_modified_timestamp' => $disk->lastModified($f),
-                    'date_created' => Carbon::createFromTimestamp($disk->lastModified($f))->isoFormat('llll'),
-                    'date_ago' => Carbon::createFromTimestamp($disk->lastModified($f))->diffForHumans(Carbon::now()),
-                ];
+        foreach (config('backup.backup.destination.disks', []) as $diskName) {
+            try {
+                $disk = Storage::disk($diskName);
+                foreach ($disk->files(config('backup.backup.name')) as $filePath) {
+                    if (! str_ends_with(strtolower($filePath), '.zip') || ! $disk->exists($filePath)) {
+                        continue;
+                    }
+
+                    $modified = $disk->lastModified($filePath);
+                    $size = $disk->size($filePath);
+                    $$module_name[] = [
+                        'disk' => $diskName,
+                        'file_name' => basename($filePath),
+                        'file_size_byte' => $size,
+                        'file_size' => humanFilesize($size),
+                        'last_modified_timestamp' => $modified,
+                        'date_created' => Carbon::createFromTimestamp($modified)->isoFormat('llll'),
+                        'date_ago' => Carbon::createFromTimestamp($modified)->diffForHumans(),
+                    ];
+                }
+            } catch (Throwable $exception) {
+                report($exception);
             }
         }
 
-        // reverse the backups, so the newest one would be on top
-        $$module_name = array_reverse($$module_name);
+        usort($$module_name, static fn (array $left, array $right): int => $right['last_modified_timestamp'] <=> $left['last_modified_timestamp']);
 
         return view(
             "backend.$module_path.backups",
@@ -87,31 +92,37 @@ class BackupController extends Controller
     {
         try {
             // start the backup process
-            Artisan::call('backup:run');
-            $output = Artisan::output();
-            // return the results as a response to the ajax call
+            $exitCode = Artisan::call('backup:run');
+
+            if ($exitCode !== 0) {
+                Log::error('Laravel backup command failed.', ['exit_code' => $exitCode]);
+                Flash::error('The backup could not be created. Check the application logs.');
+
+                return redirect()->back();
+            }
+
             flash("<i class='fas fa-check'></i> New backup created")->success()->important();
 
             return redirect()->back();
-        } catch (Exception $e) {
-            Flash::error($e->getMessage());
+        } catch (Throwable $exception) {
+            report($exception);
+            Flash::error('The backup could not be created. Check the application logs.');
 
             return redirect()->back();
         }
     }
 
     /**
-     * Downloads a backup zip file.
-     *
-     * TODO: make it work no matter the flysystem driver (S3 Bucket, etc).
+     * Downloads a backup zip file from one of the configured destination disks.
      */
-    public function download($file_name)
+    public function download(Request $request, string $file_name)
     {
-        $disk = Storage::disk('local');
-        $file = config('backup.backup.name') . '/' . $file_name;
+        $diskName = $this->requestedDisk($request);
+        $file = $this->backupPath($file_name);
+        $disk = Storage::disk($diskName);
 
         if ($disk->exists($file)) {
-            return Storage::download($file);
+            return $disk->download($file, $file_name);
         } else {
             abort(404, "The backup file doesn't exist.");
         }
@@ -120,17 +131,39 @@ class BackupController extends Controller
     /**
      * Deletes a backup file.
      */
-    public function delete($file_name)
+    public function delete(Request $request, string $file_name)
     {
-        $disk = Storage::disk('local');
-        $file = config('backup.backup.name') . '/' . $file_name;
+        $diskName = $this->requestedDisk($request);
+        $file = $this->backupPath($file_name);
+        $disk = Storage::disk($diskName);
 
         if ($disk->exists($file)) {
             $disk->delete($file);
+            flash('Backup deleted')->success();
 
             return redirect()->back();
         } else {
             abort(404, "The backup file doesn't exist.");
         }
+    }
+
+    private function requestedDisk(Request $request): string
+    {
+        $disk = (string) $request->input('disk', '');
+        abort_unless(in_array($disk, config('backup.backup.destination.disks', []), true), 404);
+
+        return $disk;
+    }
+
+    private function backupPath(string $fileName): string
+    {
+        abort_unless(
+            basename($fileName) === $fileName
+                && preg_match('/^[A-Za-z0-9._-]+\.zip$/i', $fileName)
+                && ! str_contains($fileName, '..'),
+            404
+        );
+
+        return trim((string) config('backup.backup.name'), '/').'/'.$fileName;
     }
 }

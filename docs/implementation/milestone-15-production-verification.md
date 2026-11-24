@@ -60,6 +60,12 @@ readiness.
   leaves MySQL, Redis, RabbitMQ, and Meilisearch ports unpublished. It adds
   HTTP health checks for Laravel and both Next.js services; the existing
   infrastructure health checks remain enabled.
+- Added a Laravel scheduler sidecar and a distinct private S3-compatible backup
+  destination. Laravel backups encrypt and verify archives, gzip database dumps,
+  and schedule daily backup, cleanup, and freshness checks. Production Compose
+  requires the bucket, region, and archive password; inject either scoped S3
+  credentials or workload identity. This is application configuration only:
+  no production bucket or credentials are configured in this workspace.
 - `NEXT_PUBLIC_API_URL` is required for both the customer Next.js build and its
   runtime environment so browser requests do not fall back to localhost.
 - Added an unauthenticated, middleware-free Laravel `/up` process-health route.
@@ -149,6 +155,13 @@ readiness.
    and publish the four application images in CI; bake the production
    `NEXT_PUBLIC_API_URL` into the customer frontend image. Choose loopback ports
    reachable by the deployment's TLS reverse proxy.
+   Also create a private backup bucket separate from customer media, inject its
+   region and a dedicated archive-encryption password, and configure a narrowly
+   scoped S3 identity (or workload identity). Set `BACKUP_NOTIFICATION_EMAIL`
+   if mail alerts are desired, and size `BACKUP_MAX_STORAGE_MB` for expected
+   archive size and retention. Run one scheduler service against the shared
+   Laravel cache; a production bucket and restore rehearsal are still required
+   before treating backups as operationally verified.
 3. For a new MySQL data volume, Compose creates the configured least-privilege
    application account. For an existing MySQL volume, create/verify that account
    and its database grants explicitly; MySQL initialization variables do not
@@ -191,6 +204,11 @@ readiness.
   it with `BACKUP_AGE_IDENTITY=/secure/path/ott-age-identity` and the archive
   path. This verifies archive readability, not database importability, archive
   provenance, or a complete restore rehearsal.
+- Laravel's scheduled backup workflow is a second backup path: it writes
+  encrypted, verified Laravel archives to the configured private S3-compatible
+  destination and applies retention through `backup:clean`. It does not replace
+  the host-side `age` workflow above, and neither path has been exercised against
+  a production destination or restored into an isolated environment.
 - Run backups during a maintenance window with media ingest and destructive media
   changes paused: MySQL and media are captured sequentially, so this script does
   not create an atomic cross-system snapshot. Before restoring, verify `SHA256SUMS`,
@@ -237,3 +255,7 @@ readiness.
 This document records partial local verification only. Milestone 15 and the
 overall milestones 6–15 goal remain incomplete until the external and repository
 quality blockers above are resolved or explicitly accepted.
+
+The Laravel-managed backup integration documented in this revision was reviewed
+statically only. Its build, Artisan execution, remote storage access, and restore
+behavior remain unverified because build and test commands were deferred.

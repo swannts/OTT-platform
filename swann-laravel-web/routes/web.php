@@ -87,9 +87,9 @@ Route::group(['prefix' => 'app', ['middleware' => ['auth','admin']]], function (
         */
         Route::group(['prefix' => 'backups', 'as' => 'backups.'], function () {
             Route::get('/', [BackupController::class, 'index'])->name('index');
-            Route::get('/create', [BackupController::class, 'create'])->name('create');
+            Route::post('/create', [BackupController::class, 'create'])->name('create');
             Route::get('/download/{file_name}', [BackupController::class, 'download'])->name('download');
-            Route::get('/delete/{file_name}', [BackupController::class, 'delete'])->name('delete');
+            Route::post('/delete/{file_name}', [BackupController::class, 'delete'])->name('delete');
         });
 
     });

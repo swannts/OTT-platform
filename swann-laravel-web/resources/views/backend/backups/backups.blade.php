@@ -14,7 +14,10 @@
             </div>
             <div class="btn-toolbar d-block" role="toolbar" aria-label="Toolbar with buttons">
                 @hasPermission('add_backup')
-                <a href="{{ route("backend.$module_name.create") }}" class="btn btn-outline-success m-1" data-bs-toggle="tooltip" title="Create New"><i class="fas fa-plus-circle"></i> @lang("Create new :module_name", ['module_name'=>Str::title($module_name)])</a>
+                <form action="{{ route("backend.$module_name.create") }}" method="POST" class="d-inline">
+                    @csrf
+                    <button type="submit" class="btn btn-outline-success m-1" data-bs-toggle="tooltip" title="Create New"><i class="fas fa-plus-circle"></i> @lang("Create new :module_name", ['module_name'=>Str::title($module_name)])</button>
+                </form>
                 @endhasPermission
             </div>
         </div>
@@ -31,6 +34,9 @@
                             </th>
                             <th>
                                 @lang('File')
+                            </th>
+                            <th>
+                                @lang('Destination')
                             </th>
                             <th>
                                 @lang('Size')
@@ -57,6 +63,9 @@
                                 {{ $backup['file_name'] }}
                             </td>
                             <td>
+                                {{ $backup['disk'] }}
+                            </td>
+                            <td>
                                 {{ $backup['file_size'] }}
                             </td>
                             <td>
@@ -66,9 +75,13 @@
                                 {{ $backup['date_ago'] }}
                             </td>
                             <td class="text-end">
-                                <a href="{{ route("backend.$module_name.download", $backup['file_name']) }}" class="btn btn-primary m-1 btn-sm" data-bs-toggle="tooltip" title="@lang('Download File')"><i class="fas fa-cloud-download-alt"></i>&nbsp;@lang('Download')</a>
+                                <a href="{{ route("backend.$module_name.download", ['file_name' => $backup['file_name'], 'disk' => $backup['disk']]) }}" class="btn btn-primary m-1 btn-sm" data-bs-toggle="tooltip" title="@lang('Download File')"><i class="fas fa-cloud-download-alt"></i>&nbsp;@lang('Download')</a>
                                 @hasPermission('delete_backup')
-                                <a href="{{ route("backend.$module_name.delete", $backup['file_name']) }}" class="btn btn-danger m-1 btn-sm" data-bs-toggle="tooltip" title="@lang('Delete File')"><i class="fas fa-trash"></i>&nbsp;@lang('Delete')</a>
+                                <form action="{{ route("backend.$module_name.delete", $backup['file_name']) }}" method="POST" class="d-inline">
+                                    @csrf
+                                    <input type="hidden" name="disk" value="{{ $backup['disk'] }}">
+                                    <button type="submit" class="btn btn-danger m-1 btn-sm" data-bs-toggle="tooltip" title="@lang('Delete File')"><i class="fas fa-trash"></i>&nbsp;@lang('Delete')</button>
+                                </form>
                                 @endhasPermission
                             </td>
                         </tr>
