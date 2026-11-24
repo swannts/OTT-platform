@@ -171,9 +171,23 @@ readiness.
 
 ## Rollback and data protection
 
+- Added `scripts/production-backup.sh` for host-side backups to an off-repository,
+  off-host destination. It streams the MySQL logical dump and public/private media
+  archive through `age` before writing them, records checksums and the source
+  revision, and leaves prior archives untouched if a run fails. It requires
+  `BACKUP_DIR`, `BACKUP_AGE_RECIPIENT`, and `COMPOSE_ENV_FILE`; schedule it from
+  the deployment host with a protected age recipient and a destination that has
+  encryption at rest and independent retention. The private age identity must
+  be stored separately from the backup target.
+- Run backups during a maintenance window with media ingest and destructive media
+  changes paused: MySQL and media are captured sequentially, so this script does
+  not create an atomic cross-system snapshot. Before restoring, verify `SHA256SUMS`,
+  decrypt into a restricted temporary location, and restore into a separate
+  database and media volume first. Point-in-time recovery and an actual restore
+  rehearsal remain deployment responsibilities.
 - Take and verify a database backup and media-storage snapshot before deployment.
-  The workspace has no configured production backup target, and no backup/restore
-  rehearsal was possible here.
+  This workspace has no configured production backup target, and no backup/restore
+  rehearsal was performed.
 - Preserve the database, RabbitMQ, Redis, Meilisearch, and media volumes during
   an application rollback. Redeploy the previous image and compatible
   configuration first; do not run `docker compose down -v`.
