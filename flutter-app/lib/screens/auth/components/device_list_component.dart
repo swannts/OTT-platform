@@ -75,11 +75,11 @@ class DeviceListComponent extends StatelessWidget {
                       enableDrag: false,
                       AppDialogWidget(
                         child: LogoutAccountComponent(
-                          device: loggedInDeviceList[index].deviceId,
+                          device: loggedInDeviceList[index].id.toString(),
                           deviceName: loggedInDeviceList[index].deviceName,
                           logOutAll: false,
                           onLogout: (logoutAll) {
-                            onLogout.call(false, loggedInDeviceList[index].deviceId, loggedInDeviceList[index].deviceName);
+                            onLogout.call(false, loggedInDeviceList[index].id.toString(), loggedInDeviceList[index].deviceName);
                           },
                         ),
                       ),

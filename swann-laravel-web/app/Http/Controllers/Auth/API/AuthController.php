@@ -410,9 +410,15 @@ protected function checkDeviceLimit(User $user, ?string $deviceId = null, bool $
     if ($shouldCheck) {
         Auth::logout();
         if ($isLoginFlow) {
+            $deviceManagementToken = $user->createToken(
+                'device-management',
+                ['device-sessions:manage'],
+                now()->addMinutes(5)
+            )->plainTextToken;
             return response()->json([
                 'error' => __('messages.device_limit_reached'),
                 'other_device' => $other_device,
+                'device_management_token' => $deviceManagementToken,
             ], 406);
         }
         return ApiResponse::error(__('messages.device_limit_reached'), 406, null, ['other_device' => $other_device]);
@@ -476,6 +482,9 @@ protected function checkDeviceLimit(User $user, ?string $deviceId = null, bool $
         }
 
         if ($currentDeviceId) {
+            \DB::table('playback_sessions')->where('user_id', $user->id)
+                ->where('device_token_id', $currentDeviceId)->whereNull('ended_at')
+                ->update(['ended_at' => now(), 'updated_at' => now()]);
             Device::where('user_id', $user->id)->where('sanctum_token_id', $currentDeviceId)->delete();
         }
         if ($currentToken && method_exists($currentToken, 'delete')) {
@@ -579,6 +588,9 @@ protected function checkDeviceLimit(User $user, ?string $deviceId = null, bool $
         if ($match) {
 
             if ($currentToken && method_exists($currentToken, 'getKey')) {
+                \DB::table('playback_sessions')->where('user_id', $user->id)
+                    ->where('device_token_id', $currentToken->getKey())->whereNull('ended_at')
+                    ->update(['ended_at' => now(), 'updated_at' => now()]);
                 Device::where('user_id', $user->id)->where('sanctum_token_id', $currentToken->getKey())->delete();
                 $currentToken->delete();
             }

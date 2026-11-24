@@ -118,7 +118,7 @@ class ProfileController extends BaseController<ProfileDetailResponse> {
     setLoading(true);
     Get.back();
 
-    await AuthServiceApis.deviceLogoutApi(deviceId: currentDevice.value.deviceId).then((value) async {
+    await AuthServiceApis.logoutCurrentDevice().then((_) async {
       isLoggedIn(false);
 
       await clearAppData();

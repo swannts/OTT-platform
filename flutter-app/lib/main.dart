@@ -25,6 +25,7 @@ import 'package:swann_ott/screens/live_tv/model/live_tv_dashboard_response.dart'
 import 'package:swann_ott/addon_bridge/short_drama/short_drama_bridge.dart';
 import 'package:swann_ott/addon_registration.dart';
 import 'package:swann_ott/services/encryption_service.dart';
+import 'package:swann_ott/services/auth_token_storage.dart';
 import 'package:swann_ott/services/hive_service.dart';
 import 'package:swann_ott/services/in_app_purhcase_service.dart';
 import 'package:swann_ott/services/local_storage_service.dart';
@@ -182,11 +183,37 @@ Future<void> main() async {
 
   isLoggedIn(await getBoolFromLocal(SharedPreferenceConst.IS_LOGGED_IN));
   setBoolToLocal(SharedPreferenceConst.IS_LOGGED_IN, isLoggedIn.value);
+  // Remove legacy password storage and retain only the remembered account name.
+  removeValue(SharedPreferenceConst.USER_PASSWORD);
+  final rememberedLogin =
+      await getJsonFromLocal(SharedPreferenceConst.LOGIN_REQUEST);
+  if (rememberedLogin != null) {
+    final email = rememberedLogin['email'];
+    if (email is String && email.isNotEmpty) {
+      await setJsonToLocal(
+          SharedPreferenceConst.LOGIN_REQUEST, {'email': email});
+    } else {
+      removeValue(SharedPreferenceConst.LOGIN_REQUEST);
+    }
+  }
 
   Map<String, dynamic>? cachedLoginUserDataKey =
       await getJsonFromLocal(SharedPreferenceConst.USER_DATA);
   if (cachedLoginUserDataKey != null) {
-    loginUserData(UserData.fromJson(cachedLoginUserDataKey));
+    final cachedUser = UserData.fromJson(cachedLoginUserDataKey);
+    // Migrate tokens stored in the legacy encrypted preferences to platform storage.
+    if (cachedUser.apiToken.isNotEmpty) {
+      await AuthTokenStorage.write(cachedUser.apiToken);
+      cachedLoginUserDataKey.remove('api_token');
+      await setJsonToLocal(
+          SharedPreferenceConst.USER_DATA, cachedLoginUserDataKey);
+    }
+    cachedUser.apiToken = await AuthTokenStorage.read() ?? '';
+    loginUserData(cachedUser);
+    if (isLoggedIn.value && cachedUser.apiToken.isEmpty) {
+      isLoggedIn(false);
+      await setBoolToLocal(SharedPreferenceConst.IS_LOGGED_IN, false);
+    }
     if ((loginUserData.value.shortDramaSessionToken ?? '').isNotEmpty) {
       ShortDramaBridge.restoreSessionToken(
           loginUserData.value.shortDramaSessionToken);

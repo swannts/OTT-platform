@@ -8,9 +8,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:swann_ott/network/auth_apis.dart';
-import 'package:swann_ott/screens/auth/model/login_response.dart';
 import 'package:swann_ott/services/local_storage_service.dart';
+import 'package:swann_ott/services/auth_token_storage.dart';
 import 'package:swann_ott/utils/common_base.dart';
 
 import '../configs.dart';
@@ -69,8 +68,11 @@ Future<Map<String, String>> buildHeaderTokens({String? endPoint}) async {
 
   header.putIfAbsent(HttpHeaders.contentTypeHeader, () => 'application/json; charset=utf-8');
 
-  if ((await getBoolFromLocal(SharedPreferenceConst.IS_LOGGED_IN) || isLoggedIn.value) && loginUserData.value.apiToken.isNotEmpty) {
-    header.putIfAbsent(HttpHeaders.authorizationHeader, () => 'Bearer ${loginUserData.value.apiToken}');
+  if (await getBoolFromLocal(SharedPreferenceConst.IS_LOGGED_IN) || isLoggedIn.value) {
+    final token = await AuthTokenStorage.read();
+    if (token != null && token.isNotEmpty) {
+      header.putIfAbsent(HttpHeaders.authorizationHeader, () => 'Bearer $token');
+    }
   }
 
   return header;
@@ -111,31 +113,6 @@ String getUserAgent() {
     default:
       return 'FlutterApp/1.0 (Unknown)';
   }
-}
-
-Future<bool> reGenerateToken() async {
-  bool result = false;
-  Map<String, dynamic>? cachedLoginRequest = await getJsonFromLocal(SharedPreferenceConst.LOGIN_REQUEST);
-  if (cachedLoginRequest != null) {
-    loginUserData.value.apiToken = '';
-
-    final String url = Uri.parse('$BASE_URL${await getBoolFromLocal(SharedPreferenceConst.IS_SOCIAL_LOGIN_IN) ? APIEndPoints.socialLogin : APIEndPoints.login}').toString();
-    await dioClient.post(url, data: cachedLoginRequest).then(
-      (value) {
-        UserResponse userData = UserResponse.fromJson(Map<String, dynamic>.from(value.data));
-        if (userData.status) {
-          AuthServiceApis.storeUserData(userData);
-          result = true;
-        } else {
-          removeValue(SharedPreferenceConst.LOGIN_REQUEST);
-        }
-      },
-    ).catchError((e) {
-      removeValue(SharedPreferenceConst.LOGIN_REQUEST);
-    });
-  }
-
-  return result;
 }
 
 Future<void> apiPrint({
@@ -234,16 +211,9 @@ class ApiInterceptor extends dio_package.Interceptor {
     }
     // Handle 401 Unauthorized with token refresh
     if (statusCode == 401 && isLoggedIn.value) {
-      /* log('🔁 Token expired — trying to regenerate...');
-      final tokenRefreshed = await reGenerateToken();
-      if (tokenRefreshed) {
-        final cloneRequest = await _retryRequest(err.requestOptions);
-        return handler.resolve(cloneRequest);
-      } else { */
       errorSnackBar(error: locale.value.youHaveBeenLoggedOutOfYourAccountOn);
       await clearAppData();
       throw locale.value.youHaveBeenLoggedOutOfYourAccountOn;
-      /* } */
     } else {
       // Enhanced API logging with better error information
       await apiPrint(
@@ -269,29 +239,6 @@ class ApiInterceptor extends dio_package.Interceptor {
     handler.next(enhancedError);
   }
 
-  Future<dio_package.Response> _retryRequest(dio_package.RequestOptions requestOptions) async {
-    final dio = dio_package.Dio(
-      dio_package.BaseOptions(
-        baseUrl: BASE_URL,
-      ),
-    );
-
-    dio.interceptors.add(ApiInterceptor());
-
-    final headers = await buildHeaderTokens(endPoint: requestOptions.path);
-
-    final options = dio_package.Options(
-      method: requestOptions.method,
-      headers: headers,
-    );
-
-    return dio.request(
-      requestOptions.path,
-      data: requestOptions.data,
-      queryParameters: requestOptions.queryParameters,
-      options: options,
-    );
-  }
 }
 
 final dio_package.Dio dioClient = dio_package.Dio(

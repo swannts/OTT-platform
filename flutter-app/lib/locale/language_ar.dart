@@ -7,6 +7,15 @@ class LanguageAr extends BaseLanguage {
   String get language => 'لغة';
 
   @override
+  String get connected => 'متصل';
+
+  @override
+  String get restartApp => 'إعادة تشغيل التطبيق';
+
+  @override
+  String get videoTitle => 'فيديو';
+
+  @override
   String get badRequest => '400: طلب سيء';
 
   @override
@@ -2112,16 +2121,20 @@ class LanguageAr extends BaseLanguage {
   String get continueWatchingForYou => 'متابعة المشاهدة لك';
 
   @override
-  String get playbackErrorGeneric => 'تعذر تشغيل هذه الحلقة في الوقت الحالي. يرجى المحاولة مرة أخرى.';
-  
+  String get playbackErrorGeneric =>
+      'تعذر تشغيل هذه الحلقة في الوقت الحالي. يرجى المحاولة مرة أخرى.';
+
   @override
-  String get playbackErrorSessionExpired => 'انتهت جلسة الدراما القصيرة. يرجى تسجيل الدخول مرة أخرى والمحاولة مرة أخرى.';
-  
+  String get playbackErrorSessionExpired =>
+      'انتهت جلسة الدراما القصيرة. يرجى تسجيل الدخول مرة أخرى والمحاولة مرة أخرى.';
+
   @override
-  String get playbackErrorTokenExpired => 'انتهت صلاحية رمز التشغيل. يرجى إعادة تشغيل هذه الحلقة.';
-  
+  String get playbackErrorTokenExpired =>
+      'انتهت صلاحية رمز التشغيل. يرجى إعادة تشغيل هذه الحلقة.';
+
   @override
-  String get playbackErrorVideoPluginUnavailable => 'ملحق مشغل الفيديو غير متاح. يرجى إعادة تشغيل التطبيق والمحاولة مرة أخرى.';
+  String get playbackErrorVideoPluginUnavailable =>
+      'ملحق مشغل الفيديو غير متاح. يرجى إعادة تشغيل التطبيق والمحاولة مرة أخرى.';
 
   @override
   String get less => 'أقل';
@@ -2129,4 +2142,3 @@ class LanguageAr extends BaseLanguage {
   @override
   String get more => 'قراءة المزيد';
 }
-

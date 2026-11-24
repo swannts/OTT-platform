@@ -7,6 +7,15 @@ class LanguageDe extends BaseLanguage {
   String get language => 'Sprache';
 
   @override
+  String get connected => 'Verbunden';
+
+  @override
+  String get restartApp => 'App neu starten';
+
+  @override
+  String get videoTitle => 'Video';
+
+  @override
   String get badRequest => 'Ungültige Anfrage';
 
   @override
@@ -2172,12 +2181,14 @@ class LanguageDe extends BaseLanguage {
   @override
   String get playbackErrorSessionExpired =>
       'Die Short-Drama-Sitzung ist abgelaufen. Bitte melden Sie sich erneut an und versuchen Sie es erneut.';
-  
+
   @override
-  String get playbackErrorTokenExpired => 'Die Wiedergabe ist abgelaufen. Bitte versuchen Sie diese Episode erneut.';
-  
+  String get playbackErrorTokenExpired =>
+      'Die Wiedergabe ist abgelaufen. Bitte versuchen Sie diese Episode erneut.';
+
   @override
-  String get playbackErrorVideoPluginUnavailable => 'Video-Player-Plugin ist nicht verfügbar. Bitte starten Sie die App neu und versuchen Sie es erneut.';
+  String get playbackErrorVideoPluginUnavailable =>
+      'Video-Player-Plugin ist nicht verfügbar. Bitte starten Sie die App neu und versuchen Sie es erneut.';
 
   @override
   String get less => 'Weniger';

@@ -74,11 +74,11 @@ class OtherDevicesComponent extends StatelessWidget {
                     enableDrag: false,
                     AppDialogWidget(
                       child: LogoutAccountComponent(
-                        device: devicesDetail[index].deviceId,
+                        device: devicesDetail[index].id.toString(),
                         deviceName: devicesDetail[index].deviceName,
                         logOutAll: false,
                         onLogout: (logoutAll) {
-                          onLogout.call(logoutAll, devicesDetail[index].deviceId, devicesDetail[index].deviceName);
+                          onLogout.call(logoutAll, devicesDetail[index].id.toString(), devicesDetail[index].deviceName);
                         },
                       ),
                     ),

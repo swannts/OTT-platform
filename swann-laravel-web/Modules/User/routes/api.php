@@ -5,6 +5,11 @@ use Modules\User\Http\Controllers\API\UserController;
 use Modules\User\Http\Controllers\API\UserMultiProfileController;
 use Modules\User\Http\Controllers\API\UserSearchHistoryController;
 
+Route::middleware(['auth:sanctum', 'abilities:device-sessions:manage', 'throttle:5,1'])->group(function () {
+    Route::post('device-sessions/revoke', [\Modules\User\Http\Controllers\API\DeviceSessionController::class, 'revoke']);
+    Route::post('device-sessions/revoke-all', [\Modules\User\Http\Controllers\API\DeviceSessionController::class, 'revokeAll']);
+});
+
 
 Route::group(['middleware' => ['auth:sanctum', 'checkApiDevice']], function () {
 
