@@ -38,7 +38,7 @@ function mail_footer($type)
 
 function sendNotification($data)
 {
-    \Log::info("data". json_encode($data));
+    Log::info('Notification dispatch requested.', ['notification_type' => $data['notification_type'] ?? 'unknown']);
     $mailable = \Modules\NotificationTemplate\Models\NotificationTemplate::where('type', $data['notification_type'])->with('defaultNotificationTemplateMap')->where('status', 1)->first();
     if ($mailable != null && $mailable->to != null) {
 
@@ -136,7 +136,7 @@ function sendNotification($data)
                             $data['user_name'] = $admin->full_name;
                             $admin->notify((new Modules\NotificationTemplate\Notifications\CommonNotification($data['notification_type'], $data))->onQueue('notifications'));
                         } catch (\Exception $e) {
-                            Log::error($e);
+                            Log::error('Admin notification dispatch failed.', ['exception' => $e::class]);
                         }
                     }
                     // Restore original user data for subsequent iterations
@@ -154,7 +154,7 @@ function sendNotification($data)
                             $data['user_name'] = $demoadmin->full_name;
                             $demoadmin->notify((new Modules\NotificationTemplate\Notifications\CommonNotification($data['notification_type'], $data))->onQueue('notifications'));
                         } catch (\Exception $e) {
-                            Log::error($e);
+                            Log::error('Demo admin notification dispatch failed.', ['exception' => $e::class]);
                         }
                         }
                     // Restore original user data
@@ -176,7 +176,7 @@ function sendNotification($data)
                                             ->onQueue('notifications')
                                     );
                                 } catch (\Exception $e) {
-                                    Log::error($e);
+                                    Log::error('Campaign notification dispatch failed.', ['exception' => $e::class]);
                                 }
                             }
                         });
@@ -192,7 +192,7 @@ function sendNotification($data)
                                     $data['user_type'] = $mailTo;
                                     $user->notify((new Modules\NotificationTemplate\Notifications\CommonNotification($data['notification_type'], $data))->onQueue('notifications'));
                                 } catch (\Exception $e) {
-                                    Log::error($e);
+                                    Log::error('Customer notification dispatch failed.', ['exception' => $e::class]);
                                 }
                             }
                         }
@@ -222,9 +222,6 @@ function sendNotifications($data)
     if (!$thumbnailImage || strpos($thumbnailImage, 'default-image/') !== false) {
         $thumbnailImage = null;
     }
-
-    Log::info('[FCM_DEBUG] Notification Type: ' . strtolower($data['type']));
-    Log::info('[FCM_DEBUG] Resolved Image: ' . ($thumbnailImage ?? 'None'));
 
     $message = [
         "topic" => $topic,
@@ -285,13 +282,12 @@ function fcm($fields)
     curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($fields));
 
-    Log::info('[FCM_DEBUG] FCM REQUEST PAYLOAD: ' . json_encode($fields));
-
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    
-    Log::info('[FCM_DEBUG] FCM RESPONSE (HTTP ' . $httpCode . '): ' . $response);
-    Log::info('[FCM_DEBUG] FCM RESPONSE: ' . $response);
+
+    if ($response === false || $httpCode < 200 || $httpCode >= 300) {
+        Log::warning('FCM delivery request failed.', ['http_status' => $httpCode]);
+    }
     
     curl_close($ch);
 }
@@ -1566,7 +1562,7 @@ if (!function_exists('translateTabName')) {
             try {
                 return GoogleTranslate::trans($name, $locale);
             } catch (\Throwable $e) {
-                Log::warning('Translation failed for tab name: ' . $name . ' - ' . $e->getMessage());
+                Log::warning('Tab-name translation failed.', ['locale' => $locale, 'exception' => $e::class]);
                 return $name;
             }
         });
@@ -2197,7 +2193,7 @@ function bunnyDeleteVideo(string $identifier, bool $isGuid = false): bool
         }
         
         if (!$videoGuid) {
-            \Log::info("Bunny Stream video not found: {$identifier}");
+            \Log::info('Bunny Stream video was not found.');
             return false;
         }
     } else {
@@ -2209,13 +2205,10 @@ function bunnyDeleteVideo(string $identifier, bool $isGuid = false): bool
         ->delete("{$base}/{$libraryId}/videos/{$videoGuid}");
     
     if ($response->successful()) {
-        \Log::info("Successfully deleted Bunny Stream video: {$videoGuid}");
+        \Log::info('Bunny Stream video deletion succeeded.');
         return true;
     } else {
-        \Log::error("Failed to delete Bunny Stream video: {$videoGuid}", [
-            'status' => $response->status(),
-            'body' => $response->body()
-        ]);
+        \Log::error('Bunny Stream video deletion failed.', ['http_status' => $response->status()]);
         return false;
     }
 }
@@ -2256,7 +2249,7 @@ function deleteBunnyStreamVideoByFile(string $fileName): bool
         return false;
     }
     
-    \Log::info("Deleting video from Bunny Stream: {$fileName}");
+    \Log::info('Deleting video from Bunny Stream.');
     
     // Delete by filename from Bunny Stream
     return bunnyDeleteVideo($fileName, false);
@@ -2434,7 +2427,7 @@ function clearBannerDataCache()
                                 break;
                             }
                         } catch (\Throwable $e) {
-                            \Log::warning('Redis scan() error in clearBannerDataCache for pattern ' . $pattern . ': ' . $e->getMessage());
+                            \Log::warning('Redis scan failed while clearing banner cache.', ['exception' => $e::class]);
                             break;
                         }
                     } while ($cursor !== 0);
@@ -2519,7 +2512,7 @@ function clearBannerDataCache()
             }
         }
     } catch (\Throwable $e) {
-        \Log::error('clearBannerDataCache - Error: ' . $e->getMessage());
+        \Log::error('Failed to clear banner cache.', ['exception' => $e::class]);
     }
 }
 
@@ -2539,7 +2532,7 @@ if (!function_exists('clearWatchlistCache')) {
             clearDashboardCache();
             clearBannerDataCache();
         } catch (\Throwable $e) {
-            \Log::error('Error in clearWatchlistCache: ' . $e->getMessage());
+            \Log::error('Failed to clear watchlist cache.', ['exception' => $e::class]);
         }
     }
 }
@@ -2604,7 +2597,7 @@ function clearSearchV3Cache()
                                 break;
                             }
                         } catch (\Throwable $e) {
-                            \Log::warning('Redis scan() error in clearSearchV3Cache for pattern ' . $pattern . ': ' . $e->getMessage());
+                            \Log::warning('Redis scan failed while clearing search cache.', ['exception' => $e::class]);
                             break;
                         }
                     } while ($cursor !== 0);
@@ -2669,7 +2662,7 @@ function clearSearchV3Cache()
         }
     } catch (\Throwable $e) {
         // Log error but don't fail - cache will expire via TTL
-        \Log::error('clearSearchV3Cache - Error: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString());
+        \Log::error('Failed to clear search cache.', ['exception' => $e::class]);
     }
 }
 
@@ -2760,7 +2753,7 @@ function clearDashboardCache()
                                 break;
                             }
                         } catch (\Throwable $e) {
-                            \Log::warning('Redis scan() error in clearDashboardCache for pattern ' . $pattern . ': ' . $e->getMessage());
+                            \Log::warning('Redis scan failed while clearing dashboard cache.', ['exception' => $e::class]);
                             break;
                         }
                     } while ($cursor !== 0);
@@ -2773,7 +2766,7 @@ function clearDashboardCache()
                 // Batch delete keys using Redis DEL command (much faster than individual Cache::forget())
                 if (!empty($keysToDelete)) {
                     try {
-                        \Log::info('clearDashboardCache - Found ' . count($keysToDelete) . ' keys to delete: ' . implode(', ', array_slice($keysToDelete, 0, 5)) . '...');
+                        \Log::info('Dashboard cache keys were queued for deletion.', ['key_count' => count($keysToDelete)]);
                         
                         // Delete in batches of 1000 (Redis DEL can handle multiple keys efficiently)
                         $batches = array_chunk($keysToDelete, 1000);
@@ -2823,7 +2816,7 @@ function clearDashboardCache()
         }
     } catch (\Throwable $e) {
         // Log error but don't fail - cache will expire via TTL
-        \Log::error('clearDashboardCache - Error: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString());
+        \Log::error('Failed to clear dashboard cache.', ['exception' => $e::class]);
     }
 }
 
@@ -2913,7 +2906,7 @@ function clearPayPerViewCache()
         }
     } catch (\Throwable $e) {
         // Log error but don't fail - cache version increment will still work
-        \Log::error('clearPayPerViewCache - Error: ' . $e->getMessage());
+        \Log::error('Failed to clear pay-per-view cache.', ['exception' => $e::class]);
     }
 }
 
@@ -3001,7 +2994,7 @@ function clearLiveTvDashboardCache()
         }
     } catch (\Throwable $e) {
         // Log error but don't fail - cache version increment will still work
-        \Log::error('clearLiveTvDashboardCache - Error: ' . $e->getMessage());
+        \Log::error('Failed to clear live-TV dashboard cache.', ['exception' => $e::class]);
     }
 }
 

@@ -21,6 +21,10 @@ readiness.
   deactivation locks the account row, updates status, and revokes all Sanctum tokens in one
   transaction. Admin login issues its token while holding the same row lock, preventing a
   login/deactivation race from leaving a newly issued session behind.
+- Granting or revoking Super Admin access now requires the dedicated
+  admin.roles.super_admin.assign permission, password re-entry, and the existing
+  protections against self-change and removing the final active Super Admin. This
+  source change was reviewed statically; tests remain deferred.
 - Laravel admin role lookup and authorization continue to use the dedicated admin
   role scope. Sensitive role operations require explicit permissions and the
   role policy prevents assignment of inactive/non-admin roles and protects fixed
@@ -36,6 +40,11 @@ readiness.
 - Import-job diagnostics no longer write raw user rows, email addresses, local
   file paths, or externally supplied artwork URLs to application logs. Login
   failure logs and FCM access-token logs also omit those values.
+- Removed FCM request/response payload logging, notification data dumps, raw
+  payment-provider response logging, and exception details from the reviewed
+  payment, cache, event-publisher, settings, VAST-ad, and notification-job paths.
+  Provider failures now retain only bounded status/exception-class metadata;
+  these changes were reviewed statically and not runtime-tested.
 - The committed Compose APP_KEY fallback was removed. The ignored local `.env`
   retains the active key for the existing local data; `.env.example` contains
   placeholders only. Production configuration requires secrets to be injected

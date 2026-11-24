@@ -70,8 +70,6 @@ class PaymentController extends Controller
 
     public function processPayment(Request $request)
     {
-        \Log::info('processPayment called', $request->all());
-        
         $paymentMethod = $request->input('payment_method');
         $plan_id = $request->input('plan_id');
         $promotionId = $request->input('promotion_id');
@@ -136,7 +134,7 @@ class PaymentController extends Controller
             return $this->{$paymentHandlers[$paymentMethod]}($request, $price, $promotionId);
         }
 
-        \Log::warning('Invalid payment method', ['payment_method' => $paymentMethod]);
+        \Log::warning('Payment request rejected for an unsupported gateway.');
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['error' => 'Invalid payment method.'], 400);
         }
@@ -194,10 +192,9 @@ class PaymentController extends Controller
 
         } catch (\Stripe\Exception\InvalidRequestException $e) {
 
-            $errorMessage = $e->getMessage();
-            if (strpos($errorMessage, "must convert to at least") !== false) {
-                $errorMessage = "The amount entered is too low to process a payment. Please increase the amount and try again.";
-            }
+            $errorMessage = str_contains($e->getMessage(), 'must convert to at least')
+                ? 'The amount entered is too low to process a payment. Please increase the amount and try again.'
+                : 'Unable to start the payment. Please try again.';
             return response()->json(['error' => $errorMessage], 400);
 
         } catch (\Exception $e) {
@@ -249,7 +246,7 @@ class PaymentController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+            return response()->json(['error' => 'Unable to start the payment. Please try again.'], 400);
           }
     }
 
@@ -338,8 +335,6 @@ class PaymentController extends Controller
             // Create Payment
             $payment = $this->createPayment($accessToken, $price, $plan_id);
 
-            \Log::info('PayPal createPayment response', ['payment' => $payment]);
-
             if (isset($payment['links'])) {
                 foreach ($payment['links'] as $link) {
                     if ($link['rel'] === 'approval_url') {
@@ -348,17 +343,17 @@ class PaymentController extends Controller
                 }
             }
 
-            \Log::warning('PayPal payment creation failed', ['payment' => $payment]);
+            \Log::warning('PayPal payment creation returned no approval URL.');
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['error' => 'Payment creation failed.'], 400);
             }
             return redirect()->back()->withErrors('Payment creation failed.');
         } catch (\Exception $ex) {
-            \Log::error('PayPal payment processing exception', ['error' => $ex->getMessage()]);
+            \Log::error('PayPal payment creation failed.', ['exception' => $ex::class]);
             if ($request->ajax() || $request->wantsJson()) {
-                return response()->json(['error' => 'Payment processing failed: ' . $ex->getMessage()], 400);
+                return response()->json(['error' => 'Payment processing failed.'], 400);
             }
-            return redirect()->back()->withErrors('Payment processing failed: ' . $ex->getMessage());
+            return redirect()->back()->withErrors('Payment processing failed.');
         }
     }
 
@@ -404,14 +399,11 @@ class PaymentController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Flutterwave Payment Error:', [
-                'error' => $e->getMessage(),
-                'user' => auth()->user()->email
-            ]);
+            Log::error('Flutterwave payment initialization failed.', ['exception' => $e::class]);
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'Payment initialization failed: ' . $e->getMessage()
+                'message' => 'Payment initialization failed.'
             ], 400);
         }
     }
@@ -459,10 +451,10 @@ class PaymentController extends Controller
                 }
                 return redirect()->away($responseBody['data']['payment_url']);
             } else {
-                return redirect()->back()->withErrors('Payment failed: ' . json_encode($responseBody));
+                return redirect()->back()->withErrors('Payment could not be started. Please try again.');
             }
         } catch (\Exception $e) {
-            return redirect()->back()->withErrors('Connection error: ' . $e->getMessage());
+            return redirect()->back()->withErrors('Payment service is temporarily unavailable. Please try again.');
         }
     }
 
@@ -542,7 +534,7 @@ class PaymentController extends Controller
             $clientKey = GetpaymentMethod('midtrans_client_id');
             return response()->json(['snapToken' => $snapToken, 'clientKey' => $clientKey]);
         } catch (\Exception $e) {
-            return redirect()->back()->withErrors('Payment initiation failed: ' . $e->getMessage());
+            return redirect()->back()->withErrors('Payment initiation failed. Please try again.');
         }
     }
 
@@ -642,17 +634,17 @@ class PaymentController extends Controller
 
         $plan = Plan::where('id', $plan_id)->where('status', 1)->first();
         if (! $plan) {
-            Log::warning('Payment rejected: invalid or inactive plan', ['plan_id' => $plan_id, 'user_id' => $user->id ?? null, 'payment_type' => $payment_type]);
+            Log::warning('Payment rejected for an invalid or inactive plan.', ['payment_type' => $payment_type]);
             return redirect('/')->with('error', 'Invalid or inactive plan.');
         }
         if ($amount <= 0 || ! is_numeric($amount)) {
-            Log::warning('Payment rejected: invalid amount', ['plan_id' => $plan_id, 'user_id' => $user->id ?? null, 'payment_type' => $payment_type]);
+            Log::warning('Payment rejected for an invalid amount.', ['payment_type' => $payment_type]);
             return redirect('/')->with('error', 'Invalid payment amount.');
         }
 
         // Idempotency: prevent duplicate subscription for same transaction (A04)
         if (SubscriptionTransactions::where('transaction_id', $transaction_id)->where('user_id', $user->id)->exists()) {
-            Log::info('Payment idempotent: transaction already processed', ['transaction_id' => $transaction_id, 'user_id' => $user->id]);
+            Log::info('Payment idempotency check found an existing transaction.');
             return redirect('payment-history')->with('success', [
                 'title' => 'Payment Successful!',
                 'message' => 'Your subscription was already activated for this payment.',
@@ -754,13 +746,7 @@ class PaymentController extends Controller
 
         auth()->user()->update(['is_subscribe' => 1]);
 
-        Log::info('Subscription payment success', [
-            'user_id' => auth()->id(),
-            'plan_id' => $plan_id,
-            'amount' => $amount,
-            'payment_type' => $payment_type,
-            'transaction_id' => $transaction_id,
-        ]);
+        Log::info('Subscription payment completed.', ['payment_type' => $payment_type]);
 
         Cache::flush();
 
@@ -790,7 +776,7 @@ class PaymentController extends Controller
             $session = $stripe->checkout->sessions->retrieve($sessionId);
             return $this->handlePaymentSuccess($session->metadata->plan_id, $session->amount_total / 100, 'stripe', $session->payment_intent, !empty($session->metadata->promotion_id) ? (int)$session->metadata->promotion_id : null);
         } catch (\Exception $e) {
-            return redirect('/')->with('error', 'Payment failed: ' . $e->getMessage());
+            return redirect('/')->with('error', 'Payment verification failed.');
         }
     }
 
@@ -857,12 +843,12 @@ class PaymentController extends Controller
                 $plan_id = $result->getTransactions()[0]->getItemList()->getItems()[0]->getSku();
                 return $this->handlePaymentSuccess($plan_id, $result->getTransactions()[0]->getAmount()->getTotal(), 'paypal', $paymentId);
             } else {
-                \Log::error('PayPal payment not approved', ['paymentId' => $paymentId, 'result' => $result]);
+                \Log::warning('PayPal payment was not approved.');
                 return redirect('/')->with('error', 'Payment not approved.');
             }
         } catch (\Exception $e) {
-            \Log::error('PayPal payment verification failed', ['paymentId' => $paymentId, 'error' => $e->getMessage()]);
-            return redirect('/')->with('error', 'Payment verification failed: ' . $e->getMessage());
+            \Log::error('PayPal payment verification failed.', ['exception' => $e::class]);
+            return redirect('/')->with('error', 'Payment verification failed.');
         }
     }
 
@@ -897,13 +883,9 @@ class PaymentController extends Controller
             throw new \Exception('Payment verification failed');
 
         } catch (\Exception $e) {
-            Log::error('Flutterwave Payment Error', [
-                'error' => $e->getMessage(),
-                'transaction_id' => $transactionId ?? null,
-                'tx_ref' => $tx_ref ?? null
-            ]);
+            Log::error('Flutterwave payment verification failed.', ['exception' => $e::class]);
 
-            return redirect('/')->with('error', 'Payment verification failed: ' . $e->getMessage());
+            return redirect('/')->with('error', 'Payment verification failed.');
         }
     }
     protected function handleCinetSuccess(Request $request)

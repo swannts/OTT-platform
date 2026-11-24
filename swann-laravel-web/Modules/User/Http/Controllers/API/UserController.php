@@ -194,14 +194,14 @@ public function deviceLogout(Request $request)
                 ], 600);
             }
         } catch (\Throwable $e) {
-            \Log::info('Error getting devices: ' . $e->getMessage());
+            \Log::warning('Could not read customer device records during logout.', ['exception' => $e::class]);
         }
     
         // Delete all devices for this user
         try {
             Device::where('user_id', $userId)->delete();
         } catch (\Throwable $e) {
-            \Log::info('Error deleting devices: ' . $e->getMessage());
+            \Log::warning('Could not delete customer device records during logout.', ['exception' => $e::class]);
         }
     
         // Delete all sessions for this user - multiple methods to ensure complete deletion
@@ -226,7 +226,7 @@ public function deviceLogout(Request $request)
                     ->delete();
             }
         } catch (\Throwable $e) {
-            \Log::info('Error deleting sessions: ' . $e->getMessage());
+            \Log::warning('Could not delete customer sessions during logout.', ['exception' => $e::class]);
         }
     
         // Revoke all Sanctum tokens for this user - CRITICAL for mobile apps
@@ -257,9 +257,9 @@ public function deviceLogout(Request $request)
                 ->where('tokenable_id', $userId)
                 ->delete();
                 
-            \Log::info('logoutAll: All Sanctum tokens revoked for user_id: ' . $userId);
+            \Log::info('Customer session tokens revoked.');
         } catch (\Throwable $e) {
-            \Log::error('Error revoking tokens in logoutAll: ' . $e->getMessage());
+            \Log::error('Could not revoke customer session tokens.', ['exception' => $e::class]);
         }
     
         // Logout current device if session exists
@@ -269,7 +269,7 @@ public function deviceLogout(Request $request)
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
             } catch (\Throwable $e) {
-                \Log::info('Error logging out current session: ' . $e->getMessage());
+                \Log::warning('Could not invalidate the current customer session.', ['exception' => $e::class]);
             }
         }
     

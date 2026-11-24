@@ -137,7 +137,7 @@ class ProcessFileUpload implements ShouldQueue
                     'file_type' => $this->fileType,
                 ]);
             } catch (\Throwable $publishEx) {
-                Log::warning("[ProcessFileUpload] RabbitMQ background job dispatch skipped: " . $publishEx->getMessage());
+                Log::warning('[ProcessFileUpload] RabbitMQ background job dispatch skipped.', ['exception' => $publishEx::class]);
             }
 
             // Delete the unique file (with ID)
@@ -155,11 +155,11 @@ class ProcessFileUpload implements ShouldQueue
 
             Artisan::call('config:clear');
             Artisan::call('cache:clear');
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
 
-            Log::info("Error processing file upload: " . $e->getMessage());
+            Log::error('File upload processing failed.', ['exception' => $e::class]);
 
-            throw $e;
+            throw new \RuntimeException('File upload processing failed.');
         }
     }
 

@@ -285,10 +285,6 @@ class CommonNotification extends Notification implements ShouldQueue
              $pushImage = null;
         }
 
-        Log::info('[FCM_DEBUG] Notification Type: ' . $notificationType);
-        Log::info('[FCM_DEBUG] Resolved List Image: ' . ($thumbnailImage ?? 'None'));
-        Log::info('[FCM_DEBUG] Push Payload Image (Null if default): ' . ($pushImage ?? 'None'));
-
         $this->data['image'] = $thumbnailImage; // Store for notification list display
 
 
@@ -334,7 +330,7 @@ class CommonNotification extends Notification implements ShouldQueue
                 "message" => $message,
             ]);
         } catch (\Exception $e) {
-            Log::error('FCM Send Error: ' . $e->getMessage());
+            Log::error('FCM message dispatch failed.', ['exception' => $e::class]);
             return null;
         }
     }
@@ -370,12 +366,8 @@ class CommonNotification extends Notification implements ShouldQueue
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
-        Log::info('[FCM_DEBUG] FCM REQUEST URL: ' . $url);
-        Log::info('[FCM_DEBUG] FCM REQUEST PAYLOAD: ' . json_encode($fields));
-        Log::info('[FCM_DEBUG] FCM RESPONSE (HTTP ' . $httpCode . '): ' . $response);
-        
-        if ($httpCode !== 200) {
-            Log::error('FCM Error Response: ' . $response);
+        if ($response === false || $httpCode < 200 || $httpCode >= 300) {
+            Log::warning('FCM delivery request failed.', ['http_status' => $httpCode]);
         }
         
         curl_close($ch);
@@ -395,16 +387,16 @@ class CommonNotification extends Notification implements ShouldQueue
                 $token = $client->fetchAccessTokenWithAssertion();
                 
                 if (isset($token['error'])) {
-                    Log::error('FCM Token Error: ' . json_encode($token));
+                    Log::error('FCM access-token request failed.');
                     return null;
                 }
 
                 return $token['access_token'];
             } else {
-                Log::error('FCM Error: No JSON credentials found in ' . $directory);
+                Log::error('FCM service-account credentials are not configured.');
             }
         } catch (\Exception $e) {
-            Log::error('FCM Exception in getAccessToken: ' . $e->getMessage());
+            Log::error('FCM access-token request failed.', ['exception' => $e::class]);
         }
         return null;
     }
@@ -429,11 +421,9 @@ class CommonNotification extends Notification implements ShouldQueue
             ]);
         } else {
             // Log other errors normally
-            Log::error('Notification error in CommonNotification: ' . $exception->getMessage(), [
-                'exception' => $exception,
-                'trace' => $exception->getTraceAsString(),
+            Log::error('Queued notification delivery failed.', [
+                'exception' => $exception::class,
                 'notification_type' => $this->type ?? 'unknown',
-                'data' => $this->data ?? []
             ]);
         }
     }

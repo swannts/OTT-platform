@@ -35,12 +35,7 @@ class BulkNotification implements ShouldQueue
         try {
             sendNotification($this->data);
         } catch (\Throwable $e) {
-            Log::error('Subscription notification error in BulkNotification job: ' . $e->getMessage(), [
-                'exception' => $e,
-                'trace' => $e->getTraceAsString(),
-                'notification_type' => $this->data['notification_type'] ?? 'unknown',
-                'data' => $this->data
-            ]);
+            Log::error('Subscription notification delivery failed.', ['exception' => $e::class]);
             
             // Don't re-throw - let the job complete successfully
             // The error is logged, and we don't want to fail the subscription creation
@@ -55,11 +50,6 @@ class BulkNotification implements ShouldQueue
      */
     public function failed(\Throwable $exception)
     {
-        Log::error('BulkNotification job failed permanently: ' . $exception->getMessage(), [
-            'exception' => $exception,
-            'trace' => $exception->getTraceAsString(),
-            'notification_type' => $this->data['notification_type'] ?? 'unknown',
-            'data' => $this->data
-        ]);
+        Log::error('Subscription notification job failed permanently.', ['exception' => $exception::class]);
     }
 }

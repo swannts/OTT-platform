@@ -64,6 +64,16 @@ class AdminStaffController extends Controller
         $superAdminChange = in_array('super-admin', array_unique([...$currentNames, ...$desiredNames]), true)
             && in_array('super-admin', $currentNames, true) !== in_array('super-admin', $desiredNames, true);
         if ($superAdminChange) {
+            $superAdminRole = Role::query()
+                ->where('guard_name', 'web')
+                ->where('name', 'super-admin')
+                ->where('is_admin_role', true)
+                ->where('is_active', true)
+                ->first();
+            abort_unless(
+                $superAdminRole && app(AdminRolePolicy::class)->assign($request->user(), $superAdminRole),
+                403,
+            );
             abort_unless(isset($data['current_password']) && Hash::check($data['current_password'], $request->user()->password), 403, 'Re-enter your password to change Super Admin access.');
             abort_if($request->user()->is($user), 422, 'A Super Admin cannot change their own Super Admin access.');
         }

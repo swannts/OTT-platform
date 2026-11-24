@@ -59,10 +59,7 @@ class AuthController extends Controller
 
             return (string) $service->issueSessionToken($userId);
         } catch (\Throwable $e) {
-            Log::warning('Short drama session token skipped', [
-                'user_id' => $userId,
-                'reason' => $e->getMessage(),
-            ]);
+            Log::warning('Short drama session token could not be issued.', ['exception' => $e::class]);
 
             return null;
         }
@@ -126,11 +123,7 @@ class AuthController extends Controller
         ->where('last_activity', '<', now()->subMinutes(config('session.lifetime', 120))->timestamp)
         ->delete();
     } catch (\Exception $e) {
-        Log::warning('Session cleanup failed during login', [
-            'email' => $request->email ?? null,
-            'ip' => $request->ip(),
-            'exception' => $e->getMessage(),
-        ]);
+        Log::warning('Session cleanup failed during login.', ['exception' => $e::class]);
     }
 
     $user = User::with(['subscriptionPackage', 'userMultiProfile'])->where('email', request('email'))->first();
@@ -160,7 +153,7 @@ class AuthController extends Controller
     if (Auth::attempt(['email' => request('email'), 'password' => request('password')], $remember)) {
         RateLimiter::clear($request->throttleKey());
         $user = Auth::user();
-        Log::info('Login success', ['user_id' => $user->id, 'ip' => $request->ip()]);
+        Log::info('Customer API sign-in succeeded.');
 
         if ($request->has('is_ajax') && $request->is_ajax == 1) {
             $agent = new Agent();
@@ -744,7 +737,7 @@ protected function checkDeviceLimit(User $user, ?string $deviceId = null, bool $
         );
 
     } catch (\Throwable $e) {
-        \Log::warning("Could not strip EXIF: " . $e->getMessage());
+        \Log::warning('Could not strip image EXIF metadata.', ['exception' => $e::class]);
         return $file;
     }
 }
@@ -887,7 +880,7 @@ protected function checkDeviceLimit(User $user, ?string $deviceId = null, bool $
 
                 $user->notify((new CommonNotification('parental_control_otp', $notificationData))->onQueue('notifications'));
             } catch (\Exception $e) {
-                \Log::error('OTP Notification Error: ' . $e->getMessage());
+                \Log::error('OTP notification delivery failed.', ['exception' => $e::class]);
                 $bodyData = ['body' => 'Change Your Pin OTP is : '. $otp];
                 Mail::to($user->email)->send(new sendOtp($bodyData));
             }

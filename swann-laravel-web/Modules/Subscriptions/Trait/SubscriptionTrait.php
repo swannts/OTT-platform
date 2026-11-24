@@ -80,7 +80,7 @@ trait SubscriptionTrait
 
             return $messagedata = __('messages.contact_us_greetings');
         } catch (\Exception $e) {
-            \Log::error($e->getMessage());
+            \Log::error('Subscription email delivery failed.', ['exception' => $e::class]);
 
             return $messagedata = __('messages.something_wrong');
         }

@@ -46,10 +46,10 @@ class EventPublisher
                 return true;
             }
 
-            Log::warning("[EventPublisher] RabbitMQ returned non-200: " . $response->body());
+            Log::warning('[EventPublisher] RabbitMQ rejected event publication.', ['http_status' => $response->status()]);
             return false;
         } catch (\Throwable $e) {
-            Log::error("[EventPublisher] Failed to publish {$routingKey}: " . $e->getMessage());
+            Log::error('[EventPublisher] Event publication failed.', ['exception' => $e::class]);
             return false;
         }
     }
@@ -67,4 +67,3 @@ class EventPublisher
         ]);
     }
 }
-
