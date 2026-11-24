@@ -185,6 +185,12 @@ readiness.
   the deployment host with a protected age recipient and a destination that has
   encryption at rest and independent retention. The private age identity must
   be stored separately from the backup target.
+- Added `scripts/verify-production-backup.sh` to check the archive entry set,
+  ciphertext checksums, decryptability, and compressed database/media stream
+  structure without writing decrypted database or media contents to disk. Run
+  it with `BACKUP_AGE_IDENTITY=/secure/path/ott-age-identity` and the archive
+  path. This verifies archive readability, not database importability, archive
+  provenance, or a complete restore rehearsal.
 - Run backups during a maintenance window with media ingest and destructive media
   changes paused: MySQL and media are captured sequentially, so this script does
   not create an atomic cross-system snapshot. Before restoring, verify `SHA256SUMS`,
