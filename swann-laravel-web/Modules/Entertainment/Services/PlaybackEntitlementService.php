@@ -11,11 +11,24 @@ use Modules\Entertainment\Models\Entertainment;
 use Modules\Episode\Models\Episode;
 use Modules\Frontend\Models\PayPerView;
 use Modules\Subscriptions\Models\Subscription;
+use Modules\Subscriptions\Services\PlanEntitlementSnapshot;
 use Modules\Video\Models\Video;
 use Laravel\Sanctum\PersonalAccessToken;
 
 class PlaybackEntitlementService
 {
+    public function maximumVideoQuality(User $user): ?int
+    {
+        $subscription = Subscription::query()
+            ->where('user_id', $user->id)
+            ->where('status', 'active')
+            ->where(fn ($query) => $query->whereNull('end_date')->orWhere('end_date', '>', now()))
+            ->latest('id')
+            ->first();
+
+        return PlanEntitlementSnapshot::integerLimit($subscription?->plan_type, 'max-video-quality');
+    }
+
     /** @return array{content: Entertainment, profile: UserMultiProfile} */
     public function authorize(User $user, string $contentId, string $type, int $profileId, Request $request): array
     {

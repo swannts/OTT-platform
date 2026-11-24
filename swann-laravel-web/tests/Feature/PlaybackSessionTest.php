@@ -38,6 +38,33 @@ class PlaybackSessionTest extends TestCase
         }
     }
 
+    public function test_nested_plan_snapshot_allows_the_configured_simultaneous_stream_limit(): void
+    {
+        $user = User::factory()->create();
+        $planId = DB::table('plan')->insertGetId([
+            'name' => 'Two stream plan', 'identifier' => 'two-streams-'.\Illuminate\Support\Str::uuid(),
+            'level' => 1, 'duration' => 'month', 'duration_value' => 1, 'price' => 10,
+            'status' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::table('subscriptions')->insert([
+            'user_id' => $user->id, 'plan_id' => $planId, 'status' => 'active',
+            'start_date' => now(), 'end_date' => now()->addMonth(),
+            'plan_type' => json_encode(['data' => [['plan_id' => $planId, 'plan_type' => ['data' => [[
+                'slug' => 'simultaneous-streams', 'limitation_value' => 1, 'limit' => ['value' => '2'],
+            ]]]]]]),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $token = $user->createToken('playback-test')->accessToken;
+        $service = app(PlaybackSessionService::class);
+
+        $service->start($user, $token, 1, 'content-1', 'movie');
+        $service->start($user, $token, 1, 'content-2', 'movie');
+        $this->assertSame(2, DB::table('playback_sessions')->where('user_id', $user->id)->whereNull('ended_at')->count());
+
+        $this->expectException(AuthorizationException::class);
+        $service->start($user, $token, 1, 'content-3', 'movie');
+    }
+
     public function test_only_the_owning_account_and_device_token_can_refresh_or_end_a_session(): void
     {
         $user = User::factory()->create();
@@ -73,6 +100,15 @@ class PlaybackSessionTest extends TestCase
             'platform' => 'test',
             'active_profile' => $profile->id,
         ]);
+        DB::table('subscriptions')->insert([
+            'user_id' => $user->id, 'status' => 'active', 'start_date' => now(), 'end_date' => now()->addMonth(),
+            'plan_type' => json_encode(['data' => [[
+                'plan_type' => ['data' => [[
+                    'slug' => 'max-video-quality', 'limitation_value' => 1, 'limit' => 720,
+                ]]],
+            ]]]),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
 
         $asset = MediaAsset::create([
             'uploaded_by' => $user->id,
@@ -98,7 +134,7 @@ class PlaybackSessionTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        Storage::disk('private')->put('media/renditions/test/master.m3u8', "#EXTM3U\n#EXTINF:5,\nsegments/part-1.ts\n");
+        Storage::disk('private')->put('media/renditions/test/master.m3u8', "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1500000,RESOLUTION=1280x720\n720p.m3u8\n#EXT-X-STREAM-INF:BANDWIDTH=5000000,RESOLUTION=1920x1080\n1080p.m3u8\n#EXTINF:5,\nsegments/part-1.ts\n");
         Storage::disk('private')->put('media/renditions/test/segments/part-1.ts', 'segment');
         $session = app(PlaybackSessionService::class)->start($user, $token, $profile->id, 'playback-media-title', 'movie');
         $url = URL::temporarySignedRoute('playback.media', now()->addSeconds(90), [
@@ -108,12 +144,15 @@ class PlaybackSessionTest extends TestCase
         ]);
 
         $manifestResponse = $this->get($url);
-        $manifestResponse->assertOk()->assertSee('part-1.ts');
+        $manifestResponse->assertOk()->assertSee('part-1.ts')->assertSee('720p.m3u8')->assertDontSee('1080p.m3u8');
         preg_match('/(https?:[^\s]+part-1\.ts[^\s]*)/', $manifestResponse->getContent(), $matches);
         $this->assertNotEmpty($matches[1] ?? null);
         $segmentResponse = $this->get($matches[1]);
         $segmentResponse->assertOk();
         $this->assertSame('7', $segmentResponse->headers->get('Content-Length'));
+
+        $highQualityUrl = app(\Modules\Entertainment\Services\PlaybackMediaUrlService::class)->sign($asset->id, '1080p_00001.ts', $session['session_id']);
+        $this->get($highQualityUrl)->assertForbidden();
 
         app(PlaybackSessionService::class)->end($user, $token, $session['session_id']);
         $this->get($url)->assertForbidden();

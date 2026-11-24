@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\PersonalAccessToken;
 use Modules\Subscriptions\Models\Subscription;
+use Modules\Subscriptions\Services\PlanEntitlementSnapshot;
 
 class PlaybackSessionService
 {
@@ -127,16 +128,8 @@ class PlaybackSessionService
             ->where(fn ($query) => $query->whereNull('end_date')->orWhere('end_date', '>', now()))
             ->latest('id')
             ->first();
-        $limitations = json_decode((string) ($subscription?->plan_type ?? ''), true);
-        if (is_array($limitations)) {
-            foreach ($limitations as $limitation) {
-                if (in_array($limitation['slug'] ?? '', ['simultaneous-streams', 'concurrent-streams'], true)
-                    && (int) ($limitation['limitation_value'] ?? 0) === 1) {
-                    $value = $limitation['limit']['value'] ?? $limitation['limit'] ?? 1;
-                    return max(1, min(10, (int) $value));
-                }
-            }
-        }
-        return 1;
+        $limit = PlanEntitlementSnapshot::integerLimit($subscription?->plan_type, 'simultaneous-streams')
+            ?? PlanEntitlementSnapshot::integerLimit($subscription?->plan_type, 'concurrent-streams');
+        return $limit === null ? 1 : min(10, $limit);
     }
 }

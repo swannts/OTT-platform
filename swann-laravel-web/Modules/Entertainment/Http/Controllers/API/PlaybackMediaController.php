@@ -63,10 +63,15 @@ class PlaybackMediaController extends Controller
         } catch (AuthorizationException) {
             abort(403, 'Playback entitlement expired or was revoked.');
         }
+        $maximumQuality = $entitlements->maximumVideoQuality($user);
 
         $asset = MediaAsset::query()->whereKey($assetId)->where('status', 'ready')->firstOrFail();
         abort_unless($asset->disk === 'private' && filled($asset->rendition_path), 404);
         $relativeFile = $this->normalizeRelativePath($file);
+        if ($maximumQuality !== null) {
+            preg_match('/(?:^|\/)(480|720|1080|1440|2160)p(?:[_\.-]|$)/i', $relativeFile, $qualityMatch);
+            abort_if(isset($qualityMatch[1]) && (int) $qualityMatch[1] > $maximumQuality, 403, 'This plan does not allow the requested video quality.');
+        }
         $root = trim((string) $asset->rendition_path, '/');
         $disk = Storage::disk('private');
         $basePath = realpath($disk->path($root));
@@ -81,6 +86,9 @@ class PlaybackMediaController extends Controller
                 return 'URI="'.$urls->sign($assetId, $this->joinRelative($manifestBase, $match[1]), $session->session_id).'"';
             }, $manifest);
             $lines = preg_split('/\r\n|\n|\r/', (string) $manifest);
+            if ($maximumQuality !== null && basename($relativeFile) === 'master.m3u8') {
+                $lines = $this->filterMasterQuality($lines, $maximumQuality);
+            }
             foreach ($lines as &$line) {
                 $trimmed = trim($line);
                 if ($trimmed !== '' && !str_starts_with($trimmed, '#')) {
@@ -117,5 +125,27 @@ class PlaybackMediaController extends Controller
         $filePath = ltrim((string) ($parsed['path'] ?? ''), '/');
         $joined = ($base !== '' ? $base.'/' : '').$filePath;
         return $this->normalizeRelativePath($joined);
+    }
+
+    /** @param list<string> $lines @return list<string> */
+    private function filterMasterQuality(array $lines, int $maximumQuality): array
+    {
+        $filtered = [];
+        $skipVariantUri = false;
+        foreach ($lines as $line) {
+            $trimmed = trim($line);
+            if (str_starts_with($trimmed, '#EXT-X-STREAM-INF:')) {
+                preg_match('/RESOLUTION=\d+x(\d+)/', $trimmed, $resolution);
+                $skipVariantUri = isset($resolution[1]) && (int) $resolution[1] > $maximumQuality;
+                if ($skipVariantUri) continue;
+            } elseif ($skipVariantUri && $trimmed !== '' && !str_starts_with($trimmed, '#')) {
+                $skipVariantUri = false;
+                continue;
+            } else {
+                $skipVariantUri = false;
+            }
+            $filtered[] = $line;
+        }
+        return $filtered;
     }
 }

@@ -12,6 +12,7 @@ use Jenssegers\Agent\Agent;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
+use Modules\Subscriptions\Services\PlanEntitlementSnapshot;
 
 class UserMultiProfileController extends Controller
 {
@@ -126,33 +127,7 @@ class UserMultiProfileController extends Controller
 
 private function getSubscriptionProfileLimit($user) 
 {
-    if (!$user->subscriptionPackage) {
-        return 0;
-    }
-
-    $subscription = $user->subscriptionPackage;
-
-    if (isset($subscription->plan_type) && !empty($subscription->plan_type)) {
-        $planLimitations = json_decode($subscription->plan_type, true);
-
-        if (is_array($planLimitations)) {
-            foreach ($planLimitations as $limitation) {
-                if (isset($limitation['slug']) && $limitation['slug'] === 'profile-limit') {
-                    $limitData = $limitation['limit'] ?? null;
-                    
-                    if (is_array($limitData) && isset($limitData['value'])) {
-                        return (int)$limitData['value'];
-                    } elseif (is_string($limitData) || is_numeric($limitData)) {
-                        return (int)$limitData;
-                    }
-                    
-                    return 0;   
-                }
-            }
-        }
-    }
-
-    return 0;
+    return PlanEntitlementSnapshot::integerLimit($user->subscriptionPackage?->plan_type, 'profile-limit') ?? 1;
 }
 
     public function getprofile(Request $request, int $id)    

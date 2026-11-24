@@ -19,6 +19,7 @@ use App\Mail\sendOtp;
 use Illuminate\Support\Facades\RateLimiter;
 use Jenssegers\Agent\Agent;
 use Modules\Subscriptions\Models\Subscription;
+use Modules\Subscriptions\Services\PlanEntitlementSnapshot;
 use Modules\Entertainment\Models\ContinueWatch;
 use Modules\Entertainment\Models\Watchlist;
 use Modules\Entertainment\Models\EntertainmentDownload;
@@ -402,67 +403,19 @@ protected function checkDeviceLimit(User $user, ?string $deviceId = null, bool $
     });
 
 
-    if ($user->subscriptionPackage) {
-        $subscription = $user->subscriptionPackage;
-        
-        if (isset($subscription->plan_type) && !empty($subscription->plan_type)) {
-            $planLimitations = json_decode($subscription->plan_type, true);
-
-            if (is_array($planLimitations)) {
-                foreach ($planLimitations as $limitation) {
-                    if (isset($limitation['slug']) && $limitation['slug'] === 'device-limit') {
-                        if (isset($limitation['limitation_value']) && $limitation['limitation_value'] == 1) {
-                            $limitData = $limitation['limit'] ?? null;
-                            $limit = 0;
-                          
-                            
-                            if (is_array($limitData) && isset($limitData['value'])) {
-                                $limit = (int)$limitData['value'];
-                            } elseif (is_string($limitData) || is_numeric($limitData)) {
-                                $limit = (int)$limitData;
-                            }
-                            
-                            if ($count >= $limit) {
-                                Auth::logout();
-
-                                // Use response()->json for login flow to match original format
-                                if ($isLoginFlow) {
-                                    return response()->json([
-                                        'error' => __('messages.device_limit_reached'),
-                                        'other_device' => $other_device
-                                    ], 406);
-                                } else {
-                                    return ApiResponse::error(__('messages.your_device_limit_has_been_reached'),
-                                        406,
-                                        null,
-                                        ['other_device' => $other_device]
-                                    );
-                                }
-                            }
-                        }
-                        break;
-                    }
-                }
-            }
+    $subscription = $user->subscriptionPackage;
+    $limit = PlanEntitlementSnapshot::integerLimit($subscription?->plan_type, 'device-limit')
+        ?? max(1, (int) config('constant.DEVICE_LIMIT', 1));
+    $shouldCheck = $count >= $limit && ($isLoginFlow || $other_device->isNotEmpty());
+    if ($shouldCheck) {
+        Auth::logout();
+        if ($isLoginFlow) {
+            return response()->json([
+                'error' => __('messages.device_limit_reached'),
+                'other_device' => $other_device,
+            ], 406);
         }
-    } else {
-        // No subscription: check default limit
-        $defaultLimit = $isLoginFlow ? 1 : config('constant.DEVICE_LIMIT', 1);
-        $shouldCheck = $isLoginFlow ? ($count >= $defaultLimit) : ($count >= $defaultLimit && $other_device->isNotEmpty());
-        
-        if ($shouldCheck) {
-            Auth::logout();
-
-            // Use response()->json for login flow to match original format
-            if ($isLoginFlow) {
-                return response()->json([
-                    'error' => __('messages.device_limit_reached'),
-                    'other_device' => $other_device
-                ], 406);
-            } else {
-                return ApiResponse::error(__('messages.device_limit_reached'), 406, null, ['other_device' => $other_device]);
-            }
-        }
+        return ApiResponse::error(__('messages.device_limit_reached'), 406, null, ['other_device' => $other_device]);
     }
     
     return null; // ✅ allow login

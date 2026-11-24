@@ -10,6 +10,7 @@ use Modules\User\Transformers\UserProfileResource;
 use App\Models\User;
 use App\Models\Device;
 use Modules\Subscriptions\Models\Subscription;
+use Modules\Subscriptions\Services\PlanEntitlementSnapshot;
 use Modules\Entertainment\Models\ContinueWatch;
 use Modules\Entertainment\Models\Watchlist;
 use Modules\Entertainment\Models\EntertainmentDownload;
@@ -175,26 +176,9 @@ public function deviceLogout(Request $request)
             }
             
             // Get user's plan device limit
-            $user = User::find($userId);
-            $planDeviceLimit = 1; // Default limit
-            if ($user && $user->subscriptionPackage && !empty($user->subscriptionPackage->plan_type)) {
-                $planLimitations = json_decode($user->subscriptionPackage->plan_type, true);
-                if (is_array($planLimitations)) {
-                    foreach ($planLimitations as $limitation) {
-                        if (isset($limitation['slug']) && $limitation['slug'] === 'device-limit') {
-                            if (isset($limitation['limitation_value']) && $limitation['limitation_value'] == 1) {
-                                $limitData = $limitation['limit'] ?? null;
-                                if (is_array($limitData) && isset($limitData['value'])) {
-                                    $planDeviceLimit = (int)$limitData['value'];
-                                } elseif (is_string($limitData) || is_numeric($limitData)) {
-                                    $planDeviceLimit = (int)$limitData;
-                                }
-                            }
-                            break;
-                        }
-                    }
-                }
-            }
+            $user = User::with('subscriptionPackage')->find($userId);
+            $planDeviceLimit = PlanEntitlementSnapshot::integerLimit($user?->subscriptionPackage?->plan_type, 'device-limit')
+                ?? max(1, (int) config('constant.DEVICE_LIMIT', 1));
             
             // Store device count and plan limit in cache for use in middleware (valid for 10 minutes)
             // Store by user_id for authenticated checks
