@@ -66,6 +66,7 @@ final class AdminOperationsService
             'status' => count(array_filter($statuses, static fn (string $status): bool => $status !== 'ok' && $status !== 'not_configured')) > 0 ? 'degraded' : 'ok',
             'checked_at' => now('UTC')->toIso8601String(),
             'services' => $checks,
+            'runtime_resources' => app(RuntimeResourceMetrics::class)->snapshot(),
             'queue' => $queueCounts,
             'rabbitmq_queues' => $rabbitQueues,
             'backups' => $backupStatus,

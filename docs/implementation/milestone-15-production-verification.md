@@ -66,6 +66,9 @@ readiness.
   requires the bucket, region, and archive password; inject either scoped S3
   credentials or workload identity. This is application configuration only:
   no production bucket or credentials are configured in this workspace.
+- The operations dashboard reports Linux container memory, cumulative CPU, and
+  local storage availability when cgroup/filesystem data is exposed. These are
+  container metrics and do not replace host-level monitoring or alert routing.
 - `NEXT_PUBLIC_API_URL` is required for both the customer Next.js build and its
   runtime environment so browser requests do not fall back to localhost.
 - Added an unauthenticated, middleware-free Laravel `/up` process-health route.
@@ -256,6 +259,7 @@ This document records partial local verification only. Milestone 15 and the
 overall milestones 6–15 goal remain incomplete until the external and repository
 quality blockers above are resolved or explicitly accepted.
 
-The Laravel-managed backup integration documented in this revision was reviewed
-statically only. Its build, Artisan execution, remote storage access, and restore
-behavior remain unverified because build and test commands were deferred.
+The Laravel-managed backup integration and container-resource dashboard documented
+in this revision were reviewed statically only. Their build, runtime behavior,
+remote storage access, and restore behavior remain unverified because build and
+test commands were deferred.

@@ -32,6 +32,23 @@ function StatusChip({ status }) {
   return <Chip size="small" color={color} label={status || 'unknown'} />;
 }
 
+function formatBytes(value) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 'not reported';
+  if (value < 1024) return `${value} B`;
+  const units = ['KiB', 'MiB', 'GiB', 'TiB'];
+  let size = value;
+  let unit = -1;
+  do {
+    size /= 1024;
+    unit += 1;
+  } while (size >= 1024 && unit < units.length - 1);
+  return `${size.toFixed(1)} ${units[unit]}`;
+}
+
+function formatPercent(value) {
+  return typeof value === 'number' && Number.isFinite(value) ? `${value}%` : 'not reported';
+}
+
 export function TechnicalOperationsPage() {
   const { user } = useAuthContext();
   const canHealth = hasPermission(user, 'operations.health.view');
@@ -124,6 +141,14 @@ export function TechnicalOperationsPage() {
       </Stack>}
       {health?.backups?.disks?.length > 0 && <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 1.5 }}>
         {health.backups.disks.map((disk, index) => <Chip key={index} variant="outlined" label={`Backup disk ${index + 1}: ${disk.backup_count} archives · ${disk.latest_at || 'no recent backup'}`} />)}
+      </Stack>}
+      {health?.runtime_resources && <Stack spacing={0.5} sx={{ mt: 2 }}>
+        <Typography variant="subtitle2">Container resources</Typography>
+        <Typography variant="caption" color="text.secondary">
+          Memory: {formatBytes(health.runtime_resources.memory?.used_bytes)} / {formatBytes(health.runtime_resources.memory?.limit_bytes)} ({formatPercent(health.runtime_resources.memory?.used_percent)}) ·
+          CPU used: {health.runtime_resources.cpu?.usage_seconds ?? 'not reported'} s ·
+          Local storage available: {formatBytes(health.runtime_resources.storage?.available_bytes)} / {formatBytes(health.runtime_resources.storage?.total_bytes)}
+        </Typography>
       </Stack>}
     </CardContent></Card>}
 
