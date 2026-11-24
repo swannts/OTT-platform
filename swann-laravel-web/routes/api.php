@@ -167,7 +167,11 @@ Route::prefix('admin')->group(function () {
         Route::get('marketing/banners', [\App\Http\Controllers\API\AdminMarketingController::class, 'banners'])->middleware('explicit.permission:marketing.banners.manage');
         Route::post('marketing/banners', [\App\Http\Controllers\API\AdminMarketingController::class, 'saveBanner'])->middleware('explicit.permission:marketing.banners.manage');
         Route::put('marketing/banners/{banner}', [\App\Http\Controllers\API\AdminMarketingController::class, 'saveBanner'])->middleware('explicit.permission:marketing.banners.manage');
-        Route::get('analytics/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'analytics'])->middleware('explicit.permission:analytics.audience.view');
+        Route::get('analytics/overview', [\App\Http\Controllers\API\AdminAnalyticsController::class, 'dashboard']);
+        Route::get('analytics/export', [\App\Http\Controllers\API\AdminAnalyticsController::class, 'exportCsv'])->middleware('explicit.permission:analytics.export');
+        Route::get('analytics/reports', [\App\Http\Controllers\API\AdminAnalyticsController::class, 'reports'])->middleware('explicit.permission:analytics.export');
+        Route::post('analytics/reports', [\App\Http\Controllers\API\AdminAnalyticsController::class, 'scheduleReport'])->middleware('explicit.permission:analytics.export');
+        Route::get('analytics/reports/{report}', [\App\Http\Controllers\API\AdminAnalyticsController::class, 'report'])->whereNumber('report')->middleware('explicit.permission:analytics.export');
         Route::get('operations/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'operations'])->middleware('explicit.permission:operations.health.view');
 
         Route::prefix('support')->group(function (): void {

@@ -39,6 +39,16 @@ export const rbacApi = {
   subscriptionsOverview: () => axios.get(`${base}/subscriptions/overview`).then((response) => response.data),
   financeOverview: () => axios.get(`${base}/finance/overview`).then((response) => response.data),
   marketingOverview: () => axios.get(`${base}/marketing/overview`).then((response) => response.data),
-  analyticsOverview: () => axios.get(`${base}/analytics/overview`).then((response) => response.data),
+  analyticsOverview: () => axios.get(`${base}/analytics/overview`).then((response) => {
+    const { audience, subscriptions, content, revenue, playback } = response.data.data;
+    return { data: {
+      active_accounts: audience?.active_accounts ?? null,
+      new_subscribers: subscriptions?.new_subscribers ?? audience?.new_subscribers ?? null,
+      watch_hours: content?.watch_hours ?? null,
+      paid_payments: revenue?.paid_payment_count ?? null,
+      playback_startup_failures: playback?.startup_failures ?? null,
+      mrr_by_currency: subscriptions?.mrr_by_currency?.map((item) => `${item.currency} ${item.mrr}`).join(', ') ?? null,
+    } };
+  }),
   operationsOverview: () => axios.get(`${base}/operations/overview`).then((response) => response.data),
 };

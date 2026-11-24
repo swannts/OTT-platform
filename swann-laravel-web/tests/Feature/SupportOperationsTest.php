@@ -125,6 +125,10 @@ class SupportOperationsTest extends TestCase
         ])->assertAccepted()->assertJsonPath('data.recorded', true);
         $this->assertDatabaseHas('playback_diagnostic_events', ['user_id' => $customer->id, 'event_code' => 'playback.client_error.manifest_error', 'content_id' => 'content-77']);
         $this->assertDatabaseMissing('playback_diagnostic_events', ['event_code' => 'contains sensitive playback url']);
+        $this->withToken($token->plainTextToken)->postJson('/api/v3/playback/diagnostics', [
+            'session_id' => $sessionId, 'event_type' => 'started', 'duration_ms' => 1450, 'quality' => '1080p',
+        ])->assertAccepted();
+        $this->assertDatabaseHas('playback_diagnostic_events', ['session_id' => $sessionId, 'event_code' => 'playback.started', 'duration_ms' => 1450, 'quality' => '1080p']);
 
         $otherCustomer = User::factory()->create();
         $otherToken = $otherCustomer->createToken('other-device');

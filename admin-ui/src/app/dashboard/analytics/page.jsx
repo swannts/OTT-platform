@@ -1,11 +1,7 @@
-import { CONFIG } from 'src/config-global';
+import { AnalyticsDashboardPage } from 'src/features/analytics/AnalyticsDashboardPage';
 
-import { OverviewAnalyticsView } from 'src/sections/overview/analytics/view';
-
-// ----------------------------------------------------------------------
-
-export const metadata = { title: `Analytics | Dashboard - ${CONFIG.site.name}` };
+export const metadata = { title: 'OTT analytics | Admin' };
 
 export default function Page() {
-  return <OverviewAnalyticsView />;
+  return <AnalyticsDashboardPage />;
 }

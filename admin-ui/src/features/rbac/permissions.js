@@ -45,6 +45,9 @@ export function requiredPermissionsForPath(pathname) {
   if (pathname === '/dashboard/support') {
     return ['support.accounts.view', 'support.tickets.manage'];
   }
+  if (pathname === '/dashboard/analytics') {
+    return ['analytics.audience.view', 'analytics.subscriptions.view', 'analytics.content.view', 'analytics.revenue.view', 'analytics.playback.view'];
+  }
   const required = requiredPermissionForPath(pathname);
   return required ? [required] : [];
 }

@@ -81,6 +81,12 @@ export const navData = [
         permissions: ['support.accounts.view', 'support.tickets.manage'],
       },
       {
+        title: 'Analytics',
+        path: '/dashboard/analytics',
+        icon: ICONS.analytics,
+        permissions: ['analytics.audience.view', 'analytics.subscriptions.view', 'analytics.content.view', 'analytics.revenue.view', 'analytics.playback.view'],
+      },
+      {
         title: 'Operations & reports',
         path: '/dashboard/operations',
         icon: ICONS.analytics,

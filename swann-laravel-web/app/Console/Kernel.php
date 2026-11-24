@@ -34,6 +34,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('swann:clean-latest-movies')->dailyAt('11:00')->description('Remove old movies from latest-movies list');
         $schedule->command('media:uploads-clean-expired')->name('media-upload-cleanup')->hourly()->withoutOverlapping()->description('Clean expired private media upload chunks');
         $schedule->command('marketing:publish-scheduled')->name('marketing:publish-scheduled')->everyMinute()->withoutOverlapping()->description('Publish and expire approved marketing campaigns');
+        $schedule->command('analytics:generate-scheduled-reports')->name('analytics:generate-scheduled-reports')->everyMinute()->withoutOverlapping()->description('Generate due privacy-preserving analytics reports');
         $schedule->call(function () {
             if (\Illuminate\Support\Facades\Schema::hasTable('subscription_coupon_reservations')) {
                 \Illuminate\Support\Facades\DB::table('subscription_coupon_reservations')
