@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 
 import { paths } from 'src/routes/paths';
 import { useRouter, usePathname, useSearchParams } from 'src/routes/hooks';
@@ -22,8 +22,6 @@ export function AuthGuard({ children }) {
 
   const { authenticated, loading } = useAuthContext();
 
-  const [isChecking, setIsChecking] = useState(true);
-
   const createQueryString = useCallback(
     (name, value) => {
       const params = new URLSearchParams(searchParams.toString());
@@ -34,37 +32,25 @@ export function AuthGuard({ children }) {
     [searchParams]
   );
 
-  const checkPermissions = async () => {
-    if (loading) {
-      return;
-    }
+  const redirectToSignIn = useCallback(() => {
+    const { method } = CONFIG.auth;
 
-    if (!authenticated) {
-      const { method } = CONFIG.auth;
+    const signInPath = {
+      jwt: paths.auth.jwt.signIn,
+      auth0: paths.auth.auth0.signIn,
+      amplify: paths.auth.amplify.signIn,
+      firebase: paths.auth.firebase.signIn,
+      supabase: paths.auth.supabase.signIn,
+    }[method];
 
-      const signInPath = {
-        jwt: paths.auth.jwt.signIn,
-        auth0: paths.auth.auth0.signIn,
-        amplify: paths.auth.amplify.signIn,
-        firebase: paths.auth.firebase.signIn,
-        supabase: paths.auth.supabase.signIn,
-      }[method];
-
-      const href = `${signInPath}?${createQueryString('returnTo', pathname)}`;
-
-      router.replace(href);
-      return;
-    }
-
-    setIsChecking(false);
-  };
+    router.replace(`${signInPath}?${createQueryString('returnTo', pathname)}`);
+  }, [createQueryString, pathname, router]);
 
   useEffect(() => {
-    checkPermissions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authenticated, loading]);
+    if (!loading && !authenticated) redirectToSignIn();
+  }, [authenticated, loading, redirectToSignIn]);
 
-  if (isChecking) {
+  if (loading || !authenticated) {
     return <SplashScreen />;
   }
 

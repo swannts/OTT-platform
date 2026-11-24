@@ -30,11 +30,13 @@ export function PermissionsManagementPage() {
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
     rbacApi
       .listPermissions({ search, module: module === 'all' ? undefined : module })
       .then((response) => {
-        if (active) setPermissions(response.data || []);
+        if (active) {
+          setPermissions(response.data || []);
+          setError('');
+        }
       })
       .catch((loadError) => {
         if (active) setError(loadError.message || 'Permissions could not be loaded.');
@@ -66,13 +68,21 @@ export function PermissionsManagementPage() {
               size="small"
               label="Search permissions"
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => {
+                setLoading(true);
+                setError('');
+                setSearch(event.target.value);
+              }}
             />
             <Select
               size="small"
               value={module}
               aria-label="Filter by module"
-              onChange={(event) => setModule(event.target.value)}
+              onChange={(event) => {
+                setLoading(true);
+                setError('');
+                setModule(event.target.value);
+              }}
             >
               <MenuItem value="all">All modules</MenuItem>
               {modules.map((name) => (

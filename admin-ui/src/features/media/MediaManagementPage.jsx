@@ -47,23 +47,45 @@ export function MediaManagementPage() {
   const [quality, setQuality] = useState(null);
   const inputRef = useRef(null);
 
+  const loadAssets = useCallback(() => mediaApi.list({ per_page: 50 }), []);
+
   const refresh = useCallback(async () => {
+    setLoading(true);
+    setError('');
     try {
-      const response = await mediaApi.list({ per_page: 50 });
+      const response = await loadAssets();
       setAssets(response.data || []);
-      setError('');
     } catch (cause) {
       setError(messageFrom(cause));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loadAssets]);
 
   useEffect(() => {
-    refresh();
-    const timer = window.setInterval(refresh, 10000);
-    return () => window.clearInterval(timer);
-  }, [refresh]);
+    let active = true;
+    const load = () => {
+      loadAssets()
+        .then((response) => {
+          if (active) {
+            setAssets(response.data || []);
+            setError('');
+          }
+        })
+        .catch((cause) => {
+          if (active) setError(messageFrom(cause));
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+    };
+    load();
+    const timer = window.setInterval(load, 10000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [loadAssets]);
 
   const upload = async (file, replacesAssetId = null) => {
     if (!file) return;

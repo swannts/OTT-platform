@@ -52,31 +52,60 @@ export function SubscriptionManagementPage() {
   const canManageTrials = hasPermission(user, 'subscriptions.trials.manage');
   const canViewSubscribers = hasPermission(user, 'subscriptions.subscribers.view');
 
+  const loadSubscriptions = useCallback(async () => {
+    const [plansResponse, performanceResponse] = await Promise.all([
+      subscriptionsApi.plans({ per_page: 100 }),
+      subscriptionsApi.performance(),
+    ]);
+    const subscribersResponse = canViewSubscribers
+      ? await subscriptionsApi.subscribers({ per_page: 10 })
+      : null;
+    const couponsResponse = canManageCoupons
+      ? await subscriptionsApi.coupons({ per_page: 100 })
+      : null;
+    return { plansResponse, performanceResponse, subscribersResponse, couponsResponse };
+  }, [canManageCoupons, canViewSubscribers]);
+
+  const applySubscriptions = useCallback(({ plansResponse, performanceResponse, subscribersResponse, couponsResponse }) => {
+    setPlans(plansResponse.data || []);
+    setPerformance(performanceResponse.data || []);
+    setSubscribers(subscribersResponse?.data || []);
+    setCoupons(couponsResponse?.data || []);
+  }, []);
+
   const refresh = useCallback(async () => {
+    setLoading(true);
+    setError('');
     try {
-      const [response, performanceResponse] = await Promise.all([
-        subscriptionsApi.plans({ per_page: 100 }),
-        subscriptionsApi.performance(),
-      ]);
-      setPlans(response.data || []);
-      setPerformance(performanceResponse.data || []);
-      if (canViewSubscribers) {
-        const subscriberResponse = await subscriptionsApi.subscribers({ per_page: 10 });
-        setSubscribers(subscriberResponse.data || []);
-      }
-      if (canManageCoupons) {
-        const couponsResponse = await subscriptionsApi.coupons({ per_page: 100 });
-        setCoupons(couponsResponse.data || []);
-      }
-      setError('');
+      applySubscriptions(await loadSubscriptions());
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
       setLoading(false);
     }
-  }, [canManageCoupons, canViewSubscribers]);
+  }, [applySubscriptions, loadSubscriptions]);
 
-  useEffect(() => { if (canView) refresh(); else setLoading(false); }, [canView, refresh]);
+  useEffect(() => {
+    if (!canView) return undefined;
+
+    let active = true;
+    loadSubscriptions()
+      .then((result) => {
+        if (active) {
+          applySubscriptions(result);
+          setError('');
+        }
+      })
+      .catch((cause) => {
+        if (active) setError(errorMessage(cause));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [applySubscriptions, canView, loadSubscriptions]);
 
   const save = async (event) => {
     event.preventDefault();

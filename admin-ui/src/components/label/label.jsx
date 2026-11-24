@@ -51,6 +51,8 @@ export const Label = forwardRef(
     );
   }
 );
+Label.displayName = 'Label';
+
 
 // ----------------------------------------------------------------------
 

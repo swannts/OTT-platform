@@ -55,9 +55,11 @@ readiness.
   build passed with Webpack (the project has a custom SVG Webpack loader).
 - Customer Next.js dependency audit: **0 vulnerabilities**. TypeScript check and
   production build passed on Next.js 16.4.6.
-- Changed admin BFF/auth files pass ESLint. Full admin lint reports 164 errors
-  and 23 warnings across the existing UI. Full customer lint now has zero errors
-  and 50 warnings after fixing Hook ordering, playback ref/state issues, and
+- Changed admin BFF/auth files, admin authentication/RBAC pages, OTT operations
+  pages, 35 React component files, and the product list pass focused ESLint. Full
+  admin lint still reports **91 errors and 23 warnings** across the existing UI.
+  Full customer lint now has zero errors and 50 warnings after fixing Hook
+  ordering, playback ref/state issues, and
   client data loading. Customer type-check and production build pass; the
   repository-wide admin lint backlog remains unresolved.
 - Go worker: `go test ./...` passed in the Go 1.22 container; handler and health

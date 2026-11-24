@@ -13,3 +13,4 @@ export const Map = forwardRef(({ ...other }, ref) => (
     {...other}
   />
 ));
+Map.displayName = 'Map';

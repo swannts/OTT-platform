@@ -47,14 +47,14 @@ export function TechnicalOperationsPage() {
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ title: '', summary: '', severity: 'medium' });
 
-  const refresh = useCallback(async () => {
-    setError('');
-    const requests = await Promise.allSettled([
+  const loadOperations = useCallback(() => Promise.allSettled([
       ...(canHealth ? [rbacApi.operationsHealth()] : []),
       ...(canJobs ? [rbacApi.operationsJobs({ per_page: 50 })] : []),
       ...(canIncidents ? [rbacApi.operationsIncidents({ per_page: 50 })] : []),
       ...(canPlayback ? [rbacApi.operationsPlayback()] : []),
-    ]);
+    ]), [canHealth, canIncidents, canJobs, canPlayback]);
+
+  const applyOperations = useCallback((requests) => {
     let index = 0;
     const failures = [];
     if (canHealth) { const result = requests[index++]; if (result.status === 'fulfilled') setHealth(result.value.data); else failures.push('service health'); }
@@ -64,7 +64,24 @@ export function TechnicalOperationsPage() {
     if (failures.length) setError(`Could not load ${failures.join(', ')}.`);
   }, [canHealth, canJobs, canIncidents, canPlayback]);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  const refresh = useCallback(async () => {
+    setError('');
+    applyOperations(await loadOperations());
+  }, [applyOperations, loadOperations]);
+
+  useEffect(() => {
+    let active = true;
+    loadOperations()
+      .then((requests) => {
+        if (active) applyOperations(requests);
+      })
+      .catch(() => {
+        if (active) setError('The operations overview could not be loaded.');
+      });
+    return () => {
+      active = false;
+    };
+  }, [applyOperations, loadOperations]);
 
   const runAction = async (action) => {
     setBusy(true);

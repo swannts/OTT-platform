@@ -55,17 +55,55 @@ export function CustomerSupportPage() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
+  const loadSupport = useCallback(async () => {
+    const result = { customers: [] };
+    const tasks = [];
+    if (canTickets) {
+      tasks.push(supportApi.overview().then((value) => { result.overview = value; }));
+      tasks.push(supportApi.tickets().then((value) => { result.tickets = value.data || []; }));
+      tasks.push(supportApi.assignees().then((value) => { result.assignees = value; }));
+    }
+    if (canAccounts && search.trim().length >= 2) {
+      tasks.push(supportApi.customers(search.trim()).then((value) => { result.customers = value.data || []; }));
+    }
+    await Promise.all(tasks);
+    return result;
+  }, [canAccounts, canTickets, search]);
+
+  const applySupport = useCallback((result) => {
+    setOverview(result.overview || null);
+    setTickets(result.tickets || []);
+    setAssignees(result.assignees || []);
+    setCustomers(result.customers || []);
+  }, []);
+
   const refresh = useCallback(async () => {
     setError('');
     try {
-      const tasks = [];
-      if (canTickets) tasks.push(supportApi.overview().then(setOverview), supportApi.tickets().then((r) => setTickets(r.data || [])), supportApi.assignees().then(setAssignees));
-      if (canAccounts && search.trim().length >= 2) tasks.push(supportApi.customers(search.trim()).then((r) => setCustomers(r.data || [])));
-      await Promise.all(tasks);
-    } catch (cause) { setError(errorText(cause)); }
-  }, [canAccounts, canTickets, search]);
+      applySupport(await loadSupport());
+    } catch (cause) {
+      setError(errorText(cause));
+    }
+  }, [applySupport, loadSupport]);
 
-  useEffect(() => { if (canAccess) refresh(); }, [canAccess, refresh]);
+  useEffect(() => {
+    if (!canAccess) return undefined;
+
+    let active = true;
+    loadSupport()
+      .then((result) => {
+        if (active) {
+          applySupport(result);
+          setError('');
+        }
+      })
+      .catch((cause) => {
+        if (active) setError(errorText(cause));
+      });
+    return () => {
+      active = false;
+    };
+  }, [applySupport, canAccess, loadSupport]);
 
   const run = async (action, message) => {
     setBusy(true); setError(''); setNotice('');

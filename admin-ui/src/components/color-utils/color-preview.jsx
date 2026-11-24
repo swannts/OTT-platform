@@ -45,3 +45,4 @@ export const ColorPreview = forwardRef(({ colors, limit = 3, sx, ...other }, ref
     </Box>
   );
 });
+ColorPreview.displayName = 'ColorPreview';

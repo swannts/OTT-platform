@@ -57,32 +57,38 @@ export function RolesManagementPage() {
   const canManagePermissions = hasPermission(user, 'admin.permissions.manage');
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const [roleResponse, permissionResponse] = await Promise.all([
-        rbacApi.listRoles({
-          search,
-          scope: scope === 'all' ? undefined : scope,
-          page: page + 1,
-          per_page: 25,
-        }),
-        hasPermission(user, 'admin.permissions.view')
-          ? rbacApi.listPermissions()
-          : Promise.resolve({ groups: {} }),
-      ]);
-      setRoles(roleResponse.data || []);
-      setTotal(roleResponse.meta?.total || 0);
-      setPermissionGroups(permissionResponse.groups || {});
-    } catch (loadError) {
-      setError(loadError.message || 'Roles could not be loaded.');
-    } finally {
-      setLoading(false);
-    }
+    return Promise.all([
+      rbacApi.listRoles({
+        search,
+        scope: scope === 'all' ? undefined : scope,
+        page: page + 1,
+        per_page: 25,
+      }),
+      hasPermission(user, 'admin.permissions.view')
+        ? rbacApi.listPermissions()
+        : Promise.resolve({ groups: {} }),
+    ]);
   }, [page, scope, search, user]);
 
   useEffect(() => {
-    load();
+    let active = true;
+    load()
+      .then(([roleResponse, permissionResponse]) => {
+        if (!active) return;
+        setRoles(roleResponse.data || []);
+        setTotal(roleResponse.meta?.total || 0);
+        setPermissionGroups(permissionResponse.groups || {});
+        setError('');
+      })
+      .catch((loadError) => {
+        if (active) setError(loadError.message || 'Roles could not be loaded.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [load]);
 
   const permissionOptions = useMemo(() => Object.entries(permissionGroups), [permissionGroups]);
@@ -125,6 +131,7 @@ export function RolesManagementPage() {
 
   const save = async (event) => {
     event.preventDefault();
+    setLoading(true);
     setSaving(true);
     setError('');
     try {
@@ -138,10 +145,15 @@ export function RolesManagementPage() {
       else await rbacApi.createRole(payload);
       setDialog(false);
       setNotice(selected ? 'Role updated.' : 'Role created.');
-      await load();
+      const [roleResponse, permissionResponse] = await load();
+      setRoles(roleResponse.data || []);
+      setTotal(roleResponse.meta?.total || 0);
+      setPermissionGroups(permissionResponse.groups || {});
+      setLoading(false);
       await checkUserSession();
     } catch (saveError) {
       setError(saveError.message || 'The role could not be saved.');
+      setLoading(false);
     } finally {
       setSaving(false);
     }
@@ -149,12 +161,19 @@ export function RolesManagementPage() {
 
   const removeRole = async (role) => {
     if (!window.confirm(`Delete the custom role “${role.title}”?`)) return;
+    setLoading(true);
+    setError('');
     try {
       await rbacApi.deleteRole(role.id);
       setNotice('Role deleted.');
-      await load();
+      const [roleResponse, permissionResponse] = await load();
+      setRoles(roleResponse.data || []);
+      setTotal(roleResponse.meta?.total || 0);
+      setPermissionGroups(permissionResponse.groups || {});
+      setLoading(false);
     } catch (deleteError) {
       setError(deleteError.message || 'The role could not be deleted.');
+      setLoading(false);
     }
   };
 
@@ -201,6 +220,8 @@ export function RolesManagementPage() {
               size="small"
               value={search}
               onChange={(event) => {
+                setLoading(true);
+                setError('');
                 setSearch(event.target.value);
                 setPage(0);
               }}
@@ -209,6 +230,8 @@ export function RolesManagementPage() {
               size="small"
               value={scope}
               onChange={(event) => {
+                setLoading(true);
+                setError('');
                 setScope(event.target.value);
                 setPage(0);
               }}
@@ -303,7 +326,11 @@ export function RolesManagementPage() {
             component="div"
             count={total}
             page={page}
-            onPageChange={(_, nextPage) => setPage(nextPage)}
+            onPageChange={(_, nextPage) => {
+              setLoading(true);
+              setError('');
+              setPage(nextPage);
+            }}
             rowsPerPage={25}
             rowsPerPageOptions={[25]}
           />

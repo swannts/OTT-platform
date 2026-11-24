@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 
 import { useRouter, useSearchParams } from 'src/routes/hooks';
 
@@ -19,29 +19,13 @@ export function GuestGuard({ children }) {
 
   const { loading, authenticated } = useAuthContext();
 
-  const [isChecking, setIsChecking] = useState(true);
-
   const returnTo = searchParams.get('returnTo') || CONFIG.auth.redirectPath;
 
-  const checkPermissions = async () => {
-    if (loading) {
-      return;
-    }
-
-    if (authenticated) {
-      router.replace(returnTo);
-      return;
-    }
-
-    setIsChecking(false);
-  };
-
   useEffect(() => {
-    checkPermissions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authenticated, loading]);
+    if (!loading && authenticated) router.replace(returnTo);
+  }, [authenticated, loading, returnTo, router]);
 
-  if (isChecking) {
+  if (loading || authenticated) {
     return <SplashScreen />;
   }
 

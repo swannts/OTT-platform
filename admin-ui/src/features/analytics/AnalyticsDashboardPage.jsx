@@ -58,16 +58,47 @@ export function AnalyticsDashboardPage() {
   const [notice, setNotice] = useState('');
   const canAccess = hasAnyPermission(user, GROUPS.map((group) => group.permission));
 
-  const refresh = useCallback(async () => {
-    setBusy(true); setError('');
-    try {
-      const result = await analyticsApi.dashboard({ from, to }); setData(result);
-      if (canExport) { const reportPage = await analyticsApi.reports(); setReports(reportPage.data || []); }
-    } catch (cause) { setError(errorText(cause)); }
-    finally { setBusy(false); }
+  const loadDashboard = useCallback(async () => {
+    const result = await analyticsApi.dashboard({ from, to });
+    const reportPage = canExport ? await analyticsApi.reports() : null;
+    return { result, reportPage };
   }, [canExport, from, to]);
 
-  useEffect(() => { if (canAccess) refresh(); }, [canAccess, refresh]);
+  const refresh = useCallback(async () => {
+    setBusy(true);
+    setError('');
+    try {
+      const { result, reportPage } = await loadDashboard();
+      setData(result);
+      if (reportPage) setReports(reportPage.data || []);
+    } catch (cause) {
+      setError(errorText(cause));
+    } finally {
+      setBusy(false);
+    }
+  }, [loadDashboard]);
+
+  useEffect(() => {
+    if (!canAccess) return undefined;
+
+    let active = true;
+    loadDashboard()
+      .then(({ result, reportPage }) => {
+        if (!active) return;
+        setData(result);
+        if (reportPage) setReports(reportPage.data || []);
+        setError('');
+      })
+      .catch((cause) => {
+        if (active) setError(errorText(cause));
+      })
+      .finally(() => {
+        if (active) setBusy(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [canAccess, loadDashboard]);
 
   const download = async (group) => {
     try {
@@ -105,8 +136,8 @@ export function AnalyticsDashboardPage() {
     <RbacPageHeader title="OTT analytics" description="Permission-scoped audience, content, subscription, revenue, and playback metrics from the selected date range." />
     {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}{notice && <Alert severity="success" sx={{ mb: 2 }}>{notice}</Alert>}
     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 2 }}>
-      <TextField label="From" type="date" size="small" value={from} onChange={(e) => setFrom(e.target.value)} InputLabelProps={{ shrink: true }} />
-      <TextField label="To" type="date" size="small" value={to} onChange={(e) => setTo(e.target.value)} InputLabelProps={{ shrink: true }} />
+      <TextField label="From" type="date" size="small" value={from} onChange={(e) => { setBusy(true); setFrom(e.target.value); }} InputLabelProps={{ shrink: true }} />
+      <TextField label="To" type="date" size="small" value={to} onChange={(e) => { setBusy(true); setTo(e.target.value); }} InputLabelProps={{ shrink: true }} />
       <Button variant="contained" disabled={busy} onClick={refresh}>Apply period</Button>
       <Chip label={data ? `${data.range.from} – ${data.range.to}` : 'Loading metrics'} variant="outlined" />
     </Stack>

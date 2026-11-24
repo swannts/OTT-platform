@@ -42,7 +42,10 @@ export const PhoneInput = forwardRef(
     );
   }
 );
+PhoneInput.displayName = 'PhoneInput';
+
 
 // ----------------------------------------------------------------------
 
 const CustomInput = forwardRef(({ ...props }, ref) => <TextField inputRef={ref} {...props} />);
+CustomInput.displayName = 'CustomInput';

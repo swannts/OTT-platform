@@ -30,6 +30,8 @@ export const SocialIcon = forwardRef(({ icon, width = 20, sx, ...other }, ref) =
     </SvgIcon>
   );
 });
+SocialIcon.displayName = 'SocialIcon';
+
 
 // ----------------------------------------------------------------------
 

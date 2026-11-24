@@ -63,29 +63,69 @@ export function FinanceOperationsPage() {
   const canExport = hasPermission(user, 'finance.reports.export');
   const canAccess = hasAnyPermission(user, ['finance.payments.view', 'finance.invoices.view', 'finance.refunds.request', 'finance.refunds.approve', 'finance.reconciliation.view']);
 
+  const loadFinance = useCallback(async () => {
+    const result = { paymentsEnabled: canViewPayments, reconciliationEnabled: canReconcile };
+    const tasks = [];
+    if (canViewPayments) {
+      tasks.push(financeApi.overview().then((value) => { result.overview = value; }));
+      tasks.push(financeApi.payments({ search: search || undefined, gateway: gateway || undefined, status: status || undefined, per_page: 50 }).then((value) => { result.payments = value.data || []; }));
+      tasks.push(financeApi.refunds({ per_page: 50 }).then((value) => { result.refunds = value.data || []; }));
+      tasks.push(financeApi.disputes().then((value) => { result.disputes = value.data || []; }));
+      tasks.push(financeApi.failedEvents().then((value) => { result.failedEvents = value; }));
+    }
+    if (canReconcile) {
+      tasks.push(financeApi.reconciliation().then((value) => { result.reconciliation = value; }));
+      tasks.push(financeApi.reconciliationHistory().then((value) => { result.reconciliationHistory = value; }));
+      tasks.push(financeApi.report({}).then((value) => { result.report = value; }));
+    }
+    await Promise.all(tasks);
+    return result;
+  }, [canReconcile, canViewPayments, gateway, search, status]);
+
+  const applyFinance = useCallback((result) => {
+    setOverview(result.paymentsEnabled ? result.overview : null);
+    setPayments(result.paymentsEnabled ? result.payments : []);
+    setRefunds(result.paymentsEnabled ? result.refunds : []);
+    setDisputes(result.paymentsEnabled ? result.disputes : []);
+    setFailedEvents(result.paymentsEnabled ? result.failedEvents : []);
+    setReconciliation(result.reconciliationEnabled ? result.reconciliation : null);
+    setReconciliationHistory(result.reconciliationEnabled ? result.reconciliationHistory : []);
+    setReport(result.reconciliationEnabled ? result.report : null);
+  }, []);
+
   const refresh = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const tasks = [];
-      if (canViewPayments) {
-        tasks.push(financeApi.overview().then(setOverview));
-        tasks.push(financeApi.payments({ search: search || undefined, gateway: gateway || undefined, status: status || undefined, per_page: 50 }).then((page) => setPayments(page.data || [])));
-        tasks.push(financeApi.refunds({ per_page: 50 }).then((page) => setRefunds(page.data || [])));
-        tasks.push(financeApi.disputes().then((page) => setDisputes(page.data || [])));
-        tasks.push(financeApi.failedEvents().then(setFailedEvents));
-      }
-      if (canReconcile) {
-        tasks.push(financeApi.reconciliation().then(setReconciliation));
-        tasks.push(financeApi.reconciliationHistory().then(setReconciliationHistory));
-        tasks.push(financeApi.report({}).then(setReport));
-      }
-      await Promise.all(tasks);
-    } catch (cause) { setError(errorText(cause)); }
-    finally { setLoading(false); }
-  }, [canReconcile, canViewPayments, gateway, search, status]);
+      applyFinance(await loadFinance());
+    } catch (cause) {
+      setError(errorText(cause));
+    } finally {
+      setLoading(false);
+    }
+  }, [applyFinance, loadFinance]);
 
-  useEffect(() => { if (canAccess) refresh(); else setLoading(false); }, [canAccess, refresh]);
+  useEffect(() => {
+    if (!canAccess) return undefined;
+
+    let active = true;
+    loadFinance()
+      .then((result) => {
+        if (active) {
+          applyFinance(result);
+          setError('');
+        }
+      })
+      .catch((cause) => {
+        if (active) setError(errorText(cause));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [applyFinance, canAccess, loadFinance]);
 
   const openPayment = async (payment) => {
     setSelected({ payment, refunds: [], disputes: [] });
@@ -174,9 +214,9 @@ export function FinanceOperationsPage() {
         {canViewPayments && <Card><CardContent>
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} alignItems={{ md: 'center' }} sx={{ mb: 2 }}>
             <Typography variant="h6" sx={{ flexGrow: 1 }}>Payment transactions</Typography>
-            <TextField size="small" label="Search reference or customer" value={search} onChange={(event) => setSearch(event.target.value)} />
-            <TextField size="small" select label="Gateway" value={gateway} onChange={(event) => setGateway(event.target.value)} sx={{ minWidth: 130 }}><MenuItem value="">All</MenuItem>{['stripe', 'razorpay', 'paystack', 'revenuecat'].map((value) => <MenuItem key={value} value={value}>{value}</MenuItem>)}</TextField>
-            <TextField size="small" select label="Status" value={status} onChange={(event) => setStatus(event.target.value)} sx={{ minWidth: 130 }}><MenuItem value="">All</MenuItem>{['paid', 'initiated', 'failed', 'pending'].map((value) => <MenuItem key={value} value={value}>{value}</MenuItem>)}</TextField>
+            <TextField size="small" label="Search reference or customer" value={search} onChange={(event) => { setLoading(true); setError(''); setSearch(event.target.value); }} />
+            <TextField size="small" select label="Gateway" value={gateway} onChange={(event) => { setLoading(true); setError(''); setGateway(event.target.value); }} sx={{ minWidth: 130 }}><MenuItem value="">All</MenuItem>{['stripe', 'razorpay', 'paystack', 'revenuecat'].map((value) => <MenuItem key={value} value={value}>{value}</MenuItem>)}</TextField>
+            <TextField size="small" select label="Status" value={status} onChange={(event) => { setLoading(true); setError(''); setStatus(event.target.value); }} sx={{ minWidth: 130 }}><MenuItem value="">All</MenuItem>{['paid', 'initiated', 'failed', 'pending'].map((value) => <MenuItem key={value} value={value}>{value}</MenuItem>)}</TextField>
             {canExport && <Button disabled={busy} onClick={exportPayments}>Export CSV</Button>}
           </Stack>
           {loading ? <Typography color="text.secondary">Loading transactions…</Typography> : payments.length === 0 ? <Typography color="text.secondary">No payment records matched these filters.</Typography> : (

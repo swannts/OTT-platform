@@ -180,5 +180,7 @@ const ItemBase = forwardRef(({ task, stateProps, sx, ...other }, ref) => {
     </StyledItemWrap>
   );
 });
+ItemBase.displayName = 'ItemBase';
+
 
 export default memo(ItemBase);

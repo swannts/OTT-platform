@@ -37,3 +37,4 @@ export const FlagIcon = forwardRef(({ code, sx, ...other }, ref) => {
     </NoSsr>
   );
 });
+FlagIcon.displayName = 'FlagIcon';

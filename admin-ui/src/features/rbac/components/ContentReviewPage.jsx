@@ -40,33 +40,45 @@ export function ContentReviewPage() {
 
   const load = useCallback(async () => {
     if (!(activeStatus === 'approved' ? canPublish : canReview)) {
-      setLoading(false);
-      setRows([]);
-      return;
+      return null;
     }
-    setLoading(true);
-    setError('');
-    try {
-      const response = await rbacApi.contentReviewQueue({ status: activeStatus, per_page: 50 });
-      setRows(response.data || []);
-    } catch (loadError) {
-      setError(loadError.response?.data?.message || 'The content workflow could not be loaded.');
-    } finally {
-      setLoading(false);
-    }
+    return rbacApi.contentReviewQueue({ status: activeStatus, per_page: 50 });
   }, [activeStatus, canPublish, canReview]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (!(activeStatus === 'approved' ? canPublish : canReview)) return undefined;
+
+    let active = true;
+    load()
+      .then((response) => {
+        if (!active || !response) return;
+        setRows(response.data || []);
+        setError('');
+      })
+      .catch((loadError) => {
+        if (active) setError(loadError.response?.data?.message || 'The content workflow could not be loaded.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [activeStatus, canPublish, canReview, load]);
 
   const run = async (operation, successMessage) => {
+    setLoading(true);
     setError('');
     setMessage('');
     try {
       await operation();
       setMessage(successMessage);
-      await load();
+      const response = await load();
+      if (response) setRows(response.data || []);
+      setLoading(false);
     } catch (actionError) {
       setError(actionError.response?.data?.message || 'The workflow action could not be completed.');
+      setLoading(false);
     }
   };
 
@@ -86,7 +98,7 @@ export function ContentReviewPage() {
         )}
         {(canReview || canPublish) && (
           <Card>
-            <Tabs value={activeStatus} onChange={(_, value) => setStatus(value)} aria-label="Content review status">
+            <Tabs value={activeStatus} onChange={(_, value) => { setLoading(true); setError(''); setStatus(value); }} aria-label="Content review status">
               {canReview && <Tab value="in_review" label="Needs review" />}
               {canPublish && <Tab value="approved" label="Approved" />}
             </Tabs>

@@ -164,18 +164,21 @@ const baseColumns = [
     disableColumnMenu: true,
     getActions: (params) => [
       <GridActionsCellItem
+        key="view"
         showInMenu
         icon={<Iconify icon="solar:eye-bold" />}
         label="View"
         onClick={() => console.info('VIEW', params.row.id)}
       />,
       <GridActionsCellItem
+        key="edit"
         showInMenu
         icon={<Iconify icon="solar:pen-bold" />}
         label="Edit"
         onClick={() => console.info('EDIT', params.row.id)}
       />,
       <GridActionsCellItem
+        key="delete"
         showInMenu
         icon={<Iconify icon="solar:trash-bin-trash-bold" />}
         label="Delete"

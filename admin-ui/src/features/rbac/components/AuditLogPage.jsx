@@ -39,24 +39,32 @@ export function AuditLogPage() {
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const response = await rbacApi.listAuditLogs({ ...filters, page: page + 1, per_page: 25 });
-      setRows(response.data || []);
-      setTotal(response.meta?.total || 0);
-    } catch (loadError) {
-      setError(loadError.message || 'Audit records could not be loaded.');
-    } finally {
-      setLoading(false);
-    }
+    return rbacApi.listAuditLogs({ ...filters, page: page + 1, per_page: 25 });
   }, [filters, page]);
 
   useEffect(() => {
-    load();
+    let active = true;
+    load()
+      .then((response) => {
+        if (!active) return;
+        setRows(response.data || []);
+        setTotal(response.meta?.total || 0);
+        setError('');
+      })
+      .catch((loadError) => {
+        if (active) setError(loadError.message || 'Audit records could not be loaded.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [load]);
 
   const updateFilter = (name, value) => {
+    setLoading(true);
+    setError('');
     setFilters((current) => ({ ...current, [name]: value }));
     setPage(0);
   };
@@ -191,7 +199,11 @@ export function AuditLogPage() {
             component="div"
             count={total}
             page={page}
-            onPageChange={(_, nextPage) => setPage(nextPage)}
+            onPageChange={(_, nextPage) => {
+              setLoading(true);
+              setError('');
+              setPage(nextPage);
+            }}
             rowsPerPage={25}
             rowsPerPageOptions={[25]}
           />

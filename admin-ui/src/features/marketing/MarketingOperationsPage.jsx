@@ -50,18 +50,47 @@ export function MarketingOperationsPage() {
   const canApprove = hasPermission(user, 'marketing.campaigns.approve');
   const canManageBanners = hasPermission(user, 'marketing.banners.manage');
 
+  const loadMarketing = useCallback(async () => {
+    const requests = [marketingApi.dashboard(), marketingApi.campaigns(), marketingApi.segments()];
+    if (canManageBanners) requests.push(marketingApi.banners());
+    const [nextDashboard, nextCampaigns, nextSegments, nextBanners] = await Promise.all(requests);
+    return { nextDashboard, nextCampaigns, nextSegments, nextBanners };
+  }, [canManageBanners]);
+
+  const applyMarketing = useCallback(({ nextDashboard, nextCampaigns, nextSegments, nextBanners }) => {
+    setDashboard(nextDashboard);
+    setCampaigns(nextCampaigns?.data || []);
+    setSegments(nextSegments);
+    setBanners(nextBanners?.data || []);
+  }, []);
+
   const refresh = useCallback(async () => {
     setError('');
     try {
-      const requests = [marketingApi.dashboard(), marketingApi.campaigns(), marketingApi.segments()];
-      if (canManageBanners) requests.push(marketingApi.banners());
-      const [nextDashboard, nextCampaigns, nextSegments, nextBanners] = await Promise.all(requests);
-      setDashboard(nextDashboard); setCampaigns(nextCampaigns?.data || []); setSegments(nextSegments);
-      if (nextBanners) setBanners(nextBanners.data || []);
-    } catch (cause) { setError(message(cause)); }
-  }, [canManageBanners]);
+      applyMarketing(await loadMarketing());
+    } catch (cause) {
+      setError(message(cause));
+    }
+  }, [applyMarketing, loadMarketing]);
 
-  useEffect(() => { if (canManage) refresh(); }, [canManage, refresh]);
+  useEffect(() => {
+    if (!canManage) return undefined;
+
+    let active = true;
+    loadMarketing()
+      .then((result) => {
+        if (active) {
+          applyMarketing(result);
+          setError('');
+        }
+      })
+      .catch((cause) => {
+        if (active) setError(message(cause));
+      });
+    return () => {
+      active = false;
+    };
+  }, [applyMarketing, canManage, loadMarketing]);
 
   const perform = async (action, success) => {
     setBusy(true); setError(''); setNotice('');

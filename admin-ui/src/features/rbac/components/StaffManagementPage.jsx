@@ -55,27 +55,33 @@ export function StaffManagementPage() {
   const canRevokeSessions = hasPermission(user, 'admin.staff.sessions.revoke');
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const [staffResponse, roleResponse] = await Promise.all([
-        rbacApi.listStaff({ search, page: page + 1, per_page: 25 }),
-        hasPermission(user, 'admin.roles.view')
-          ? rbacApi.listRoles({ per_page: 100, active: true })
-          : Promise.resolve({ data: [] }),
-      ]);
-      setStaff(staffResponse.data || []);
-      setTotal(staffResponse.meta?.total || 0);
-      setRoles((roleResponse.data || []).filter((role) => role.is_active));
-    } catch (loadError) {
-      setError(loadError.message || 'Staff could not be loaded.');
-    } finally {
-      setLoading(false);
-    }
+    return Promise.all([
+      rbacApi.listStaff({ search, page: page + 1, per_page: 25 }),
+      hasPermission(user, 'admin.roles.view')
+        ? rbacApi.listRoles({ per_page: 100, active: true })
+        : Promise.resolve({ data: [] }),
+    ]);
   }, [page, search, user]);
 
   useEffect(() => {
-    load();
+    let active = true;
+    load()
+      .then(([staffResponse, roleResponse]) => {
+        if (!active) return;
+        setStaff(staffResponse.data || []);
+        setTotal(staffResponse.meta?.total || 0);
+        setRoles((roleResponse.data || []).filter((role) => role.is_active));
+        setError('');
+      })
+      .catch((loadError) => {
+        if (active) setError(loadError.message || 'Staff could not be loaded.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [load]);
 
   const openRoleEditor = (person) => {
@@ -104,6 +110,8 @@ export function StaffManagementPage() {
 
   const saveRoles = async (event) => {
     event.preventDefault();
+    setLoading(true);
+    setError('');
     try {
       await rbacApi.updateStaffRoles(roleEditor.id, {
         role_names: roleNames,
@@ -111,19 +119,31 @@ export function StaffManagementPage() {
       });
       setRoleEditor(null);
       setNotice('Staff roles updated.');
-      await load();
+      const [staffResponse, roleResponse] = await load();
+      setStaff(staffResponse.data || []);
+      setTotal(staffResponse.meta?.total || 0);
+      setRoles((roleResponse.data || []).filter((role) => role.is_active));
+      setLoading(false);
     } catch (roleError) {
       setError(roleError.message || 'Staff roles could not be updated.');
+      setLoading(false);
     }
   };
 
   const updateStatus = async (person) => {
+    setLoading(true);
+    setError('');
     try {
       await rbacApi.updateStaffStatus(person.id, { active: !person.active });
       setNotice(person.active ? 'Staff account deactivated.' : 'Staff account activated.');
-      await load();
+      const [staffResponse, roleResponse] = await load();
+      setStaff(staffResponse.data || []);
+      setTotal(staffResponse.meta?.total || 0);
+      setRoles((roleResponse.data || []).filter((role) => role.is_active));
+      setLoading(false);
     } catch (statusError) {
       setError(statusError.message || 'Staff status could not be changed.');
+      setLoading(false);
     }
   };
 
@@ -186,6 +206,8 @@ export function StaffManagementPage() {
               label="Search staff"
               value={search}
               onChange={(event) => {
+                setLoading(true);
+                setError('');
                 setSearch(event.target.value);
                 setPage(0);
               }}
@@ -274,7 +296,11 @@ export function StaffManagementPage() {
             component="div"
             count={total}
             page={page}
-            onPageChange={(_, nextPage) => setPage(nextPage)}
+            onPageChange={(_, nextPage) => {
+              setLoading(true);
+              setError('');
+              setPage(nextPage);
+            }}
             rowsPerPage={25}
             rowsPerPageOptions={[25]}
           />
