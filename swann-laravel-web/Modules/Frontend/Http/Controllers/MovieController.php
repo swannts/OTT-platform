@@ -44,8 +44,7 @@ class MovieController extends Controller
         $user_id = Auth::id();
         $user = Auth::user();
 
-        $featured_movies = Banner::where('banner_for', 'movie')
-            ->where('status', 1)
+        $featured_movies = Banner::currentlyVisible()->where('banner_for', 'movie')
             ->orderBy('id', 'desc')
             ->limit(5)
             ->get();
@@ -84,8 +83,7 @@ public function moviesListBylanguage(string $language)
         $categoryData = LiveTvCategory::with('tvChannels')->where('status',1)->orderBy('updated_at', 'desc')->get();
 
         // $responseData['slider'] = LiveTvChannelResourceV3::collection($channelData)->toArray(request());
-        $featured_livetv_banners = Banner::where('banner_for', 'livetv')
-        ->where('status', 1)
+        $featured_livetv_banners = Banner::currentlyVisible()->where('banner_for', 'livetv')
         ->orderBy('id', 'desc')
         ->limit(5)
         ->get();

@@ -13,6 +13,7 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\OptimizeImages::class,
         \App\Console\Commands\CleanLatestMovies::class,
         \App\Console\Commands\CleanExpiredMediaUploads::class,
+        \App\Console\Commands\PublishMarketingCampaigns::class,
     ];
 
     /**
@@ -22,7 +23,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        $schedule->command('queue:work --tries=3 --stop-when-empty')->withoutOverlapping();
+        $schedule->command('queue:work --tries=3 --stop-when-empty')->name('queue-worker')->withoutOverlapping();
 
         
         
@@ -31,14 +32,15 @@ class Kernel extends ConsoleKernel
         $schedule->command('reminder:notify')->dailyAt('10:00')->description('Send upcoming content reminders');
         $schedule->command('continuewatch:notify')->dailyAt('11:00')->description('Send continue watching reminders');
         $schedule->command('swann:clean-latest-movies')->dailyAt('11:00')->description('Remove old movies from latest-movies list');
-        $schedule->command('media:uploads-clean-expired')->hourly()->withoutOverlapping()->description('Clean expired private media upload chunks');
+        $schedule->command('media:uploads-clean-expired')->name('media-upload-cleanup')->hourly()->withoutOverlapping()->description('Clean expired private media upload chunks');
+        $schedule->command('marketing:publish-scheduled')->name('marketing:publish-scheduled')->everyMinute()->withoutOverlapping()->description('Publish and expire approved marketing campaigns');
         $schedule->call(function () {
             if (\Illuminate\Support\Facades\Schema::hasTable('subscription_coupon_reservations')) {
                 \Illuminate\Support\Facades\DB::table('subscription_coupon_reservations')
                     ->where('status', 'pending')->where('expires_at', '<=', now())
                     ->update(['status' => 'expired', 'updated_at' => now()]);
             }
-        })->hourly()->withoutOverlapping()->description('Expire unused subscription coupon checkout reservations');
+        })->name('expire-subscription-coupon-reservations')->hourly()->withoutOverlapping()->description('Expire unused subscription coupon checkout reservations');
 
         $schedule->call(function () {
             \App\Models\Device::whereNotNull('session_id')

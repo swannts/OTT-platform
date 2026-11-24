@@ -69,6 +69,12 @@ export const navData = [
         permission: 'finance.payments.view',
       },
       {
+        title: 'Marketing',
+        path: '/dashboard/marketing',
+        icon: ICONS.blog,
+        permission: 'marketing.campaigns.manage',
+      },
+      {
         title: 'Operations & reports',
         path: '/dashboard/operations',
         icon: ICONS.analytics,

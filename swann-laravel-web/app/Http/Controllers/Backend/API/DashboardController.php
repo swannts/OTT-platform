@@ -330,7 +330,7 @@ public function getTrandingData(Request $request){
         $setting_isBanner = MobileSetting::getNameAndValueBySlug('banner');
             $isBanner = ($setting_isBanner && empty($setting_isBanner['type'])) ? $setting_isBanner['value'] : null;
         $sliderList = $isBanner
-        ? Banner::where('banner_for','home')->where('status', 1)->get()
+        ? Banner::currentlyVisible()->where('banner_for','home')->get()
         : collect();
 
         // Filter home banners based on their actual content type (type field)
@@ -423,8 +423,7 @@ public function getTrandingData(Request $request){
 
             if ($type == 'home') {
                 $sliderList = $isBanner
-                    ? Banner::select('id', 'banner_for', 'type', 'type_id', 'poster_url', 'poster_tv_url', 'title', 'description')
-                        ->where('status',1)
+                    ? Banner::currentlyVisible()->select('id', 'banner_for', 'type', 'type_id', 'poster_url', 'poster_tv_url', 'title', 'description', 'click_url')
                         ->where('deleted_at',null)
                         ->where('banner_for',$type)
                         ->get()
@@ -455,8 +454,7 @@ public function getTrandingData(Request $request){
                 }
 
                 $sliderList = ($isBanner && $isModuleEnabled)
-                    ? Banner::select('id', 'banner_for', 'type', 'type_id', 'poster_url', 'poster_tv_url', 'title', 'description')
-                        ->where('status',1)
+                    ? Banner::currentlyVisible()->select('id', 'banner_for', 'type', 'type_id', 'poster_url', 'poster_tv_url', 'title', 'description', 'click_url')
                         ->where('deleted_at',null)
                         ->where('banner_for',$type)
                         ->get()
@@ -1584,9 +1582,8 @@ public function getTrandingData(Request $request){
             $setting_isBanner = MobileSetting::getNameAndValueBySlug('banner');
             $isBanner = ($setting_isBanner && empty($setting_isBanner['type'])) ? $setting_isBanner['value'] : null;
             $sliderList = $isBanner
-            ? Banner::select('id', 'banner_for', 'type', 'type_id', 'poster_url', 'poster_tv_url', 'title', 'description')
+            ? Banner::currentlyVisible()->select('id', 'banner_for', 'type', 'type_id', 'poster_url', 'poster_tv_url', 'title', 'description', 'click_url')
                 ->where('banner_for','home')
-                ->where('status', 1)
                 ->where('deleted_at', null)
                 ->get()
             : collect();

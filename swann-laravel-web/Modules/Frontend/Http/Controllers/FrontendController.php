@@ -107,8 +107,7 @@ class FrontendController extends Controller
             $responseData = [];
 
             $sliderList = Cache::remember('home_banners', 300, function () {
-                return Banner::where('banner_for', 'home')
-                    ->where('status', 1)
+                return Banner::currentlyVisible()->where('banner_for', 'home')
                     ->orderBy('id', 'desc')
                     ->where('deleted_at', null)
                     ->get();

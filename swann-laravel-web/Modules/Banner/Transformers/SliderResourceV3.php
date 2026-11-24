@@ -148,6 +148,7 @@ class SliderResourceV3 extends JsonResource
             'description' => $resolvedDesc,
             'description_bn' => $resolvedDescBn,
             'description_en' => $resolvedDescEn,
+            'click_url' => $this->click_url,
             'poster_image' => setBaseUrlWithFileName($posterUrl,'image','banner'),
             'poster_tv_image' => $dataArray['poster_tv_image'] ?? null,
             'blurhash' => $this->blurhash ?? $dataArray['blurhash'] ?? null,

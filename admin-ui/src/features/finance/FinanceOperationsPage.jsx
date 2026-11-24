@@ -166,10 +166,10 @@ export function FinanceOperationsPage() {
         {error && <Alert severity="error">{error}</Alert>}
         {notice && <Alert severity="success">{notice}</Alert>}
         {canViewPayments && <Grid container spacing={2}>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}><Metric title="Verified payments" value={overview?.verified_payments} /></Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}><Metric title="Initiated payments" value={overview?.initiated_payments} /></Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}><Metric title="Pending refunds" value={overview?.pending_refunds} /></Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}><Metric title="Open disputes" value={overview?.open_disputes} /></Grid>
+          <Grid item xs={12} sm={6} md={3}><Metric title="Verified payments" value={overview?.verified_payments} /></Grid>
+          <Grid item xs={12} sm={6} md={3}><Metric title="Initiated payments" value={overview?.initiated_payments} /></Grid>
+          <Grid item xs={12} sm={6} md={3}><Metric title="Pending refunds" value={overview?.pending_refunds} /></Grid>
+          <Grid item xs={12} sm={6} md={3}><Metric title="Open disputes" value={overview?.open_disputes} /></Grid>
         </Grid>}
         {canViewPayments && <Card><CardContent>
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} alignItems={{ md: 'center' }} sx={{ mb: 2 }}>
@@ -203,8 +203,8 @@ export function FinanceOperationsPage() {
           {failedEvents.length === 0 ? <Typography color="text.secondary">No failed or pending provider webhook events.</Typography> : <Table size="small"><TableHead><TableRow><TableCell>Provider</TableCell><TableCell>Event</TableCell><TableCell>Reference</TableCell><TableCell>Status</TableCell><TableCell>Attempts</TableCell><TableCell>Failure</TableCell><TableCell>Last update</TableCell></TableRow></TableHead><TableBody>{failedEvents.map((event) => <TableRow key={event.id}><TableCell>{event.gateway}</TableCell><TableCell>{event.event_type}</TableCell><TableCell>{event.provider_reference || '—'}</TableCell><TableCell>{event.status}</TableCell><TableCell>{event.attempts}</TableCell><TableCell>{event.failure_code || '—'}</TableCell><TableCell>{new Date(event.updated_at).toLocaleString()}</TableCell></TableRow>)}</TableBody></Table>}
         </CardContent></Card>}
         {canReconcile && <Grid container spacing={2}>
-          <Grid size={{ xs: 12, md: 6 }}><Card><CardContent><Typography variant="h6" sx={{ mb: 2 }}>Reconciliation</Typography><Typography>Verified fulfillments missing a payment ledger: {reconciliation?.verified_fulfillments_missing_ledger ?? '—'}</Typography><Typography>Open disputes: {reconciliation?.open_disputes ?? '—'}</Typography><Typography>Provider checks compare verified amount, currency, and status. Refund matching is shown where the provider exposes refunded totals.</Typography></CardContent></Card></Grid>
-          <Grid size={{ xs: 12, md: 6 }}><Card><CardContent><Typography variant="h6" sx={{ mb: 2 }}>Revenue report</Typography>{!report?.payments?.length ? <Typography color="text.secondary">No verified revenue in the selected period.</Typography> : report.payments.map((row) => <Stack key={`${row.settlement_day}-${row.gateway}-${row.currency}`} direction="row" justifyContent="space-between"><Typography variant="body2">{row.settlement_day} · {row.gateway} · {row.currency}</Typography><Typography variant="body2">Gross {row.gross_minor} minor units</Typography></Stack>)}<Typography variant="caption" color="text.secondary">Amounts are grouped by payment currency; this is a ledger report, not a provider payout statement.</Typography></CardContent></Card></Grid>
+          <Grid item xs={12} md={6}><Card><CardContent><Typography variant="h6" sx={{ mb: 2 }}>Reconciliation</Typography><Typography>Verified fulfillments missing a payment ledger: {reconciliation?.verified_fulfillments_missing_ledger ?? '—'}</Typography><Typography>Open disputes: {reconciliation?.open_disputes ?? '—'}</Typography><Typography>Provider checks compare verified amount, currency, and status. Refund matching is shown where the provider exposes refunded totals.</Typography></CardContent></Card></Grid>
+          <Grid item xs={12} md={6}><Card><CardContent><Typography variant="h6" sx={{ mb: 2 }}>Revenue report</Typography>{!report?.payments?.length ? <Typography color="text.secondary">No verified revenue in the selected period.</Typography> : report.payments.map((row) => <Stack key={`${row.settlement_day}-${row.gateway}-${row.currency}`} direction="row" justifyContent="space-between"><Typography variant="body2">{row.settlement_day} · {row.gateway} · {row.currency}</Typography><Typography variant="body2">Gross {row.gross_minor} minor units</Typography></Stack>)}<Typography variant="caption" color="text.secondary">Amounts are grouped by payment currency; this is a ledger report, not a provider payout statement.</Typography></CardContent></Card></Grid>
         </Grid>}
         {canReconcile && <Card><CardContent>
           <Typography variant="h6" sx={{ mb: 2 }}>Recent provider reconciliation runs</Typography>

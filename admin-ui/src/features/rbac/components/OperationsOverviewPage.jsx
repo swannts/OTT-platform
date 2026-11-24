@@ -50,7 +50,7 @@ export function OperationsOverviewPage() {
       {loading ? <Typography color="text.secondary">Loading authorized summaries…</Typography> : (
         <Grid container spacing={2}>
           {results.map((section) => (
-            <Grid key={section.title} size={{ xs: 12, sm: 6, lg: 4 }}>
+            <Grid item key={section.title} xs={12} sm={6} lg={4}>
               <Card sx={{ height: 1 }}>
                 <CardContent>
                   <Typography variant="h6" sx={{ mb: 2 }}>{section.title}</Typography>

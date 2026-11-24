@@ -50,8 +50,7 @@ class TvShowController extends Controller
         $user_id = auth()->id();
         $user = Auth::user();
 
-        $featured_tvshow = Banner::where('banner_for', 'tv_show')
-            ->where('status', 1)
+        $featured_tvshow = Banner::currentlyVisible()->where('banner_for', 'tv_show')
             ->orderBy('id', 'desc')
             ->limit(5)
             ->get();

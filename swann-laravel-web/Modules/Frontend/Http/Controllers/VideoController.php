@@ -28,8 +28,7 @@ class VideoController extends Controller
         $user_id = auth()->id();
 
         // Get featured videos for slider
-        $featured_videos = Banner::where('banner_for', 'video')
-            ->where('status', 1)
+        $featured_videos = Banner::currentlyVisible()->where('banner_for', 'video')
             ->orderBy('id', 'desc')
             ->limit(5)
             ->get();

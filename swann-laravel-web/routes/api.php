@@ -42,6 +42,12 @@ Route::get('/short-drama-config', [ShortDramaConfigController::class, 'index']);
 Route::get('v3/blogs', [BlogApiController::class, 'index']);
 Route::get('v3/blogs/{slug}', [BlogApiController::class, 'show']);
 Route::get('v3/blog-categories', [BlogApiController::class, 'categories']);
+Route::get('v3/marketing/campaigns/{slug}', [\App\Http\Controllers\API\AdminMarketingController::class, 'publicLanding']);
+Route::get('v3/marketing/featured-collections', [\App\Http\Controllers\API\AdminMarketingController::class, 'publicFeaturedCollections']);
+Route::get('marketing/click/{token}', [\App\Http\Controllers\API\MarketingConsentController::class, 'trackClick'])->where('token', '[A-Fa-f0-9]{64}')->name('marketing.track-click');
+Route::get('marketing/open/{token}', [\App\Http\Controllers\API\MarketingConsentController::class, 'trackOpen'])->where('token', '[A-Fa-f0-9]{64}')->name('marketing.track-open');
+Route::get('marketing/unsubscribe/{token}', [\App\Http\Controllers\API\MarketingConsentController::class, 'unsubscribePrompt'])->where('token', '[A-Fa-f0-9]{64}')->name('marketing.unsubscribe');
+Route::post('marketing/unsubscribe/{token}', [\App\Http\Controllers\API\MarketingConsentController::class, 'unsubscribe'])->where('token', '[A-Fa-f0-9]{64}');
 
 // Public Global SEO Settings
 Route::get('v3/seo-settings', [\Modules\SEO\Http\Controllers\SEOController::class, 'getSeoSettingsApi']);
@@ -57,6 +63,11 @@ Route::get('/optimize', [QueryOptimizeController::class, 'optimize'])->name('opt
 
 Route::middleware(['auth:sanctum', 'checkApiDevice'])->get('/user', function (Request $request) {
     return $request->user();
+});
+
+Route::middleware('auth:sanctum')->group(function (): void {
+    Route::get('me/marketing-consents', [\App\Http\Controllers\API\MarketingConsentController::class, 'show']);
+    Route::put('me/marketing-consents', [\App\Http\Controllers\API\MarketingConsentController::class, 'update']);
 });
 
 Route::controller(AuthController::class)->group(function () {
@@ -142,6 +153,20 @@ Route::prefix('admin')->group(function () {
         Route::get('finance/reconciliation/history', [\App\Http\Controllers\API\AdminFinanceController::class, 'reconciliationHistory'])->middleware('explicit.permission:finance.reconciliation.view');
         Route::get('finance/reports', [\App\Http\Controllers\API\AdminFinanceController::class, 'report'])->middleware('explicit.permission:finance.reconciliation.view');
         Route::get('marketing/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'marketing'])->middleware('explicit.permission:marketing.campaigns.manage');
+        Route::get('marketing/dashboard', [\App\Http\Controllers\API\AdminMarketingController::class, 'overview'])->middleware('explicit.permission:marketing.campaigns.manage');
+        Route::get('marketing/campaigns', [\App\Http\Controllers\API\AdminMarketingController::class, 'campaigns'])->middleware('explicit.permission:marketing.campaigns.manage');
+        Route::post('marketing/campaigns', [\App\Http\Controllers\API\AdminMarketingController::class, 'createCampaign'])->middleware('explicit.permission:marketing.campaigns.manage');
+        Route::put('marketing/campaigns/{campaign}', [\App\Http\Controllers\API\AdminMarketingController::class, 'updateCampaign'])->middleware('explicit.permission:marketing.campaigns.manage');
+        Route::post('marketing/campaigns/{campaign}/submit', [\App\Http\Controllers\API\AdminMarketingController::class, 'submitForApproval'])->middleware('explicit.permission:marketing.campaigns.manage');
+        Route::post('marketing/campaigns/{campaign}/approve', [\App\Http\Controllers\API\AdminMarketingController::class, 'approveCampaign'])->middleware('explicit.permission:marketing.campaigns.approve');
+        Route::post('marketing/campaigns/{campaign}/reject', [\App\Http\Controllers\API\AdminMarketingController::class, 'rejectCampaign'])->middleware('explicit.permission:marketing.campaigns.approve');
+        Route::post('marketing/campaigns/{campaign}/schedule', [\App\Http\Controllers\API\AdminMarketingController::class, 'scheduleCampaign'])->middleware('explicit.permission:marketing.campaigns.manage');
+        Route::post('marketing/campaigns/{campaign}/pause', [\App\Http\Controllers\API\AdminMarketingController::class, 'pauseCampaign'])->middleware('explicit.permission:marketing.campaigns.manage');
+        Route::get('marketing/campaigns/{campaign}/analytics', [\App\Http\Controllers\API\AdminMarketingController::class, 'analytics'])->middleware('explicit.permission:marketing.campaigns.manage');
+        Route::get('marketing/segments', [\App\Http\Controllers\API\AdminMarketingController::class, 'segments'])->middleware('explicit.permission:marketing.campaigns.manage');
+        Route::get('marketing/banners', [\App\Http\Controllers\API\AdminMarketingController::class, 'banners'])->middleware('explicit.permission:marketing.banners.manage');
+        Route::post('marketing/banners', [\App\Http\Controllers\API\AdminMarketingController::class, 'saveBanner'])->middleware('explicit.permission:marketing.banners.manage');
+        Route::put('marketing/banners/{banner}', [\App\Http\Controllers\API\AdminMarketingController::class, 'saveBanner'])->middleware('explicit.permission:marketing.banners.manage');
         Route::get('analytics/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'analytics'])->middleware('explicit.permission:analytics.audience.view');
         Route::get('operations/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'operations'])->middleware('explicit.permission:operations.health.view');
     });
