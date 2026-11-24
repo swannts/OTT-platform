@@ -70,6 +70,7 @@ final class RbacRegistry
             'marketing.notifications.manage' => 'Manage promotional notification templates and sends.',
             'marketing.promotions.manage' => 'Manage marketing promotions.',
             'support.accounts.view' => 'View support-authorized customer account information.',
+            'support.payments.view' => 'View masked payment summaries for support investigations.',
             'support.tickets.manage' => 'Manage support tickets and internal notes.',
             'support.playback.view' => 'Investigate customer playback failures.',
             'support.devices.view' => 'View registered customer devices.',
@@ -116,7 +117,7 @@ final class RbacRegistry
             'subscription_manager' => ['admin.access', 'admin.dashboard.view', 'subscriptions.view', 'subscriptions.subscribers.view', 'subscriptions.plans.create', 'subscriptions.plans.update', 'subscriptions.plans.archive', 'subscriptions.coupons.manage', 'subscriptions.trials.manage'],
             'finance_manager' => ['admin.access', 'admin.dashboard.view', 'finance.payments.view', 'finance.invoices.view', 'finance.refunds.request', 'finance.refunds.approve', 'finance.reconciliation.view', 'finance.reports.export', 'analytics.revenue.view'],
             'marketing_manager' => ['admin.access', 'admin.dashboard.view', 'content.view', 'marketing.banners.manage', 'marketing.campaigns.manage', 'marketing.campaigns.approve', 'marketing.notifications.manage', 'marketing.promotions.manage'],
-            'customer_support' => ['admin.access', 'admin.dashboard.view', 'support.accounts.view', 'support.tickets.manage', 'support.playback.view', 'support.devices.view', 'support.sessions.revoke', 'subscriptions.view'],
+            'customer_support' => ['admin.access', 'admin.dashboard.view', 'support.accounts.view', 'support.payments.view', 'support.tickets.manage', 'support.playback.view', 'support.devices.view', 'support.sessions.revoke', 'subscriptions.view'],
             'analytics_manager' => ['admin.access', 'admin.dashboard.view', 'analytics.audience.view', 'analytics.subscriptions.view', 'analytics.content.view', 'analytics.revenue.view', 'analytics.playback.view', 'analytics.export'],
             'technical_operations_admin' => ['admin.access', 'admin.dashboard.view', 'operations.health.view', 'operations.logs.view', 'operations.jobs.view', 'operations.jobs.retry', 'operations.incidents.manage', 'analytics.playback.view'],
         ];

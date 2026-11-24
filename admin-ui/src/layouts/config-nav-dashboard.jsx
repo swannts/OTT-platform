@@ -75,6 +75,12 @@ export const navData = [
         permission: 'marketing.campaigns.manage',
       },
       {
+        title: 'Customer support',
+        path: '/dashboard/support',
+        icon: ICONS.user,
+        permissions: ['support.accounts.view', 'support.tickets.manage'],
+      },
+      {
         title: 'Operations & reports',
         path: '/dashboard/operations',
         icon: ICONS.analytics,

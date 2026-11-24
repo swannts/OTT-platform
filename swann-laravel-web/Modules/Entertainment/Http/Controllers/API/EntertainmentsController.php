@@ -64,6 +64,7 @@ use Modules\Entertainment\Services\PlaybackMediaUrlService;
 use App\Services\Media\MediaReadinessService;
 use App\Models\MediaAsset;
 use Laravel\Sanctum\PersonalAccessToken;
+use App\Support\Playback\PlaybackDiagnosticRecorder;
 class EntertainmentsController extends Controller
 {
     protected $recommendationService;
@@ -73,7 +74,7 @@ class EntertainmentsController extends Controller
         $this->recommendationService = $recommendationService;
     }
 
-    public function playbackDetails(Request $request, PlaybackEntitlementService $entitlements, PlaybackSessionService $sessions, PlaybackMediaUrlService $mediaUrls, MediaReadinessService $mediaReadiness)
+    public function playbackDetails(Request $request, PlaybackEntitlementService $entitlements, PlaybackSessionService $sessions, PlaybackMediaUrlService $mediaUrls, MediaReadinessService $mediaReadiness, PlaybackDiagnosticRecorder $diagnostics)
     {
         $validated = $request->validate([
             'id' => ['required', 'string', 'max:64'],
@@ -84,6 +85,7 @@ class EntertainmentsController extends Controller
         try {
             $result = $entitlements->authorize($request->user(), $validated['id'], $validated['type'], (int) $validated['profile_id'], $request);
         } catch (\Illuminate\Auth\Access\AuthorizationException $exception) {
+            $diagnostics->record($request->user(), 'playback.authorization_denied', $validated['type'], $validated['id']);
             \Illuminate\Support\Facades\Log::notice('Customer playback authorization denied.', [
                 'user_id' => $request->user()->id,
                 'content_id' => $validated['id'],
@@ -99,6 +101,7 @@ class EntertainmentsController extends Controller
         if ($content->media_asset_id) {
             $mediaAsset = MediaAsset::query()->whereKey($content->media_asset_id)->where('status', 'ready')->first();
             if (!$mediaAsset || !$mediaReadiness->inspect($mediaAsset)['ready']) {
+                $diagnostics->record($request->user(), 'playback.media_not_ready', $validated['type'], (string) $content->id);
                 return ApiResponse::error('The linked media asset is not ready for protected playback.', 503);
             }
         } elseif (!in_array(strtolower((string) ($content->movie_access ?? $content->access ?? 'free')), ['', 'free'], true)) {
@@ -157,6 +160,7 @@ class EntertainmentsController extends Controller
         } catch (\Illuminate\Auth\Access\AuthorizationException $exception) {
             return ApiResponse::error($exception->getMessage(), 403);
         }
+        $diagnostics->record($request->user(), 'playback.session_started', $type, (string) $content->id, $session['session_id']);
 
         if ($mediaAsset) {
             $manifestUrl = $mediaUrls->sign((int) $mediaAsset->id, 'master.m3u8', $session['session_id']);

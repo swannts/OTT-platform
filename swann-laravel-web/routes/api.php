@@ -169,6 +169,23 @@ Route::prefix('admin')->group(function () {
         Route::put('marketing/banners/{banner}', [\App\Http\Controllers\API\AdminMarketingController::class, 'saveBanner'])->middleware('explicit.permission:marketing.banners.manage');
         Route::get('analytics/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'analytics'])->middleware('explicit.permission:analytics.audience.view');
         Route::get('operations/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'operations'])->middleware('explicit.permission:operations.health.view');
+
+        Route::prefix('support')->group(function (): void {
+            Route::get('overview', [\App\Http\Controllers\API\AdminSupportController::class, 'overview'])->middleware('explicit.permission:support.tickets.manage');
+            Route::get('customers', [\App\Http\Controllers\API\AdminSupportController::class, 'customers'])->middleware('explicit.permission:support.accounts.view');
+            Route::get('customers/{customer}', [\App\Http\Controllers\API\AdminSupportController::class, 'customer'])->whereNumber('customer')->middleware('explicit.permission:support.accounts.view');
+            Route::get('customers/{customer}/payments', [\App\Http\Controllers\API\AdminSupportController::class, 'payments'])->whereNumber('customer')->middleware('explicit.permission:support.payments.view');
+            Route::get('customers/{customer}/devices', [\App\Http\Controllers\API\AdminSupportController::class, 'devices'])->whereNumber('customer')->middleware('explicit.permission:support.devices.view');
+            Route::get('customers/{customer}/playback', [\App\Http\Controllers\API\AdminSupportController::class, 'playback'])->whereNumber('customer')->middleware('explicit.permission:support.playback.view');
+            Route::post('customers/{customer}/devices/{device}/revoke', [\App\Http\Controllers\API\AdminSupportController::class, 'revokeDeviceSession'])->whereNumber(['customer', 'device'])->middleware('explicit.permission:support.sessions.revoke');
+            Route::get('tickets', [\App\Http\Controllers\API\AdminSupportController::class, 'tickets'])->middleware('explicit.permission:support.tickets.manage');
+            Route::get('assignees', [\App\Http\Controllers\API\AdminSupportController::class, 'assignees'])->middleware('explicit.permission:support.tickets.manage');
+            Route::post('tickets', [\App\Http\Controllers\API\AdminSupportController::class, 'createTicket'])->middleware('explicit.permission:support.tickets.manage');
+            Route::get('tickets/{ticket}', [\App\Http\Controllers\API\AdminSupportController::class, 'showTicket'])->whereNumber('ticket')->middleware('explicit.permission:support.tickets.manage');
+            Route::patch('tickets/{ticket}', [\App\Http\Controllers\API\AdminSupportController::class, 'updateTicket'])->whereNumber('ticket')->middleware('explicit.permission:support.tickets.manage');
+            Route::post('tickets/{ticket}/notes', [\App\Http\Controllers\API\AdminSupportController::class, 'addNote'])->whereNumber('ticket')->middleware('explicit.permission:support.tickets.manage');
+            Route::post('tickets/{ticket}/escalate', [\App\Http\Controllers\API\AdminSupportController::class, 'escalate'])->whereNumber('ticket')->middleware('explicit.permission:support.tickets.manage');
+        });
     });
 });
 
@@ -282,6 +299,7 @@ Route::prefix('v3')->middleware(['auth:sanctum', 'throttle:api'])->group(functio
 
     // Playback URLs are returned only after Laravel verifies profile ownership and entitlement.
     Route::post('playback/details', [EntertainmentsController::class, 'playbackDetails'])->middleware('throttle:30,1');
+    Route::post('playback/diagnostics', [\App\Http\Controllers\API\PlaybackDiagnosticsController::class, 'store'])->middleware('throttle:30,1');
     Route::post('playback/sessions/{sessionId}/heartbeat', [EntertainmentsController::class, 'heartbeatPlayback'])->whereUuid('sessionId')->middleware('throttle:120,1');
     Route::post('playback/sessions/{sessionId}/end', [EntertainmentsController::class, 'endPlayback'])->whereUuid('sessionId')->middleware('throttle:30,1');
 });

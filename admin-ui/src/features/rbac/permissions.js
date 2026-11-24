@@ -30,6 +30,7 @@ export function requiredPermissionForPath(pathname) {
     '/dashboard/subscriptions': 'subscriptions.view',
     '/dashboard/finance': 'finance.payments.view',
     '/dashboard/marketing': 'marketing.campaigns.manage',
+    '/dashboard/support': 'support.tickets.manage',
   };
   return routePermissions[pathname] || null;
 }
@@ -40,6 +41,9 @@ export function requiredPermissionsForPath(pathname) {
   }
   if (pathname === '/dashboard/operations') {
     return ['media.view', 'subscriptions.view', 'finance.payments.view', 'marketing.campaigns.manage', 'analytics.audience.view', 'operations.health.view'];
+  }
+  if (pathname === '/dashboard/support') {
+    return ['support.accounts.view', 'support.tickets.manage'];
   }
   const required = requiredPermissionForPath(pathname);
   return required ? [required] : [];
