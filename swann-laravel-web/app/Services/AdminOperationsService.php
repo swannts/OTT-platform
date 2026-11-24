@@ -66,6 +66,15 @@ final class AdminOperationsService
         }
 
         $statuses = array_column($checks, 'status');
+        $alertRecipient = config('operations.alerts.mail_to');
+        $minimumAlertSeverity = config('operations.alerts.minimum_severity', 'high');
+        $allowedAlertSeverities = ['low', 'medium', 'high', 'critical'];
+        $alerting = [
+            'mail_configured' => is_string($alertRecipient) && filter_var($alertRecipient, FILTER_VALIDATE_EMAIL) !== false,
+            'minimum_severity' => is_string($minimumAlertSeverity) && in_array($minimumAlertSeverity, $allowedAlertSeverities, true)
+                ? $minimumAlertSeverity
+                : 'invalid',
+        ];
         $releaseId = config('app.release_id');
         $releaseId = is_string($releaseId) && preg_match('/^[A-Za-z0-9._+-]{1,80}$/', $releaseId) ? $releaseId : null;
         $releasedAt = config('app.released_at');
@@ -83,6 +92,7 @@ final class AdminOperationsService
             'status' => count(array_filter($statuses, static fn (string $status): bool => $status !== 'ok' && $status !== 'not_configured')) > 0 ? 'degraded' : 'ok',
             'checked_at' => now('UTC')->toIso8601String(),
             'deployment' => ['release_id' => $releaseId, 'released_at' => $releasedAt],
+            'alerting' => $alerting,
             'services' => $checks,
             'runtime_resources' => app(RuntimeResourceMetrics::class)->snapshot(),
             'queue' => $queueCounts,
