@@ -56,10 +56,10 @@ readiness.
 - Customer Next.js dependency audit: **0 vulnerabilities**. TypeScript check and
   production build passed on Next.js 16.4.6.
 - Changed admin BFF/auth files pass ESLint. Full admin lint reports 164 errors
-  and 23 warnings across the existing UI. The customer UI lint reports 18 errors
-  and 55 warnings after fixing conditional Hook calls in the hero/player and
-  correcting notification loading dependencies; all three changed files pass
-  focused ESLint. Repository-wide lint findings remain unresolved.
+  and 23 warnings across the existing UI. Customer lint reports 11 errors and 54
+  warnings after fixing conditional Hook calls, playback ref/state issues, and
+  notification loading dependencies. The changed customer files pass focused
+  ESLint with warnings only; repository-wide lint findings remain unresolved.
 - Go worker: `go test ./...` passed in the Go 1.22 container; handler and health
   packages have tests, while other packages report no test files.
 - Flutter dependency resolution and tests passed on Flutter 3.47.0 / Dart 3.13.0:

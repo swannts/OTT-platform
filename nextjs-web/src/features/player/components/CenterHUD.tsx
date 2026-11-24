@@ -19,14 +19,15 @@ interface CenterHUDProps {
   action: HudActionType;
   volumeLevel?: number;
   qualityLabel?: string;
+  animationId: number;
 }
 
-export default function CenterHUD({ action, volumeLevel = 100, qualityLabel = '' }: CenterHUDProps) {
+export default function CenterHUD({ action, volumeLevel = 100, qualityLabel = '', animationId }: CenterHUDProps) {
   if (!action) return null;
 
   return (
     <div
-      key={`${action}-${Date.now()}`}
+      key={`${action}-${animationId}`}
       className="absolute inset-0 flex items-center justify-center pointer-events-none z-30 select-none animate-[fadeOut_0.75s_ease-out_forwards]"
     >
       <div className="min-w-20 min-h-20 sm:min-w-24 sm:min-h-24 px-4 py-3 rounded-full bg-black/85 backdrop-blur-md border border-[#E5B869]/40 text-[#E5B869] flex flex-col items-center justify-center shadow-2xl shadow-black/80 transform scale-100 transition-transform">

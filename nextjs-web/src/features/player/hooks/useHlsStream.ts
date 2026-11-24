@@ -15,7 +15,8 @@ export function useHlsStream(
   { src, autoPlay = false, onReady, onError }: UseHlsStreamOptions
 ) {
   const hlsRef = useRef<Hls | null>(null);
-  const [isHlsActive, setIsHlsActive] = useState(false);
+  const [activeHlsSource, setActiveHlsSource] = useState<string | null>(null);
+  const isHlsActive = activeHlsSource === src;
 
   useEffect(() => {
     const video = videoRef.current;
@@ -25,7 +26,6 @@ export function useHlsStream(
     if (hlsRef.current) {
       hlsRef.current.destroy();
       hlsRef.current = null;
-      setIsHlsActive(false);
     }
 
     const isM3U8 = src.includes('.m3u8');
@@ -39,10 +39,13 @@ export function useHlsStream(
       });
 
       hlsRef.current = hls;
-      setIsHlsActive(true);
 
       hls.loadSource(src);
       hls.attachMedia(video);
+
+      hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+        setActiveHlsSource(src);
+      });
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         onReady?.();
@@ -62,6 +65,7 @@ export function useHlsStream(
               break;
             default:
               hls.destroy();
+              setActiveHlsSource(null);
               onError?.(data);
               break;
           }
@@ -71,7 +75,6 @@ export function useHlsStream(
       return () => {
         hls.destroy();
         hlsRef.current = null;
-        setIsHlsActive(false);
       };
     }
 
@@ -87,8 +90,6 @@ export function useHlsStream(
   }, [src, autoPlay, onReady, onError, videoRef]);
 
   return {
-    hls: hlsRef.current,
     isHlsActive,
   };
 }
-
