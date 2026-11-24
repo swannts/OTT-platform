@@ -40,6 +40,11 @@ readiness.
   retains the active key for the existing local data; `.env.example` contains
   placeholders only. Production configuration requires secrets to be injected
   through a deployment secret store.
+- Reworked `.env.production.example` so it no longer contains a reusable APP_KEY,
+  local HTTP origins, root database credentials, empty-password allowance, or
+  default RabbitMQ credentials. Production origins, independent DB/root secrets,
+  app image references, and an explicit CORS allowlist are represented as
+  deployment-specific values.
 - Production `db:seed` now bypasses legacy demo seeders and preserves uploaded
   storage. It applies the additive RBAC foundation and can create one initial
   Super Admin only from an explicit deployment email and a 16-character
@@ -131,12 +136,13 @@ readiness.
 
 ## Deployment configuration
 
-1. Create a private deployment environment from `.env.example` outside the
-   repository (for example `/run/secrets/ott-production.env`); do not overwrite
-   an existing local `.env`. Inject a unique Laravel `APP_KEY`, database and
-   MySQL root passwords, RabbitMQ credentials, Meilisearch master key, exact
-   HTTPS origins, and a public `NEXT_PUBLIC_API_URL` from the secret manager or
-   deployment environment.
+1. Create a private deployment environment from `.env.production.example`
+   outside the repository (for example `/run/secrets/ott-production.env`); do
+   not overwrite an existing local `.env`. Inject a unique Laravel `APP_KEY`,
+   database and MySQL root passwords, RabbitMQ credentials, Meilisearch master
+   key, exact HTTPS origins, and a public `NEXT_PUBLIC_API_URL` from the secret
+   manager or deployment environment. Replace every application and
+   infrastructure image variable with a tested immutable image reference.
 2. Set `ADMIN_UI_IMAGE`, `BACKEND_IMAGE`, `FRONTEND_IMAGE`, `WORKER_IMAGE`,
    `MYSQL_IMAGE`, `REDIS_IMAGE`, `RABBITMQ_IMAGE`, and `MEILISEARCH_IMAGE` to
    tested immutable image references (prefer digests), not floating tags. Build
