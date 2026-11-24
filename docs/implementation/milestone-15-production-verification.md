@@ -72,7 +72,10 @@ readiness.
   while rejecting an HTTP 404.
 - Admin RBAC feature suite: **9 tests, 37 assertions passed**, including login rate limiting,
   immediate session revocation on staff deactivation, and denial of inactive or banned account tokens.
-- Composer locked dependency audit: **0 advisories**.
+- Composer locked dependency audit: **0 advisories** after updating the vulnerable
+  `web-token/jwt-library` lock from 3.4.10 to 3.4.13 and
+  `spomky-labs/pki-framework` from 1.6.0 to 1.6.3 within the existing version
+  constraints. The Laravel suite passed again after this update.
 - Admin UI dependency audit: **0 vulnerabilities**. Next.js 16.4.6 production
   build passed with Webpack (the project has a custom SVG Webpack loader).
 - Customer Next.js dependency audit: **0 vulnerabilities**. TypeScript check and
