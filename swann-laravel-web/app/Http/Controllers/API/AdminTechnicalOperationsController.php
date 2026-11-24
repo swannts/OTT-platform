@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
@@ -174,7 +175,7 @@ class AdminTechnicalOperationsController extends Controller
                 (string) $incident->status,
             ));
         } catch (\Throwable $exception) {
-            report($exception);
+            Log::warning('Operations incident alert delivery failed.', ['exception' => $exception::class]);
         }
     }
 

@@ -70,7 +70,10 @@ class BackupController extends Controller
                     ];
                 }
             } catch (Throwable $exception) {
-                report($exception);
+                Log::warning('Backup listing failed for a configured destination.', [
+                    'disk' => $diskName,
+                    'exception' => $exception::class,
+                ]);
             }
         }
 
@@ -105,7 +108,7 @@ class BackupController extends Controller
 
             return redirect()->back();
         } catch (Throwable $exception) {
-            report($exception);
+            Log::error('Laravel backup command raised an exception.', ['exception' => $exception::class]);
             Flash::error('The backup could not be created. Check the application logs.');
 
             return redirect()->back();

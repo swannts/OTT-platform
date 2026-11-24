@@ -46,6 +46,12 @@ readiness.
   payment, cache, event-publisher, settings, VAST-ad, and notification-job paths.
   Provider failures now retain only bounded status/exception-class metadata;
   these changes were reviewed statically and not runtime-tested.
+- Replaced full-exception reporting in admin invitation/incident mail delivery,
+  backup operations, and scheduled analytics generation with bounded exception
+  class metadata. Video encryption/decryption no longer logs raw URLs or
+  exception messages, and callers receive generic failure messages. These
+  additional diagnostics changes were reviewed statically; runtime checks remain
+  deferred.
 - The committed Compose APP_KEY fallback was removed. The ignored local `.env`
   retains the active key for the existing local data; `.env.example` contains
   placeholders only. Production configuration requires secrets to be injected
