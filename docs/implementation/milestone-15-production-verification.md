@@ -11,7 +11,8 @@ readiness.
 ## Security and deployment changes
 
 - Admin Next.js BFF mutations check the request `Origin` and Fetch Metadata before
-  forwarding login, logout, invitation acceptance, or proxied mutations. The
+  forwarding login, logout, invitation acceptance, or proxied mutations; absent or
+  mismatched Origin headers are rejected. The
   admin bearer token remains in the server-managed cookie flow.
 - Admin login is tested to return HTTP 429 after five attempts in one minute.
 - The admin BFF awaits Next.js 16 asynchronous cookie APIs for login, session lookup,

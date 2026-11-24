@@ -8,7 +8,7 @@ export function rejectCrossOriginMutation(request) {
 
   const expectedOrigin = new URL(request.url).origin;
   const origin = request.headers.get('origin');
-  if (origin && origin !== expectedOrigin) {
+  if (origin !== expectedOrigin) {
     return Response.json({ message: 'Cross-origin requests are not allowed.' }, { status: 403 });
   }
 
