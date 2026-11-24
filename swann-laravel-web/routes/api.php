@@ -42,6 +42,12 @@ Route::get('/short-drama-config', [ShortDramaConfigController::class, 'index']);
 Route::get('v3/blogs', [BlogApiController::class, 'index']);
 Route::get('v3/blogs/{slug}', [BlogApiController::class, 'show']);
 Route::get('v3/blog-categories', [BlogApiController::class, 'categories']);
+Route::get('v3/marketing/campaigns/{slug}', [\App\Http\Controllers\API\AdminMarketingController::class, 'publicLanding']);
+Route::get('v3/marketing/featured-collections', [\App\Http\Controllers\API\AdminMarketingController::class, 'publicFeaturedCollections']);
+Route::get('marketing/click/{token}', [\App\Http\Controllers\API\MarketingConsentController::class, 'trackClick'])->where('token', '[A-Fa-f0-9]{64}')->name('marketing.track-click');
+Route::get('marketing/open/{token}', [\App\Http\Controllers\API\MarketingConsentController::class, 'trackOpen'])->where('token', '[A-Fa-f0-9]{64}')->name('marketing.track-open');
+Route::get('marketing/unsubscribe/{token}', [\App\Http\Controllers\API\MarketingConsentController::class, 'unsubscribePrompt'])->where('token', '[A-Fa-f0-9]{64}')->name('marketing.unsubscribe');
+Route::post('marketing/unsubscribe/{token}', [\App\Http\Controllers\API\MarketingConsentController::class, 'unsubscribe'])->where('token', '[A-Fa-f0-9]{64}');
 
 // Public Global SEO Settings
 Route::get('v3/seo-settings', [\Modules\SEO\Http\Controllers\SEOController::class, 'getSeoSettingsApi']);
@@ -49,6 +55,7 @@ Route::get('v3/seo-settings', [\Modules\SEO\Http\Controllers\SEOController::clas
 // Provider-signed callbacks are verified by their dedicated controller handlers.
 Route::post('webhooks/stripe', [WebPaymentApiController::class, 'stripeWebhook'])->middleware('throttle:300,1');
 Route::post('webhooks/razorpay', [WebPaymentApiController::class, 'razorpayWebhook'])->middleware('throttle:300,1');
+Route::post('webhooks/paystack', [WebPaymentApiController::class, 'paystackWebhook'])->middleware('throttle:300,1');
 Route::post('webhooks/revenuecat', [WebPaymentApiController::class, 'revenueCatWebhook'])->middleware('throttle:300,1');
 
 
@@ -56,6 +63,11 @@ Route::get('/optimize', [QueryOptimizeController::class, 'optimize'])->name('opt
 
 Route::middleware(['auth:sanctum', 'checkApiDevice'])->get('/user', function (Request $request) {
     return $request->user();
+});
+
+Route::middleware('auth:sanctum')->group(function (): void {
+    Route::get('me/marketing-consents', [\App\Http\Controllers\API\MarketingConsentController::class, 'show']);
+    Route::put('me/marketing-consents', [\App\Http\Controllers\API\MarketingConsentController::class, 'update']);
 });
 
 Route::controller(AuthController::class)->group(function () {
@@ -98,13 +110,100 @@ Route::prefix('admin')->group(function () {
         Route::post('content/reviews/{submission}/approve', [\App\Http\Controllers\API\AdminContentWorkflowController::class, 'approve'])->middleware('explicit.permission:content.approve');
         Route::post('content/reviews/{submission}/reject', [\App\Http\Controllers\API\AdminContentWorkflowController::class, 'reject'])->middleware('explicit.permission:content.reject');
         Route::post('content/reviews/{submission}/publish', [\App\Http\Controllers\API\AdminContentWorkflowController::class, 'publish'])->middleware('explicit.permission:content.publish');
+        Route::get('content/{contentType}/{contentId}/license-window', [\App\Http\Controllers\API\AdminContentLicensingController::class, 'show']);
+        Route::put('content/{contentType}/{contentId}/license-window', [\App\Http\Controllers\API\AdminContentLicensingController::class, 'update'])->middleware('explicit.permission:content.schedule');
 
         Route::get('media/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'media'])->middleware('explicit.permission:media.view');
+        Route::get('media/assets', [\App\Http\Controllers\API\AdminMediaController::class, 'index'])->middleware('explicit.permission:media.view');
+        Route::get('media/assets/{asset}', [\App\Http\Controllers\API\AdminMediaController::class, 'show'])->middleware('explicit.permission:media.view');
+        Route::get('media/assets/{asset}/quality', [\App\Http\Controllers\API\AdminMediaController::class, 'quality'])->middleware('explicit.permission:media.view');
+        Route::put('media/assets/{asset}/content', [\App\Http\Controllers\API\AdminMediaController::class, 'attachToContent']);
+        Route::post('media/uploads', [\App\Http\Controllers\API\AdminMediaController::class, 'beginUpload'])->middleware(['explicit.permission:media.upload', 'throttle:20,1']);
+        Route::put('media/uploads/{session}/chunks/{index}', [\App\Http\Controllers\API\AdminMediaController::class, 'uploadChunk'])->whereNumber('index')->middleware(['explicit.permission:media.upload', 'throttle:120,1']);
+        Route::post('media/uploads/{session}/complete', [\App\Http\Controllers\API\AdminMediaController::class, 'completeUpload'])->middleware(['explicit.permission:media.upload', 'throttle:5,1']);
+        Route::post('media/assets/{asset}/retry', [\App\Http\Controllers\API\AdminMediaController::class, 'retry'])->middleware(['explicit.permission:media.transcode.retry', 'throttle:5,1']);
+        Route::delete('media/assets/{asset}', [\App\Http\Controllers\API\AdminMediaController::class, 'destroy'])->middleware('explicit.permission:media.delete');
+        Route::post('media/assets/{asset}/tracks', [\App\Http\Controllers\API\AdminMediaController::class, 'addTrack'])->middleware('throttle:20,1');
+        Route::delete('media/assets/{asset}/tracks/{track}', [\App\Http\Controllers\API\AdminMediaController::class, 'deleteTrack'])->whereNumber('track');
+        Route::get('media/drm', [\App\Http\Controllers\API\AdminMediaController::class, 'drmConfiguration'])->middleware('explicit.permission:media.drm.configure');
         Route::get('subscriptions/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'subscriptions'])->middleware('explicit.permission:subscriptions.view');
+        Route::get('subscriptions/plans', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'index'])->middleware('explicit.permission:subscriptions.view');
+        Route::get('subscriptions/pricing-options', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'pricingOptions'])->middleware('explicit.permission:subscriptions.view');
+        Route::post('subscriptions/plans', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'store'])->middleware('explicit.permission:subscriptions.plans.create');
+        Route::put('subscriptions/plans/{plan}', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'update'])->middleware('explicit.permission:subscriptions.plans.update');
+        Route::post('subscriptions/plans/{plan}/archive', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'archive'])->middleware('explicit.permission:subscriptions.plans.archive');
+        Route::get('subscriptions/subscribers', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'subscribers'])->middleware('explicit.permission:subscriptions.subscribers.view');
+        Route::get('subscriptions/performance', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'performance'])->middleware('explicit.permission:subscriptions.view');
+        Route::post('subscriptions/entitlement-simulation', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'simulate'])->middleware('explicit.permission:subscriptions.view');
+        Route::get('subscriptions/coupons', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'coupons'])->middleware('explicit.permission:subscriptions.coupons.manage');
+        Route::post('subscriptions/coupons', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'storeCoupon'])->middleware('explicit.permission:subscriptions.coupons.manage');
+        Route::put('subscriptions/coupons/{coupon}', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'updateCoupon'])->middleware('explicit.permission:subscriptions.coupons.manage');
+        Route::post('subscriptions/coupons/{coupon}/archive', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'archiveCoupon'])->middleware('explicit.permission:subscriptions.coupons.manage');
         Route::get('finance/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'finance'])->middleware('explicit.permission:finance.payments.view');
+        Route::get('finance/dashboard', [\App\Http\Controllers\API\AdminFinanceController::class, 'overview'])->middleware('explicit.permission:finance.payments.view');
+        Route::get('finance/payments', [\App\Http\Controllers\API\AdminFinanceController::class, 'payments'])->middleware('explicit.permission:finance.payments.view');
+        Route::get('finance/payments/export', [\App\Http\Controllers\API\AdminFinanceController::class, 'export'])->middleware('explicit.permission:finance.reports.export');
+        Route::get('finance/payments/{payment}/invoice', [\App\Http\Controllers\API\AdminFinanceController::class, 'invoice'])->middleware('explicit.permission:finance.invoices.view');
+        Route::post('finance/payments/{payment}/reconcile', [\App\Http\Controllers\API\AdminFinanceController::class, 'reconcilePayment'])->middleware('explicit.permission:finance.reconciliation.view');
+        Route::get('finance/payments/{payment}', [\App\Http\Controllers\API\AdminFinanceController::class, 'paymentDetail'])->middleware('explicit.permission:finance.payments.view');
+        Route::get('finance/refunds', [\App\Http\Controllers\API\AdminFinanceController::class, 'refunds'])->middleware('explicit.permission:finance.payments.view');
+        Route::post('finance/refunds', [\App\Http\Controllers\API\AdminFinanceController::class, 'requestRefund'])->middleware('explicit.permission:finance.refunds.request');
+        Route::post('finance/refunds/{refund}/review', [\App\Http\Controllers\API\AdminFinanceController::class, 'reviewRefund'])->middleware('explicit.permission:finance.refunds.approve');
+        Route::post('finance/refunds/{refund}/execute', [\App\Http\Controllers\API\AdminFinanceController::class, 'executeRefund'])->middleware('explicit.permission:finance.refunds.approve');
+        Route::get('finance/disputes', [\App\Http\Controllers\API\AdminFinanceController::class, 'disputes'])->middleware('explicit.permission:finance.payments.view');
+        Route::get('finance/failed-events', [\App\Http\Controllers\API\AdminFinanceController::class, 'failedProviderEvents'])->middleware('explicit.permission:finance.payments.view');
+        Route::get('finance/reconciliation', [\App\Http\Controllers\API\AdminFinanceController::class, 'reconciliation'])->middleware('explicit.permission:finance.reconciliation.view');
+        Route::get('finance/reconciliation/history', [\App\Http\Controllers\API\AdminFinanceController::class, 'reconciliationHistory'])->middleware('explicit.permission:finance.reconciliation.view');
+        Route::get('finance/reports', [\App\Http\Controllers\API\AdminFinanceController::class, 'report'])->middleware('explicit.permission:finance.reconciliation.view');
         Route::get('marketing/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'marketing'])->middleware('explicit.permission:marketing.campaigns.manage');
-        Route::get('analytics/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'analytics'])->middleware('explicit.permission:analytics.audience.view');
+        Route::get('marketing/dashboard', [\App\Http\Controllers\API\AdminMarketingController::class, 'overview'])->middleware('explicit.permission:marketing.campaigns.manage');
+        Route::get('marketing/campaigns', [\App\Http\Controllers\API\AdminMarketingController::class, 'campaigns'])->middleware('explicit.permission:marketing.campaigns.manage');
+        Route::post('marketing/campaigns', [\App\Http\Controllers\API\AdminMarketingController::class, 'createCampaign'])->middleware('explicit.permission:marketing.campaigns.manage');
+        Route::put('marketing/campaigns/{campaign}', [\App\Http\Controllers\API\AdminMarketingController::class, 'updateCampaign'])->middleware('explicit.permission:marketing.campaigns.manage');
+        Route::post('marketing/campaigns/{campaign}/submit', [\App\Http\Controllers\API\AdminMarketingController::class, 'submitForApproval'])->middleware('explicit.permission:marketing.campaigns.manage');
+        Route::post('marketing/campaigns/{campaign}/approve', [\App\Http\Controllers\API\AdminMarketingController::class, 'approveCampaign'])->middleware('explicit.permission:marketing.campaigns.approve');
+        Route::post('marketing/campaigns/{campaign}/reject', [\App\Http\Controllers\API\AdminMarketingController::class, 'rejectCampaign'])->middleware('explicit.permission:marketing.campaigns.approve');
+        Route::post('marketing/campaigns/{campaign}/schedule', [\App\Http\Controllers\API\AdminMarketingController::class, 'scheduleCampaign'])->middleware('explicit.permission:marketing.campaigns.manage');
+        Route::post('marketing/campaigns/{campaign}/pause', [\App\Http\Controllers\API\AdminMarketingController::class, 'pauseCampaign'])->middleware('explicit.permission:marketing.campaigns.manage');
+        Route::get('marketing/campaigns/{campaign}/analytics', [\App\Http\Controllers\API\AdminMarketingController::class, 'analytics'])->middleware('explicit.permission:marketing.campaigns.manage');
+        Route::get('marketing/segments', [\App\Http\Controllers\API\AdminMarketingController::class, 'segments'])->middleware('explicit.permission:marketing.campaigns.manage');
+        Route::get('marketing/banners', [\App\Http\Controllers\API\AdminMarketingController::class, 'banners'])->middleware('explicit.permission:marketing.banners.manage');
+        Route::post('marketing/banners', [\App\Http\Controllers\API\AdminMarketingController::class, 'saveBanner'])->middleware('explicit.permission:marketing.banners.manage');
+        Route::put('marketing/banners/{banner}', [\App\Http\Controllers\API\AdminMarketingController::class, 'saveBanner'])->middleware('explicit.permission:marketing.banners.manage');
+        Route::get('analytics/overview', [\App\Http\Controllers\API\AdminAnalyticsController::class, 'dashboard']);
+        Route::get('analytics/export', [\App\Http\Controllers\API\AdminAnalyticsController::class, 'exportCsv'])->middleware('explicit.permission:analytics.export');
+        Route::get('analytics/reports', [\App\Http\Controllers\API\AdminAnalyticsController::class, 'reports'])->middleware('explicit.permission:analytics.export');
+        Route::post('analytics/reports', [\App\Http\Controllers\API\AdminAnalyticsController::class, 'scheduleReport'])->middleware('explicit.permission:analytics.export');
+        Route::get('analytics/reports/{report}', [\App\Http\Controllers\API\AdminAnalyticsController::class, 'report'])->whereNumber('report')->middleware('explicit.permission:analytics.export');
         Route::get('operations/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'operations'])->middleware('explicit.permission:operations.health.view');
+        Route::prefix('operations')->group(function (): void {
+            Route::get('health', [\App\Http\Controllers\API\AdminTechnicalOperationsController::class, 'health'])->middleware('explicit.permission:operations.health.view');
+            Route::get('playback', [\App\Http\Controllers\API\AdminTechnicalOperationsController::class, 'playback'])->middleware('explicit.permission:analytics.playback.view');
+            Route::get('logs', [\App\Http\Controllers\API\AdminTechnicalOperationsController::class, 'logs'])->middleware('explicit.permission:operations.logs.view');
+            Route::get('jobs', [\App\Http\Controllers\API\AdminTechnicalOperationsController::class, 'jobs'])->middleware('explicit.permission:operations.jobs.view');
+            Route::post('jobs/{job}/retry', [\App\Http\Controllers\API\AdminTechnicalOperationsController::class, 'retryJob'])->middleware('explicit.permission:operations.jobs.retry');
+            Route::get('incidents', [\App\Http\Controllers\API\AdminTechnicalOperationsController::class, 'incidents'])->middleware('explicit.permission:operations.incidents.manage');
+            Route::post('incidents', [\App\Http\Controllers\API\AdminTechnicalOperationsController::class, 'createIncident'])->middleware('explicit.permission:operations.incidents.manage');
+            Route::patch('incidents/{incident}', [\App\Http\Controllers\API\AdminTechnicalOperationsController::class, 'updateIncident'])->whereNumber('incident')->middleware('explicit.permission:operations.incidents.manage');
+        });
+
+        Route::prefix('support')->group(function (): void {
+            Route::get('overview', [\App\Http\Controllers\API\AdminSupportController::class, 'overview'])->middleware('explicit.permission:support.tickets.manage');
+            Route::get('customers', [\App\Http\Controllers\API\AdminSupportController::class, 'customers'])->middleware('explicit.permission:support.accounts.view');
+            Route::get('customers/{customer}', [\App\Http\Controllers\API\AdminSupportController::class, 'customer'])->whereNumber('customer')->middleware('explicit.permission:support.accounts.view');
+            Route::get('customers/{customer}/payments', [\App\Http\Controllers\API\AdminSupportController::class, 'payments'])->whereNumber('customer')->middleware('explicit.permission:support.payments.view');
+            Route::get('customers/{customer}/devices', [\App\Http\Controllers\API\AdminSupportController::class, 'devices'])->whereNumber('customer')->middleware('explicit.permission:support.devices.view');
+            Route::get('customers/{customer}/playback', [\App\Http\Controllers\API\AdminSupportController::class, 'playback'])->whereNumber('customer')->middleware('explicit.permission:support.playback.view');
+            Route::post('customers/{customer}/playback-sessions/{session}/revoke', [\App\Http\Controllers\API\AdminSupportController::class, 'revokePlaybackSession'])->whereNumber(['customer', 'session'])->middleware('explicit.permission:support.sessions.revoke');
+            Route::post('customers/{customer}/devices/{device}/revoke', [\App\Http\Controllers\API\AdminSupportController::class, 'revokeDeviceSession'])->whereNumber(['customer', 'device'])->middleware('explicit.permission:support.sessions.revoke');
+            Route::get('tickets', [\App\Http\Controllers\API\AdminSupportController::class, 'tickets'])->middleware('explicit.permission:support.tickets.manage');
+            Route::get('assignees', [\App\Http\Controllers\API\AdminSupportController::class, 'assignees'])->middleware('explicit.permission:support.tickets.manage');
+            Route::post('tickets', [\App\Http\Controllers\API\AdminSupportController::class, 'createTicket'])->middleware('explicit.permission:support.tickets.manage');
+            Route::get('tickets/{ticket}', [\App\Http\Controllers\API\AdminSupportController::class, 'showTicket'])->whereNumber('ticket')->middleware('explicit.permission:support.tickets.manage');
+            Route::patch('tickets/{ticket}', [\App\Http\Controllers\API\AdminSupportController::class, 'updateTicket'])->whereNumber('ticket')->middleware('explicit.permission:support.tickets.manage');
+            Route::post('tickets/{ticket}/notes', [\App\Http\Controllers\API\AdminSupportController::class, 'addNote'])->whereNumber('ticket')->middleware('explicit.permission:support.tickets.manage');
+            Route::post('tickets/{ticket}/escalate', [\App\Http\Controllers\API\AdminSupportController::class, 'escalate'])->whereNumber('ticket')->middleware('explicit.permission:support.tickets.manage');
+        });
     });
 });
 
@@ -218,10 +317,15 @@ Route::prefix('v3')->middleware(['auth:sanctum', 'throttle:api'])->group(functio
 
     // Playback URLs are returned only after Laravel verifies profile ownership and entitlement.
     Route::post('playback/details', [EntertainmentsController::class, 'playbackDetails'])->middleware('throttle:30,1');
+    Route::post('playback/diagnostics', [\App\Http\Controllers\API\PlaybackDiagnosticsController::class, 'store'])->middleware('throttle:30,1');
+    Route::post('playback/sessions/{sessionId}/heartbeat', [EntertainmentsController::class, 'heartbeatPlayback'])->whereUuid('sessionId')->middleware('throttle:120,1');
+    Route::post('playback/sessions/{sessionId}/end', [EntertainmentsController::class, 'endPlayback'])->whereUuid('sessionId')->middleware('throttle:30,1');
 });
 
 
 Route::get('app-configuration', [APISettingController::class, 'appConfiguraton']);
+Route::get('v3/playback/media/{assetId}/{file}', [Modules\Entertainment\Http\Controllers\API\PlaybackMediaController::class, 'show'])
+    ->where('file', '.*')->middleware('signed')->name('playback.media');
 
 Route::prefix('tv')->group(function () {
     Route::get('/initiate-session', [TvAuthController::class, 'initiateSession']);

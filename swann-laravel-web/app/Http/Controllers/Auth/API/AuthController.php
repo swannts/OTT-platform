@@ -19,6 +19,7 @@ use App\Mail\sendOtp;
 use Illuminate\Support\Facades\RateLimiter;
 use Jenssegers\Agent\Agent;
 use Modules\Subscriptions\Models\Subscription;
+use Modules\Subscriptions\Services\PlanEntitlementSnapshot;
 use Modules\Entertainment\Models\ContinueWatch;
 use Modules\Entertainment\Models\Watchlist;
 use Modules\Entertainment\Models\EntertainmentDownload;
@@ -58,10 +59,7 @@ class AuthController extends Controller
 
             return (string) $service->issueSessionToken($userId);
         } catch (\Throwable $e) {
-            Log::warning('Short drama session token skipped', [
-                'user_id' => $userId,
-                'reason' => $e->getMessage(),
-            ]);
+            Log::warning('Short drama session token could not be issued.', ['exception' => $e::class]);
 
             return null;
         }
@@ -85,7 +83,19 @@ class AuthController extends Controller
             );
         }
 
-        $success['token'] = $user->createToken(setting('app_name'))->plainTextToken;
+        $issuedToken = $user->createToken(setting('app_name'));
+        $user->api_token = $issuedToken->plainTextToken;
+        $profile = $user->userMultiProfile()->first();
+        Device::create([
+            'user_id' => $user->id,
+            'sanctum_token_id' => $issuedToken->accessToken->getKey(),
+            'device_id' => (string) \Illuminate\Support\Str::uuid(),
+            'device_name' => $request->input('device_name', 'OTT device'),
+            'platform' => $request->input('platform', 'unknown'),
+            'active_profile' => $profile?->id,
+            'session_id' => session()->getId(),
+            'last_activity' => now(),
+        ]);
         $success['name'] = $user->name;
         $userResource = new RegisterResource($user);
 
@@ -113,17 +123,13 @@ class AuthController extends Controller
         ->where('last_activity', '<', now()->subMinutes(config('session.lifetime', 120))->timestamp)
         ->delete();
     } catch (\Exception $e) {
-        Log::warning('Session cleanup failed during login', [
-            'email' => $request->email ?? null,
-            'ip' => $request->ip(),
-            'exception' => $e->getMessage(),
-        ]);
+        Log::warning('Session cleanup failed during login.', ['exception' => $e::class]);
     }
 
     $user = User::with(['subscriptionPackage', 'userMultiProfile'])->where('email', request('email'))->first();
         if ($user == null) {
             RateLimiter::hit($request->throttleKey());
-            Log::info('Login failed: user not found', ['email' => $request->input('email'), 'ip' => $request->ip()]);
+            Log::info('Login failed: user not found');
             return ApiResponse::error(__('messages.register_before_login'), 400);
         }
 
@@ -147,19 +153,19 @@ class AuthController extends Controller
     if (Auth::attempt(['email' => request('email'), 'password' => request('password')], $remember)) {
         RateLimiter::clear($request->throttleKey());
         $user = Auth::user();
-        Log::info('Login success', ['user_id' => $user->id, 'ip' => $request->ip()]);
+        Log::info('Customer API sign-in succeeded.');
 
         if ($request->has('is_ajax') && $request->is_ajax == 1) {
             $agent = new Agent();
-            $device_id = $request->getClientIp();
             $device_name = $agent->browser();
             $platform = $agent->platform();
         } else {
-            $device_id = $request->device_id;
-            $device_name = $request->device_name;
-            $platform = $request->platform;
+            $device_name = $request->input('device_name', 'OTT device');
+            $platform = $request->input('platform', 'unknown');
         }
-        $response = $this->checkDeviceLimit($user, $device_id, true);
+        // Device identifiers supplied by clients (or inferred from IP addresses) are not
+        // identity. A fresh Sanctum token ID is the server-issued device binding.
+        $response = $this->checkDeviceLimit($user, null, true);
         if ($response) {
             return $response;
         }
@@ -171,9 +177,9 @@ class AuthController extends Controller
 
         // Save the user
         $user->save();
-        // Name token by device_id so we can revoke per-device later
-        $tokenName = !empty($device_id) ? (string)$device_id : setting('app_name');
-        $user['api_token'] = $user->createToken($tokenName)->plainTextToken;
+        $issuedToken = $user->createToken(setting('app_name'));
+        $device_id = (string) \Illuminate\Support\Str::uuid();
+        $user['api_token'] = $issuedToken->plainTextToken;
         $user['short_drama_session_token'] = $this->issueShortDramaSessionTokenIfAvailable((int) $user->id);
 
         if ($user->is_subscribe == 1) {
@@ -190,21 +196,16 @@ class AuthController extends Controller
         $profile = $user->userMultiProfile->first();
         
 
-        if (!empty($device_id) && !empty($device_name)) {
-            $device = Device::updateOrCreate(
-                [
-                    'user_id' => $user->id,
-                    'device_id' => $device_id
-                ],
-                [
-                    'device_name' => $device_name,
-                    'platform' => $platform,
-                    'active_profile' => $profile->id ?? null,
-                    'session_id' => session()->getId(),
-                    'last_activity' => now(),
-                ]
-            );
-        }
+        Device::create([
+            'user_id' => $user->id,
+            'sanctum_token_id' => $issuedToken->accessToken->getKey(),
+            'device_id' => $device_id,
+            'device_name' => $device_name,
+            'platform' => $platform,
+            'active_profile' => $profile->id ?? null,
+            'session_id' => session()->getId(),
+            'last_activity' => now(),
+        ]);
 
         $loginResource = new LoginResource($user);
         $message = __('messages.user_login');
@@ -219,7 +220,7 @@ class AuthController extends Controller
         return $this->sendResponse($loginResource, $message);
     } else {
         RateLimiter::hit($request->throttleKey());
-        Log::info('Login failed: invalid credentials', ['email' => $request->input('email'), 'ip' => $request->ip()]);
+        Log::info('Login failed: invalid credentials');
         return $this->sendError(__('messages.not_matched'), ['error' => __('messages.unauthorised')], 200);
     }
 }
@@ -239,7 +240,7 @@ class AuthController extends Controller
 
     if ($user_data != null) {
 
-        $response = $this->checkDeviceLimit($user_data, $request->device_id, false);
+        $response = $this->checkDeviceLimit($user_data, null, true);
         if ($response) {
             return $response;
         }
@@ -316,24 +317,18 @@ class AuthController extends Controller
         $message = trans('messages.save_form', ['form' => $input['user_type']]);
     }
 
-    if (!empty($request->device_id) && !empty($request->device_name)) {
-        $device = Device::updateOrCreate(
-            [
-                'user_id' => $user_data->id,
-                'device_id' => $request->device_id,
-            ],
-            [
-                'device_name' => $request->device_name,
-                'platform' => $request->platform,
-                'session_id' => session()->getId(),
-                'last_activity' => now(),
-            ]
-        );
-    }
-
-
-    $tokenName = $request->device_id ?: 'auth_token';
-    $user_data['api_token'] = $user_data->createToken($tokenName)->plainTextToken;
+    $issuedToken = $user_data->createToken(setting('app_name'));
+    $user_data['api_token'] = $issuedToken->plainTextToken;
+    Device::create([
+        'user_id' => $user_data->id,
+        'sanctum_token_id' => $issuedToken->accessToken->getKey(),
+        'device_id' => (string) \Illuminate\Support\Str::uuid(),
+        'device_name' => $request->input('device_name', 'OTT device'),
+        'platform' => $request->input('platform', 'unknown'),
+        'active_profile' => $user_data->userMultiProfile()->value('id'),
+        'session_id' => session()->getId(),
+        'last_activity' => now(),
+    ]);
     $user_data['short_drama_session_token'] = $this->issueShortDramaSessionTokenIfAvailable((int) $user_data->id);
 
     if ($user_data->is_subscribe == 1) {
@@ -345,7 +340,7 @@ class AuthController extends Controller
     return $this->sendResponse($socialLogin, $message);
 }
 
-protected function checkDeviceLimit(User $user, string $deviceId = null, bool $isLoginFlow = true): ?JsonResponse 
+protected function checkDeviceLimit(User $user, ?string $deviceId = null, bool $isLoginFlow = true): ?JsonResponse
 {
     // For login flow: delete old devices first, then check if existing device exists
     if ($isLoginFlow) {
@@ -401,67 +396,25 @@ protected function checkDeviceLimit(User $user, string $deviceId = null, bool $i
     });
 
 
-    if ($user->subscriptionPackage) {
-        $subscription = $user->subscriptionPackage;
-        
-        if (isset($subscription->plan_type) && !empty($subscription->plan_type)) {
-            $planLimitations = json_decode($subscription->plan_type, true);
-
-            if (is_array($planLimitations)) {
-                foreach ($planLimitations as $limitation) {
-                    if (isset($limitation['slug']) && $limitation['slug'] === 'device-limit') {
-                        if (isset($limitation['limitation_value']) && $limitation['limitation_value'] == 1) {
-                            $limitData = $limitation['limit'] ?? null;
-                            $limit = 0;
-                          
-                            
-                            if (is_array($limitData) && isset($limitData['value'])) {
-                                $limit = (int)$limitData['value'];
-                            } elseif (is_string($limitData) || is_numeric($limitData)) {
-                                $limit = (int)$limitData;
-                            }
-                            
-                            if ($count >= $limit) {
-                                Auth::logout();
-
-                                // Use response()->json for login flow to match original format
-                                if ($isLoginFlow) {
-                                    return response()->json([
-                                        'error' => __('messages.device_limit_reached'),
-                                        'other_device' => $other_device
-                                    ], 406);
-                                } else {
-                                    return ApiResponse::error(__('messages.your_device_limit_has_been_reached'),
-                                        406,
-                                        null,
-                                        ['other_device' => $other_device]
-                                    );
-                                }
-                            }
-                        }
-                        break;
-                    }
-                }
-            }
+    $subscription = $user->subscriptionPackage;
+    $limit = PlanEntitlementSnapshot::integerLimit($subscription?->plan_type, 'device-limit')
+        ?? max(1, (int) config('constant.DEVICE_LIMIT', 1));
+    $shouldCheck = $count >= $limit && ($isLoginFlow || $other_device->isNotEmpty());
+    if ($shouldCheck) {
+        Auth::logout();
+        if ($isLoginFlow) {
+            $deviceManagementToken = $user->createToken(
+                'device-management',
+                ['device-sessions:manage'],
+                now()->addMinutes(5)
+            )->plainTextToken;
+            return response()->json([
+                'error' => __('messages.device_limit_reached'),
+                'other_device' => $other_device,
+                'device_management_token' => $deviceManagementToken,
+            ], 406);
         }
-    } else {
-        // No subscription: check default limit
-        $defaultLimit = $isLoginFlow ? 1 : config('constant.DEVICE_LIMIT', 1);
-        $shouldCheck = $isLoginFlow ? ($count >= $defaultLimit) : ($count >= $defaultLimit && $other_device->isNotEmpty());
-        
-        if ($shouldCheck) {
-            Auth::logout();
-
-            // Use response()->json for login flow to match original format
-            if ($isLoginFlow) {
-                return response()->json([
-                    'error' => __('messages.device_limit_reached'),
-                    'other_device' => $other_device
-                ], 406);
-            } else {
-                return ApiResponse::error(__('messages.device_limit_reached'), 406, null, ['other_device' => $other_device]);
-            }
-        }
+        return ApiResponse::error(__('messages.device_limit_reached'), 406, null, ['other_device' => $other_device]);
     }
     
     return null; // ✅ allow login
@@ -513,18 +466,23 @@ protected function checkDeviceLimit(User $user, string $deviceId = null, bool $i
 
         $user = Auth::guard('sanctum')->user();
         $currentToken = $user->currentAccessToken();
-        if ($currentToken && method_exists($currentToken, 'delete')) {
-            $currentToken->delete();
-        }
-
-
+        $currentDeviceId = $currentToken && method_exists($currentToken, 'getKey')
+            ? $currentToken->getKey()
+            : null;
         $tvsession = TvLoginSession::where('user_id', $user->id)->first();
         if($tvsession){
             $tvsession->delete();
         }
 
-        $deviceId = $request->filled('device_id') ? $request->device_id : $request->ip();
-        Device::where('user_id', $user->id)->where('device_id', $deviceId)->delete();
+        if ($currentDeviceId) {
+            \DB::table('playback_sessions')->where('user_id', $user->id)
+                ->where('device_token_id', $currentDeviceId)->whereNull('ended_at')
+                ->update(['ended_at' => now(), 'updated_at' => now()]);
+            Device::where('user_id', $user->id)->where('sanctum_token_id', $currentDeviceId)->delete();
+        }
+        if ($currentToken && method_exists($currentToken, 'delete')) {
+            $currentToken->delete();
+        }
 
         if ($request->is('api*')) {
             return ApiResponse::success(null, __('messages.user_logout'), 200);
@@ -603,8 +561,9 @@ protected function checkDeviceLimit(User $user, string $deviceId = null, bool $i
             'old_password' => 'required',
             'new_password' => 'required|min:8',
         ]);
-        $user = \Auth::user();
-        $user = User::where('id', $user->id)->first();
+        $authenticatedUser = \Auth::user();
+        $currentToken = $authenticatedUser?->currentAccessToken();
+        $user = User::where('id', $authenticatedUser?->id)->first();
         if ($user == '') {
             return ApiResponse::error(__('messages.user_notfound'), 400);
         }
@@ -621,11 +580,30 @@ protected function checkDeviceLimit(User $user, string $deviceId = null, bool $i
         
         if ($match) {
 
+            if ($currentToken && method_exists($currentToken, 'getKey')) {
+                \DB::table('playback_sessions')->where('user_id', $user->id)
+                    ->where('device_token_id', $currentToken->getKey())->whereNull('ended_at')
+                    ->update(['ended_at' => now(), 'updated_at' => now()]);
+                Device::where('user_id', $user->id)->where('sanctum_token_id', $currentToken->getKey())->delete();
+                $currentToken->delete();
+            }
+
             $user->fill([
                 'password' => Hash::make($request->new_password),
             ])->save();
 
-            $success['api_token'] = $user->createToken(setting('app_name'))->plainTextToken;
+            $issuedToken = $user->createToken(setting('app_name'));
+            $success['api_token'] = $issuedToken->plainTextToken;
+            Device::create([
+                'user_id' => $user->id,
+                'sanctum_token_id' => $issuedToken->accessToken->getKey(),
+                'device_id' => (string) \Illuminate\Support\Str::uuid(),
+                'device_name' => $request->input('device_name', 'OTT device'),
+                'platform' => $request->input('platform', 'unknown'),
+                'active_profile' => $user->userMultiProfile()->value('id'),
+                'session_id' => session()->getId(),
+                'last_activity' => now(),
+            ]);
             $success['name'] = $user->name;
 
             $data = [
@@ -759,7 +737,7 @@ protected function checkDeviceLimit(User $user, string $deviceId = null, bool $i
         );
 
     } catch (\Throwable $e) {
-        \Log::warning("Could not strip EXIF: " . $e->getMessage());
+        \Log::warning('Could not strip image EXIF metadata.', ['exception' => $e::class]);
         return $file;
     }
 }
@@ -902,7 +880,7 @@ protected function checkDeviceLimit(User $user, string $deviceId = null, bool $i
 
                 $user->notify((new CommonNotification('parental_control_otp', $notificationData))->onQueue('notifications'));
             } catch (\Exception $e) {
-                \Log::error('OTP Notification Error: ' . $e->getMessage());
+                \Log::error('OTP notification delivery failed.', ['exception' => $e::class]);
                 $bodyData = ['body' => 'Change Your Pin OTP is : '. $otp];
                 Mail::to($user->email)->send(new sendOtp($bodyData));
             }

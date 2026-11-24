@@ -27,6 +27,15 @@ class UserTableSeeder extends Seeder
      */
     public function run()
     {
+        if (! app()->environment(['local', 'testing'])) {
+            return;
+        }
+
+        $demoSeedPassword = (string) config('app.demo_seed_password');
+        if ($demoSeedPassword === '') {
+            return;
+        }
+
         Schema::disableForeignKeyConstraints();
 
         // Add the master administrator, user id of 1
@@ -42,7 +51,7 @@ class UserTableSeeder extends Seeder
                 'first_name' => 'Super',
                 'last_name' => 'Admin',
                 'email' => 'admin@swann.com',
-                'password' => Hash::make('12345678'),
+                'password' => Hash::make($demoSeedPassword),
                 'mobile' => '+12123567890',
                 'date_of_birth' => fake()->date,
                 'file_url' => '/dummy-images/profile/admin/super_admin.png',
@@ -58,7 +67,7 @@ class UserTableSeeder extends Seeder
                 'first_name' => 'Ivan',
                 'last_name' => 'Norris',
                 'email' => 'demo@swann.com',
-                'password' => Hash::make('12345678'),
+                'password' => Hash::make($demoSeedPassword),
                 'mobile' => '+12124567899',
                 'date_of_birth' => fake()->date,
                 'file_url' => '/dummy-images/profile/admin/demo_admin.png',
@@ -88,7 +97,7 @@ class UserTableSeeder extends Seeder
                 'first_name' => 'Super',
                 'last_name' => 'Admin',
                 'email' => 'admin@swann.com',
-                'password' => Hash::make('12345678'),
+                'password' => Hash::make($demoSeedPassword),
                 'mobile' => '+12123567890',
                 'date_of_birth' => fake()->date,
                 'file_url' => '/dummy-images/profile/admin/super_admin.png',
@@ -104,7 +113,7 @@ class UserTableSeeder extends Seeder
                 'first_name' => 'Ivan',
                 'last_name' => 'Norris',
                 'email' => 'demo@swann.com',
-                'password' => Hash::make('12345678'),
+                'password' => Hash::make($demoSeedPassword),
                 'mobile' => '+12124567899',
                 'date_of_birth' => fake()->date,
                 'file_url' => '/dummy-images/profile/admin/demo_admin.png',
@@ -123,7 +132,7 @@ class UserTableSeeder extends Seeder
             //     'first_name' => 'John',
             //     'last_name' => 'Doe',
             //     'email' => 'john@swann.com',
-            //     'password' => Hash::make('12345678'),
+            //     'password' => Hash::make($demoSeedPassword),
             //     'mobile' => '1-4578952512',
             //     'date_of_birth' =>fake()->date, // Replacefake()->date with the actual date of birth
             //     'profile_image' => '/dummy-images/profile/user/john.png'),
@@ -139,7 +148,7 @@ class UserTableSeeder extends Seeder
                 'first_name' => 'John',
                 'last_name' => 'Doe',
                 'email' => 'john@gmail.com',
-                'password' => Hash::make('12345678'),
+                'password' => Hash::make($demoSeedPassword),
                 'mobile' => '+911234567890',
                 'login_type'=>'otp',
                 'date_of_birth' => '1990-02-13',
@@ -160,7 +169,7 @@ class UserTableSeeder extends Seeder
                 'first_name' => 'Tristan',
                 'last_name' => 'Erickson',
                 'email' => 'tristan@gmail.com',
-                'password' => Hash::make('12345678'),
+                'password' => Hash::make($demoSeedPassword),
                 'mobile' => '+447911123456',
                 'login_type'=>'otp',
                 'date_of_birth' => '1992-05-21',
@@ -179,7 +188,7 @@ class UserTableSeeder extends Seeder
                 'first_name' => 'Felix',
                 'last_name' => 'Harris',
                 'email' => 'felix@gmail.com',
-                'password' => Hash::make('12345678'),
+                'password' => Hash::make($demoSeedPassword),
                 'mobile' => '+12124567890',
                 'login_type'=>'otp',
                 'date_of_birth' => '1996-02-02',
@@ -198,7 +207,7 @@ class UserTableSeeder extends Seeder
                 'first_name' => 'Harry',
                 'last_name' => 'Victoria',
                 'email' => 'harry@gmail.com',
-                'password' => Hash::make('12345678'),
+                'password' => Hash::make($demoSeedPassword),
                 'mobile' => '+447911123456',
                 'login_type'=>'otp',
                 'date_of_birth' => '1987-07-08',
@@ -217,7 +226,7 @@ class UserTableSeeder extends Seeder
                 'first_name' => 'Jorge',
                 'last_name' => 'Perez',
                 'email' => 'jorge@gmail.com',
-                'password' => Hash::make('12345678'),
+                'password' => Hash::make($demoSeedPassword),
                 'mobile' => '+496912345678',
                 'login_type'=>'otp',
                 'date_of_birth' => '1991-01-01',
@@ -236,7 +245,7 @@ class UserTableSeeder extends Seeder
                 'first_name' => 'Joy',
                 'last_name' => 'Hanry',
                 'email' => 'joy@gmail.com',
-                'password' => Hash::make('12345678'),
+                'password' => Hash::make($demoSeedPassword),
                 'mobile' => '+81312345678',
                 'login_type'=>'otp',
                 'date_of_birth' => '1993-07-10',
@@ -255,7 +264,7 @@ class UserTableSeeder extends Seeder
                 'first_name' => 'Deborah',
                 'last_name' => 'Thomas',
                 'email' => 'deborah@gmail.com',
-                'password' => Hash::make('12345678'),
+                'password' => Hash::make($demoSeedPassword),
                 'mobile' => '+81312355678',
                 'login_type'=>'otp',
                 'date_of_birth' => '1992-03-26',
@@ -274,7 +283,7 @@ class UserTableSeeder extends Seeder
                 'first_name' => 'Katie',
                 'last_name' => 'Brown',
                 'email' => 'katie@gmail.com',
-                'password' => Hash::make('12345678'),
+                'password' => Hash::make($demoSeedPassword),
                 'mobile' => '+12124467890',
                 'login_type'=>'otp',
                 'date_of_birth' => '1994-08-16',
@@ -293,7 +302,7 @@ class UserTableSeeder extends Seeder
                 'first_name' => 'Dorothy',
                 'last_name' => 'Erickson',
                 'email' => 'dorothy@gmail.com',
-                'password' => Hash::make('12345678'),
+                'password' => Hash::make($demoSeedPassword),
                 'mobile' => '+12124577890',
                 'login_type'=>'otp',
                 'date_of_birth' => '1989-10-10',
@@ -312,7 +321,7 @@ class UserTableSeeder extends Seeder
                 'first_name' => 'Lisa',
                 'last_name' => 'Lucas',
                 'email' => 'lisa@gmail.com',
-                'password' => Hash::make('12345678'),
+                'password' => Hash::make($demoSeedPassword),
                 'mobile' => '+12124567790',
                 'login_type'=>'otp',
                 'date_of_birth' => '1993-08-03',
@@ -331,7 +340,7 @@ class UserTableSeeder extends Seeder
                 'first_name' => 'Tracy',
                 'last_name' => 'Jones',
                 'email' => 'tracy@gmail.com',
-                'password' => Hash::make('12345678'),
+                'password' => Hash::make($demoSeedPassword),
                 'mobile' => '+913465656789',
                 'login_type'=>'otp',
                 'date_of_birth' => '1990-11-19',
@@ -350,7 +359,7 @@ class UserTableSeeder extends Seeder
                 'first_name' => 'Stella',
                 'last_name' => 'Green',
                 'email' => 'stella@gmail.com',
-                'password' => Hash::make('12345678'),
+                'password' => Hash::make($demoSeedPassword),
                 'mobile' => '+913465756789',
                 'login_type'=>'otp',
                 'date_of_birth' => '1991-12-18',

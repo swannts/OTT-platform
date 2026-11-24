@@ -24,7 +24,6 @@ import {
   Compass,
   LogIn,
   UserPlus,
-  User as UserIcon,
   LogOut,
 } from 'lucide-react';
 

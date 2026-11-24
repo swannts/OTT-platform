@@ -167,9 +167,6 @@ class ConstantsController extends Controller
 
     public function store(ConstantRequest $request)
     {
-        // Debug: Log all request data
-        \Log::info('Constant Store Request:', $request->all());
-        
         $data = $request->all();
         
         // Handle language image URL (from media modal) - custom for language name

@@ -35,15 +35,13 @@ class UserRegisteredListener implements ShouldQueue
             try {
                 $user->notify(new NewRegistrationFromSocial());
             } catch (\Exception $e) {
-                Log::error('UserRegisteredListener: Email Send Failed.');
-                Log::error($e);
+                Log::error('Social registration email delivery failed.', ['exception' => $e::class]);
             }
         } else {
             try {
                 $user->notify(new NewRegistration());
             } catch (\Exception $e) {
-                Log::error('UserRegisteredListener: Email Send Failed.');
-                Log::error($e);
+                Log::error('Registration email delivery failed.', ['exception' => $e::class]);
             }
         }
     }

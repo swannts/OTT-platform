@@ -27,11 +27,22 @@ export function UploadAvatar({ sx, error, value, disabled, helperText, ...other 
   const [preview, setPreview] = useState('');
 
   useEffect(() => {
-    if (typeof value === 'string') {
-      setPreview(value);
-    } else if (value instanceof File) {
-      setPreview(URL.createObjectURL(value));
-    }
+    let previewUrl;
+    const frame = window.requestAnimationFrame(() => {
+      if (typeof value === 'string') {
+        setPreview(value);
+      } else if (value instanceof File) {
+        previewUrl = URL.createObjectURL(value);
+        setPreview(previewUrl);
+      } else {
+        setPreview('');
+      }
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
   }, [value]);
 
   const renderPreview = hasFile && (

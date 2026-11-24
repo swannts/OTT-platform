@@ -364,8 +364,7 @@ class LiveTVsController extends Controller
             // Handle slider based on banner setting
             
             if ($isBanner == 1) {
-                $bannerList = Banner::where('banner_for', 'livetv')
-                    ->where('status', 1)
+                $bannerList = Banner::currentlyVisible()->where('banner_for', 'livetv')
                     ->where('deleted_at', null)
                     ->orderBy('id', 'asc')
                     ->limit(5)

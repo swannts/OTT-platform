@@ -85,11 +85,7 @@ class SignInController extends BaseController {
     final isRememberMeValue = await getBoolFromLocal(SharedPreferenceConst.IS_REMEMBER_ME);
     if (isRememberMeValue == true) {
       isRememberMe(true);
-      final savedPassword = await getStringFromLocal(SharedPreferenceConst.USER_PASSWORD);
       final savedLoginRequest = await getJsonFromLocal(SharedPreferenceConst.LOGIN_REQUEST);
-      if (savedPassword != null && savedPassword.isNotEmpty) {
-        passwordCont.text = savedPassword;
-      }
       if (savedLoginRequest != null && savedLoginRequest[ApiRequestKeys.email] != null) {
         emailCont.text = savedLoginRequest[ApiRequestKeys.email];
       }
@@ -265,18 +261,22 @@ class SignInController extends BaseController {
                     onLogout: (logoutAll, deviceId, deviceName) {
                       Navigator.pop(Get.context!);
                       if (logoutAll) {
-                        logOutAll(errorData.otherDevice.first.userId).then(
-                          (value) {
-                            loginAPICall(request: request, isSocialLogin: isSocialLogin);
+                        logOutAll(errorData.deviceManagementToken).then(
+                          (revoked) {
+                            if (revoked) {
+                              loginAPICall(request: request, isSocialLogin: isSocialLogin);
+                            }
                           },
                         );
                       } else {
                         deviceLogOut(
                           device: deviceId,
-                          userId: errorData.otherDevice.first.userId.toInt(),
+                          managementToken: errorData.deviceManagementToken,
                         ).then(
-                          (value) {
-                            loginAPICall(request: request, isSocialLogin: isSocialLogin);
+                          (revoked) {
+                            if (revoked) {
+                              loginAPICall(request: request, isSocialLogin: isSocialLogin);
+                            }
                           },
                         );
                       }
@@ -436,19 +436,15 @@ class SignInController extends BaseController {
     });
   }
 
-  void handleLoginResponse({String? password, bool isSocialLogin = false, bool isNormalLogin = false}) {
+  Future<void> handleLoginResponse({String? password, bool isSocialLogin = false, bool isNormalLogin = false}) async {
     try {
       setBoolToLocal(SharedPreferenceConst.IS_REMEMBER_ME, isRememberMe.value);
 
       if (isRememberMe.value && isNormalLogin) {
-        setStringToLocal(SharedPreferenceConst.USER_PASSWORD, passwordCont.text);
-        final loginRequest = {
+        await setJsonToLocal(SharedPreferenceConst.LOGIN_REQUEST, {
           ApiRequestKeys.email: emailCont.text.trim(),
-          ApiRequestKeys.password: passwordCont.text.trim(),
-        };
-        setJsonToLocal(SharedPreferenceConst.LOGIN_REQUEST, loginRequest);
+        });
       } else if (!isRememberMe.value) {
-        removeValue(SharedPreferenceConst.USER_PASSWORD);
         removeValue(SharedPreferenceConst.LOGIN_REQUEST);
       }
 
@@ -461,31 +457,37 @@ class SignInController extends BaseController {
     }
   }
 
-  Future<void> deviceLogOut({required String device, required int userId}) async {
+  Future<bool> deviceLogOut({required String device, required String managementToken}) async {
     setLoading(true);
-    await AuthServiceApis.deviceLogoutApiWithoutAuth(deviceId: device, userId: userId).then((value) {
+    try {
+      final value = await AuthServiceApis.revokeDeviceSession(deviceId: device, managementToken: managementToken);
       successSnackBar(value.message);
       // Close bottom sheet after success
       if (Get.isBottomSheetOpen ?? false) Get.back();
-    }).catchError((e) {
+      return true;
+    } catch (e) {
       errorSnackBar(error: e);
       // Close bottom sheet after error
       if (Get.isBottomSheetOpen ?? false) Get.back();
-    }).whenComplete(() {
+      return false;
+    } finally {
       setLoading(false);
-    });
+    }
   }
 
-  Future<void> logOutAll(int userId) async {
-    if (isLoading.value) return;
+  Future<bool> logOutAll(String managementToken) async {
+    if (isLoading.value) return false;
     setLoading(true);
-    await AuthServiceApis.logOutAllAPIWithoutAuth(userId: userId).then((value) async {
+    try {
+      final value = await AuthServiceApis.revokeAllDeviceSessions(managementToken: managementToken);
       successSnackBar(value.message);
-    }).catchError((e) {
+      return true;
+    } catch (e) {
       errorSnackBar(error: e);
-    }).whenComplete(() {
+      return false;
+    } finally {
       setLoading(false);
-    });
+    }
   }
 
   @override

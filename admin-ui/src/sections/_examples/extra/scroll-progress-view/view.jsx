@@ -19,18 +19,18 @@ import { ComponentBlock, ComponentContainer } from '../../component-block';
 // ----------------------------------------------------------------------
 
 export function ScrollProgressView() {
-  const pageProgress = useScrollProgress();
+  const [, , pageScrollYProgress] = useScrollProgress();
 
-  const containerProgress1 = useScrollProgress('container');
+  const [containerElementRef1, , containerScrollYProgress] = useScrollProgress('container');
 
-  const containerProgress2 = useScrollProgress('container');
+  const [containerElementRef2, containerScrollXProgress] = useScrollProgress('container');
 
   return (
     <>
       <ScrollProgress
         variant="linear"
         size={6}
-        progress={pageProgress.scrollYProgress}
+        progress={pageScrollYProgress}
         sx={{ position: 'fixed' }}
       />
 
@@ -51,18 +51,18 @@ export function ScrollProgressView() {
             variant="circular"
             size={40}
             thickness={2}
-            progress={containerProgress1.scrollYProgress}
+            progress={containerScrollYProgress}
             sx={{ position: 'absolute', top: 16, right: 16 }}
           />
 
           <ScrollProgress
             variant="linear"
             color="info"
-            progress={containerProgress1.scrollYProgress}
+            progress={containerScrollYProgress}
           />
 
           <CardContent>
-            <Scrollbar ref={containerProgress1.elementRef} sx={{ height: 480 }}>
+            <Scrollbar ref={containerElementRef1} sx={{ height: 480 }}>
               <Stack spacing={3}>
                 {[...Array(12)].map((_, index) => (
                   <Paper
@@ -97,18 +97,18 @@ export function ScrollProgressView() {
             variant="circular"
             size={40}
             thickness={2}
-            progress={containerProgress2.scrollXProgress}
+            progress={containerScrollXProgress}
             sx={{ position: 'absolute', top: 8, right: 8 }}
           />
 
           <ScrollProgress
             variant="linear"
             color="inherit"
-            progress={containerProgress2.scrollXProgress}
+            progress={containerScrollXProgress}
           />
 
           <CardContent>
-            <Scrollbar ref={containerProgress2.elementRef}>
+            <Scrollbar ref={containerElementRef2}>
               <Stack direction="row" spacing={3}>
                 {[...Array(24)].map((_, index) => (
                   <Paper

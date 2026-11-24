@@ -1,18 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
 import Link from 'next/link';
 import { Plan, PlanLimitation } from '@/types';
-import { Crown, Check, Zap, Sparkles } from 'lucide-react';
-import { Heading, Text, Badge } from '@/components/ui';
+import { Crown, Check, Sparkles } from 'lucide-react';
+import { Heading, Text } from '@/components/ui';
 
 interface PricingSectionProps {
   initialPlans: Plan[];
 }
 
 export default function PricingSection({ initialPlans }: PricingSectionProps) {
-  const [plans] = useState<Plan[]>(initialPlans);
-  const [billingCycle, setBillingCycle] = useState<'month' | 'year'>('month');
+  const plans = initialPlans;
 
   return (
     <div className="min-h-screen pt-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pb-24 select-none">
@@ -98,4 +96,3 @@ export default function PricingSection({ initialPlans }: PricingSectionProps) {
     </div>
   );
 }
-

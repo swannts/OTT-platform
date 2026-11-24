@@ -271,10 +271,7 @@ class CustomAdsSettingController extends Controller
             return redirect()->route('backend.customads.index')->with('success', __('messages.customads_created_successfully'));
         } catch (\Exception $e) {
             // dd($e->getMessage());
-            Log::error('CustomAds Store Error: '.$e->getMessage(), [
-                'trace' => $e->getTraceAsString(),
-                'request_data' => $request->all(),
-            ]);
+            Log::error('Custom ad configuration could not be saved.', ['exception' => $e::class]);
 
             return redirect()->back()->withInput()->with('error', __('messages.customads_creation_failed'));
         }

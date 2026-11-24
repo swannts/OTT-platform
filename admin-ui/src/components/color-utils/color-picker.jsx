@@ -104,3 +104,4 @@ export const ColorPicker = forwardRef(
     );
   }
 );
+ColorPicker.displayName = 'ColorPicker';

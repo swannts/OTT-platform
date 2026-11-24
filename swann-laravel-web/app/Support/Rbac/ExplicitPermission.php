@@ -10,6 +10,16 @@ final class ExplicitPermission
 {
     public static function allows(User $user, string $name): bool
     {
+        $accountIsEligible = $user->newQuery()
+            ->whereKey($user->getKey())
+            ->where('status', 1)
+            ->where('is_banned', 0)
+            ->exists();
+
+        if (! $accountIsEligible) {
+            return false;
+        }
+
         $permission = Permission::query()
             ->where('name', $name)
             ->where('guard_name', 'web')

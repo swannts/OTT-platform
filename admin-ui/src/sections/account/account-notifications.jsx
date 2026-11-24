@@ -1,4 +1,4 @@
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, useWatch, Controller } from 'react-hook-form';
 
 import Card from '@mui/material/Card';
 import Stack from '@mui/material/Stack';
@@ -42,13 +42,12 @@ export function AccountNotifications() {
   });
 
   const {
-    watch,
     control,
     handleSubmit,
     formState: { isSubmitting },
   } = methods;
 
-  const values = watch();
+  const values = useWatch({ control });
 
   const onSubmit = handleSubmit(async (data) => {
     try {

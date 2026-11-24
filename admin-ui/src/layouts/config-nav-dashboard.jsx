@@ -51,10 +51,52 @@ export const navData = [
         permissions: ['content.submit', 'content.review', 'content.approve', 'content.publish'],
       },
       {
+        title: 'Content licensing',
+        path: '/dashboard/content/licensing',
+        icon: ICONS.lock,
+        permission: 'content.view',
+      },
+      {
+        title: 'Media library',
+        path: '/dashboard/media',
+        icon: ICONS.blog,
+        permission: 'media.view',
+      },
+      {
+        title: 'Subscriptions',
+        path: '/dashboard/subscriptions',
+        icon: ICONS.invoice,
+        permission: 'subscriptions.view',
+      },
+      {
+        title: 'Finance',
+        path: '/dashboard/finance',
+        icon: ICONS.invoice,
+        permission: 'finance.payments.view',
+      },
+      {
+        title: 'Marketing',
+        path: '/dashboard/marketing',
+        icon: ICONS.blog,
+        permission: 'marketing.campaigns.manage',
+      },
+      {
+        title: 'Customer support',
+        path: '/dashboard/support',
+        icon: ICONS.user,
+        permissions: ['support.accounts.view', 'support.tickets.manage'],
+      },
+      {
+        title: 'Analytics',
+        path: '/dashboard/analytics',
+        icon: ICONS.analytics,
+        permissions: ['analytics.audience.view', 'analytics.subscriptions.view', 'analytics.content.view', 'analytics.revenue.view', 'analytics.playback.view'],
+      },
+      {
         title: 'Operations & reports',
         path: '/dashboard/operations',
         icon: ICONS.analytics,
-        permissions: ['media.view', 'subscriptions.view', 'finance.payments.view', 'marketing.campaigns.manage', 'analytics.audience.view', 'operations.health.view'],
+        permissions: ['operations.health.view', 'operations.logs.view', 'operations.jobs.view', 'operations.jobs.retry', 'operations.incidents.manage', 'analytics.playback.view'],
       },
       {
         title: 'Roles',

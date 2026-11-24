@@ -5,17 +5,18 @@ namespace Modules\Coupon\Http\Controllers\API;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use App\Http\Responses\ApiResponse;
+use App\Support\Rbac\ExplicitPermission;
 use Modules\Coupon\Models\Coupon;
-use Illuminate\Support\Facades\Validator;
 
 class CouponController extends Controller
 {
     /**
      * Display a listing of the coupons.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $coupons = Coupon::all();
+        abort_unless(ExplicitPermission::allows($request->user(), 'subscriptions.coupons.manage'), 403);
+        $coupons = Coupon::query()->with('subscriptionPlans:id,name,identifier')->paginate(50);
         return ApiResponse::custom(['success' => true, 'data' => $coupons], 200);
     }
 
@@ -24,17 +25,23 @@ class CouponController extends Controller
      */
     public function store(Request $request)
     {
+        abort_unless(ExplicitPermission::allows($request->user(), 'subscriptions.coupons.manage'), 403);
         $validated = $request->validate([
-            'code' => 'nullable|string|unique:coupons,code',
-            'discount' => 'required|numeric',
-            'discount_type' => 'nullable|in:fixed,percentage',
-            'expire_date' => 'nullable|date',
+            'code' => 'required|string|max:64|alpha_dash|unique:coupons,code',
+            'discount' => 'required|numeric|min:0',
+            'discount_type' => 'required|in:fixed,percentage',
+            'expire_date' => 'nullable|date|after_or_equal:start_date',
             'start_date' => 'nullable|date',
-            'description' => 'required|string',
+            'description' => 'nullable|string|max:2000',
             'status' => 'nullable|boolean',
-            'subscription_plan_ids' => 'nullable|array',
+            'subscription_plan_ids' => 'required|array|min:1',
+            'subscription_plan_ids.*' => 'integer|distinct|exists:plan,id',
         ]);
-        $coupon = Coupon::create($request->except('subscription_plan_ids'));
+        if ($validated['discount_type'] === 'percentage') {
+            validator($validated, ['discount' => ['numeric', 'min:0', 'max:100']])->validate();
+        }
+        $coupon = new Coupon($validated);
+        $coupon->forceFill(['created_by' => $request->user()->getKey()])->save();
     
         if ($request->filled('subscription_plan_ids')) {
             $coupon->subscriptionPlans()->attach($request->subscription_plan_ids);
@@ -106,31 +113,39 @@ class CouponController extends Controller
      */
     public function update(Request $request, int $id)
     {
+        abort_unless(ExplicitPermission::allows($request->user(), 'subscriptions.coupons.manage'), 403);
         $coupon = Coupon::find($id);
 
         if (!$coupon) {
             return ApiResponse::custom(['success' => false, 'message' => 'Coupon not found'], 404);
         }
 
-        $validator = Validator::make($request->all(), [
-            'code' => 'sometimes|string|unique:coupons,code,' . $id,
-            'discount' => 'sometimes|numeric|min:0',
-            'expiry_date' => 'sometimes|date|after:today',
+        $validated = $request->validate([
+            'code' => 'sometimes|required|string|max:64|alpha_dash|unique:coupons,code,' . $id,
+            'discount' => 'sometimes|required|numeric|min:0',
+            'discount_type' => 'sometimes|required|in:fixed,percentage',
+            'start_date' => 'sometimes|nullable|date',
+            'expire_date' => 'sometimes|nullable|date|after_or_equal:start_date',
+            'description' => 'sometimes|nullable|string|max:2000',
+            'status' => 'sometimes|boolean',
+            'subscription_plan_ids' => 'sometimes|array|min:1',
+            'subscription_plan_ids.*' => 'integer|distinct|exists:plan,id',
         ]);
-
-        if ($validator->fails()) {
-            return ApiResponse::error('Validation failed', 422, $validator->errors());
+        if (($validated['discount_type'] ?? $coupon->discount_type) === 'percentage' && isset($validated['discount'])) {
+            validator($validated, ['discount' => ['numeric', 'min:0', 'max:100']])->validate();
         }
-
-        $coupon->update($request->only(['code', 'discount', 'expiry_date']));
+        $coupon->fill(collect($validated)->except('subscription_plan_ids')->all());
+        $coupon->forceFill(['updated_by' => $request->user()->getKey()])->save();
+        if (array_key_exists('subscription_plan_ids', $validated)) $coupon->subscriptionPlans()->sync($validated['subscription_plan_ids']);
         return ApiResponse::custom(['success' => true, 'data' => $coupon], 200);
     }
 
     /**
      * Remove the specified coupon from storage.
      */
-    public function destroy(int $id)
+    public function destroy(Request $request, int $id)
     {
+        abort_unless(ExplicitPermission::allows($request->user(), 'subscriptions.coupons.manage'), 403);
         $coupon = Coupon::find($id);
 
         if (!$coupon) {

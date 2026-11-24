@@ -13,34 +13,26 @@ import { Heart, Plus } from 'lucide-react';
 export default function WatchlistPage() {
   const { user, isLoading: isAuthLoading } = useAuth();
   const { t, isBangla } = useLanguage();
-  const [items, setItems] = useState<MediaItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const userId = user?.id ?? null;
+  const [watchlist, setWatchlist] = useState<{ userId: string | number; items: MediaItem[] } | null>(null);
+  const items = watchlist && String(watchlist.userId) === String(userId) ? watchlist.items : [];
+  const isLoading = isAuthLoading || (userId !== null && (!watchlist || String(watchlist.userId) !== String(userId)));
 
   useEffect(() => {
-    async function loadWatchlist() {
-      setIsLoading(true);
-      try {
-        const data = await api.getWatchlist();
-        if (data && Array.isArray(data)) {
-          setItems(data);
-        } else {
-          setItems([]);
-        }
-      } catch {
-        setItems([]);
-      } finally {
-        setIsLoading(false);
-      }
-    }
+    if (isAuthLoading || userId === null) return;
+    let active = true;
+    void api.getWatchlist()
+      .then((data) => {
+        if (active) setWatchlist({ userId, items: Array.isArray(data) ? data : [] });
+      })
+      .catch(() => {
+        if (active) setWatchlist({ userId, items: [] });
+      });
 
-    if (!isAuthLoading) {
-      if (user) {
-        loadWatchlist();
-      } else {
-        setIsLoading(false);
-      }
-    }
-  }, [user, isAuthLoading]);
+    return () => {
+      active = false;
+    };
+  }, [userId, isAuthLoading]);
 
   if (isAuthLoading) {
     return (
@@ -105,4 +97,3 @@ export default function WatchlistPage() {
     </div>
   );
 }
-

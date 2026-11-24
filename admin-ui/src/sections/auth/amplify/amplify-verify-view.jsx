@@ -2,7 +2,7 @@
 
 import { z as zod } from 'zod';
 import { useCallback } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
 import Link from '@mui/material/Link';
@@ -55,12 +55,12 @@ export function AmplifyVerifyView() {
   });
 
   const {
-    watch,
+    control,
     handleSubmit,
     formState: { isSubmitting },
   } = methods;
 
-  const values = watch();
+  const values = useWatch({ control });
 
   const onSubmit = handleSubmit(async (data) => {
     try {

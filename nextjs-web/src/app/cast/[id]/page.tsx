@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import { api, normalizeMediaItem } from '@/lib/api';
 import { MediaGrid } from '@/components/shared';
@@ -118,14 +119,16 @@ export default async function CastDetailPage({ params }: PageProps) {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
         {/* Photo */}
         <div className="flex justify-center md:justify-start">
-          <div className="w-48 h-64 sm:w-56 sm:h-72 rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-neutral-900">
-            <img
+          <div className="relative w-48 h-64 sm:w-56 sm:h-72 rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-neutral-900">
+            <Image
               src={
                 (typeof cast.image === 'string' && cast.image) ||
                 (typeof cast.profile_image === 'string' && cast.profile_image) ||
                 'https://images.unsplash.com/photo-1564769625905-50e93615e769?w=500&auto=format&fit=crop&q=80'
               }
               alt={cast.name}
+              fill
+              sizes="(max-width: 640px) 192px, 224px"
               className="w-full h-full object-cover"
             />
           </div>

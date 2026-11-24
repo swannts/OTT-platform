@@ -78,14 +78,14 @@ export function OverviewBankingView() {
                   { label: 'Supermarket', value: 21 },
                 ],
                 icons: [
-                  <Iconify icon="streamline:dices-entertainment-gaming-dices-solid" />,
-                  <Iconify icon="maki:fuel" />,
-                  <Iconify icon="ion:fast-food" />,
-                  <Iconify icon="maki:cafe" />,
-                  <Iconify icon="basil:mobile-phone-outline" />,
-                  <Iconify icon="solar:medical-kit-bold" />,
-                  <Iconify icon="ic:round-fitness-center" />,
-                  <Iconify icon="solar:cart-3-bold" />,
+                  <Iconify key="entertainment" icon="streamline:dices-entertainment-gaming-dices-solid" />,
+                  <Iconify key="fuel" icon="maki:fuel" />,
+                  <Iconify key="food" icon="ion:fast-food" />,
+                  <Iconify key="cafe" icon="maki:cafe" />,
+                  <Iconify key="connection" icon="basil:mobile-phone-outline" />,
+                  <Iconify key="healthcare" icon="solar:medical-kit-bold" />,
+                  <Iconify key="fitness" icon="ic:round-fitness-center" />,
+                  <Iconify key="supermarket" icon="solar:cart-3-bold" />,
                 ],
               }}
             />

@@ -83,5 +83,7 @@ const ColumnBase = forwardRef(({ slots, stateProps, sx, ...other }, ref) => {
     </StyledRoot>
   );
 });
+ColumnBase.displayName = 'ColumnBase';
+
 
 export default memo(ColumnBase);

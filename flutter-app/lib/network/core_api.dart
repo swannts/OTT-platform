@@ -7,6 +7,7 @@ import 'package:swann_ott/screens/account_setting/model/account_setting_response
 import 'package:swann_ott/screens/auth/model/app_configuration_res.dart';
 import 'package:swann_ott/screens/coming_soon/model/coming_soon_response.dart';
 import 'package:swann_ott/screens/content/model/content_model.dart';
+import 'package:swann_ott/screens/content/model/playback_authorization.dart';
 import 'package:swann_ott/screens/genres/model/genres_model.dart';
 import 'package:swann_ott/screens/home/model/dashboard_res_model.dart';
 import 'package:swann_ott/screens/home/model/notification_count_response_model.dart';
@@ -1235,15 +1236,58 @@ class CoreServiceApis {
     return Map<String, dynamic>.from(response['data'] as Map);
   }
 
+  static Future<PlaybackAuthorization> authorizePlayback({
+    required String contentId,
+    required String type,
+    required int profileId,
+  }) async {
+    final response = Map<String, dynamic>.from(await getApiResponse(
+      APIEndPoints.playbackDetails,
+      request: {
+        ApiRequestKeys.idKey: contentId,
+        ApiRequestKeys.typeKey: type,
+        ApiRequestKeys.profileIdKey: profileId,
+      },
+      method: HttpMethodType.POST,
+      manageApiVersion: true,
+    ) as Map);
+    final payload = response['data'];
+    if (payload is! Map) {
+      throw const FormatException('Playback authorization response is incomplete.');
+    }
+    return PlaybackAuthorization.fromJson(Map<String, dynamic>.from(payload));
+  }
+
+  static Future<String?> refreshPlaybackSession(String sessionId) async {
+    final response = Map<String, dynamic>.from(await getApiResponse(
+      '${APIEndPoints.playbackSessions}/$sessionId/heartbeat',
+      request: const {},
+      method: HttpMethodType.POST,
+      manageApiVersion: true,
+    ) as Map);
+    final payload = response['data'];
+    if (payload is! Map) return null;
+    return payload['media_url'] is String ? payload['media_url'] as String : null;
+  }
+
+  static Future<void> endPlaybackSession(String sessionId) async {
+    await getApiResponse(
+      '${APIEndPoints.playbackSessions}/$sessionId/end',
+      request: const {},
+      method: HttpMethodType.POST,
+      manageApiVersion: true,
+    );
+  }
+
   static Future<ContentModel> getContentDetails({
-    required int contentId,
+    required String contentId,
     required String type,
     int tvShowId = 0,
     int seasonId = 0,
     bool requiresReleasedDataOnly = true,
   }) async {
     List<String> params = [];
-    if (contentId > 0) params.add('${ApiRequestKeys.idKey}=$contentId');
+    if (contentId.isNotEmpty) params.add('${ApiRequestKeys.idKey}=$contentId');
     if (type.isNotEmpty) params.add('${ApiRequestKeys.typeKey}=$type');
     if (requiresReleasedDataOnly)
       params.add('${ApiRequestKeys.isReleasedKey}=1');

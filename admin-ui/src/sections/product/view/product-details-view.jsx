@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 
 import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
@@ -50,13 +50,7 @@ const SUMMARY = [
 export function ProductDetailsView({ product }) {
   const tabs = useTabs('description');
 
-  const [publish, setPublish] = useState('');
-
-  useEffect(() => {
-    if (product) {
-      setPublish(product?.publish);
-    }
-  }, [product]);
+  const [publish, setPublish] = useState(product?.publish ?? '');
 
   const handleChangePublish = useCallback((newValue) => {
     setPublish(newValue);

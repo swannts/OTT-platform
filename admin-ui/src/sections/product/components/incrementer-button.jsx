@@ -47,3 +47,4 @@ export const IncrementerButton = forwardRef(
     </Stack>
   )
 );
+IncrementerButton.displayName = 'IncrementerButton';

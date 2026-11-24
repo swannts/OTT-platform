@@ -53,12 +53,13 @@ export default function WatchPage() {
           : 'movie';
         const data = await api.getContentDetails(id, contentType);
         try {
-          const qualities = await api.getPlaybackDetails(id, contentType);
+          const playback = await api.getPlaybackDetails(id, contentType);
           setContent({
             ...data,
-            video_qualities: qualities,
-            video_default_quality: qualities[0],
-            has_content_access: qualities.length > 0,
+            video_qualities: playback.video_qualities,
+            video_default_quality: playback.video_qualities[0],
+            playback_session: playback.playback_session,
+            has_content_access: playback.video_qualities.length > 0,
           });
         } catch {
           setContent({ ...data, video_qualities: [], video_default_quality: undefined, has_content_access: false });
@@ -115,6 +116,7 @@ export default function WatchPage() {
             videoUrl={streamUrl}
             urlType={urlType}
             qualities={content.video_qualities || []}
+            playbackSessionId={content.playback_session?.session_id}
             hasAccess={content.has_content_access === true}
             initialTime={initialResumeTime}
             poster={content.banner_image || content.poster_image}

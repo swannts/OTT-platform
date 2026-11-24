@@ -126,17 +126,19 @@ class ContentDetailsController extends BaseController<ContentModel> {
 
   Future<void> getContentData({
     bool showLoader = true,
-    int? entertainmentId,
+    String? contentId,
     String? entertainmentType,
     VoidCallback? onContentUpdated,
     bool starTrailer = true,
   }) async {
-    if (argumentData.id < 0) return;
+    if (argumentData.id < 0 &&
+        argumentData.serverId.isEmpty &&
+        argumentData.details.serverId.isEmpty) return;
     showShimmer(!showLoader);
     await getContent(
       showLoader: showLoader,
       contentApiCall: () => CoreServiceApis.getContentDetails(
-        contentId: entertainmentId ?? argumentData.entertainmentId,
+        contentId: contentId ?? argumentData.entertainmentServerId,
         type: entertainmentType ?? argumentData.entertainmentType,
       ),
       onSuccess: (data) async {
@@ -216,12 +218,12 @@ class ContentDetailsController extends BaseController<ContentModel> {
       {bool showLoader = true,
       required PosterDataModel episodeData,
       VoidCallback? onEpisodeDataUpdated}) async {
-    if (argumentData.details.entertainmentId < 0) return;
+    if (argumentData.entertainmentServerId.isEmpty) return;
     if (isLoading.value) return;
     setLoading(showLoader);
 
     await getContentData(
-      entertainmentId: episodeData.id,
+      contentId: episodeData.entertainmentServerId,
       entertainmentType: episodeData.details.type,
       onContentUpdated: onEpisodeDataUpdated,
     );
@@ -410,7 +412,7 @@ class ContentDetailsController extends BaseController<ContentModel> {
 
   bool isWatchListLoading = false;
 
-  Future<void> watchListContent(BuildContext context, int id) async {
+  Future<void> watchListContent(BuildContext context, String id) async {
     if (isWatchListLoading) return;
     isWatchListLoading = true;
 
@@ -490,7 +492,7 @@ class ContentDetailsController extends BaseController<ContentModel> {
     setLoading(true);
 
     Map<String, dynamic> req = {
-      ApiRequestKeys.entertainmentIdKey: content.value!.id,
+      ApiRequestKeys.entertainmentIdKey: content.value!.playbackContentId,
       ApiRequestKeys.ratingKey: userRating.value,
       ApiRequestKeys.reviewKey: userReviewCont.text.trim(),
       if (!isNew) ApiRequestKeys.idKey: reviewId,
@@ -789,6 +791,7 @@ class ContentDetailsController extends BaseController<ContentModel> {
 
         final contentModel = ContentModel(
           id: episodeData.id,
+          serverId: episodeData.serverId,
           details: episodeData.details,
           downloadData: downloadData,
           trailerData: episodeData.trailerData,

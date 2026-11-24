@@ -23,7 +23,8 @@ import { FloatLine, FloatPlusIcon } from './components/svg-elements';
 // ----------------------------------------------------------------------
 
 export function HomeHighlightFeatures({ sx, ...other }) {
-  const containerRoot = useClientRect();
+  const containerRootRef = useRef(null);
+  const { left: containerRootLeft } = useClientRect(containerRootRef);
 
   const renderLines = (
     <>
@@ -44,7 +45,7 @@ export function HomeHighlightFeatures({ sx, ...other }) {
 
         <Container>
           <Stack
-            ref={containerRoot.elementRef}
+            ref={containerRootRef}
             spacing={5}
             alignItems={{ xs: 'center', md: 'flex-start' }}
             sx={{ textAlign: { xs: 'center', md: 'left' } }}
@@ -71,7 +72,7 @@ export function HomeHighlightFeatures({ sx, ...other }) {
         </Container>
       </MotionViewport>
 
-      <ScrollContent containerRoot={containerRoot} />
+      <ScrollContent containerRootLeft={containerRootLeft} />
     </Stack>
   );
 }
@@ -79,13 +80,17 @@ export function HomeHighlightFeatures({ sx, ...other }) {
 // ----------------------------------------------------------------------
 
 const StyledRoot = styled(
-  forwardRef((props, ref) => <Box ref={ref} component={m.div} {...props} />)
+  forwardRef(function StyledRootMotion(props, ref) {
+    return <Box ref={ref} component={m.div} {...props} />;
+  })
 )(({ theme }) => ({
   zIndex: 9,
   position: 'relative',
   paddingTop: theme.spacing(5),
   [theme.breakpoints.up('md')]: { paddingTop: theme.spacing(8) },
 }));
+StyledRoot.displayName = 'StyledRoot';
+
 
 const StyledContainer = styled((props) => <Box component={m.div} {...props} />)(({ theme }) => ({
   top: 0,
@@ -100,9 +105,9 @@ const StyledContainer = styled((props) => <Box component={m.div} {...props} />)(
 }));
 
 const StyledContent = styled(
-  forwardRef((props, ref) => (
-    <Box ref={ref} component={m.div} transition={{ ease: 'linear', duration: 0.25 }} {...props} />
-  ))
+  forwardRef(function StyledContentMotion(props, ref) {
+    return <Box ref={ref} component={m.div} transition={{ ease: 'linear', duration: 0.25 }} {...props} />;
+  })
 )(({ theme }) => ({
   display: 'flex',
   gap: theme.spacing(5),
@@ -113,10 +118,12 @@ const StyledContent = styled(
     paddingLeft: theme.spacing(0),
   },
 }));
+StyledContent.displayName = 'StyledContent';
+
 
 // ----------------------------------------------------------------------
 
-function ScrollContent({ containerRoot }) {
+function ScrollContent({ containerRootLeft }) {
   const theme = useTheme();
 
   const containerRef = useRef(null);
@@ -161,7 +168,7 @@ function ScrollContent({ containerRoot }) {
   return (
     <StyledRoot ref={containerRef} sx={{ height: scrollRect.scrollWidth, minHeight: '100vh' }}>
       <StyledContainer style={{ background }} data-scrolling={startScroll}>
-        <StyledContent ref={scrollRef} style={{ x }} layout sx={{ ml: `${containerRoot.left}px` }}>
+        <StyledContent ref={scrollRef} style={{ x }} layout sx={{ ml: `${containerRootLeft}px` }}>
           {ITEMS.map((item) => (
             <Item key={item.title} item={item} />
           ))}

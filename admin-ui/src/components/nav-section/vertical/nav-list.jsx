@@ -17,10 +17,15 @@ export function NavList({ data, render, depth, slotProps, enabledRootRedirect })
 
   const [openMenu, setOpenMenu] = useState(active);
 
+  const handleCloseMenu = useCallback(() => {
+    setOpenMenu(false);
+  }, []);
+
   useEffect(() => {
-    if (!active) {
-      handleCloseMenu();
-    }
+    const frame = window.requestAnimationFrame(() => {
+      if (!active) handleCloseMenu();
+    });
+    return () => window.cancelAnimationFrame(frame);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
@@ -29,10 +34,6 @@ export function NavList({ data, render, depth, slotProps, enabledRootRedirect })
       setOpenMenu((prev) => !prev);
     }
   }, [data.children]);
-
-  const handleCloseMenu = useCallback(() => {
-    setOpenMenu(false);
-  }, []);
 
   const renderNavItem = (
     <NavItem

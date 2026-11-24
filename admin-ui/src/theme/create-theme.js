@@ -1,4 +1,5 @@
 import { experimental_extendTheme as extendTheme } from '@mui/material/styles';
+import { isValidElement } from 'react';
 
 import { setFont } from './styles/utils';
 import { overridesTheme } from './overrides-theme';
@@ -28,17 +29,69 @@ export function createTheme(localeComponents, settings) {
    */
   const updateTheme = updateCoreWithSettings(initialTheme, settings);
 
+  // React development elements hold a circular `_owner` fiber reference. MUI's
+  // theme deep merge walks component defaults, so keep those elements out of
+  // the merge and restore them after the theme has been composed.
+  const elementDefaults = [];
+  const themeInputs = [
+    { ...updateTheme, components: updateTheme.components },
+    localeComponents,
+    updateComponentsWithSettings(settings),
+    overridesTheme,
+  ].map((themeInput) => {
+    if (!themeInput?.components) return themeInput;
+
+    const safeComponents = Object.fromEntries(
+      Object.entries(themeInput.components).map(([componentName, componentConfig]) => {
+        const defaultProps = componentConfig?.defaultProps;
+        if (!defaultProps) return [componentName, componentConfig];
+
+        const mergeSafeDefaults = stripElements(defaultProps, (path, value) => {
+          elementDefaults.push({ componentName, path, value });
+        });
+
+        return [componentName, { ...componentConfig, defaultProps: mergeSafeDefaults }];
+      })
+    );
+
+    return { ...themeInput, components: safeComponents };
+  });
+
   /**
    * 2.Create theme + add locale + update component with settings.
    */
-  const theme = extendTheme(
-    updateTheme,
-    localeComponents,
-    updateComponentsWithSettings(settings),
-    overridesTheme
-  );
+  const theme = extendTheme(...themeInputs);
+
+  for (const { componentName, path, value } of elementDefaults) {
+    const parent = path
+      .slice(0, -1)
+      .reduce((current, key) => current[key], theme.components[componentName].defaultProps);
+    parent[path.at(-1)] = value;
+  }
 
   return theme;
+}
+
+function stripElements(value, onElement, path = []) {
+  if (isValidElement(value)) {
+    onElement(path, value);
+    return undefined;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item, index) => stripElements(item, onElement, [...path, index]));
+  }
+
+  if (value && Object.getPrototypeOf(value) === Object.prototype) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key,
+        stripElements(item, onElement, [...path, key]),
+      ])
+    );
+  }
+
+  return value;
 }
 
 // ----------------------------------------------------------------------

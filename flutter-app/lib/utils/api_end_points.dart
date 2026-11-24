@@ -5,11 +5,14 @@ class APIEndPoints {
   static const String register = 'register';
   static const String socialLogin = 'social-login';
   static const String login = 'login';
+  static const String logout = 'logout';
+  static const String playbackDetails = 'playback/details';
+  static const String playbackSessions = 'playback/sessions';
+  static const String deviceSessionRevoke = 'device-sessions/revoke';
+  static const String deviceSessionsRevokeAll = 'device-sessions/revoke-all';
   static const String checkMobileNoExist = 'check-mobile-exists';
   static const String deviceLogout = 'device-logout';
-  static const String deviceLogoutNoAuth = 'device-logout-data';
   static const String logOutAll = 'logout-all';
-  static const String logOutAllNoAuth = 'logout-all-data';
   static const String changePassword = 'change-password';
   static const String forgotPassword = 'forgot-password';
   static const String deleteUserAccount = 'delete-account';

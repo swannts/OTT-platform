@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -16,6 +17,7 @@ import (
 	"ott-worker/internal/broker"
 	"ott-worker/internal/config"
 	"ott-worker/internal/handlers"
+	workerhealth "ott-worker/internal/health"
 )
 
 func main() {
@@ -53,19 +55,23 @@ func main() {
 	defer b.Close()
 
 	// 4. Initialize Handlers
-	mediaH := handlers.NewMediaHandler(db, cfg.StoragePath)
+	mediaH := handlers.NewMediaHandler(db, cfg.StoragePath, cfg.PrivateStoragePath)
 	notifyH := handlers.NewNotificationHandler()
 	cronH := handlers.NewCronHandler(db)
+	consumersReady := true
 
 	// 5. Start Queue Consumers
 	if err := b.Consume(ctx, broker.QueueMedia, 4, mediaH.Handle); err != nil {
 		log.Error().Err(err).Msg("Failed to start media consumer")
+		consumersReady = false
 	}
 	if err := b.Consume(ctx, broker.QueueNotifications, 16, notifyH.Handle); err != nil {
 		log.Error().Err(err).Msg("Failed to start notification consumer")
+		consumersReady = false
 	}
 	if err := b.Consume(ctx, broker.QueueCron, 2, cronH.Handle); err != nil {
 		log.Error().Err(err).Msg("Failed to start cron consumer")
+		consumersReady = false
 	}
 
 	// 6. Integrated Go Cron Scheduler (Option A: eliminates PHP cron overhead)
@@ -81,6 +87,14 @@ func main() {
 	c.Start()
 	log.Info().Msg("Integrated Go scheduler started (session cleaner: every 1m, subscriptions: daily)")
 
+	healthAddress := config.GetEnv("WORKER_HEALTH_ADDR", ":8081")
+	healthServer := &http.Server{Addr: healthAddress, Handler: workerhealth.Handler(db, b, cfg.RedisAddr, consumersReady), ReadHeaderTimeout: 2 * time.Second}
+	go func() {
+		if err := healthServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Error().Err(err).Msg("Worker health server stopped")
+		}
+	}()
+
 	// 7. Wait for Termination Signals
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
@@ -90,8 +104,10 @@ func main() {
 
 	c.Stop()
 	cancel()
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer shutdownCancel()
+	_ = healthServer.Shutdown(shutdownCtx)
 	time.Sleep(500 * time.Millisecond)
 
 	log.Info().Msg("OTT Go Background Worker Service exited cleanly.")
 }
-

@@ -101,6 +101,8 @@ export const NavItem = forwardRef(
     );
   }
 );
+NavItem.displayName = 'NavItem';
+
 
 // ----------------------------------------------------------------------
 

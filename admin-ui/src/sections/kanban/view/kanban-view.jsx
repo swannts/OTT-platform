@@ -129,7 +129,7 @@ export function KanbanView() {
       // If no droppable is matched, return the last match
       return lastOverId.current ? [{ id: lastOverId.current }] : [];
     },
-    [activeId, board?.tasks]
+    [activeId, board.tasks]
   );
 
   const findColumn = (id) => {

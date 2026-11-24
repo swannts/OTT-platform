@@ -7,6 +7,7 @@ use App\Models\Role;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use LogicException;
 
 /**
  * Class PermissionRoleTableSeeder.
@@ -20,6 +21,10 @@ class PermissionRoleTableSeeder extends Seeder
      */
     public function run()
     {
+        if (! app()->environment(['local', 'testing'])) {
+            throw new LogicException('PermissionRoleTableSeeder truncates authorization tables and cannot run outside local or testing environments.');
+        }
+
         DB::table('permissions')->truncate();
         DB::table('role_has_permissions')->truncate();
         

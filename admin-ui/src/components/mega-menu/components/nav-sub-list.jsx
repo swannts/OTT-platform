@@ -75,3 +75,4 @@ export const NavSubItem = forwardRef(({ title, path, active, slotProps }, ref) =
     </Link>
   </NavLi>
 ));
+NavSubItem.displayName = 'NavSubItem';

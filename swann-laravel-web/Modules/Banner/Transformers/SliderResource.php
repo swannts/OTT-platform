@@ -86,6 +86,7 @@ class SliderResource extends JsonResource
             'title' => $this->name,
             'poster_url' => setBaseUrlWithFileName($this->poster_url,'image','banner'),
             'file_url' => setBaseUrlWithFileName($this->file_url,'image','banner'),
+            'click_url' => $this->click_url,
             'type' => $this->type,
             'data' => $data,
             'poster_tv_image' => setBaseUrlWithFileName($this->poster_tv_url,'image','banner'),

@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { BlogPost } from '@/types';
-import { Clock, Calendar, ArrowRight, Sparkles } from 'lucide-react';
+import { Clock, ArrowRight, Sparkles } from 'lucide-react';
 import { DEFAULT_FALLBACK_IMAGE } from '@/constants';
 import { formatDhakaDate } from '@/lib/datetime';
 
@@ -22,10 +23,12 @@ export default function BlogHero({ post }: BlogHeroProps) {
     <div className="relative rounded-3xl overflow-hidden border border-white/10 group mb-12 shadow-[0_20px_50px_rgba(0,0,0,0.8)]">
       {/* Background Image Container */}
       <div className="relative aspect-[16/9] md:aspect-[21/9] w-full overflow-hidden">
-        <img
+        <Image
           src={imgSrc}
           alt={post.title}
           onError={() => setImgSrc(DEFAULT_FALLBACK_IMAGE)}
+          fill
+          sizes="(max-width: 768px) 100vw, 75vw"
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#05080c] via-[#05080c]/60 to-transparent" />
@@ -62,9 +65,12 @@ export default function BlogHero({ post }: BlogHeroProps) {
           <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-white/10">
             <div className="flex items-center space-x-3 text-xs text-gray-300">
               {post.author_avatar && (
-                <img
+                <Image
                   src={post.author_avatar}
                   alt={post.author_name}
+                  width={28}
+                  height={28}
+                  sizes="28px"
                   className="w-7 h-7 rounded-full object-cover ring-2 ring-[#E5B869]/50"
                 />
               )}
@@ -91,4 +97,3 @@ export default function BlogHero({ post }: BlogHeroProps) {
     </div>
   );
 }
-

@@ -23,11 +23,10 @@ class BannersController extends Controller
             $request->validate([
                 'type' => ['nullable', Rule::in(['movie', 'tv_show', 'video', 'all'])],
                 'per_page' => 'nullable|integer|min:1|max:50',
-                'status' => 'nullable|boolean'
             ]);
 
             $query = Banner::query()
-                ->select('id', 'title', 'file_url', 'poster_url', 'type', 'type_id', 'type_name', 'status');
+                ->select('id', 'title', 'file_url', 'poster_url', 'type', 'type_id', 'type_name', 'banner_for', 'click_url', 'status');
 
 
             if ($request->type && $request->type !== 'all') {
@@ -35,7 +34,8 @@ class BannersController extends Controller
             }
 
 
-            $query->where('status', $request->status ?? 1);
+            // Only active, in-window banners belong in public catalog responses.
+            $query->currentlyVisible();
 
 
             

@@ -221,7 +221,7 @@ export function MailDetails({ mail, renderLabel, empty, loading }) {
   );
 
   const renderContent = (
-    <Markdown children={mail.message} sx={{ px: 2, '& p': { typography: 'body2' } }} />
+    <Markdown sx={{ px: 2, '& p': { typography: 'body2' } }}>{mail.message}</Markdown>
   );
 
   const renderEditor = (

@@ -40,7 +40,7 @@ return [
         ],
         'subtitle' => [
             'extensions' => ['srt', 'vtt'],
-            'mime_types' => ['text/plain', 'application/octet-stream'],
+            'mime_types' => ['text/plain', 'application/octet-stream', 'application/x-subrip'],
             'max_kb' => 10240,
             'content_checks' => ['text_utf8'],
         ],

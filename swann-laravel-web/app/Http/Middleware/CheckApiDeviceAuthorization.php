@@ -32,27 +32,15 @@ class CheckApiDeviceAuthorization
                 return $next($request);
             }
             
-            // Get device_id from token name or request
-            $deviceId = null;
             $token = $request->user()->currentAccessToken();
-            
-            // // Only PersonalAccessToken has name property (not TransientToken for web requests)
-            // if ($token && $token instanceof \Laravel\Sanctum\PersonalAccessToken) {
-            //     // Token name is typically the device_id for mobile apps
-            //     $deviceId = $token->name;
-            // }
-            
-            // Fallback: try to get from request
-            if (!$deviceId && $request->filled('device_id')) {
-                $deviceId = $request->input('device_id');
-            }
-            
-            // If no device_id, skip check (might be web request)
-            if (!$deviceId) {
+            // Bind device authorization to the server-issued Sanctum token row. Never
+            // accept a client device_id or token name as an authorization identity.
+            if (!$token instanceof PersonalAccessToken) {
                 return $next($request);
             }
+            $deviceId = (string) $token->getKey();
             $deviceExists = Device::where('user_id', $user->id)
-                ->where('device_id', $deviceId)
+                ->where('sanctum_token_id', $deviceId)
                 ->exists();
            
             // If device doesn't exist, it means logoutAll was called OR device was deleted

@@ -55,6 +55,9 @@ class VideoPlayersController extends GetxController with WidgetsBindingObserver 
   Duration _lastSavedPosition = Duration.zero;
   RxString subtitleText = ''.obs;
   bool isFromDownloads = false;
+  String? _playbackSessionId;
+  Timer? _playbackHeartbeat;
+  bool _isRefreshingPlayback = false;
 
   //endregion
 
@@ -128,7 +131,11 @@ class VideoPlayersController extends GetxController with WidgetsBindingObserver 
       // Parse Intro/Outro
       _parseIntroOutro();
 
-      // Set initial quality
+      if (!isFromDownloads && videoModel.details.type.toLowerCase() != VideoType.liveTv) {
+        await _authorizeVodPlayback();
+      }
+
+      // Set initial quality only after Laravel authorizes the device and profile.
       currentQuality(videoModel.defaultQuality);
 
       // Skip ads if playing from downloads
@@ -227,7 +234,7 @@ class VideoPlayersController extends GetxController with WidgetsBindingObserver 
         if (videoModel.isOneTimePurchase)
           CoreServiceApis.startDate(
             request: {
-              ApiRequestKeys.entertainmentIdKey: videoModel.id,
+              ApiRequestKeys.entertainmentIdKey: videoModel.playbackContentId,
               ApiRequestKeys.entertainmentTypeKey: videoModel.details.type,
               ApiRequestKeys.userIdKey: loginUserData.value.id,
             },
@@ -235,7 +242,7 @@ class VideoPlayersController extends GetxController with WidgetsBindingObserver 
 
         CoreServiceApis.storeViewDetails(
           request: {
-            ApiRequestKeys.entertainmentIdKey: videoModel.id,
+            ApiRequestKeys.entertainmentIdKey: videoModel.playbackContentId,
             ApiRequestKeys.entertainmentTypeKey: videoModel.details.type,
             ApiRequestKeys.userIdKey: loginUserData.value.id,
           },
@@ -246,6 +253,87 @@ class VideoPlayersController extends GetxController with WidgetsBindingObserver 
       errorMessage(e.toString());
       isBuffering(false);
       stage(VideoPlayerStage.error);
+    }
+  }
+
+  Future<void> _authorizeVodPlayback() async {
+    if (!isLoggedIn.value || loginUserData.value.id < 1) {
+      throw Exception('Sign in and select a viewing profile before playback.');
+    }
+    final profileId = selectedAccountProfile.value.id;
+    if (profileId < 1) {
+      throw Exception('Select a viewing profile before playback.');
+    }
+    final contentType = videoModel.details.type.toLowerCase();
+    if (![VideoType.movie, VideoType.tvshow, VideoType.episode, VideoType.video].contains(contentType)) {
+      throw Exception('This content type is not supported for protected playback.');
+    }
+
+    final contentId = videoModel.playbackContentId;
+    if (contentId.isEmpty) {
+      throw Exception('The content identifier is missing. Reload the title and try again.');
+    }
+    final authorization = await CoreServiceApis.authorizePlayback(
+      contentId: contentId,
+      type: contentType,
+      profileId: profileId,
+    );
+    videoModel.videoQualities = authorization.videoQualities
+        .map(VideoData.fromQualityJson)
+        .toList(growable: false);
+    _playbackSessionId = authorization.sessionId;
+    _startPlaybackHeartbeat();
+  }
+
+  void _startPlaybackHeartbeat() {
+    _playbackHeartbeat?.cancel();
+    _playbackHeartbeat = Timer.periodic(const Duration(seconds: 45), (_) {
+      unawaited(_refreshPlaybackSession());
+    });
+  }
+
+  Future<void> _refreshPlaybackSession() async {
+    final sessionId = _playbackSessionId;
+    if (sessionId == null || _isRefreshingPlayback || isClosed) return;
+    _isRefreshingPlayback = true;
+    try {
+      final mediaUrl = await CoreServiceApis.refreshPlaybackSession(sessionId);
+      if (mediaUrl != null && mediaUrl.isNotEmpty && mediaUrl != currentVideoUrl.value && !isClosed && isInitialized.value) {
+        currentVideoUrl(mediaUrl);
+        currentVideoType('hls');
+        currentQuality(VideoData(urlType: 'HLS', url: mediaUrl, quality: 'Auto'));
+        await playerManager.initialize(
+          url: mediaUrl,
+          type: 'hls',
+          startAt: playerManager.currentPosition.value,
+          thumbnail: videoModel.details.thumbnailImage,
+          adBreaks: getAllAdBreaks(),
+        );
+        await playerManager.play();
+      }
+    } catch (error) {
+      if (!isClosed) {
+        _playbackHeartbeat?.cancel();
+        await playerManager.stop();
+        hasError(true);
+        errorMessage('Playback access expired or was revoked. Please start playback again.');
+        stage(VideoPlayerStage.error);
+      }
+    } finally {
+      _isRefreshingPlayback = false;
+    }
+  }
+
+  Future<void> _endPlaybackSession() async {
+    _playbackHeartbeat?.cancel();
+    _playbackHeartbeat = null;
+    final sessionId = _playbackSessionId;
+    _playbackSessionId = null;
+    if (sessionId == null) return;
+    try {
+      await CoreServiceApis.endPlaybackSession(sessionId);
+    } catch (error) {
+      log('Unable to close playback session cleanly: $error');
     }
   }
 
@@ -330,7 +418,7 @@ class VideoPlayersController extends GetxController with WidgetsBindingObserver 
 
   //region Save Progress
   Future<void> saveContentToContinueWatch() async {
-    if (videoModel.id > 0 && !isFromDownloads && (videoModel.details.type == VideoType.episode || videoModel.details.type == VideoType.movie || videoModel.details.type == VideoType.video)) {
+    if (videoModel.playbackContentId.isNotEmpty && !isFromDownloads && (videoModel.details.type == VideoType.episode || videoModel.details.type == VideoType.movie || videoModel.details.type == VideoType.video)) {
       String watchedTime = '';
       String totalWatchedTime = '';
       if (playerManager.currentPosition.value.inSeconds == playerManager.currentVideoDuration.value.inSeconds) {
@@ -347,12 +435,12 @@ class VideoPlayersController extends GetxController with WidgetsBindingObserver 
 
       await CoreServiceApis.saveContinueWatch(
         request: {
-          ApiRequestKeys.entertainmentIdKey: videoModel.entertainmentId,
+          ApiRequestKeys.entertainmentIdKey: videoModel.serverEntertainmentId,
           ApiRequestKeys.watchedTimeKey: watchedTime,
           ApiRequestKeys.totalWatchedTimeKey: totalWatchedTime,
           ApiRequestKeys.entertainmentTypeKey: getTypeForContinueWatch(type: videoModel.details.type.toLowerCase()),
           if (selectedAccountProfile.value.id != 0) ApiRequestKeys.profileIdKey: selectedAccountProfile.value.id,
-          if (videoModel.details.type.toLowerCase() == VideoType.episode) ApiRequestKeys.episodeIdKey: videoModel.id,
+          if (videoModel.details.type.toLowerCase() == VideoType.episode) ApiRequestKeys.episodeIdKey: videoModel.playbackContentId,
         },
       ).catchError((e) {
         log("Error ==> $e");
@@ -553,7 +641,7 @@ class VideoPlayersController extends GetxController with WidgetsBindingObserver 
 
   Future<void> storeViewCompleted() async {
     final Map<String, dynamic> request = {
-      ApiRequestKeys.entertainmentIdKey: videoModel.id,
+      ApiRequestKeys.entertainmentIdKey: videoModel.playbackContentId,
       ApiRequestKeys.userIdKey: loginUserData.value.id,
       ApiRequestKeys.entertainmentTypeKey: videoModel.details.type,
       ApiRequestKeys.profileIdKey: selectedAccountProfile.value.id,
@@ -574,7 +662,7 @@ class VideoPlayersController extends GetxController with WidgetsBindingObserver 
     stage(VideoPlayerStage.loading);
 
     await CoreServiceApis.getContentDetails(
-      contentId: episodeData.id,
+      contentId: episodeData.entertainmentServerId,
       type: episodeData.details.type,
     ).whenComplete(() {
       playerManager.isBuffering(false);
@@ -657,6 +745,8 @@ class VideoPlayersController extends GetxController with WidgetsBindingObserver 
       await saveContentToContinueWatch();
       await _saveOfflineProgress();
     }
+
+    await _endPlaybackSession();
 
     playerManager.dispose();
     adManager.dispose();

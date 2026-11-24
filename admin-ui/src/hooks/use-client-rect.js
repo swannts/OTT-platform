@@ -1,4 +1,4 @@
-import { useRef, useMemo, useState, useEffect, useCallback, useLayoutEffect } from 'react';
+import { useRef, useMemo, useState, useEffect, useCallback } from 'react';
 
 import { useEventListener } from './use-event-listener';
 
@@ -12,8 +12,6 @@ export function useClientRect(inputRef) {
   const [rect, setRect] = useState(undefined);
 
   const [scroll, setScroll] = useState(undefined);
-
-  const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
   const handleResize = useCallback(() => {
     if (elementRef?.current) {
@@ -30,9 +28,10 @@ export function useClientRect(inputRef) {
 
   useEventListener('resize', handleResize);
 
-  useIsomorphicLayoutEffect(() => {
-    handleResize();
-  }, []);
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(handleResize);
+    return () => window.cancelAnimationFrame(frame);
+  }, [handleResize]);
 
   const memoizedRectValue = useMemo(() => rect, [rect]);
   const memoizedScrollValue = useMemo(() => scroll, [scroll]);

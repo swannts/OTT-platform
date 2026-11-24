@@ -1,5 +1,5 @@
 import { useEffect, useCallback } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, useWatch, Controller } from 'react-hook-form';
 
 import Box from '@mui/material/Box';
 import Link from '@mui/material/Link';
@@ -71,9 +71,9 @@ export function ProductDetailsSummary({
 
   const methods = useForm({ defaultValues });
 
-  const { reset, watch, control, setValue, handleSubmit } = methods;
+  const { reset, control, setValue, handleSubmit } = methods;
 
-  const values = watch();
+  const values = useWatch({ control });
 
   useEffect(() => {
     if (product) {

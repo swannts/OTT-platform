@@ -4,6 +4,7 @@ namespace Modules\Frontend\Trait;
 use Jenssegers\Agent\Agent;
 use App\Models\Device;
 use App\Models\UserMultiProfile;
+use Modules\Subscriptions\Services\PlanEntitlementSnapshot;
 use DB;
 
 
@@ -14,59 +15,13 @@ trait LoginTrait
     {
         $count = Device::where('user_id', $user->id)->count();
 
-        if($user->mobile=='+911234567890'){
-
+        $deviceLimit = PlanEntitlementSnapshot::integerLimit($user->subscriptionPackage?->plan_type, 'device-limit')
+            ?? max(1, (int) config('constant.DEVICE_LIMIT', 1));
+        if ($count >= $deviceLimit) {
             return [
-                'success' => 'Your device limit is available.',
-                'status' => 200
+                'error' => __('messages.device_limit_reached'),
+                'status' => 406,
             ];
-
-        }
-
-        if ($user->subscriptionPackage) {
-            $subscription = $user->subscriptionPackage;
-
-            if (isset($subscription->plan_type) && !empty($subscription->plan_type)) {
-                $planLimitations = json_decode($subscription->plan_type, true);
-
-                if (is_array($planLimitations)) {
-                    foreach ($planLimitations as $limitation) {
-                        if (isset($limitation['slug']) && $limitation['slug'] === 'device-limit') {
-                            if (isset($limitation['limitation_value']) && $limitation['limitation_value'] == 1) {
-                                $limitData = $limitation['limit'] ?? null;
-                                $deviceLimitCount = 0;
-
-                                if (is_array($limitData) && isset($limitData['value'])) {
-                                    $deviceLimitCount = (int)$limitData['value'];
-                                } elseif (is_string($limitData) || is_numeric($limitData)) {
-                                    $deviceLimitCount = (int)$limitData;
-                                }
-
-                                if ($count >= $deviceLimitCount) {
-                                    return [
-                                        'error' => __('messages.device_limit_reached'),
-                                        'status' => 406
-                                    ];
-                                }
-                            }
-                            break;
-                        }
-                    }
-                }
-            }
-        } else {
-
-            $existingDevice = Device::where('user_id', $user->id)->first();
-
-            if ($existingDevice) {
-
-                if ($existingDevice->device_id != $current_device) {
-                    return [
-                        'error' => __('messages.device_limit_reached'),
-                        'status' => 406
-                    ];
-                }
-            }
         }
 
         return [

@@ -524,8 +524,7 @@ class SettingsController extends Controller
         }
        
 
-        \Log::info("rules=".json_encode($rules));
-        \Log::info("request_all=".json_encode($request->all()));
+        // Request data may include credentials and integration settings; do not log it.
 
         // Custom validation messages
         $messages = [
@@ -542,9 +541,8 @@ class SettingsController extends Controller
 
         try {
             $data = $this->validate($request, $rules, $messages);
-            \Log::info("data=".json_encode($data));
         } catch (\Illuminate\Validation\ValidationException $e) {
-            \Log::error("Validation failed: ".json_encode($e->errors()));
+            \Log::warning('Settings validation failed.', ['field_count' => count($e->errors())]);
             throw $e; // Re-throw to maintain normal validation behavior
         }
         $validSettings = array_keys($rules);

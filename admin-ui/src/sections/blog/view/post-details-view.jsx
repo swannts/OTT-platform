@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 
 import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
@@ -30,17 +30,11 @@ import { PostDetailsToolbar } from '../post-details-toolbar';
 // ----------------------------------------------------------------------
 
 export function PostDetailsView({ post }) {
-  const [publish, setPublish] = useState('');
+  const [publish, setPublish] = useState(post?.publish ?? '');
 
   const handleChangePublish = useCallback((newValue) => {
     setPublish(newValue);
   }, []);
-
-  useEffect(() => {
-    if (post) {
-      setPublish(post?.publish);
-    }
-  }, [post]);
 
   return (
     <DashboardContent maxWidth={false} disablePadding>
@@ -68,7 +62,7 @@ export function PostDetailsView({ post }) {
       >
         <Typography variant="subtitle1">{post?.description}</Typography>
 
-        <Markdown children={post?.content} />
+        <Markdown>{post?.content}</Markdown>
 
         <Stack
           spacing={3}

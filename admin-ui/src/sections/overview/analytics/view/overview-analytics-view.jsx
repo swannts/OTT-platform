@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Grid from '@mui/material/Unstable_Grid2';
 import Typography from '@mui/material/Typography';
 
@@ -38,7 +39,7 @@ export function OverviewAnalyticsView() {
             percent={2.6}
             total={714000}
             icon={
-              <img alt="icon" src={`${CONFIG.site.basePath}/assets/icons/glass/ic-glass-bag.svg`} />
+              <Image alt="" aria-hidden="true" src={`${CONFIG.site.basePath}/assets/icons/glass/ic-glass-bag.svg`} width={48} height={48} unoptimized />
             }
             chart={{
               categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
@@ -54,9 +55,13 @@ export function OverviewAnalyticsView() {
             total={1352831}
             color="secondary"
             icon={
-              <img
-                alt="icon"
+              <Image
+                alt=""
+                aria-hidden="true"
                 src={`${CONFIG.site.basePath}/assets/icons/glass/ic-glass-users.svg`}
+                width={48}
+                height={48}
+                unoptimized
               />
             }
             chart={{
@@ -73,7 +78,7 @@ export function OverviewAnalyticsView() {
             total={1723315}
             color="warning"
             icon={
-              <img alt="icon" src={`${CONFIG.site.basePath}/assets/icons/glass/ic-glass-buy.svg`} />
+              <Image alt="" aria-hidden="true" src={`${CONFIG.site.basePath}/assets/icons/glass/ic-glass-buy.svg`} width={48} height={48} unoptimized />
             }
             chart={{
               categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
@@ -89,9 +94,13 @@ export function OverviewAnalyticsView() {
             total={234}
             color="error"
             icon={
-              <img
-                alt="icon"
+              <Image
+                alt=""
+                aria-hidden="true"
                 src={`${CONFIG.site.basePath}/assets/icons/glass/ic-glass-message.svg`}
+                width={48}
+                height={48}
+                unoptimized
               />
             }
             chart={{

@@ -20,6 +20,7 @@ export function ProductDetailsCarousel({ images }) {
       slidesToShow: 'auto',
     },
   });
+  const { options: carouselOptions, thumbs: { thumbsRef } } = carousel;
 
   const slides = images?.map((img) => ({ src: img })) || [];
 
@@ -58,8 +59,8 @@ export function ProductDetailsCarousel({ images }) {
         </Box>
 
         <CarouselThumbs
-          ref={carousel.thumbs.thumbsRef}
-          options={carousel.options?.thumbs}
+          ref={thumbsRef}
+          options={carouselOptions?.thumbs}
           slotProps={{ disableMask: true }}
           sx={{ width: 360 }}
         >

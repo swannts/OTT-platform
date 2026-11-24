@@ -1,5 +1,4 @@
 import 'package:swann_ott/screens/subscription/model/subscription_plan_model.dart';
-import 'package:swann_ott/utils/common_functions.dart';
 
 class UserResponse {
   bool status;
@@ -84,7 +83,7 @@ class UserData {
       dateOfBirth: json['date_of_birth'] is String ? json['date_of_birth'] : "",
       address: json['address'] is String ? json['address'] : "",
       status: json['status'] is int ? json['status'] : -1,
-      apiToken: json['api_token'] is String ? json['api_token'] : loginUserData.value.apiToken,
+      apiToken: json['api_token'] is String ? json['api_token'] as String : '',
       fullName: json['full_name'] is String ? json['full_name'] : "",
       profileImage: json['profile_image'] is String ? json['profile_image'] : "",
       planDetails: json['plan_details'] is Map ? SubscriptionPlanModel.fromJson(json['plan_details']) : SubscriptionPlanModel(),
@@ -105,7 +104,6 @@ class UserData {
       'date_of_birth': dateOfBirth,
       'address': address,
       'status': status,
-      'api_token': apiToken,
       'full_name': fullName,
       'profile_image': profileImage,
       'plan_details': planDetails.toJson(),

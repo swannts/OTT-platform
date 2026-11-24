@@ -11,7 +11,7 @@ class SubscriptionTransactions extends BaseModel
 
     protected $table = 'subscriptions_transactions';
 
-    protected $fillable = ['subscriptions_id', 'user_id', 'amount','tax_data', 'payment_type', 'payment_status', 'transaction_id',  'other_transactions_details'];
+    protected $fillable = ['subscriptions_id', 'user_id', 'amount', 'currency_code', 'tax_data', 'payment_type', 'payment_status', 'transaction_id',  'other_transactions_details'];
 
     protected static function newFactory()
     {

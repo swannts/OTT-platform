@@ -14,9 +14,15 @@ export function useCarouselProgress(mainApi) {
   useEffect(() => {
     if (!mainApi) return;
 
-    onScroll(mainApi);
+    const frame = window.requestAnimationFrame(() => onScroll(mainApi));
     mainApi.on('reInit', onScroll);
     mainApi.on('scroll', onScroll);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      mainApi.off('reInit', onScroll);
+      mainApi.off('scroll', onScroll);
+    };
   }, [mainApi, onScroll]);
 
   return { value: scrollProgress };

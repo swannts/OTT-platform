@@ -47,10 +47,11 @@ export function MegaMenuMobile({
 
   useEffect(() => {
     if (openDrawer) {
-      handleCloseDrawer();
+      const frame = window.requestAnimationFrame(handleCloseDrawer);
+
+      return () => window.cancelAnimationFrame(frame);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
+  }, [handleCloseDrawer, openDrawer, pathname]);
 
   const renderButton = slots?.button ? (
     cloneElement(slots.button, { onClick: handleOpenDrawer })

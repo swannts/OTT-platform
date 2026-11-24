@@ -31,6 +31,13 @@ return [
         'url' => env('ADMIN_UI_URL', env('APP_URL')),
     ],
 
+    'go_worker_health_url' => env('GO_WORKER_HEALTH_URL', 'http://worker:8081/health'),
+    'rabbitmq_host' => env('RABBITMQ_HOST', 'rabbitmq'),
+    'rabbitmq_port' => (int) env('RABBITMQ_PORT', 5672),
+    'rabbitmq_management_url' => env('RABBITMQ_MANAGEMENT_URL', 'http://rabbitmq:15672/api'),
+    'rabbitmq_username' => env('RABBITMQ_USER', 'guest'),
+    'rabbitmq_password' => env('RABBITMQ_PASSWORD', 'guest'),
+
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),

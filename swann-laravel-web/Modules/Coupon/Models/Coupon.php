@@ -18,7 +18,7 @@ class Coupon extends BaseModel
     /**
      * The attributes that are mass assignable.
      */
-    protected $fillable = ['code', 'discount', 'discount_type','start_date', 'expire_date', 'status', 'description'];
+    protected $fillable = ['code', 'discount', 'discount_type', 'max_redemptions', 'per_user_limit', 'start_date', 'expire_date', 'status', 'description'];
     
     protected static function newFactory(): CouponFactory
     {

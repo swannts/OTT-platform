@@ -4,9 +4,6 @@ use Modules\Subscriptions\Http\Controllers\Backend\API\PlanController;
 use Modules\Subscriptions\Http\Controllers\Backend\API\PlanLimitationController;
 use Modules\Subscriptions\Http\Controllers\Backend\API\SubscriptionController;
 
-Route::apiResource('planlimitation', PlanLimitationController::class);
-Route::apiResource('plans', PlanController::class);
-
 Route::get('plan-list', [PlanController::class, 'planList']);
 
 Route::group(['middleware' => 'auth:sanctum'], function () {

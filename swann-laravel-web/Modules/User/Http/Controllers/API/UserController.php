@@ -10,6 +10,7 @@ use Modules\User\Transformers\UserProfileResource;
 use App\Models\User;
 use App\Models\Device;
 use Modules\Subscriptions\Models\Subscription;
+use Modules\Subscriptions\Services\PlanEntitlementSnapshot;
 use Modules\Entertainment\Models\ContinueWatch;
 use Modules\Entertainment\Models\Watchlist;
 use Modules\Entertainment\Models\EntertainmentDownload;
@@ -52,18 +53,16 @@ class UserController extends Controller
         $your_device = null;
         $other_device = [];
 
-        // Prefer explicit device_id from request, then current token name, finally subscription device
-        if ($request->filled('device_id')) {
-            $currentDeviceId = $request->device_id;
-        } elseif ($request->user() && $request->user()->currentAccessToken()) {
-            $currentDeviceId = $request->user()->currentAccessToken()->name;
+        // The token row is server-issued; request device IDs and token names are labels only.
+        if ($request->user() && $request->user()->currentAccessToken() instanceof \Laravel\Sanctum\PersonalAccessToken) {
+            $currentDeviceId = $request->user()->currentAccessToken()->getKey();
         } else {
-            $currentDeviceId = $user->subscriptionPackage->device_id ?? null;
+            $currentDeviceId = null;
         }
 
         if ($devices->isNotEmpty()) {
             foreach ($devices as $device) {
-                if ($currentDeviceId && $device->device_id === $currentDeviceId) {
+                if ($currentDeviceId && (int) $device->sanctum_token_id === (int) $currentDeviceId) {
                     $your_device = $device;
                 } else {
                     $other_device[] = $device;
@@ -71,7 +70,7 @@ class UserController extends Controller
             }
 
             // Fallback only when we truly don't know the current device (no id info)
-            if (!$your_device && !$request->filled('device_id')) {
+            if (!$your_device && !$currentDeviceId) {
                 $your_device = $devices->sortByDesc('updated_at')->first();
                 $other_device = $devices->where('id', '!=', optional($your_device)->id)->values();
             }
@@ -98,21 +97,11 @@ public function deviceLogout(Request $request)
 {
 
     $userId = $request->user()->id;
-    $request->validate([
-        'id' => ['required_without:device_id', 'integer', 'min:1'],
-        'device_id' => ['required_without:id', 'string', 'max:255'],
-    ]);
+    $request->validate(['id' => ['required', 'integer', 'min:1']]);
 
     $deviceQuery = Device::where('user_id', $userId);
 
-    $deviceQuery->where(function ($query) use ($request) {
-        if ($request->filled('device_id')) {
-            $query->where('device_id', $request->device_id);
-        }
-        if ($request->filled('id')) {
-            $request->filled('device_id') ? $query->orWhere('id', $request->id) : $query->where('id', $request->id);
-        }
-    });
+    $deviceQuery->whereKey($request->integer('id'));
 
     $device = $deviceQuery->first();
 
@@ -120,14 +109,14 @@ public function deviceLogout(Request $request)
         return ApiResponse::error(__('users.device_not_found'), 404);
     }
 
-    $deviceIdToLogout = $device->device_id;
+    $deviceIdToLogout = $device->sanctum_token_id;
 
-    // Revoke sanctum tokens for this specific device (token name = device_id)
+    // Device IDs are the primary keys of the server-issued Sanctum tokens.
     try {
         $user = $request->user();
         if ($user && class_exists('Laravel\\Sanctum\\PersonalAccessToken')) {
             \Laravel\Sanctum\PersonalAccessToken::where('tokenable_id', $userId)
-                ->where('name', $deviceIdToLogout)
+                ->whereKey($deviceIdToLogout)
                 ->delete();
         }
     } catch (\Throwable $e) {
@@ -139,7 +128,7 @@ public function deviceLogout(Request $request)
     try {
         DB::table('sessions')
             ->where('user_id', $userId)
-            ->where('ip_address', $deviceIdToLogout)
+            ->where('id', $device->session_id)
             ->delete();
     } catch (\Throwable $e) {
         // ignore if sessions table not present
@@ -187,26 +176,9 @@ public function deviceLogout(Request $request)
             }
             
             // Get user's plan device limit
-            $user = User::find($userId);
-            $planDeviceLimit = 1; // Default limit
-            if ($user && $user->subscriptionPackage && !empty($user->subscriptionPackage->plan_type)) {
-                $planLimitations = json_decode($user->subscriptionPackage->plan_type, true);
-                if (is_array($planLimitations)) {
-                    foreach ($planLimitations as $limitation) {
-                        if (isset($limitation['slug']) && $limitation['slug'] === 'device-limit') {
-                            if (isset($limitation['limitation_value']) && $limitation['limitation_value'] == 1) {
-                                $limitData = $limitation['limit'] ?? null;
-                                if (is_array($limitData) && isset($limitData['value'])) {
-                                    $planDeviceLimit = (int)$limitData['value'];
-                                } elseif (is_string($limitData) || is_numeric($limitData)) {
-                                    $planDeviceLimit = (int)$limitData;
-                                }
-                            }
-                            break;
-                        }
-                    }
-                }
-            }
+            $user = User::with('subscriptionPackage')->find($userId);
+            $planDeviceLimit = PlanEntitlementSnapshot::integerLimit($user?->subscriptionPackage?->plan_type, 'device-limit')
+                ?? max(1, (int) config('constant.DEVICE_LIMIT', 1));
             
             // Store device count and plan limit in cache for use in middleware (valid for 10 minutes)
             // Store by user_id for authenticated checks
@@ -222,14 +194,14 @@ public function deviceLogout(Request $request)
                 ], 600);
             }
         } catch (\Throwable $e) {
-            \Log::info('Error getting devices: ' . $e->getMessage());
+            \Log::warning('Could not read customer device records during logout.', ['exception' => $e::class]);
         }
     
         // Delete all devices for this user
         try {
             Device::where('user_id', $userId)->delete();
         } catch (\Throwable $e) {
-            \Log::info('Error deleting devices: ' . $e->getMessage());
+            \Log::warning('Could not delete customer device records during logout.', ['exception' => $e::class]);
         }
     
         // Delete all sessions for this user - multiple methods to ensure complete deletion
@@ -254,7 +226,7 @@ public function deviceLogout(Request $request)
                     ->delete();
             }
         } catch (\Throwable $e) {
-            \Log::info('Error deleting sessions: ' . $e->getMessage());
+            \Log::warning('Could not delete customer sessions during logout.', ['exception' => $e::class]);
         }
     
         // Revoke all Sanctum tokens for this user - CRITICAL for mobile apps
@@ -285,9 +257,9 @@ public function deviceLogout(Request $request)
                 ->where('tokenable_id', $userId)
                 ->delete();
                 
-            \Log::info('logoutAll: All Sanctum tokens revoked for user_id: ' . $userId);
+            \Log::info('Customer session tokens revoked.');
         } catch (\Throwable $e) {
-            \Log::error('Error revoking tokens in logoutAll: ' . $e->getMessage());
+            \Log::error('Could not revoke customer session tokens.', ['exception' => $e::class]);
         }
     
         // Logout current device if session exists
@@ -297,7 +269,7 @@ public function deviceLogout(Request $request)
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
             } catch (\Throwable $e) {
-                \Log::info('Error logging out current session: ' . $e->getMessage());
+                \Log::warning('Could not invalidate the current customer session.', ['exception' => $e::class]);
             }
         }
     

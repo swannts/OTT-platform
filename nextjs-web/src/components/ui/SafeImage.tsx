@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { DEFAULT_FALLBACK_IMAGE } from '@/constants';
 import { blurHashToDataURL } from '@/lib/blurhash';
@@ -8,7 +9,7 @@ import { Skeleton } from './Skeleton';
 
 export const DEFAULT_ISLAMIC_FALLBACK = DEFAULT_FALLBACK_IMAGE;
 
-export interface SafeImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src'> {
+export interface SafeImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src' | 'width' | 'height'> {
   src?: string | null;
   fallbackSrc?: string;
   blurhash?: string | null;
@@ -34,121 +35,48 @@ export default function SafeImage({
   aspectRatio = 'auto',
   priority = false,
   showSkeleton = false,
+  sizes = '100vw',
   className,
   containerClassName,
   ...props
 }: SafeImageProps) {
   const cleanTarget = typeof src === 'string' && src.trim() ? src.trim() : fallbackSrc;
-  const [imgSrc, setImgSrc] = useState<string>(cleanTarget);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [hasError, setHasError] = useState(false);
-  const [blurDataUrl, setBlurDataUrl] = useState<string | null>(null);
-  const imgRef = useRef<HTMLImageElement | null>(null);
-
-  // Check if image is already loaded (crucial for cached images during route navigation)
-  const checkImageComplete = useCallback((node: HTMLImageElement | null) => {
-    if (!node) return;
-    if (node.complete) {
-      if (node.naturalWidth > 0) {
-        setIsLoaded(true);
-      } else if (node.currentSrc || node.src) {
-        // Failed to load
-        if (!hasError && imgSrc !== fallbackSrc) {
-          setHasError(true);
-          setImgSrc(fallbackSrc);
-        } else {
-          setIsLoaded(true);
-        }
-      }
-    }
-  }, [hasError, imgSrc, fallbackSrc]);
-
-  // Callback ref so we immediately evaluate cached images upon DOM node creation
-  const setRef = useCallback((node: HTMLImageElement | null) => {
-    imgRef.current = node;
-    checkImageComplete(node);
-  }, [checkImageComplete]);
-
-  // Sync state if src changes
-  useEffect(() => {
-    const nextSrc = typeof src === 'string' && src.trim() ? src.trim() : fallbackSrc;
-    setImgSrc(nextSrc);
-    setHasError(false);
-
-    // If cached in memory, immediately mark loaded
-    if (imgRef.current) {
-      if (imgRef.current.complete && imgRef.current.naturalWidth > 0) {
-        setIsLoaded(true);
-        return;
-      }
-    }
-
-    setIsLoaded(false);
-
-    // Check again on next microtask/frame after React commits DOM changes
-    const raf = requestAnimationFrame(() => {
-      checkImageComplete(imgRef.current);
-    });
-
-    return () => cancelAnimationFrame(raf);
-  }, [src, fallbackSrc, checkImageComplete]);
-
-  // Decode blurhash to lightweight data URL on client after mount
-  useEffect(() => {
-    if (!blurhash) {
-      setBlurDataUrl(null);
-      return;
-    }
-    const dataUrl = blurHashToDataURL(blurhash, 32, 32);
-    setBlurDataUrl(dataUrl);
-  }, [blurhash]);
-
+  const [failedSource, setFailedSource] = useState<string | null>(null);
+  const [loadedSource, setLoadedSource] = useState<string | null>(null);
+  const hasError = failedSource === cleanTarget;
+  const imgSrc = hasError ? fallbackSrc : cleanTarget;
+  const isLoaded = loadedSource === imgSrc;
+  const blurDataUrl = useMemo(
+    () => (blurhash ? blurHashToDataURL(blurhash, 32, 32) : null),
+    [blurhash]
+  );
   // Safety Watchdog: If an image is cached or network stalls on page change,
   // never leave the user stuck on the blurhash color forever.
   useEffect(() => {
     if (isLoaded) return;
 
-    // Check immediately in case DOM complete updated
-    if (imgRef.current?.complete && imgRef.current.naturalWidth > 0) {
-      setIsLoaded(true);
-      return;
-    }
-
     const timer = setTimeout(() => {
-      if (imgRef.current?.complete) {
-        if (imgRef.current.naturalWidth > 0) {
-          setIsLoaded(true);
-          return;
-        }
-      }
-
       // If image didn't resolve in 2 seconds, gracefully show fallback and reveal
-      if (!hasError && imgSrc !== fallbackSrc) {
-        setHasError(true);
-        setImgSrc(fallbackSrc);
-        setIsLoaded(true);
+      if (imgSrc !== fallbackSrc) {
+        setFailedSource(cleanTarget);
+        setLoadedSource(fallbackSrc);
       } else {
-        setIsLoaded(true);
+        setLoadedSource(fallbackSrc);
       }
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [imgSrc, isLoaded, hasError, fallbackSrc]);
+  }, [imgSrc, isLoaded, fallbackSrc, cleanTarget]);
 
   const handleLoad = () => {
-    setIsLoaded(true);
+    setLoadedSource(imgSrc);
   };
 
   const handleError = () => {
-    if (!hasError && imgSrc !== fallbackSrc) {
-      setHasError(true);
-      setImgSrc(fallbackSrc);
-      if (imgRef.current?.complete && imgRef.current.naturalWidth > 0) {
-        setIsLoaded(true);
-      }
-    } else {
-      setIsLoaded(true);
+    if (imgSrc !== fallbackSrc) {
+      setFailedSource(cleanTarget);
     }
+    setLoadedSource(fallbackSrc);
   };
 
   return (
@@ -185,16 +113,18 @@ export default function SafeImage({
       ) : null}
 
       {/* 3. Primary Image Layer */}
-      <img
-        ref={setRef}
+      <Image
         src={imgSrc}
         alt={alt}
+        fill
+        sizes={sizes}
+        priority={priority}
         onLoad={handleLoad}
         onError={handleError}
         decoding="async"
         loading={priority ? 'eager' : (props.loading || 'lazy')}
         className={cn(
-          'relative z-10 w-full h-full object-cover transition-opacity duration-300 ease-in-out',
+          'z-10 object-cover transition-opacity duration-300 ease-in-out',
           isLoaded ? 'opacity-100' : 'opacity-0',
           className
         )}

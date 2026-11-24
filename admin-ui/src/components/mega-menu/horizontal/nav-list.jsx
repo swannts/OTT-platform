@@ -32,10 +32,15 @@ export function NavList({ data, render, slotProps, enabledRootRedirect, cssVars 
 
   const multiList = !singleList;
 
+  const handleCloseMenu = useCallback(() => {
+    setOpenMenu(false);
+  }, []);
+
   useEffect(() => {
-    if (openMenu) {
-      handleCloseMenu();
-    }
+    const frame = window.requestAnimationFrame(() => {
+      if (openMenu) handleCloseMenu();
+    });
+    return () => window.cancelAnimationFrame(frame);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
@@ -63,10 +68,6 @@ export function NavList({ data, render, slotProps, enabledRootRedirect, cssVars 
       setOpenMenu(true);
     }
   }, [data.children]);
-
-  const handleCloseMenu = useCallback(() => {
-    setOpenMenu(false);
-  }, []);
 
   const renderNavItem = (
     <NavItem
@@ -100,7 +101,7 @@ export function NavList({ data, render, slotProps, enabledRootRedirect, cssVars 
         <Popover
           disableScrollLock
           open={openMenu}
-          anchorEl={navItemRef.current}
+          anchorEl={() => navItemRef.current}
           anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
           transformOrigin={{ vertical: 'top', horizontal: 'left' }}
           slotProps={{

@@ -20,6 +20,7 @@ class Subscription extends BaseModel
         'start_date',
         'end_date',
         'status',
+        'is_trial',
         'is_manual',
         'amount',
         'discount_percentage',

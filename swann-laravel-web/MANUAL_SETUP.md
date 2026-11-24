@@ -27,7 +27,7 @@ docker compose exec laravel.test sh -lc 'touch storage/installed'
 
 Keep `.env` local. The Compose network hostname for MySQL is `mysql`.
 
-The seed data creates the project's demo administrator account (`admin@swann.com`, password `12345678`). Change that password after the first login.
+In local development, sample accounts are created only when `DEMO_SEED_PASSWORD` is set in `.env`; keep that value private. Production seeding skips sample accounts and uploaded-file cleanup. To bootstrap the first production Super Admin, set `ADMIN_BOOTSTRAP_EMAIL` and a unique `ADMIN_BOOTSTRAP_PASSWORD` of at least 16 characters through the deployment secret manager, then run `php artisan db:seed --force --no-interaction` once. The bootstrap is idempotent and does not reset an existing account password. Remove the one-time password from the deployment environment after bootstrap.
 
 ## Existing installation
 

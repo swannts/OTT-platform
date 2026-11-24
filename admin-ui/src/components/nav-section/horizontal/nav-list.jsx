@@ -27,10 +27,15 @@ export function NavList({ data, depth, render, cssVars, slotProps, enabledRootRe
 
   const [openMenu, setOpenMenu] = useState(false);
 
+  const handleCloseMenu = useCallback(() => {
+    setOpenMenu(false);
+  }, []);
+
   useEffect(() => {
-    if (openMenu) {
-      handleCloseMenu();
-    }
+    const frame = window.requestAnimationFrame(() => {
+      if (openMenu) handleCloseMenu();
+    });
+    return () => window.cancelAnimationFrame(frame);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
@@ -39,10 +44,6 @@ export function NavList({ data, depth, render, cssVars, slotProps, enabledRootRe
       setOpenMenu(true);
     }
   }, [data.children]);
-
-  const handleCloseMenu = useCallback(() => {
-    setOpenMenu(false);
-  }, []);
 
   const renderNavItem = (
     <NavItem
@@ -86,7 +87,7 @@ export function NavList({ data, depth, render, cssVars, slotProps, enabledRootRe
         <Popover
           disableScrollLock
           open={openMenu}
-          anchorEl={navItemRef.current}
+          anchorEl={() => navItemRef.current}
           anchorOrigin={
             depth === 1
               ? { vertical: 'bottom', horizontal: 'left' }

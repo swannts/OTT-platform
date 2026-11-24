@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+import Image from 'next/image';
 import '@vidstack/react/player/styles/base.css';
 import {
   MediaPlayer,
@@ -11,7 +12,7 @@ import {
   useVideoQualityOptions,
   type MediaPlayerInstance,
 } from '@vidstack/react';
-import { RotateCcw, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import TopBar from './TopBar';
 import CenterHUD, { HudActionType } from './CenterHUD';
 import PlayerControls from './PlayerControls';
@@ -36,6 +37,9 @@ export interface VidstackPlayerProps {
   poster?: string;
   isLive?: boolean;
   onBack?: () => void;
+  onError?: (event: Event) => void;
+  onPlaying?: () => void;
+  onWaiting?: () => void;
   onQualityChange?: (url: string, qualityType: string) => void;
   onTimeUpdate?: (time: number) => void;
 }
@@ -92,9 +96,11 @@ function VidstackCinematicOverlay({
   const [isScrubbing, setIsScrubbing] = useState(false);
   const [hudAction, setHudAction] = useState<HudActionType>(null);
   const [hudQualityLabel, setHudQualityLabel] = useState<string>('');
+  const [hudAnimationId, setHudAnimationId] = useState(0);
 
   // Trigger Center HUD animation temporarily
   const triggerHud = useCallback((action: HudActionType) => {
+    setHudAnimationId((current) => current + 1);
     setHudAction(action);
     const timer = setTimeout(() => {
       setHudAction(null);
@@ -105,11 +111,10 @@ function VidstackCinematicOverlay({
 
   const hideControlsTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedTimeRef = useRef<number>(0);
-  const [hasAppliedInitialTime, setHasAppliedInitialTime] = useState(false);
+  const appliedInitialTimeKeyRef = useRef<string | null>(null);
 
   // Resume playback banner state
-  const [showResumeBanner, setShowResumeBanner] = useState(false);
-  const [resumedFromTime, setResumedFromTime] = useState<number>(0);
+  const [dismissedResumeKey, setDismissedResumeKey] = useState<string | null>(null);
   const resumeBannerTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Compute effective initial resume time from initialTime prop or local progress
@@ -118,34 +123,29 @@ function VidstackCinematicOverlay({
     return getSavedProgress(contentId, contentType, initialTime);
   }, [contentId, contentType, initialTime, isLive]);
 
-  // Show resume notification toast immediately on mount if saved progress exists from previous session
+  const resumeKey = `${contentType}:${contentId}`;
+  const showResumeBanner = dismissedResumeKey !== resumeKey && !isLive && !isQualitySwitch && effectiveInitialTime > 5;
+
+  // Hide the resume notification after its display window expires.
   useEffect(() => {
-    // Only display large resume toast when entering video initially, not mid-playback quality switch, and not for live streams
-    if (!isLive && !isQualitySwitch && effectiveInitialTime > 5) {
-      setResumedFromTime(effectiveInitialTime);
-      setShowResumeBanner(true);
+    if (!showResumeBanner) return;
+    resumeBannerTimerRef.current = setTimeout(() => setDismissedResumeKey(resumeKey), 8000);
+    return () => {
       if (resumeBannerTimerRef.current) clearTimeout(resumeBannerTimerRef.current);
-      resumeBannerTimerRef.current = setTimeout(() => {
-        setShowResumeBanner(false);
-      }, 8000);
-    }
-  }, [effectiveInitialTime, isQualitySwitch, isLive]);
+    };
+  }, [resumeKey, showResumeBanner]);
 
   // Initial resume seek once duration and canPlay are loaded
   useEffect(() => {
-    if (!isLive && !hasAppliedInitialTime && effectiveInitialTime > 0 && canPlay) {
+    if (!isLive && appliedInitialTimeKeyRef.current !== resumeKey && effectiveInitialTime > 0 && canPlay) {
       if (!duration || effectiveInitialTime < duration * 0.95) {
         try {
           remote.seek(effectiveInitialTime);
-          if (effectiveInitialTime > 5 && initialTime === 0) {
-            setHudQualityLabel(formatTime(effectiveInitialTime));
-            triggerHud('resume');
-          }
         } catch {}
       }
-      setHasAppliedInitialTime(true);
+      appliedInitialTimeKeyRef.current = resumeKey;
     }
-  }, [hasAppliedInitialTime, effectiveInitialTime, canPlay, duration, remote, triggerHud, initialTime, isLive]);
+  }, [resumeKey, effectiveInitialTime, canPlay, duration, remote, isLive]);
 
   // Restart playback from beginning handler
   const handleRestartFromBeginning = useCallback(() => {
@@ -153,10 +153,10 @@ function VidstackCinematicOverlay({
       remote.seek(0);
       triggerHud('rewind');
       clearPlaybackProgress(contentId, contentType);
-      setShowResumeBanner(false);
+      setDismissedResumeKey(resumeKey);
       if (resumeBannerTimerRef.current) clearTimeout(resumeBannerTimerRef.current);
     } catch {}
-  }, [remote, contentId, contentType]);
+  }, [remote, contentId, contentType, resumeKey, triggerHud]);
 
   // Playback preservation across stream and quality switches
   const lastKnownTimeRef = useRef<number>(initialTime);
@@ -257,12 +257,11 @@ function VidstackCinematicOverlay({
         } catch {}
       },
     }));
-  }, [rawHlsQualities]);
+  }, [rawHlsQualities, triggerHud]);
 
 
   // Controls Auto-Hide
-  const resetHideTimer = useCallback(() => {
-    setControlsVisible(true);
+  const scheduleHideTimer = useCallback(() => {
     if (hideControlsTimerRef.current) {
       clearTimeout(hideControlsTimerRef.current);
     }
@@ -274,6 +273,11 @@ function VidstackCinematicOverlay({
     }
   }, [isPlaying, isScrubbing]);
 
+  const resetHideTimer = useCallback(() => {
+    setControlsVisible(true);
+    scheduleHideTimer();
+  }, [scheduleHideTimer]);
+
   const handleMouseMove = useCallback(() => {
     resetHideTimer();
   }, [resetHideTimer]);
@@ -284,17 +288,27 @@ function VidstackCinematicOverlay({
     }
   }, [isPlaying, isScrubbing]);
 
+  const handleSeekingChange = useCallback((seeking: boolean) => {
+    setIsScrubbing(seeking);
+    if (seeking) {
+      setControlsVisible(true);
+      if (hideControlsTimerRef.current) clearTimeout(hideControlsTimerRef.current);
+    }
+  }, []);
+
   // Prevent controls from hiding while scrubbing
   useEffect(() => {
     if (isScrubbing) {
-      setControlsVisible(true);
       if (hideControlsTimerRef.current) {
         clearTimeout(hideControlsTimerRef.current);
       }
     } else if (isPlaying) {
-      resetHideTimer();
+      scheduleHideTimer();
     }
-  }, [isScrubbing, isPlaying, resetHideTimer]);
+    return () => {
+      if (hideControlsTimerRef.current) clearTimeout(hideControlsTimerRef.current);
+    };
+  }, [isScrubbing, isPlaying, scheduleHideTimer]);
 
   // Playback Control Actions
   const togglePlay = useCallback(() => {
@@ -423,9 +437,11 @@ function VidstackCinematicOverlay({
       {waiting && (
         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm pointer-events-none transition-opacity duration-300">
           {poster && (
-            <img
+            <Image
               src={poster}
               alt={title}
+              fill
+              sizes="100vw"
               className="absolute inset-0 w-full h-full object-cover opacity-20 filter blur-md"
             />
           )}
@@ -441,6 +457,7 @@ function VidstackCinematicOverlay({
       {/* 3. Center Screen Action HUD (Play, Pause, Skip, Volume badge, Quality change) */}
       <CenterHUD
         action={hudAction}
+        animationId={hudAnimationId}
         volumeLevel={Math.round(volume * 100)}
         qualityLabel={hudQualityLabel}
       />
@@ -453,7 +470,7 @@ function VidstackCinematicOverlay({
       />
 
       {/* 5. Luxury Floating Resume Playback Toast */}
-      {showResumeBanner && resumedFromTime > 0 && (
+      {showResumeBanner && effectiveInitialTime > 0 && (
         <div
           data-testid="resume-banner"
           className="absolute bottom-24 sm:bottom-28 left-4 sm:left-6 z-40 flex items-center space-x-2.5 sm:space-x-3.5 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-black/95 backdrop-blur-2xl border border-[#E5B869]/60 shadow-[0_12px_36px_rgba(0,0,0,0.9)] animate-fade-in-up select-none pointer-events-auto"
@@ -462,7 +479,7 @@ function VidstackCinematicOverlay({
           <span className="text-xs text-white font-medium">
             Resumed from{' '}
             <strong className="text-[#E5B869] font-mono font-bold">
-              {formatTime(resumedFromTime)}
+              {formatTime(effectiveInitialTime)}
             </strong>
           </span>
           <button
@@ -475,7 +492,7 @@ function VidstackCinematicOverlay({
           </button>
           <button
             type="button"
-            onClick={() => setShowResumeBanner(false)}
+            onClick={() => setDismissedResumeKey(resumeKey)}
             className="text-gray-400 hover:text-white p-1 transition-colors cursor-pointer"
             aria-label="Dismiss resume banner"
           >
@@ -497,7 +514,7 @@ function VidstackCinematicOverlay({
           duration={duration}
           bufferedTime={bufferedEnd}
           onSeek={handleSeek}
-          onSeekingChange={setIsScrubbing}
+          onSeekingChange={handleSeekingChange}
           onRewind10={handleRewind10}
           onForward10={handleForward10}
           volume={volume}
@@ -536,6 +553,9 @@ export default function VidstackPlayer({
   poster,
   isLive = false,
   onBack,
+  onError,
+  onPlaying,
+  onWaiting,
   onQualityChange,
   onTimeUpdate,
 }: VidstackPlayerProps) {
@@ -575,9 +595,11 @@ export default function VidstackPlayer({
         playsInline
         crossOrigin
         className="w-full h-full relative"
-        onError={() => {
-          // Gracefully suppress player teardown rejections
+        onError={(event) => {
+          onError?.(event);
         }}
+        onPlaying={onPlaying}
+        onWaiting={onWaiting}
         onAutoPlayFail={() => {
           // Gracefully handle browser policy autoplay restrictions
         }}

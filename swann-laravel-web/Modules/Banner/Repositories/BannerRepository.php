@@ -9,7 +9,7 @@ class BannerRepository implements BannerRepositoryInterface
 {
     public function all()
     {
-        return Banner::where('status', 1)
+        return Banner::currentlyVisible()
             ->orderBy('updated_at', 'desc')
             ->get();
     }
@@ -73,7 +73,7 @@ class BannerRepository implements BannerRepositoryInterface
             $query->where('name', 'like', "%{$searchTerm}%");
         }
 
-        $query->where('status', 1)
+        $query->currentlyVisible()
             ->orderBy('updated_at', 'desc');
 
         return $query->paginate($perPage);

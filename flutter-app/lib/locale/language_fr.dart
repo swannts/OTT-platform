@@ -7,6 +7,15 @@ class LanguageFr extends BaseLanguage {
   String get language => 'Langue';
 
   @override
+  String get connected => 'Connecté';
+
+  @override
+  String get restartApp => 'Redémarrer l’application';
+
+  @override
+  String get videoTitle => 'Vidéo';
+
+  @override
   String get badRequest => 'requête incorrecte';
 
   @override
@@ -2175,18 +2184,22 @@ class LanguageFr extends BaseLanguage {
 
   @override
   String get continueWatchingForYou => 'Continuer à regarder pour vous';
-  
-  @override
-  String get playbackErrorGeneric => 'Impossible de lire cet épisode pour le moment. Veuillez réessayer.';
 
   @override
-  String get playbackErrorSessionExpired => 'La session de Short Drama a expiré. Veuillez vous reconnecter et réessayer.';
+  String get playbackErrorGeneric =>
+      'Impossible de lire cet épisode pour le moment. Veuillez réessayer.';
 
   @override
-  String get playbackErrorTokenExpired => 'La licence de lecture a expiré. Veuillez réessayer cet épisode.';
-  
+  String get playbackErrorSessionExpired =>
+      'La session de Short Drama a expiré. Veuillez vous reconnecter et réessayer.';
+
   @override
-  String get playbackErrorVideoPluginUnavailable => 'Le lecteur vidéo n\'est pas disponible. Veuillez redémarrer l\'application et réessayer.';
+  String get playbackErrorTokenExpired =>
+      'La licence de lecture a expiré. Veuillez réessayer cet épisode.';
+
+  @override
+  String get playbackErrorVideoPluginUnavailable =>
+      'Le lecteur vidéo n\'est pas disponible. Veuillez redémarrer l\'application et réessayer.';
 
   @override
   String get less => 'Moins';
@@ -2194,4 +2207,3 @@ class LanguageFr extends BaseLanguage {
   @override
   String get more => 'Lire la suite';
 }
-

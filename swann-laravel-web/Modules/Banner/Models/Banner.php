@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use App\Models\BaseModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Builder;
 use Modules\Entertainment\Models\Entertainment;
 
 class Banner extends BaseModel
@@ -18,8 +19,15 @@ class Banner extends BaseModel
     use SoftDeletes;
 
     protected $table = 'banners';
-    protected $fillable = ['title', 'file_url','poster_url','type', 'type_id','type_name','description', 'status', 'created_by','banner_for','poster_tv_url'];
+    protected $fillable = ['title', 'file_url','poster_url','type', 'type_id','type_name','description', 'status', 'created_by','banner_for','poster_tv_url','starts_at','ends_at','click_url'];
     const CUSTOM_FIELD_MODEL = 'Modules\Banner\Models\Banner';
+
+    public function scopeCurrentlyVisible(Builder $query): Builder
+    {
+        return $query->where('status', 1)
+            ->where(fn (Builder $builder) => $builder->whereNull('starts_at')->orWhere('starts_at', '<=', now()))
+            ->where(fn (Builder $builder) => $builder->whereNull('ends_at')->orWhere('ends_at', '>', now()));
+    }
 
     /**
      * Human-friendly label for banner content type (stored in `type`).

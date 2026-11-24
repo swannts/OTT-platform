@@ -36,6 +36,13 @@ return [
             'throw' => false,
         ],
 
+        'private' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private'),
+            'throw' => true,
+            'visibility' => 'private',
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
@@ -54,6 +61,19 @@ return [
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
             'throw' => false,
+        ],
+
+        'backup-s3' => [
+            'driver' => 's3',
+            'key' => env('AWS_BACKUP_ACCESS_KEY_ID') ?: null,
+            'secret' => env('AWS_BACKUP_SECRET_ACCESS_KEY') ?: null,
+            'region' => env('AWS_BACKUP_REGION'),
+            'bucket' => env('AWS_BACKUP_BUCKET'),
+            'endpoint' => env('AWS_BACKUP_ENDPOINT') ?: null,
+            'use_path_style_endpoint' => env('AWS_BACKUP_USE_PATH_STYLE_ENDPOINT', false),
+            'root' => env('AWS_BACKUP_PREFIX', 'ott-backups'),
+            'visibility' => 'private',
+            'throw' => true,
         ],
 
         'bunny' => [

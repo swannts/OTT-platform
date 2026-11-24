@@ -52,6 +52,7 @@ final class RbacRegistry
             'media.audio.manage' => 'Manage audio tracks.',
             'media.drm.configure' => 'Configure DRM workflows without exposing raw keys.',
             'subscriptions.view' => 'View plans and subscription states.',
+            'subscriptions.subscribers.view' => 'View paginated subscriber records for subscription operations.',
             'subscriptions.plans.create' => 'Create subscription plans.',
             'subscriptions.plans.update' => 'Update subscription plans.',
             'subscriptions.plans.archive' => 'Archive eligible subscription plans.',
@@ -65,9 +66,11 @@ final class RbacRegistry
             'finance.reports.export' => 'Export authorized finance reports.',
             'marketing.banners.manage' => 'Manage homepage banners.',
             'marketing.campaigns.manage' => 'Manage featured campaigns.',
+            'marketing.campaigns.approve' => 'Approve campaigns created by other marketing staff.',
             'marketing.notifications.manage' => 'Manage promotional notification templates and sends.',
             'marketing.promotions.manage' => 'Manage marketing promotions.',
             'support.accounts.view' => 'View support-authorized customer account information.',
+            'support.payments.view' => 'View masked payment summaries for support investigations.',
             'support.tickets.manage' => 'Manage support tickets and internal notes.',
             'support.playback.view' => 'Investigate customer playback failures.',
             'support.devices.view' => 'View registered customer devices.',
@@ -79,7 +82,7 @@ final class RbacRegistry
             'analytics.playback.view' => 'View playback quality analytics.',
             'analytics.export' => 'Export authorized aggregate analytics.',
             'operations.health.view' => 'View service health.',
-            'operations.logs.view' => 'View sanitized application logs.',
+            'operations.logs.view' => 'View sanitized operational failure events.',
             'operations.jobs.view' => 'View background job status.',
             'operations.jobs.retry' => 'Retry approved background jobs.',
             'operations.incidents.manage' => 'Manage operational incidents.',
@@ -97,7 +100,9 @@ final class RbacRegistry
         $all = array_keys(self::permissions());
 
         return [
-            'super-admin' => $all,
+            // Super Admin receives the catalog except the refund approval grant. Financial approvals
+            // always require an explicit staff assignment and the maker-checker guard still applies.
+            'super-admin' => array_values(array_diff($all, ['finance.refunds.approve'])),
             'platform_admin' => [
                 'admin.access', 'admin.dashboard.view', 'admin.users.view', 'admin.users.create',
                 'admin.users.update', 'admin.users.suspend', 'content.view', 'subscriptions.view',
@@ -105,14 +110,14 @@ final class RbacRegistry
                 'analytics.playback.view', 'operations.health.view', 'settings.general.manage', 'audit.view',
                 'admin.staff.view',
             ],
-            'content_manager' => ['admin.access', 'admin.dashboard.view', 'content.view', 'content.create', 'content.update', 'content.delete', 'content.publish', 'content.unpublish', 'content.schedule'],
+            'content_manager' => ['admin.access', 'admin.dashboard.view', 'content.view', 'content.create', 'content.update', 'content.delete', 'content.publish', 'content.unpublish', 'content.schedule', 'media.view', 'media.update'],
             'content_editor' => ['admin.access', 'admin.dashboard.view', 'content.view', 'content.create', 'content.update', 'content.submit'],
             'content_reviewer' => ['admin.access', 'admin.dashboard.view', 'content.view', 'content.review', 'content.approve', 'content.reject'],
-            'media_manager' => ['admin.access', 'admin.dashboard.view', 'content.view', 'media.view', 'media.upload', 'media.update', 'media.delete', 'media.transcode', 'media.transcode.retry', 'media.subtitles.manage', 'media.audio.manage'],
-            'subscription_manager' => ['admin.access', 'admin.dashboard.view', 'subscriptions.view', 'subscriptions.plans.create', 'subscriptions.plans.update', 'subscriptions.plans.archive', 'subscriptions.coupons.manage', 'subscriptions.trials.manage'],
-            'finance_manager' => ['admin.access', 'admin.dashboard.view', 'finance.payments.view', 'finance.invoices.view', 'finance.refunds.request', 'finance.reconciliation.view', 'finance.reports.export', 'analytics.revenue.view'],
-            'marketing_manager' => ['admin.access', 'admin.dashboard.view', 'content.view', 'marketing.banners.manage', 'marketing.campaigns.manage', 'marketing.notifications.manage', 'marketing.promotions.manage'],
-            'customer_support' => ['admin.access', 'admin.dashboard.view', 'support.accounts.view', 'support.tickets.manage', 'support.playback.view', 'support.devices.view', 'support.sessions.revoke', 'subscriptions.view'],
+            'media_manager' => ['admin.access', 'admin.dashboard.view', 'content.view', 'media.view', 'media.upload', 'media.update', 'media.delete', 'media.transcode', 'media.transcode.retry', 'media.subtitles.manage', 'media.audio.manage', 'media.drm.configure'],
+            'subscription_manager' => ['admin.access', 'admin.dashboard.view', 'subscriptions.view', 'subscriptions.subscribers.view', 'subscriptions.plans.create', 'subscriptions.plans.update', 'subscriptions.plans.archive', 'subscriptions.coupons.manage', 'subscriptions.trials.manage'],
+            'finance_manager' => ['admin.access', 'admin.dashboard.view', 'finance.payments.view', 'finance.invoices.view', 'finance.refunds.request', 'finance.refunds.approve', 'finance.reconciliation.view', 'finance.reports.export', 'analytics.revenue.view'],
+            'marketing_manager' => ['admin.access', 'admin.dashboard.view', 'content.view', 'marketing.banners.manage', 'marketing.campaigns.manage', 'marketing.campaigns.approve', 'marketing.notifications.manage', 'marketing.promotions.manage'],
+            'customer_support' => ['admin.access', 'admin.dashboard.view', 'support.accounts.view', 'support.payments.view', 'support.tickets.manage', 'support.playback.view', 'support.devices.view', 'support.sessions.revoke', 'subscriptions.view'],
             'analytics_manager' => ['admin.access', 'admin.dashboard.view', 'analytics.audience.view', 'analytics.subscriptions.view', 'analytics.content.view', 'analytics.revenue.view', 'analytics.playback.view', 'analytics.export'],
             'technical_operations_admin' => ['admin.access', 'admin.dashboard.view', 'operations.health.view', 'operations.logs.view', 'operations.jobs.view', 'operations.jobs.retry', 'operations.incidents.manage', 'analytics.playback.view'],
         ];

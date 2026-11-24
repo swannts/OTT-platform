@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 
 import Card from '@mui/material/Card';
 import Stack from '@mui/material/Stack';
@@ -65,7 +65,8 @@ export function ProductListView() {
 
   const filters = useSetState({ publish: [], stock: [] });
 
-  const [tableData, setTableData] = useState([]);
+  const [excludedProductIds, setExcludedProductIds] = useState([]);
+  const tableData = products.filter((product) => !excludedProductIds.includes(product.id));
 
   const [selectedRowIds, setSelectedRowIds] = useState([]);
 
@@ -73,34 +74,22 @@ export function ProductListView() {
 
   const [columnVisibilityModel, setColumnVisibilityModel] = useState(HIDE_COLUMNS);
 
-  useEffect(() => {
-    if (products.length) {
-      setTableData(products);
-    }
-  }, [products]);
-
   const canReset = filters.state.publish.length > 0 || filters.state.stock.length > 0;
 
   const dataFiltered = applyFilter({ inputData: tableData, filters: filters.state });
 
   const handleDeleteRow = useCallback(
     (id) => {
-      const deleteRow = tableData.filter((row) => row.id !== id);
-
       toast.success('Delete success!');
-
-      setTableData(deleteRow);
+      setExcludedProductIds((current) => (current.includes(id) ? current : [...current, id]));
     },
-    [tableData]
+    []
   );
 
   const handleDeleteRows = useCallback(() => {
-    const deleteRows = tableData.filter((row) => !selectedRowIds.includes(row.id));
-
     toast.success('Delete success!');
-
-    setTableData(deleteRows);
-  }, [selectedRowIds, tableData]);
+    setExcludedProductIds((current) => [...new Set([...current, ...selectedRowIds])]);
+  }, [selectedRowIds]);
 
   const handleEditRow = useCallback(
     (id) => {
@@ -185,18 +174,21 @@ export function ProductListView() {
       disableColumnMenu: true,
       getActions: (params) => [
         <GridActionsCellItem
+          key="view"
           showInMenu
           icon={<Iconify icon="solar:eye-bold" />}
           label="View"
           onClick={() => handleViewRow(params.row.id)}
         />,
         <GridActionsCellItem
+          key="edit"
           showInMenu
           icon={<Iconify icon="solar:pen-bold" />}
           label="Edit"
           onClick={() => handleEditRow(params.row.id)}
         />,
         <GridActionsCellItem
+          key="delete"
           showInMenu
           icon={<Iconify icon="solar:trash-bin-trash-bold" />}
           label="Delete"

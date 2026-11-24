@@ -38,28 +38,33 @@ export function AuthProvider({ children }) {
 
 function AuthProviderContainer({ children }) {
   const { user, isLoading, isAuthenticated, getAccessTokenSilently } = useAuth0();
-
   const [accessToken, setAccessToken] = useState(null);
 
-  const getAccessToken = useCallback(async () => {
-    try {
-      if (isAuthenticated) {
-        const token = await getAccessTokenSilently();
-
-        setAccessToken(token);
-        axios.defaults.headers.common.Authorization = `Bearer ${token}`;
-      } else {
-        setAccessToken(null);
-        delete axios.defaults.headers.common.Authorization;
-      }
-    } catch (error) {
-      console.error(error);
-    }
-  }, [getAccessTokenSilently, isAuthenticated]);
-
   useEffect(() => {
-    getAccessToken();
-  }, [getAccessToken]);
+    let active = true;
+
+    if (!isAuthenticated) {
+      delete axios.defaults.headers.common.Authorization;
+      return () => {
+        active = false;
+      };
+    }
+
+    getAccessTokenSilently()
+      .then((token) => {
+        if (active) {
+          setAccessToken(token);
+          axios.defaults.headers.common.Authorization = `Bearer ${token}`;
+        }
+      })
+      .catch((error) => {
+        if (active) console.error(error);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [getAccessTokenSilently, isAuthenticated]);
 
   // ----------------------------------------------------------------------
 
@@ -73,7 +78,7 @@ function AuthProviderContainer({ children }) {
         ? {
             ...user,
             id: user?.sub,
-            accessToken,
+            accessToken: isAuthenticated ? accessToken : null,
             displayName: user?.name,
             photoURL: user?.picture,
             role: user?.role ?? 'admin',
@@ -83,7 +88,7 @@ function AuthProviderContainer({ children }) {
       authenticated: status === 'authenticated',
       unauthenticated: status === 'unauthenticated',
     }),
-    [accessToken, status, user]
+    [accessToken, isAuthenticated, status, user]
   );
 
   return <AuthContext.Provider value={memoizedValue}>{children}</AuthContext.Provider>;

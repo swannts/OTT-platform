@@ -29,7 +29,9 @@ class UserMultiProfile extends BaseModel
     
     public function activeprofile()
     {
-        return $this->hasOne(Device::class , 'active_profile')->where('device_id',request()->ip());
+        $token = request()->user()?->currentAccessToken();
+        return $this->hasOne(Device::class, 'active_profile')
+            ->where('sanctum_token_id', $token instanceof \Laravel\Sanctum\PersonalAccessToken ? $token->getKey() : 0);
     }
 
     public function user()

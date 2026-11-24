@@ -92,13 +92,17 @@ export function HomeHugePackElements({ sx, ...other }) {
 // ----------------------------------------------------------------------
 
 const StyledRoot = styled(
-  forwardRef((props, ref) => <Box ref={ref} component={m.div} {...props} />)
+  forwardRef(function StyledRootMotion(props, ref) {
+    return <Box ref={ref} component={m.div} {...props} />;
+  })
 )(({ theme }) => ({
   zIndex: 9,
   position: 'relative',
   paddingTop: theme.spacing(5),
   [theme.breakpoints.up('md')]: { paddingTop: theme.spacing(15) },
 }));
+StyledRoot.displayName = 'StyledRoot';
+
 
 const StyledContainer = styled((props) => <Box component={m.div} {...props} />)(({ theme }) => ({
   top: 0,
@@ -113,15 +117,17 @@ const StyledContainer = styled((props) => <Box component={m.div} {...props} />)(
 }));
 
 const StyledContent = styled(
-  forwardRef((props, ref) => (
-    <Box ref={ref} component={m.div} transition={{ ease: 'linear', duration: 0.25 }} {...props} />
-  ))
+  forwardRef(function StyledContentMotion(props, ref) {
+    return <Box ref={ref} component={m.div} transition={{ ease: 'linear', duration: 0.25 }} {...props} />;
+  })
 )(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
   gap: theme.spacing(3),
   [theme.breakpoints.up('md')]: { gap: theme.spacing(5) },
 }));
+StyledContent.displayName = 'StyledContent';
+
 
 const StyledItem = styled((props) => <Box component={m.div} {...props} />)({
   backgroundSize: 'auto 100%',

@@ -1,7 +1,7 @@
 import { z as zod } from 'zod';
 import { useCallback } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, useWatch, Controller } from 'react-hook-form';
 
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -51,13 +51,12 @@ export function CalendarForm({ currentEvent, colorOptions, onClose }) {
 
   const {
     reset,
-    watch,
     control,
     handleSubmit,
     formState: { isSubmitting },
   } = methods;
 
-  const values = watch();
+  const values = useWatch({ control });
 
   const dateError = fIsAfter(values.start, values.end);
 
@@ -89,15 +88,17 @@ export function CalendarForm({ currentEvent, colorOptions, onClose }) {
     }
   });
 
+  const currentEventId = currentEvent?.id;
+
   const onDelete = useCallback(async () => {
     try {
-      await deleteEvent(`${currentEvent?.id}`);
+      await deleteEvent(`${currentEventId}`);
       toast.success('Delete success!');
       onClose();
     } catch (error) {
       console.error(error);
     }
-  }, [currentEvent?.id, onClose]);
+  }, [currentEventId, onClose]);
 
   return (
     <Form methods={methods} onSubmit={onSubmit}>

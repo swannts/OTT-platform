@@ -38,6 +38,8 @@ export const Iconify = forwardRef(({ className, width = 20, sx, ...other }, ref)
     </NoSsr>
   );
 });
+Iconify.displayName = 'Iconify';
+
 
 // https://iconify.design/docs/iconify-icon/disable-cache.html
 disableCache('local');

@@ -19,6 +19,8 @@ import { Iconify } from 'src/components/iconify';
 // ----------------------------------------------------------------------
 
 const Transition = forwardRef((props, ref) => <Slide direction="up" ref={ref} {...props} />);
+Transition.displayName = 'Transition';
+
 
 // ----------------------------------------------------------------------
 

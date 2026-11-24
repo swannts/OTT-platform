@@ -19,17 +19,25 @@ class AdminApiController extends Controller
             'password' => ['required', 'string', 'max:255'],
         ]);
 
-        $user = User::where('email', $credentials['email'])->first();
+        $authenticated = DB::transaction(function () use ($credentials): ?array {
+            $user = User::query()->where('email', $credentials['email'])->lockForUpdate()->first();
 
-        if (!$user || !Hash::check($credentials['password'], $user->password) || !ExplicitPermission::allows($user, 'admin.access') || (int) $user->status !== 1 || (int) $user->is_banned === 1) {
+            if (! $user || ! Hash::check($credentials['password'], $user->password) || ! ExplicitPermission::allows($user, 'admin.access') || (int) $user->status !== 1 || (int) $user->is_banned === 1) {
+                return null;
+            }
+
+            $token = $user->createToken('ott-admin-ui', ['admin'], now()->addHours(8));
+
+            return ['user' => $user, 'token' => $token->plainTextToken];
+        });
+
+        if (! $authenticated) {
             return response()->json(['message' => 'The provided credentials are invalid.'], 422);
         }
 
-        $token = $user->createToken('ott-admin-ui', ['admin'], now()->addHours(8));
-
         return response()->json([
-            'token' => $token->plainTextToken,
-            'user' => $this->userPayload($user),
+            'token' => $authenticated['token'],
+            'user' => $this->userPayload($authenticated['user']),
         ]);
     }
 
@@ -68,7 +76,7 @@ class AdminApiController extends Controller
 
         return [
             'id' => $user->id,
-            'name' => trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')) ?: $user->email,
+            'name' => trim(($user->first_name ?? '').' '.($user->last_name ?? '')) ?: $user->email,
             'email' => $user->email,
             'role' => $roles->first()?->name,
             'roles' => $roles->pluck('name')->values(),

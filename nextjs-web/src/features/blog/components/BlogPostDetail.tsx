@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { BlogPost } from '@/types';
 import BlogCard from './BlogCard';
 import {
@@ -9,7 +10,6 @@ import {
   Clock,
   Calendar,
   Eye,
-  Share2,
   Copy,
   Check,
   BookOpen,
@@ -145,9 +145,12 @@ export default function BlogPostDetail({ post, related }: BlogPostDetailProps) {
         <div className="flex flex-wrap items-center justify-between gap-4 pt-4">
           <div className="flex items-center space-x-3">
             {post.author_avatar ? (
-              <img
+              <Image
                 src={post.author_avatar}
                 alt={post.author_name}
+                width={40}
+                height={40}
+                sizes="40px"
                 className="w-10 h-10 rounded-full object-cover ring-2 ring-[#E5B869]/50"
               />
             ) : (
@@ -188,12 +191,14 @@ export default function BlogPostDetail({ post, related }: BlogPostDetailProps) {
       </header>
 
       {/* Hero Image */}
-      <div className="my-8 rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
-        <img
+      <div className="relative my-8 aspect-video rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
+        <Image
           src={imgSrc}
           alt={post.title}
           onError={() => setImgSrc(DEFAULT_FALLBACK_IMAGE)}
-          className="w-full aspect-[16/9] object-cover"
+          fill
+          sizes="(max-width: 768px) 100vw, 896px"
+          className="object-cover"
         />
       </div>
 
@@ -220,9 +225,12 @@ export default function BlogPostDetail({ post, related }: BlogPostDetailProps) {
       {/* Author Bio Box */}
       <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/10 flex items-start space-x-4 mb-16">
         {post.author_avatar ? (
-          <img
+          <Image
             src={post.author_avatar}
             alt={post.author_name}
+            width={56}
+            height={56}
+            sizes="56px"
             className="w-14 h-14 rounded-full object-cover ring-2 ring-[#E5B869]/40 flex-shrink-0"
           />
         ) : (

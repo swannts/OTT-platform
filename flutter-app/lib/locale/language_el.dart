@@ -6,6 +6,15 @@ class LanguageEl extends BaseLanguage {
   String get language => 'Ελληνικά';
 
   @override
+  String get connected => 'Συνδεδεμένο';
+
+  @override
+  String get restartApp => 'Επανεκκίνηση εφαρμογής';
+
+  @override
+  String get videoTitle => 'Βίντεο';
+
+  @override
   String get badRequest => 'Μη έγκυρο αίτημα';
 
   @override
@@ -2168,18 +2177,22 @@ class LanguageEl extends BaseLanguage {
 
   @override
   String get continueWatchingForYou => 'Συνεχίστε την προβολή για εσάς';
-  
+
   @override
-  String get playbackErrorGeneric => 'Σφάλμα αναπαραγωγής: Γενικό σφάλμα. Παρακαλώ δοκιμάστε ξανά.';
-  
+  String get playbackErrorGeneric =>
+      'Σφάλμα αναπαραγωγής: Γενικό σφάλμα. Παρακαλώ δοκιμάστε ξανά.';
+
   @override
-  String get playbackErrorSessionExpired => 'Σφάλμα αναπαραγωγής: Η περίοδος σύνδεσης έχει λήξει. Παρακαλώ συνδεθείτε ξανά και δοκιμάστε ξανά.';
-  
+  String get playbackErrorSessionExpired =>
+      'Σφάλμα αναπαραγωγής: Η περίοδος σύνδεσης έχει λήξει. Παρακαλώ συνδεθείτε ξανά και δοκιμάστε ξανά.';
+
   @override
-  String get playbackErrorTokenExpired => 'Σφάλμα αναπαραγωγής: Η άδεια έχει λήξει. Παρακαλώ δοκιμάστε ξανά αυτό το επεισόδιο.';
-  
+  String get playbackErrorTokenExpired =>
+      'Σφάλμα αναπαραγωγής: Η άδεια έχει λήξει. Παρακαλώ δοκιμάστε ξανά αυτό το επεισόδιο.';
+
   @override
-  String get playbackErrorVideoPluginUnavailable => 'Σφάλμα αναπαραγωγής: Το πρόσθετο αναπαραγωγής βίντεο δεν είναι διαθέσιμο. Παρακαλώ επανεκκινήστε την εφαρμογή και δοκιμάστε ξανά.';
+  String get playbackErrorVideoPluginUnavailable =>
+      'Σφάλμα αναπαραγωγής: Το πρόσθετο αναπαραγωγής βίντεο δεν είναι διαθέσιμο. Παρακαλώ επανεκκινήστε την εφαρμογή και δοκιμάστε ξανά.';
 
   @override
   String get less => 'Λιγότερα';
@@ -2187,4 +2200,3 @@ class LanguageEl extends BaseLanguage {
   @override
   String get more => 'Διαβάστε περισσότερα';
 }
-

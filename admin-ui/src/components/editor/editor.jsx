@@ -145,3 +145,4 @@ export const Editor = forwardRef(
     );
   }
 );
+Editor.displayName = 'Editor';

@@ -32,6 +32,7 @@ class ComingSoonResponse {
 
 class ComingSoonModel {
   int id;
+  String serverId;
   String name;
   String description;
   String trailerUrlType;
@@ -54,6 +55,7 @@ class ComingSoonModel {
 
   ComingSoonModel({
     this.id = -1,
+    this.serverId = "",
     this.name = "",
     this.description = "",
     this.trailerUrlType = "",
@@ -77,6 +79,8 @@ class ComingSoonModel {
 
   String get genre => genres.validate().map((e) => e.name).join('  •  ');
 
+  String get requestId => serverId.isNotEmpty ? serverId : id.toString();
+
   /// Parse remaining release days from JSON
   static int? _parseRemainingReleaseDays(Map<String, dynamic> json) {
     final value = json['remaining_release_days'];
@@ -85,7 +89,8 @@ class ComingSoonModel {
 
   factory ComingSoonModel.fromJson(Map<String, dynamic> json) {
     return ComingSoonModel(
-      id: json['id'] is int ? json['id'] : -1,
+      id: json['id'] is int ? json['id'] : int.tryParse(json['id']?.toString() ?? '') ?? -1,
+      serverId: json['id']?.toString() ?? '',
       name: json['name'] is String ? json['name'] : "",
       description: json['description'] is String ? json['description'] : "",
       trailerUrlType: json['trailer_url_type'] is String ? json['trailer_url_type'] : "",
@@ -110,7 +115,7 @@ class ComingSoonModel {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      'id': requestId,
       'name': name,
       'description': description,
       'trailer_url_type': trailerUrlType,

@@ -5,6 +5,8 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\AdminAuditLog;
 use App\Models\AdminContentReviewSubmission;
+use App\Models\MediaAsset;
+use App\Services\Media\MediaReadinessService;
 use App\Support\Rbac\ExplicitPermission;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,7 +17,7 @@ class AdminContentWorkflowController extends Controller
 {
     private const SNAPSHOT_FIELDS = [
         'name', 'name_bn', 'description', 'description_bn', 'type', 'content_rating',
-        'release_date', 'plan_id', 'movie_access', 'video_upload_type', 'status',
+        'release_date', 'plan_id', 'movie_access', 'video_upload_type', 'status', 'media_asset_id',
     ];
 
     public function queue(Request $request): JsonResponse
@@ -127,16 +129,20 @@ class AdminContentWorkflowController extends Controller
         return response()->json(['data' => $this->submissionPayload($record, $item)]);
     }
 
-    public function publish(Request $request, int $submission): JsonResponse
+    public function publish(Request $request, int $submission, MediaReadinessService $mediaReadiness): JsonResponse
     {
         abort_unless(ExplicitPermission::allows($request->user(), 'content.publish'), 403);
 
-        [$record, $item] = DB::transaction(function () use ($request, $submission): array {
+        [$record, $item] = DB::transaction(function () use ($request, $submission, $mediaReadiness): array {
             $record = AdminContentReviewSubmission::query()->lockForUpdate()->findOrFail($submission);
             abort_if($record->status !== 'approved', 409, 'Only approved submissions can be published.');
             $item = Entertainment::query()->lockForUpdate()->findOrFail($record->content_id);
             abort_unless(hash_equals($record->snapshot_hash, hash('sha256', json_encode($this->snapshot($item), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES))), 409, 'Content changed after approval; submit a new revision for review.');
             abort_unless($item->name && $item->type && ($item->poster_url || $item->thumbnail_url), 422, 'Content requires a title, type, and artwork before publication.');
+            if ($item->media_asset_id) {
+                $asset = MediaAsset::query()->find($item->media_asset_id);
+                abort_unless($asset && $mediaReadiness->inspect($asset)['ready'], 409, 'The attached media asset is not fully processed and ready for publication.');
+            }
             $item->forceFill(['status' => true])->save();
             $record->forceFill(['status' => 'published'])->save();
             $this->audit($request, 'content.published', $record, ['status' => 'approved'], ['status' => 'published', 'revision' => $record->revision]);

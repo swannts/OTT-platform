@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:swann_ott/controllers/base_controller.dart';
-import 'package:swann_ott/services/local_storage_service.dart';
+import 'package:swann_ott/services/auth_token_storage.dart';
 import 'package:swann_ott/utils/api_end_points.dart';
 import 'package:swann_ott/utils/common_base.dart';
 
 import '../../../network/auth_apis.dart';
 import '../../../utils/common_functions.dart';
-import '../../../utils/constants.dart';
 
 class ChangePasswordController extends BaseController {
   final GlobalKey<FormState> changePassFormKey = GlobalKey();
@@ -29,10 +28,8 @@ class ChangePasswordController extends BaseController {
 
     await AuthServiceApis.changePasswordApi(request: req).then((value) async {
       setLoading(false);
-      if (await getBoolFromLocal(SharedPreferenceConst.IS_REMEMBER_ME)) {
-        setStringToLocal(SharedPreferenceConst.USER_PASSWORD, newPasswordCont.text.trim());
-      }
       loginUserData.value.apiToken = value.data.apiToken;
+      await AuthTokenStorage.write(value.data.apiToken);
       logOutFromAllDevice(
         loaderOnOff: (isLoading) {
           setLoading(isLoading);

@@ -1,6 +1,9 @@
-import { backendUrl } from '../../_backend';
+import { backendUrl, rejectCrossOriginMutation } from '../../_backend';
 
 export async function POST(request) {
+  const originError = rejectCrossOriginMutation(request);
+  if (originError) return originError;
+
   try {
     const response = await fetch(backendUrl('/api/admin/invitations/accept'), {
       method: 'POST',

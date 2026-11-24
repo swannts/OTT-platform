@@ -161,7 +161,7 @@ class ImportGenresJob implements ShouldQueue
     public function handle()
     {
         \Log::info("=== ImportGenresJob STARTED ===");
-        \Log::info("File path: {$this->filePath}");
+        \Log::info('Import diagnostic details redacted');
         \Log::info("User ID: {$this->userId}");
         
         $user = User::find($this->userId);
@@ -170,13 +170,13 @@ class ImportGenresJob implements ShouldQueue
             return;
         }
         
-        \Log::info("User found: {$user->name} ({$user->email})");
+        \Log::info('Import diagnostic details redacted');
 
         $extension = pathinfo($this->filePath, PATHINFO_EXTENSION);
         $fullPath = storage_path('app/' . $this->filePath);
         \Log::info("File extension: {$extension}");
-        \Log::info("Full path: {$fullPath}");
-        \Log::info("File exists: " . (file_exists($fullPath) ? 'YES' : 'NO'));
+        \Log::info('Import diagnostic details redacted');
+        \Log::info('Import diagnostic details redacted');
         
         $rows = [];
         
@@ -189,7 +189,7 @@ class ImportGenresJob implements ShouldQueue
                 ]));
                 \Log::info("CSV processing completed. Rows count: " . $rows->count());
             } catch (\Exception $e) {
-                \Log::error("CSV processing error: " . $e->getMessage());
+                \Log::error('Import diagnostic details redacted');
                 return;
             }
         } else {
@@ -257,7 +257,7 @@ class ImportGenresJob implements ShouldQueue
                 
                 $data = array_combine($headerSlice, $rowSlice);
                 
-                \Log::info("Processing row data: " . json_encode($data));
+                \Log::info('Import diagnostic details redacted');
                 
                 $rowErrors = [];
                 
@@ -275,7 +275,7 @@ class ImportGenresJob implements ShouldQueue
                 
                 if (!empty($rowErrors)) {
                     $failed++;
-                    \Log::error("Validation failed for '{$data['Name']}': " . implode('; ', $rowErrors));
+                    \Log::error('Import diagnostic details redacted');
                     $errorRows[] = array_merge($data, ['Errors' => implode('; ', $rowErrors)]);
                     continue;
                 }
@@ -285,10 +285,10 @@ class ImportGenresJob implements ShouldQueue
                     
                     // Process image URL
                     $imageUrl = $data['Image URL'] ?? null;
-                    \Log::info("Processing image URL for genre '{$data['Name']}': " . ($imageUrl ?: 'NULL'));
+                    \Log::info('Import diagnostic details redacted');
                     
                     $fileUrl = $this->handleImageUrl($imageUrl, 'genres', $data['Name'] ?? null, 'image');
-                    \Log::info("Image processing result for '{$data['Name']}': " . ($fileUrl ?: 'NULL'));
+                    \Log::info('Import diagnostic details redacted');
                     
                     $genreData = [
                         'name' => $data['Name'],
@@ -303,11 +303,11 @@ class ImportGenresJob implements ShouldQueue
                     
                     DB::commit();
                     $success++;
-                    \Log::info("Successfully created genre: {$data['Name']} (ID: {$newGenre->id})");
+                    \Log::info('Import diagnostic details redacted');
                 } catch (\Exception $e) {
                     DB::rollBack();
                     $failed++;
-                    \Log::error("Failed to create genre '{$data['Name']}': " . $e->getMessage());
+                    \Log::error('Import diagnostic details redacted');
                     $errorRows[] = array_merge($data, ['Errors' => __('messages.genre_creation_failed') . ': ' . $e->getMessage()]);
                 }
             }
@@ -347,9 +347,9 @@ class ImportGenresJob implements ShouldQueue
         $this->cleanupTempDirectory();
         
         try {
-            \Log::info("Completion email sent to: {$user->email}");
+            \Log::info('Import diagnostic details redacted');
         } catch (\Exception $e) {
-            \Log::error('Failed to send genres import completion email: ' . $e->getMessage());
+            \Log::error('Import diagnostic details redacted');
         }
     }
 
@@ -361,18 +361,18 @@ class ImportGenresJob implements ShouldQueue
             return null;
         }
 
-        \Log::info("Processing image URL: {$imageUrl}");
+        \Log::info('Import diagnostic details redacted');
         
         // Skip if it's already a local path (starts with / or doesn't contain http)
         if (!str_starts_with($imageUrl, 'http')) {
-            \Log::info("Image URL is already local, returning filename: {$imageUrl}");
+            \Log::info('Import diagnostic details redacted');
             return basename($imageUrl); // Return just the filename
         }
 
         try {
             // Validate URL
             if (!filter_var($imageUrl, FILTER_VALIDATE_URL)) {
-                \Log::warning("Invalid image URL provided: {$imageUrl}");
+                \Log::warning('Import diagnostic details redacted');
                 return null;
             }
 
@@ -382,11 +382,11 @@ class ImportGenresJob implements ShouldQueue
             $imageUrl = $this->convertUnsplashUrl($imageUrl);
             
             if ($originalUrl !== $imageUrl) {
-                \Log::info("Converted Unsplash Plus URL: {$originalUrl} -> {$imageUrl}");
+                \Log::info('Import diagnostic details redacted');
             }
 
 
-            \Log::info("Attempting to download image", ['url' => $imageUrl]);
+            \Log::info('Import diagnostic details redacted');
 
             // Set headers to mimic a browser request
             $response = Http::withHeaders([
@@ -402,7 +402,7 @@ class ImportGenresJob implements ShouldQueue
             \Log::info("HTTP response status: " . $response->status());
             
             if (!$response->successful()) {
-                \Log::warning("Failed to download image from URL: {$imageUrl}. Status: " . $response->status());
+                \Log::warning('Import diagnostic details redacted');
                 
                 // Try alternative URL formats for Unsplash
                 if (strpos($imageUrl, 'images.unsplash.com') !== false) {
@@ -435,7 +435,7 @@ class ImportGenresJob implements ShouldQueue
             // Validate that it's actually an image
             $imageInfo = getimagesizefromstring($response->body());
             if ($imageInfo === false) {
-                \Log::warning("Downloaded content is not a valid image: {$imageUrl}");
+                \Log::warning('Import diagnostic details redacted');
                 // Return null if image validation fails
                 return null;
             }
@@ -473,12 +473,12 @@ class ImportGenresJob implements ShouldQueue
                 Storage::disk('public')->delete($tempPath);
                 return $processedFileName; // return final filename
             } else {
-                \Log::error("❌ Failed to save temp image: {$tempPath}");
+                \Log::error('Import diagnostic details redacted');
                 return null;
             }
 
         } catch (\Exception $e) {
-            \Log::error("Error downloading image from URL {$imageUrl}: " . $e->getMessage());
+            \Log::error('Import diagnostic details redacted');
             return null;
         }
     }
@@ -552,7 +552,7 @@ class ImportGenresJob implements ShouldQueue
                 \Log::info("🟢 No temp directory to clean up");
             }
         } catch (\Exception $e) {
-            \Log::error("❌ Error cleaning up temp directory: " . $e->getMessage());
+            \Log::error('Import diagnostic details redacted');
         }
     }
 }

@@ -19,6 +19,7 @@ export function CarouselThumbsX({ data }) {
       slidesToShow: 'auto',
     },
   });
+  const { options: carouselOptions, thumbs: { thumbsRef } } = carousel;
 
   return (
     <div>
@@ -47,8 +48,8 @@ export function CarouselThumbsX({ data }) {
       </Box>
 
       <CarouselThumbs
-        ref={carousel.thumbs.thumbsRef}
-        options={carousel.options?.thumbs}
+        ref={thumbsRef}
+        options={carouselOptions?.thumbs}
         sx={{
           width: { xs: 1, sm: 360 },
         }}

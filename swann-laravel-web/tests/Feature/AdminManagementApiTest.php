@@ -22,7 +22,11 @@ class AdminManagementApiTest extends TestCase
     {
         parent::setUp();
         $this->seed(RbacFoundationSeeder::class);
-        $this->admin = User::factory()->create(['password' => bcrypt('Correct-Horse-123!')]);
+        $this->admin = User::factory()->create([
+            'password' => bcrypt('Correct-Horse-123!'),
+            'status' => 1,
+            'is_banned' => 0,
+        ]);
         $this->admin->assignRole('super-admin');
         $this->actingAs($this->admin, 'sanctum');
     }
@@ -57,6 +61,73 @@ class AdminManagementApiTest extends TestCase
         $this->assertDatabaseHas('admin_audit_logs', ['action' => 'staff.roles.updated']);
     }
 
+    public function test_admin_can_list_administrative_roles_with_the_view_permission(): void
+    {
+        $this->getJson('/api/admin/roles')
+            ->assertOk()
+            ->assertJsonStructure(['data', 'meta'])
+            ->assertJsonFragment(['name' => 'super-admin']);
+    }
+
+    public function test_role_details_cannot_expose_a_customer_role(): void
+    {
+        $customerRole = Role::query()->create([
+            'name' => 'subscriber',
+            'title' => 'Subscriber',
+            'guard_name' => 'web',
+            'is_fixed' => true,
+            'is_admin_role' => false,
+            'is_active' => true,
+        ]);
+
+        $this->getJson("/api/admin/roles/{$customerRole->getKey()}")
+            ->assertForbidden();
+    }
+
+    public function test_admin_login_is_rate_limited_after_five_attempts(): void
+    {
+        $credentials = ['email' => 'unknown-admin@example.test', 'password' => 'not-a-valid-password'];
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $this->postJson('/api/admin/login', $credentials)->assertUnprocessable();
+        }
+
+        $this->postJson('/api/admin/login', $credentials)->assertTooManyRequests();
+    }
+
+    public function test_deactivating_staff_revokes_tokens_and_inactive_users_cannot_reuse_them(): void
+    {
+        $staff = User::factory()->create();
+        $staff->assignRole('content_editor');
+        $token = $staff->createToken('admin-ui', ['admin'], now()->addHours(8));
+
+        $this->patchJson("/api/admin/staff/{$staff->getKey()}/status", ['active' => false])->assertOk();
+
+        $this->assertDatabaseMissing('personal_access_tokens', ['id' => $token->accessToken->getKey()]);
+        $this->app['auth']->forgetGuards();
+        $this->withToken($token->plainTextToken)->getJson('/api/admin/me')->assertUnauthorized();
+    }
+
+    public function test_valid_token_for_inactive_admin_is_denied_by_permission_middleware(): void
+    {
+        $staff = User::factory()->create(['status' => 0]);
+        $staff->assignRole('content_editor');
+        $token = $staff->createToken('admin-ui', ['admin'], now()->addHours(8));
+
+        $this->app['auth']->forgetGuards();
+        $this->withToken($token->plainTextToken)->getJson('/api/admin/me')->assertForbidden();
+    }
+
+    public function test_valid_token_for_banned_admin_is_denied_by_permission_middleware(): void
+    {
+        $staff = User::factory()->create(['status' => 1, 'is_banned' => 1]);
+        $staff->assignRole('content_editor');
+        $token = $staff->createToken('admin-ui', ['admin'], now()->addHours(8));
+
+        $this->app['auth']->forgetGuards();
+        $this->withToken($token->plainTextToken)->getJson('/api/admin/me')->assertForbidden();
+    }
+
     public function test_invitation_is_single_use_and_audit_masks_email_address(): void
     {
         Mail::fake();
@@ -76,6 +147,7 @@ class AdminManagementApiTest extends TestCase
         Mail::assertSent(AdminStaffInvitationMail::class, function (AdminStaffInvitationMail $mail) use (&$token): bool {
             parse_str((string) parse_url($mail->invitationUrl, PHP_URL_QUERY), $query);
             $token = $query['token'] ?? null;
+
             return str_starts_with($mail->invitationUrl, 'https://admin.example.test/admin/invitations/accept');
         });
         $this->assertIsString($token);

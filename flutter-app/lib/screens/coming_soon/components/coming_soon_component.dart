@@ -162,7 +162,7 @@ class ComingSoonComponent extends StatelessWidget {
                   spacing: 16,
                   children: [
                     Obx(() {
-                      final isRemindLoading = comingSoonCont.loadingRemindItems[comingSoonDet.id] ?? false;
+                      final isRemindLoading = comingSoonCont.loadingRemindItems[comingSoonDet.requestId] ?? false;
                       return InkWell(
                         onTap: isRemindLoading ? null : onRemindMeTap,
                         child: Container(
@@ -188,7 +188,7 @@ class ComingSoonComponent extends StatelessWidget {
                       );
                     }),
                     Obx(() {
-                      final isWatchlistLoading = comingSoonCont.loadingWatchlistItems[comingSoonDet.id] ?? false;
+                      final isWatchlistLoading = comingSoonCont.loadingWatchlistItems[comingSoonDet.requestId] ?? false;
                       return InkWell(
                         onTap: isWatchlistLoading ? null : onWatchListTap,
                         child: Container(

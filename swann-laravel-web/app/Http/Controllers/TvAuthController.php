@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\TvLoginSession;
 use App\Models\User;
 use App\Models\Device;
+use Modules\Subscriptions\Services\PlanEntitlementSnapshot;
 use App\Http\Resources\LoginResource;
 use Auth;
 
@@ -67,7 +68,7 @@ class TvAuthController extends Controller
         'session_id' => 'required|uuid'
     ]);
 
-    $session = TvLoginSession::where('session_id', $request->session_id)
+        $session = TvLoginSession::where('session_id', $request->session_id)
         ->whereNotNull('confirmed_at')
         ->whereColumn('confirmed_at', '<', 'expires_at')
         ->first();
@@ -77,6 +78,11 @@ class TvAuthController extends Controller
     }
 
     if ($session->confirmed_at && $session->user_id) {
+
+        $claimed = TvLoginSession::query()->whereKey($session->id)->whereNull('consumed_at')->update(['consumed_at' => now()]);
+        if ($claimed !== 1) {
+            return response()->json(['status' => 'consumed'], 409);
+        }
 
         $user = User::with(['subscriptionPackage', 'userMultiProfile'])->find($session->user_id);
 
@@ -90,89 +96,20 @@ class TvAuthController extends Controller
 
         $devices = Device::where('user_id', $user->id)->get();
 
-        $other_device = [];
-
-        if($devices){
-
-            foreach ($devices as $device) {
-
-                    $other_device[] = $device;
-                }
-              }
-
-         $other_device= $other_device;
-
-
-
-            if ($user->subscriptionPackage) {
-                $subscription = $user->subscriptionPackage;
-
-                if (isset($subscription->plan_type) && !empty($subscription->plan_type)) {
-                    $planLimitations = json_decode($subscription->plan_type, true);
-
-                    if (is_array($planLimitations)) {
-                        foreach ($planLimitations as $limitation) {
-                            if (isset($limitation['slug']) && $limitation['slug'] === 'device-limit') {
-                                if (isset($limitation['limitation_value']) && $limitation['limitation_value'] == 1) {
-                                    $limitData = $limitation['limit'] ?? null;
-                                    $device = 0;
-                                    if (is_array($limitData) && isset($limitData['value'])) {
-                                        $device = (int)$limitData['value'];
-                                    } elseif (is_string($limitData) || is_numeric($limitData)) {
-                                        $device = (int)$limitData;
-                                    }
-
-                                    if ($count == $device) {
-                                        $formattedDevices = collect($other_device)->map(function ($device) {
-                                            return [
-                                                'id' => $device->id,
-                                                'user_id' => $device->user_id,
-                                                'device_id' => $device->device_id,
-                                                'device_name' => $device->device_name,
-                                                'active_profile' => $device->active_profile,
-                                                'platform' => $device->platform,
-                                                'created_at' => formatDateTimeWithTimezone($device->created_at),
-                                                'updated_at' => formatDateTimeWithTimezone($device->updated_at),
-                                                'deleted_at' => $device->deleted_at,
-                                            ];
-                                        });
-                                        return response()->json([
-                                            'status' => true,
-                                            'status_code' => 406,
-                                            'message' => __('messages.device_limit_reached'),
-                                            'other_device'=> $formattedDevices
-                                        ], 406);
-                                    }
-                                }
-                                break;
-                            }
-                        }
-                    }
-                }
-               }else{
-
-                    if ($count ==1) {
-                        $formattedDevices = collect($other_device)->map(function ($device) {
-                            return [
-                                'id' => $device->id,
-                                'user_id' => $device->user_id,
-                                'device_id' => $device->device_id,
-                                'device_name' => $device->device_name,
-                                'active_profile' => $device->active_profile,
-                                'platform' => $device->platform,
-                                'created_at' => formatDateTimeWithTimezone($device->created_at),
-                                'updated_at' => formatDateTimeWithTimezone($device->updated_at),
-                                'deleted_at' => $device->deleted_at,
-                            ];
-                        });
-                        return response()->json([
-                            'status' => true,
-                            'status_code' => 406,
-                            'message' => __('messages.device_limit_reached'),
-                            'other_device'=> $formattedDevices
-                        ], 406);
-                    }
-                }
+        $deviceLimit = PlanEntitlementSnapshot::integerLimit($user->subscriptionPackage?->plan_type, 'device-limit')
+            ?? max(1, (int) config('constant.DEVICE_LIMIT', 1));
+        if ($count >= $deviceLimit) {
+            $formattedDevices = $devices->map(fn ($device) => [
+                'id' => $device->id, 'user_id' => $device->user_id, 'device_id' => $device->device_id,
+                'device_name' => $device->device_name, 'active_profile' => $device->active_profile,
+                'platform' => $device->platform, 'created_at' => formatDateTimeWithTimezone($device->created_at),
+                'updated_at' => formatDateTimeWithTimezone($device->updated_at), 'deleted_at' => $device->deleted_at,
+            ]);
+            return response()->json([
+                'status' => true, 'status_code' => 406, 'message' => __('messages.device_limit_reached'),
+                'other_device' => $formattedDevices,
+            ], 406);
+        }
 
 
 
@@ -182,31 +119,29 @@ class TvAuthController extends Controller
 
         // Save the user
         $user->save();
-        $user['api_token'] = $user->createToken(setting('app_name'))->plainTextToken;
+        $issuedToken = $user->createToken(setting('app_name'));
+        $user['api_token'] = $issuedToken->plainTextToken;
 
         if ($user->is_subscribe == 1) {
             $user['plan_details'] = $user->subscriptionPackage;
         }
 
-        $device_id = $request->device_id;
-        $device_name = $request->device_name;
-        $platform = $request->platform;
+        $device_id = (string) \Illuminate\Support\Str::uuid();
+        $device_name = $request->input('device_name', 'TV device');
+        $platform = $request->input('platform', 'tv');
 
         $profile = $user->userMultiProfile->first();
 
-        if (!empty($device_id) && !empty($device_name)) {
-            $device = Device::updateOrCreate(
-                [
-                    'user_id' => $user->id,
-                    'device_id' => $device_id
-                ],
-                [
-                    'device_name' => $device_name,
-                    'platform' => $platform,
-                    'active_profile'=> $profile->id ?? null,
-                ]
-            );
-        }
+        Device::create([
+            'user_id' => $user->id,
+            'sanctum_token_id' => $issuedToken->accessToken->getKey(),
+            'device_id' => $device_id,
+            'device_name' => $device_name,
+            'platform' => $platform,
+            'active_profile' => $profile->id ?? null,
+            'session_id' => $session->session_id,
+            'last_activity' => now(),
+        ]);
         $user->session_id = $session->session_id;
         $loginResource = new LoginResource($user);
 

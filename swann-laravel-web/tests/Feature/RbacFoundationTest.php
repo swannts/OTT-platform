@@ -25,8 +25,8 @@ class RbacFoundationTest extends TestCase
         $this->assertNotContains('admin.roles.super_admin.assign', $roles['platform_admin']);
         $this->assertNotContains('content.approve', $roles['content_editor']);
         $this->assertNotContains('content.publish', $roles['content_reviewer']);
-        $this->assertNotContains('finance.refunds.approve', $roles['finance_manager']);
-        $this->assertNotContains('media.drm.configure', $roles['media_manager']);
+        $this->assertContains('finance.refunds.approve', $roles['finance_manager']);
+        $this->assertContains('media.drm.configure', $roles['media_manager']);
     }
 
     public function test_seeder_is_idempotent_and_does_not_assign_roles_to_users(): void

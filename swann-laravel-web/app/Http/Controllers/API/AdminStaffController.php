@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use App\Models\AdminAuditLog;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
@@ -18,9 +17,7 @@ use Illuminate\Support\Facades\Hash;
 
 class AdminStaffController extends Controller
 {
-    public function __construct(private readonly AdminAuditLogger $audit)
-    {
-    }
+    public function __construct(private readonly AdminAuditLogger $audit) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -67,6 +64,16 @@ class AdminStaffController extends Controller
         $superAdminChange = in_array('super-admin', array_unique([...$currentNames, ...$desiredNames]), true)
             && in_array('super-admin', $currentNames, true) !== in_array('super-admin', $desiredNames, true);
         if ($superAdminChange) {
+            $superAdminRole = Role::query()
+                ->where('guard_name', 'web')
+                ->where('name', 'super-admin')
+                ->where('is_admin_role', true)
+                ->where('is_active', true)
+                ->first();
+            abort_unless(
+                $superAdminRole && app(AdminRolePolicy::class)->assign($request->user(), $superAdminRole),
+                403,
+            );
             abort_unless(isset($data['current_password']) && Hash::check($data['current_password'], $request->user()->password), 403, 'Re-enter your password to change Super Admin access.');
             abort_if($request->user()->is($user), 422, 'A Super Admin cannot change their own Super Admin access.');
         }
@@ -74,7 +81,7 @@ class AdminStaffController extends Controller
         $before = $currentNames;
         DB::transaction(function () use ($request, $user, $desiredRoles, $before, $desiredNames): void {
             $lockedUser = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
-            $removesSuperAdmin = in_array('super-admin', $before, true) && !in_array('super-admin', $desiredNames, true);
+            $removesSuperAdmin = in_array('super-admin', $before, true) && ! in_array('super-admin', $desiredNames, true);
             if ($removesSuperAdmin) {
                 abort_if($this->activeSuperAdminCount() <= 1, 409, 'The final active Super Admin cannot be removed.');
             }
@@ -90,18 +97,24 @@ class AdminStaffController extends Controller
     public function updateStatus(Request $request, User $user): JsonResponse
     {
         abort_unless(ExplicitPermission::allows($request->user(), 'admin.staff.status.update'), 403);
-        abort_unless($this->isStaff($user), 404);
-        abort_if($request->user()->is($user), 422, 'You cannot deactivate your own staff account.');
         $data = $request->validate(['active' => ['required', 'boolean']]);
-        $before = ['active' => (bool) $user->status];
-        $deactivatesSuperAdmin = $before['active'] && !$data['active'] && $this->activeAdminRoles($user)->contains(static fn (Role $role): bool => $role->name === 'super-admin');
+        DB::transaction(function () use ($request, $user, $data): void {
+            $lockedUser = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
+            abort_unless($this->isStaff($lockedUser), 404);
+            abort_if($request->user()->is($lockedUser), 422, 'You cannot deactivate your own staff account.');
 
-        DB::transaction(function () use ($request, $user, $data, $before, $deactivatesSuperAdmin): void {
+            $before = ['active' => (bool) $lockedUser->status];
+            $deactivatesSuperAdmin = $before['active'] && ! $data['active']
+                && $this->activeAdminRoles($lockedUser)->contains(static fn (Role $role): bool => $role->name === 'super-admin');
+
             if ($deactivatesSuperAdmin) {
                 abort_if($this->activeSuperAdminCount() <= 1, 409, 'The final active Super Admin cannot be deactivated.');
             }
-            $user->forceFill(['status' => $data['active'] ? 1 : 0])->save();
-            $this->audit->record($request->user(), 'staff.status.updated', User::class, $user->getKey(), $before, ['active' => (bool) $user->status]);
+            $lockedUser->forceFill(['status' => $data['active'] ? 1 : 0])->save();
+            if (! $data['active']) {
+                $lockedUser->tokens()->delete();
+            }
+            $this->audit->record($request->user(), 'staff.status.updated', User::class, $lockedUser->getKey(), $before, ['active' => (bool) $lockedUser->status]);
         });
 
         return response()->json(['data' => $this->serializeStaff($user->fresh()->load('roles'))]);

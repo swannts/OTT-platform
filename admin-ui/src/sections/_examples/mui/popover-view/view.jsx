@@ -98,7 +98,7 @@ export function PopoverView() {
 
             <CustomPopover
               open={hoverPopoverOpen}
-              anchorEl={hoverPopoverRef.current}
+              anchorEl={() => hoverPopoverRef.current}
               slotProps={{
                 arrow: { placement: 'bottom-center' },
                 paper: {

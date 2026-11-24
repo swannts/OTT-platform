@@ -30,6 +30,10 @@ func New(url string) *Broker {
 	return &Broker{url: url}
 }
 
+func (b *Broker) IsHealthy() bool {
+	return b != nil && b.conn != nil && !b.conn.IsClosed() && b.ch != nil && !b.ch.IsClosed()
+}
+
 // Connect establishes connection with automatic retry
 func (b *Broker) Connect(ctx context.Context) error {
 	var err error
@@ -203,4 +207,3 @@ func (b *Broker) Close() {
 		_ = b.conn.Close()
 	}
 }
-

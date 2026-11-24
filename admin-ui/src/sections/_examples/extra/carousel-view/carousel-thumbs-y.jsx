@@ -21,6 +21,7 @@ export function CarouselThumbsY({ data }) {
       slidesToShow: 'auto',
     },
   });
+  const { options: carouselOptions, thumbs: { thumbsRef } } = carousel;
 
   return (
     <Box sx={{ position: 'relative' }}>
@@ -58,8 +59,8 @@ export function CarouselThumbsY({ data }) {
         }}
       >
         <CarouselThumbs
-          ref={carousel.thumbs.thumbsRef}
-          options={carousel.options?.thumbs}
+          ref={thumbsRef}
+          options={carouselOptions?.thumbs}
           sx={{ height: { xs: 200, md: 280 } }}
         >
           {data.map((item, index) => (

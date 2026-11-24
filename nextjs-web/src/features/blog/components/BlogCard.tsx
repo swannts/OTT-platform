@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { BlogPost } from '@/types';
-import { Clock, Eye, Calendar, ArrowRight } from 'lucide-react';
+import { Clock, Calendar, ArrowRight } from 'lucide-react';
 import { DEFAULT_FALLBACK_IMAGE } from '@/constants';
 import { formatDhakaDate } from '@/lib/datetime';
 
@@ -22,10 +23,12 @@ export default function BlogCard({ post }: BlogCardProps) {
     <article className="group flex flex-col bg-white/[0.02] hover:bg-white/[0.05] border border-white/10 hover:border-[#E5B869]/50 rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_30px_rgba(0,0,0,0.6)]">
       {/* Thumbnail */}
       <Link href={`/blog/${post.slug}`} className="relative aspect-[16/10] overflow-hidden block">
-        <img
+        <Image
           src={imgSrc}
           alt={post.title}
           onError={() => setImgSrc(DEFAULT_FALLBACK_IMAGE)}
+          fill
+          sizes="(max-width: 768px) 100vw, 33vw"
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#05080c] via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity" />
@@ -67,9 +70,12 @@ export default function BlogCard({ post }: BlogCardProps) {
         <div className="flex items-center justify-between pt-3 border-t border-white/5 mt-auto">
           <div className="flex items-center space-x-2 min-w-0">
             {post.author_avatar ? (
-              <img
+              <Image
                 src={post.author_avatar}
                 alt={post.author_name}
+                width={24}
+                height={24}
+                sizes="24px"
                 className="w-6 h-6 rounded-full object-cover ring-1 ring-white/20 flex-shrink-0"
               />
             ) : (
@@ -92,4 +98,3 @@ export default function BlogCard({ post }: BlogCardProps) {
     </article>
   );
 }
-

@@ -169,7 +169,7 @@ class ImportCastCrewJob implements ShouldQueue
     public function handle()
     {
         \Log::info("=== ImportCastCrewJob STARTED ===");
-        \Log::info("File path: {$this->filePath}");
+        \Log::info('Import diagnostic details redacted');
         \Log::info("User ID: {$this->userId}");
         \Log::info("Type: {$this->type}");
         
@@ -179,13 +179,13 @@ class ImportCastCrewJob implements ShouldQueue
             return;
         }
         
-        \Log::info("User found: {$user->name} ({$user->email})");
+        \Log::info('Import diagnostic details redacted');
 
         $extension = pathinfo($this->filePath, PATHINFO_EXTENSION);
         $fullPath = storage_path('app/' . $this->filePath);
         \Log::info("File extension: {$extension}");
-        \Log::info("Full path: {$fullPath}");
-        \Log::info("File exists: " . (file_exists($fullPath) ? 'YES' : 'NO'));
+        \Log::info('Import diagnostic details redacted');
+        \Log::info('Import diagnostic details redacted');
         
         $rows = [];
         
@@ -213,7 +213,7 @@ class ImportCastCrewJob implements ShouldQueue
                 fclose($handle);
                 \Log::info("CSV processing completed. Rows count: " . $rows->count());
             } catch (\Exception $e) {
-                \Log::error("CSV processing error: " . $e->getMessage());
+                \Log::error('Import diagnostic details redacted');
                 return;
             }
         } else {
@@ -278,9 +278,9 @@ class ImportCastCrewJob implements ShouldQueue
             $errorFile = Storage::url($errorFilePath);
             
             try {
-                \Log::info("Completion email sent to: {$user->email}");
+                \Log::info('Import diagnostic details redacted');
             } catch (\Exception $e) {
-                \Log::error('Failed to send cast & crew import completion email: ' . $e->getMessage());
+                \Log::error('Import diagnostic details redacted');
             }
             return; // Exit without processing
         }
@@ -292,7 +292,7 @@ class ImportCastCrewJob implements ShouldQueue
                 $data = array_combine($requiredHeader, $row);
                 
                 // Debug: Log the data array to see what we're getting
-                \Log::info("Processing row data: " . json_encode($data));
+                \Log::info('Import diagnostic details redacted');
                 
                 $rowErrors = [];
                 
@@ -318,13 +318,13 @@ class ImportCastCrewJob implements ShouldQueue
                 
                 if (!empty($rowErrors)) {
                     $failed++;
-                    \Log::error("Validation failed for '{$data['Name']}': " . implode('; ', $rowErrors));
+                    \Log::error('Import diagnostic details redacted');
                     $errorRows[] = array_merge($data, ['Errors' => implode('; ', $rowErrors)]);
                     continue;
                 }
                 
                 if (CastCrew::where('name', $data['Name'])->where('type', strtolower($data['Type']))->whereNull('deleted_at')->exists()) {
-                    \Log::info("Skipping existing record: {$data['Name']} ({$data['Type']}) - already exists in database");
+                    \Log::info('Import diagnostic details redacted');
                     continue; 
                 }
                 
@@ -334,7 +334,7 @@ class ImportCastCrewJob implements ShouldQueue
                     $imageUrl = $this->handleImageUrl($data['Image URL'] ?? null, 'castcrew', $data['Name'] ?? null, $data['Type']);   
                     
                     if ($imageUrl && filter_var($imageUrl, FILTER_VALIDATE_URL)) {
-                        \Log::warning("Image URL is still external, setting to null: " . $imageUrl);
+                        \Log::warning('Import diagnostic details redacted');
                         $imageUrl = null;
                     }
                     
@@ -354,11 +354,11 @@ class ImportCastCrewJob implements ShouldQueue
                     
                     DB::commit();
                     $success++;
-                    \Log::info("Successfully created cast & crew: {$data['Name']} (ID: {$newCastCrew->id})");
+                    \Log::info('Import diagnostic details redacted');
                 } catch (\Exception $e) {
                     DB::rollBack();
                     $failed++;
-                    \Log::error("Failed to create cast & crew '{$data['Name']}': " . $e->getMessage());
+                    \Log::error('Import diagnostic details redacted');
                     $errorRows[] = array_merge($data, ['Errors' => __('messages.castcrew_creation_failed') . ': ' . $e->getMessage()]);
                 }
             }
@@ -398,9 +398,9 @@ class ImportCastCrewJob implements ShouldQueue
         $this->cleanupTempDirectory();
         
         try {
-            \Log::info("Completion email sent to: {$user->email}");
+            \Log::info('Import diagnostic details redacted');
         } catch (\Exception $e) {
-            \Log::error('Failed to send cast & crew import completion email: ' . $e->getMessage());
+            \Log::error('Import diagnostic details redacted');
         }
     }
 
@@ -414,18 +414,18 @@ class ImportCastCrewJob implements ShouldQueue
             return null;
         }
 
-        \Log::info("Processing image URL: {$imageUrl}");
+        \Log::info('Import diagnostic details redacted');
         
         // Skip if it's already a local path (starts with / or doesn't contain http)
         if (!str_starts_with($imageUrl, 'http')) {
-            \Log::info("Image URL is already local, returning filename: {$imageUrl}");
+            \Log::info('Import diagnostic details redacted');
             return basename($imageUrl); // Return just the filename
         }
 
         try {
             // Validate URL
             if (!filter_var($imageUrl, FILTER_VALIDATE_URL)) {
-                \Log::warning("Invalid image URL provided: {$imageUrl}");
+                \Log::warning('Import diagnostic details redacted');
                 return null;
             }
 
@@ -434,7 +434,7 @@ class ImportCastCrewJob implements ShouldQueue
             $imageUrl = $this->convertUnsplashUrl($imageUrl);
             
             if ($originalUrl !== $imageUrl) {
-                \Log::info("Converted Unsplash Plus URL: {$originalUrl} -> {$imageUrl}");
+                \Log::info('Import diagnostic details redacted');
             }
 
             // Generate unique filename
@@ -452,7 +452,7 @@ class ImportCastCrewJob implements ShouldQueue
             } 
             
          
-            \Log::info("Attempting to download image from: {$imageUrl}");
+            \Log::info('Import diagnostic details redacted');
 
             // Set headers to mimic a browser request
             $response = Http::withHeaders([
@@ -468,7 +468,7 @@ class ImportCastCrewJob implements ShouldQueue
             \Log::info("HTTP response status: " . $response->status());
             
             if (!$response->successful()) {
-                \Log::warning("Failed to download image from URL: {$imageUrl}. Status: " . $response->status());
+                \Log::warning('Import diagnostic details redacted');
                 
                 // Try alternative URL formats for Unsplash
                 if (strpos($imageUrl, 'images.unsplash.com') !== false) {
@@ -498,7 +498,7 @@ class ImportCastCrewJob implements ShouldQueue
             // Validate that it's actually an image
             $imageInfo = getimagesizefromstring($response->body());
             if ($imageInfo === false) {
-                \Log::warning("Downloaded content is not a valid image: {$imageUrl}");
+                \Log::warning('Import diagnostic details redacted');
                 return null;
             }
 
@@ -523,7 +523,7 @@ class ImportCastCrewJob implements ShouldQueue
                 \Log::info("✅ Processed image successfully: {$processedFileName}");
                 return $processedFileName; // return final filename
             } else {
-                \Log::error("❌ Failed to save temp image: {$tempPath}");
+                \Log::error('Import diagnostic details redacted');
                 return null;
             }
 
@@ -592,7 +592,7 @@ class ImportCastCrewJob implements ShouldQueue
                 \Log::info("🟢 No temp directory to clean up");
             }
         } catch (\Exception $e) {
-            \Log::error("❌ Error cleaning up temp directory: " . $e->getMessage());
+            \Log::error('Import diagnostic details redacted');
         }
     }
 }

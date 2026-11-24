@@ -25,9 +25,15 @@ export const useCarouselArrows = (mainApi) => {
   useEffect(() => {
     if (!mainApi) return;
 
-    onSelect(mainApi);
+    const frame = window.requestAnimationFrame(() => onSelect(mainApi));
     mainApi.on('reInit', onSelect);
     mainApi.on('select', onSelect);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      mainApi.off('reInit', onSelect);
+      mainApi.off('select', onSelect);
+    };
   }, [mainApi, onSelect]);
 
   return {

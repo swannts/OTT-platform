@@ -9,7 +9,7 @@ class Device extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['user_id', 'device_id', 'device_name', 'platform', 'active_profile', 'session_id', 'last_activity'];
+    protected $fillable = ['user_id', 'sanctum_token_id', 'device_id', 'device_name', 'platform', 'active_profile', 'session_id', 'last_activity'];
 
     protected $casts = [
         'user_id' => 'integer',

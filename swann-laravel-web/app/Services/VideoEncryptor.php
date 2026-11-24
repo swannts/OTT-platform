@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Exception;
+use App\Support\Operations\OperationsEventLogger;
 use Illuminate\Support\Facades\Log;
 
 class VideoEncryptor
@@ -48,11 +49,9 @@ class VideoEncryptor
             return base64_encode($combined);
 
         } catch (Exception $e) {
-            Log::error('Video encryption failed', [
-                'error' => $e->getMessage(),
-                'url'   => $url,
-            ]);
-            throw new Exception('Failed to encrypt video URL: ' . $e->getMessage());
+            Log::error('Video encryption failed.', ['exception' => $e::class]);
+            app(OperationsEventLogger::class)->record('media.encryption.failed');
+            throw new Exception('Failed to encrypt video URL.');
         }
     }
 
@@ -118,10 +117,9 @@ class VideoEncryptor
             return $url;
 
         } catch (Exception $e) {
-            Log::error('Video decryption failed', [
-                'error' => $e->getMessage(),
-            ]);
-            throw new Exception('Failed to decrypt video URL: ' . $e->getMessage());
+            Log::error('Video decryption failed.', ['exception' => $e::class]);
+            app(OperationsEventLogger::class)->record('media.decryption.failed');
+            throw new Exception('Failed to decrypt video URL.');
         }
     }
 

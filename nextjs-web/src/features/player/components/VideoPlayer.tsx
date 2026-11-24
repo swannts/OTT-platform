@@ -6,6 +6,7 @@ import LockedPlayer from './LockedPlayer';
 import { VideoQuality } from '@/types';
 import { isYouTubeVideo } from '@/lib/youtube';
 import { getSavedProgress } from '../utils/playbackProgress';
+import { api } from '@/lib/api';
 
 export interface VideoPlayerProps {
   contentId: string | number;
@@ -14,6 +15,7 @@ export interface VideoPlayerProps {
   videoUrl?: string;
   urlType?: string;
   qualities?: VideoQuality[];
+  playbackSessionId?: string;
   hasAccess?: boolean;
   initialTime?: number;
   poster?: string;
@@ -28,27 +30,101 @@ export default function VideoPlayer({
   videoUrl = '',
   urlType = 'URL',
   qualities = [],
+  playbackSessionId,
   hasAccess = true,
   initialTime = 0,
   poster,
   isLive = false,
   onBack,
 }: VideoPlayerProps) {
-  // 1. Locked VIP Subscription State
-  if (!hasAccess) {
-    return <LockedPlayer title={title} poster={poster} />;
-  }
-
-  const [selectedQualityUrl, setSelectedQualityUrl] = useState<string>(videoUrl);
-  const [selectedQualityType, setSelectedQualityType] = useState<string>(urlType);
+  const [qualityOverride, setQualityOverride] = useState<{
+    sourceVideoUrl: string;
+    sourceUrlType: string;
+    videoUrl: string;
+    urlType: string;
+  } | null>(null);
+  const hasCurrentOverride = qualityOverride?.sourceVideoUrl === videoUrl && qualityOverride.sourceUrlType === urlType;
+  const selectedQualityUrl = hasCurrentOverride ? qualityOverride.videoUrl : videoUrl;
+  const selectedQualityType = hasCurrentOverride ? qualityOverride.urlType : urlType;
   const [isQualitySwitch, setIsQualitySwitch] = useState<boolean>(false);
   const currentTimeRef = useRef<number>(initialTime);
+  const selectedQualityUrlRef = useRef<string>(selectedQualityUrl);
   const [resumeTime, setResumeTime] = useState<number>(initialTime);
+  const [sessionState, setSessionState] = useState({ playbackSessionId, valid: true });
+  const sessionValid = sessionState.playbackSessionId === playbackSessionId ? sessionState.valid : true;
+  const lastReportedErrorRef = useRef<string | null>(null);
+  const hasReportedStartupFailureRef = useRef(false);
+  const hasStartedPlaybackRef = useRef(false);
+  const playbackStartTimeRef = useRef<number | null>(null);
+  const lastRebufferReportedAtRef = useRef(0);
 
   useEffect(() => {
-    setSelectedQualityUrl(videoUrl);
-    setSelectedQualityType(urlType);
-  }, [videoUrl, urlType]);
+    playbackStartTimeRef.current = performance.now();
+    lastReportedErrorRef.current = null;
+    hasReportedStartupFailureRef.current = false;
+    hasStartedPlaybackRef.current = false;
+    lastRebufferReportedAtRef.current = 0;
+  }, [playbackSessionId]);
+
+  const reportPlayerError = useCallback((event: Event) => {
+    if (!playbackSessionId) return;
+
+    const code = (event as CustomEvent<{ code?: number }>).detail?.code;
+    const errorCode = code === 2
+      ? 'network_error'
+      : code === 3
+        ? 'decoder_error'
+        : code === 4
+          ? 'manifest_error'
+          : 'unknown_error';
+    const deduplicationKey = `${playbackSessionId}:${errorCode}`;
+    if (lastReportedErrorRef.current === deduplicationKey) return;
+
+    lastReportedErrorRef.current = deduplicationKey;
+    void api.recordPlaybackError(playbackSessionId, errorCode).catch(() => undefined);
+    if (!hasStartedPlaybackRef.current && !hasReportedStartupFailureRef.current) {
+      hasReportedStartupFailureRef.current = true;
+      const durationMs = Math.min(120_000, Math.max(0, Math.round(performance.now() - (playbackStartTimeRef.current ?? performance.now()))));
+      void api.recordPlaybackEvent(playbackSessionId, 'startup_failed', durationMs).catch(() => undefined);
+    }
+  }, [playbackSessionId]);
+
+  const reportPlaybackStarted = useCallback(() => {
+    if (!playbackSessionId || hasStartedPlaybackRef.current) return;
+    hasStartedPlaybackRef.current = true;
+    const durationMs = Math.min(120_000, Math.max(0, Math.round(performance.now() - (playbackStartTimeRef.current ?? performance.now()))));
+    void api.recordPlaybackEvent(playbackSessionId, 'started', durationMs).catch(() => undefined);
+  }, [playbackSessionId]);
+
+  const reportRebuffer = useCallback(() => {
+    if (!playbackSessionId || !hasStartedPlaybackRef.current) return;
+    const now = Date.now();
+    if (now - lastRebufferReportedAtRef.current < 10_000) return;
+    lastRebufferReportedAtRef.current = now;
+    void api.recordPlaybackEvent(playbackSessionId, 'rebuffered').catch(() => undefined);
+  }, [playbackSessionId]);
+
+  useEffect(() => {
+    if (!playbackSessionId) return;
+    const timer = window.setInterval(() => {
+      void api.heartbeatPlaybackSession(playbackSessionId).then((refreshed) => {
+        if (refreshed.media_url && refreshed.media_url !== selectedQualityUrlRef.current) {
+          selectedQualityUrlRef.current = refreshed.media_url;
+          setResumeTime(currentTimeRef.current);
+          setIsQualitySwitch(true);
+          setQualityOverride({ sourceVideoUrl: videoUrl, sourceUrlType: urlType, videoUrl: refreshed.media_url, urlType: 'HLS' });
+        }
+      }).catch(() => setSessionState({ playbackSessionId, valid: false }));
+    }, 45_000);
+    return () => {
+      window.clearInterval(timer);
+      void api.endPlaybackSession(playbackSessionId).catch(() => undefined);
+    };
+  }, [playbackSessionId, urlType, videoUrl]);
+
+  useEffect(() => {
+    selectedQualityUrlRef.current = selectedQualityUrl;
+  }, [selectedQualityUrl]);
 
   const isCurrentYouTube = isYouTubeVideo(selectedQualityUrl, selectedQualityType);
 
@@ -56,6 +132,13 @@ export default function VideoPlayer({
     (url: string, qualityType: string) => {
       const cleanUrl = url.trim();
       if (cleanUrl === selectedQualityUrl.trim()) return;
+
+      const selectedQuality = qualities.find((quality) => quality.url.trim() === cleanUrl)?.quality || '';
+      const qualityMatch = selectedQuality.match(/\b(480|720|1080|1440|2160)p\b/i);
+      if (playbackSessionId && qualityMatch) {
+        const qualityLabel = `${qualityMatch[1]}p` as '480p' | '720p' | '1080p' | '1440p' | '2160p';
+        void api.recordPlaybackEvent(playbackSessionId, 'quality_changed', undefined, qualityLabel).catch(() => undefined);
+      }
 
       const currentProgress =
         currentTimeRef.current > 0
@@ -66,11 +149,14 @@ export default function VideoPlayer({
         setResumeTime(currentProgress);
       }
       setIsQualitySwitch(true);
-      setSelectedQualityUrl(cleanUrl);
-      setSelectedQualityType(qualityType);
+      setQualityOverride({ sourceVideoUrl: videoUrl, sourceUrlType: urlType, videoUrl: cleanUrl, urlType: qualityType });
     },
-    [selectedQualityUrl, contentId, contentType, initialTime]
+    [selectedQualityUrl, contentId, contentType, initialTime, playbackSessionId, qualities, urlType, videoUrl]
   );
+
+  if (!hasAccess || !sessionValid) {
+    return <LockedPlayer title={title} poster={poster} />;
+  }
 
   return (
     <div className="space-y-3">
@@ -92,6 +178,9 @@ export default function VideoPlayer({
         poster={poster}
         isLive={isLive || contentType === 'livetv'}
         onBack={onBack}
+        onError={reportPlayerError}
+        onPlaying={reportPlaybackStarted}
+        onWaiting={reportRebuffer}
         onQualityChange={handleQualityChange}
         onTimeUpdate={(t) => {
           currentTimeRef.current = t;

@@ -35,6 +35,7 @@ import 'package:swann_ott/screens/live_tv/model/live_tv_dashboard_response.dart'
 import 'package:swann_ott/screens/profile/model/profile_detail_resp.dart';
 import 'package:swann_ott/screens/profile/watching_profile/model/profile_watching_model.dart';
 import 'package:swann_ott/services/local_storage_service.dart';
+import 'package:swann_ott/services/auth_token_storage.dart';
 import 'package:swann_ott/services/notification_service.dart';
 import 'package:swann_ott/utils/price_widget.dart';
 
@@ -763,7 +764,7 @@ Future<void> logOutFromAllDevice({
   VoidCallback? onSuccess,
 }) async {
   loaderOnOff.call(showLoader);
-  await AuthServiceApis.logOutAllAPIWithoutAuth(userId: loginUserData.value.id).then((value) async {
+  await AuthServiceApis.revokeAllDeviceSessions().then((value) async {
     if (showSuccess) successSnackBar(value.message);
     await clearAppData();
     if (onSuccess != null)
@@ -803,7 +804,7 @@ Future<void> handleLogoutAndNavigateToLogin({
 
   onLoadingStateChange(true);
   try {
-    await AuthServiceApis.logOutAllAPIWithoutAuth(userId: loginUserData.value.id);
+    await AuthServiceApis.revokeAllDeviceSessions();
     await clearAppData();
     Get.offAll(() => SignInScreen(title: locale.value.changePasswordMessage), routeName: AppRoutes.signIn);
   } catch (e) {
@@ -821,6 +822,7 @@ Future<void> clearAppData({bool isFromDeleteAcc = false}) async {
   isLoggedIn(false);
   selectedAccountProfile(WatchingProfileModel());
   loginUserData(UserData(planDetails: SubscriptionPlanModel()));
+  await AuthTokenStorage.clear();
   currentSubscription(SubscriptionPlanModel());
 
   // Clear short drama DRM tokens
@@ -837,14 +839,11 @@ Future<void> clearAppData({bool isFromDeleteAcc = false}) async {
     removeValue(SharedPreferenceConst.IS_REMEMBER_ME);
     removeValue((SharedPreferenceConst.LOGIN_REQUEST));
   } else {
-    final tempPASSWORD = await getStringFromLocal(SharedPreferenceConst.USER_PASSWORD);
     final tempIsRememberMe = await getBoolFromLocal(SharedPreferenceConst.IS_REMEMBER_ME);
-
-    if (tempPASSWORD is String) {
-      await setStringToLocal(SharedPreferenceConst.USER_PASSWORD, tempPASSWORD);
-    }
     await setBoolToLocal(SharedPreferenceConst.IS_REMEMBER_ME, await tempIsRememberMe);
+    if (!tempIsRememberMe) removeValue(SharedPreferenceConst.LOGIN_REQUEST);
   }
+  removeValue(SharedPreferenceConst.USER_PASSWORD);
   removeValuesFromLocalStorage();
   final DashboardController dashboardController = Get.find();
   dashboardController.currentIndex(0);

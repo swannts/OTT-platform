@@ -18,8 +18,8 @@ class ComingSoonController extends BaseListController<ComingSoonModel> {
   RxInt currentVideoPage = 1.obs;
   RxInt currentTvShowPage = 1.obs;
 
-  RxMap<int, bool> loadingRemindItems = <int, bool>{}.obs;
-  RxMap<int, bool> loadingWatchlistItems = <int, bool>{}.obs;
+  RxMap<String, bool> loadingRemindItems = <String, bool>{}.obs;
+  RxMap<String, bool> loadingWatchlistItems = <String, bool>{}.obs;
 
   RxList<String> availableFilter = <String>[].obs;
 
@@ -41,7 +41,7 @@ class ComingSoonController extends BaseListController<ComingSoonModel> {
 
 //Save Reminder
   Future<void> saveRemind({required bool isRemind, required ComingSoonModel comingSoonData}) async {
-    loadingRemindItems[comingSoonData.id] = true;
+    loadingRemindItems[comingSoonData.requestId] = true;
 
     final previousValue = comingSoonData.isRemind;
     comingSoonData.isRemind = isRemind ? 0 : 1;
@@ -49,14 +49,14 @@ class ComingSoonController extends BaseListController<ComingSoonModel> {
 
     await CoreServiceApis.saveReminder(
       request: {
-        ApiRequestKeys.entertainmentIdKey: comingSoonData.id,
+        ApiRequestKeys.entertainmentIdKey: comingSoonData.requestId,
         ApiRequestKeys.isRemindKey: isRemind ? 0 : 1,
         ApiRequestKeys.releaseDateKey: comingSoonData.releaseDate,
         if (selectedAccountProfile.value.id != 0) ApiRequestKeys.profileIdKey: selectedAccountProfile.value.id,
       },
     ).then((value) async {
       await getListData(showLoader: false);
-      loadingRemindItems[comingSoonData.id] = false;
+      loadingRemindItems[comingSoonData.requestId] = false;
       successSnackBar(
         value.message,
         icon: Container(
@@ -74,13 +74,13 @@ class ComingSoonController extends BaseListController<ComingSoonModel> {
     }).catchError((e) {
       comingSoonData.isRemind = previousValue;
       listContent.refresh();
-      loadingRemindItems[comingSoonData.id] = false;
+      loadingRemindItems[comingSoonData.requestId] = false;
       errorSnackBar(error: e);
     });
   }
 
   Future<void> deleteRemind({required ComingSoonModel comingSoonData}) async {
-    loadingRemindItems[comingSoonData.id] = true;
+    loadingRemindItems[comingSoonData.requestId] = true;
 
     final previousValue = comingSoonData.isRemind;
     comingSoonData.isRemind = 0;
@@ -88,16 +88,16 @@ class ComingSoonController extends BaseListController<ComingSoonModel> {
 
     await CoreServiceApis.deleteReminder(
       request: {
-        ApiRequestKeys.idKey: comingSoonData.id,
+        ApiRequestKeys.idKey: comingSoonData.requestId,
       },
     ).then((value) async {
       await getListData(showLoader: false);
-      loadingRemindItems[comingSoonData.id] = false;
+      loadingRemindItems[comingSoonData.requestId] = false;
       successSnackBar(value.message);
     }).catchError((e) {
       comingSoonData.isRemind = previousValue;
       listContent.refresh();
-      loadingRemindItems[comingSoonData.id] = false;
+      loadingRemindItems[comingSoonData.requestId] = false;
       errorSnackBar(error: e);
     });
   }
@@ -105,7 +105,7 @@ class ComingSoonController extends BaseListController<ComingSoonModel> {
   Future<void> saveWatchList({required ComingSoonModel comingSoonData}) async {
     if (isLoading.isTrue) return;
 
-    loadingWatchlistItems[comingSoonData.id] = true;
+    loadingWatchlistItems[comingSoonData.requestId] = true;
 
     final previousValue = comingSoonData.isInWatchList;
     final isCurrentlyInWatchList = comingSoonData.isInWatchList.getBoolInt();
@@ -122,18 +122,18 @@ class ComingSoonController extends BaseListController<ComingSoonModel> {
       await CoreServiceApis.deleteFromWatchlist(
         request: {
           ApiRequestKeys.isAjaxKey: 1,
-          ApiRequestKeys.idKey: comingSoonData.id,
+          ApiRequestKeys.idKey: comingSoonData.requestId,
           if (selectedAccountProfile.value.id != 0) ApiRequestKeys.profileIdKey: selectedAccountProfile.value.id,
           if (selectedAccountProfile.value.id != 0) ApiRequestKeys.userIdKey: loginUserData.value.id,
           ApiRequestKeys.typeKey: comingSoonData.type,
         },
       ).then((value) async {
         await getListData(showLoader: false);
-        loadingWatchlistItems[comingSoonData.id] = false;
+        loadingWatchlistItems[comingSoonData.requestId] = false;
       }).catchError((e) {
         comingSoonData.isInWatchList = previousValue;
         listContent.refresh();
-        loadingWatchlistItems[comingSoonData.id] = false;
+        loadingWatchlistItems[comingSoonData.requestId] = false;
       });
     } else {
       successSnackBar(
@@ -152,24 +152,24 @@ class ComingSoonController extends BaseListController<ComingSoonModel> {
       );
       await CoreServiceApis.saveWatchList(
         request: {
-          ApiRequestKeys.entertainmentIdKey: comingSoonData.id,
+          ApiRequestKeys.entertainmentIdKey: comingSoonData.requestId,
           if (selectedAccountProfile.value.id != 0) ApiRequestKeys.profileIdKey: selectedAccountProfile.value.id,
           ApiRequestKeys.typeKey: comingSoonData.type,
         },
       ).then((value) async {
         await getListData(showLoader: false);
-        loadingWatchlistItems[comingSoonData.id] = false;
+        loadingWatchlistItems[comingSoonData.requestId] = false;
       }).catchError((e) {
         comingSoonData.isInWatchList = previousValue;
         listContent.refresh();
-        loadingWatchlistItems[comingSoonData.id] = false;
+        loadingWatchlistItems[comingSoonData.requestId] = false;
       });
     }
   }
 
-  ComingSoonModel? getUpdatedItem(int id) {
+  ComingSoonModel? getUpdatedItem(String id) {
     try {
-      return listContent.firstWhereOrNull((item) => item.id == id);
+      return listContent.firstWhereOrNull((item) => item.requestId == id);
     } catch (e) {
       return null;
     }

@@ -31,6 +31,10 @@ export const rbacApi = {
   acceptInvitation: (data) =>
     axios.post('/api/admin/invitations/accept', data).then((response) => response.data),
   contentReviewQueue: (params) => axios.get(`${base}/content/review-queue`, { params }).then((response) => response.data),
+  contentLicenseWindow: (type, id) =>
+    axios.get(`${base}/content/${encodeURIComponent(type)}/${encodeURIComponent(id)}/license-window`).then((response) => response.data),
+  updateContentLicenseWindow: (type, id, data) =>
+    axios.put(`${base}/content/${encodeURIComponent(type)}/${encodeURIComponent(id)}/license-window`, data).then((response) => response.data),
   submitContent: (id) => axios.post(`${base}/content/${encodeURIComponent(id)}/submit`).then((response) => response.data),
   approveContent: (id, data) => axios.post(`${base}/content/reviews/${id}/approve`, data).then((response) => response.data),
   rejectContent: (id, data) => axios.post(`${base}/content/reviews/${id}/reject`, data).then((response) => response.data),
@@ -39,6 +43,24 @@ export const rbacApi = {
   subscriptionsOverview: () => axios.get(`${base}/subscriptions/overview`).then((response) => response.data),
   financeOverview: () => axios.get(`${base}/finance/overview`).then((response) => response.data),
   marketingOverview: () => axios.get(`${base}/marketing/overview`).then((response) => response.data),
-  analyticsOverview: () => axios.get(`${base}/analytics/overview`).then((response) => response.data),
+  analyticsOverview: () => axios.get(`${base}/analytics/overview`).then((response) => {
+    const { audience, subscriptions, content, revenue, playback } = response.data.data;
+    return { data: {
+      active_accounts: audience?.active_accounts ?? null,
+      new_subscribers: subscriptions?.new_subscribers ?? audience?.new_subscribers ?? null,
+      watch_hours: content?.watch_hours ?? null,
+      paid_payments: revenue?.paid_payment_count ?? null,
+      playback_startup_failures: playback?.startup_failures ?? null,
+      mrr_by_currency: subscriptions?.mrr_by_currency?.map((item) => `${item.currency} ${item.mrr}`).join(', ') ?? null,
+    } };
+  }),
   operationsOverview: () => axios.get(`${base}/operations/overview`).then((response) => response.data),
+  operationsHealth: () => axios.get(`${base}/operations/health`).then((response) => response.data),
+  operationsPlayback: () => axios.get(`${base}/operations/playback`).then((response) => response.data),
+  operationsLogs: (params) => axios.get(`${base}/operations/logs`, { params }).then((response) => response.data),
+  operationsJobs: (params) => axios.get(`${base}/operations/jobs`, { params }).then((response) => response.data),
+  retryOperationsJob: (id) => axios.post(`${base}/operations/jobs/${encodeURIComponent(id)}/retry`).then((response) => response.data),
+  operationsIncidents: (params) => axios.get(`${base}/operations/incidents`, { params }).then((response) => response.data),
+  createOperationsIncident: (data) => axios.post(`${base}/operations/incidents`, data).then((response) => response.data),
+  updateOperationsIncident: (id, data) => axios.patch(`${base}/operations/incidents/${id}`, data).then((response) => response.data),
 };

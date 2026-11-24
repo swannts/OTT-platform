@@ -237,7 +237,7 @@ class ImportVideosJob implements ShouldQueue
     public function handle()
     {
         \Log::info("=== ImportVideosJob STARTED ===");
-        \Log::info("File path: {$this->filePath}");
+        \Log::info('Import diagnostic details redacted');
         \Log::info("User ID: {$this->userId}");
         
         $user = User::find($this->userId);
@@ -246,13 +246,13 @@ class ImportVideosJob implements ShouldQueue
             return;
         }
         
-        \Log::info("User found: {$user->name} ({$user->email})");
+        \Log::info('Import diagnostic details redacted');
 
         $extension = pathinfo($this->filePath, PATHINFO_EXTENSION);
         $fullPath = storage_path('app/' . $this->filePath);
         \Log::info("File extension: {$extension}");
-        \Log::info("Full path: {$fullPath}");
-        \Log::info("File exists: " . (file_exists($fullPath) ? 'YES' : 'NO'));
+        \Log::info('Import diagnostic details redacted');
+        \Log::info('Import diagnostic details redacted');
         
         $rows = [];
         
@@ -266,7 +266,7 @@ class ImportVideosJob implements ShouldQueue
                 ]));
                 \Log::info("CSV processing completed. Rows count: " . $rows->count());
             } catch (\Exception $e) {
-                \Log::error("CSV processing error: " . $e->getMessage());
+                \Log::error('Import diagnostic details redacted');
                 return;
             }
         } else {
@@ -307,7 +307,7 @@ class ImportVideosJob implements ShouldQueue
                 $data = array_combine($requiredHeader, $row);
                 
                 // Debug: Log the data array to see what we're getting
-                \Log::info("Processing row data: " . json_encode($data));
+                \Log::info('Import diagnostic details redacted');
                 
                 $rowErrors = [];
                 
@@ -356,7 +356,7 @@ class ImportVideosJob implements ShouldQueue
 
                 // If there are any validation errors for this row, record and skip
                 if (!empty($rowErrors)) {
-                    \Log::error("Validation failed for '{$data['Name']}': " . implode('; ', $rowErrors));
+                    \Log::error('Import diagnostic details redacted');
                     $errorRows[] = array_merge($data, ['Errors' => implode('; ', $rowErrors)]);
                     continue;
                 }
@@ -376,11 +376,11 @@ class ImportVideosJob implements ShouldQueue
                     
                     // Validate that we have local image paths, not external URLs
                     if ($posterUrl && filter_var($posterUrl, FILTER_VALIDATE_URL)) {
-                        \Log::warning("Poster URL is still external, setting to null: " . $posterUrl);
+                        \Log::warning('Import diagnostic details redacted');
                         $posterUrl = null;
                     }
                     if ($posterTvUrl && filter_var($posterTvUrl, FILTER_VALIDATE_URL)) {
-                        \Log::warning("Poster TV URL is still external, setting to null: " . $posterTvUrl);
+                        \Log::warning('Import diagnostic details redacted');
                         $posterTvUrl = null;
                     }
                     
@@ -419,11 +419,11 @@ class ImportVideosJob implements ShouldQueue
                     
                     DB::commit();
                     $success++;
-                    \Log::info("Successfully created video: {$data['Name']} (ID: {$newVideo->id})");
+                    \Log::info('Import diagnostic details redacted');
                 } catch (\Exception $e) {
                     DB::rollBack();
                     $failed++;
-                    \Log::error("Failed to create video '{$data['Name']}': " . $e->getMessage());
+                    \Log::error('Import diagnostic details redacted');
                     $errorRows[] = array_merge($data, ['Errors' => __('messages.video_creation_failed') . ': ' . $e->getMessage()]);
                 }
             }
@@ -462,9 +462,9 @@ class ImportVideosJob implements ShouldQueue
         $this->cleanupTempDirectory();
         
         try {
-            \Log::info("Completion email sent to: {$user->email}");
+            \Log::info('Import diagnostic details redacted');
         } catch (\Exception $e) {
-            \Log::error('Failed to send videos import completion email: ' . $e->getMessage());
+            \Log::error('Import diagnostic details redacted');
         }
     }
 
@@ -487,18 +487,18 @@ class ImportVideosJob implements ShouldQueue
             return null;
         }
 
-        \Log::info("Processing image URL: {$imageUrl}");
+        \Log::info('Import diagnostic details redacted');
         
         // Skip if it's already a local path (starts with / or doesn't contain http)
         if (!str_starts_with($imageUrl, 'http')) {
-            \Log::info("Image URL is already local, returning filename: {$imageUrl}");
+            \Log::info('Import diagnostic details redacted');
             return basename($imageUrl); // Return just the filename
         }
 
         try {
             // Validate URL
             if (!filter_var($imageUrl, FILTER_VALIDATE_URL)) {
-                \Log::warning("Invalid image URL provided: {$imageUrl}");
+                \Log::warning('Import diagnostic details redacted');
                 return null;
             }
 
@@ -507,7 +507,7 @@ class ImportVideosJob implements ShouldQueue
             $imageUrl = $this->convertUnsplashUrl($imageUrl);
             
             if ($originalUrl !== $imageUrl) {
-                \Log::info("Converted Unsplash Plus URL: {$originalUrl} -> {$imageUrl}");
+                \Log::info('Import diagnostic details redacted');
             }
 
             // Generate unique filename
@@ -523,7 +523,7 @@ class ImportVideosJob implements ShouldQueue
             }else{
                 $filename = 'video' . '_' . $type . '.' . $extension;
             }
-            \Log::info("Attempting to download image from: {$imageUrl}");
+            \Log::info('Import diagnostic details redacted');
 
             // Set headers to mimic a browser request
             $response = Http::withHeaders([
@@ -539,7 +539,7 @@ class ImportVideosJob implements ShouldQueue
             \Log::info("HTTP response status: " . $response->status());
             
             if (!$response->successful()) {
-                \Log::warning("Failed to download image from URL: {$imageUrl}. Status: " . $response->status());
+                \Log::warning('Import diagnostic details redacted');
                 
                 // Try alternative URL formats for Unsplash
                 if (strpos($imageUrl, 'images.unsplash.com') !== false) {
@@ -569,7 +569,7 @@ class ImportVideosJob implements ShouldQueue
             // Validate that it's actually an image
             $imageInfo = getimagesizefromstring($response->body());
             if ($imageInfo === false) {
-                \Log::warning("Downloaded content is not a valid image: {$imageUrl}");
+                \Log::warning('Import diagnostic details redacted');
                 return null;
             }
 
@@ -594,12 +594,12 @@ class ImportVideosJob implements ShouldQueue
               
                 return $processedFileName; // return final filename
             } else {
-                \Log::error("❌ Failed to save temp image: {$tempPath}");
+                \Log::error('Import diagnostic details redacted');
                 return null;
             }
 
         } catch (\Exception $e) {
-            \Log::error("Error downloading image from URL {$imageUrl}: " . $e->getMessage());
+            \Log::error('Import diagnostic details redacted');
             return null;
         }
     }
@@ -663,7 +663,7 @@ class ImportVideosJob implements ShouldQueue
                 \Log::info("🟢 No temp directory to clean up");
             }
         } catch (\Exception $e) {
-            \Log::error("❌ Error cleaning up temp directory: " . $e->getMessage());
+            \Log::error('Import diagnostic details redacted');
         }
     }
 }

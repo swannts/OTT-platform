@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/providers';
@@ -8,7 +8,6 @@ import { api } from '@/lib/api';
 import { NotificationItem } from '@/types';
 import {
   Bell,
-  Check,
   CheckCheck,
   Trash2,
   Film,
@@ -68,32 +67,60 @@ const DEFAULT_NOTIFICATIONS: AppNotification[] = [
   },
 ];
 
+const NOTIFICATION_STORAGE_KEY = 'noor_notifications';
+const NOTIFICATION_STORAGE_EVENT = 'noor-notifications-changed';
+
+function subscribeToNotifications(onChange: () => void): () => void {
+  window.addEventListener('storage', onChange);
+  window.addEventListener(NOTIFICATION_STORAGE_EVENT, onChange);
+  return () => {
+    window.removeEventListener('storage', onChange);
+    window.removeEventListener(NOTIFICATION_STORAGE_EVENT, onChange);
+  };
+}
+
+function getStoredNotificationSnapshot(): string | null {
+  return typeof window === 'undefined' ? null : window.localStorage.getItem(NOTIFICATION_STORAGE_KEY);
+}
+
+function saveNotifications(notifications: AppNotification[]): void {
+  window.localStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify(notifications));
+  window.dispatchEvent(new Event(NOTIFICATION_STORAGE_EVENT));
+}
+
 export default function NotificationDropdown() {
   const router = useRouter();
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const storedSnapshot = useSyncExternalStore(subscribeToNotifications, getStoredNotificationSnapshot, () => null);
+  const storedNotifications = useMemo((): AppNotification[] | null => {
+    if (!storedSnapshot) return null;
+    try {
+      const parsed: unknown = JSON.parse(storedSnapshot);
+      return Array.isArray(parsed) ? parsed as AppNotification[] : null;
+    } catch {
+      return null;
+    }
+  }, [storedSnapshot]);
+  const notifications = storedNotifications ?? DEFAULT_NOTIFICATIONS;
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Initialize notifications from localStorage or defaults / API
+  // Load server notifications only when this browser has no stored snapshot.
   useEffect(() => {
-    const saved = localStorage.getItem('noor_notifications');
-    if (saved) {
-      try {
-        setNotifications(JSON.parse(saved));
-        return;
-      } catch {
-        // Fallback
-      }
+    if (storedNotifications) return;
+
+    if (!user) {
+      saveNotifications(DEFAULT_NOTIFICATIONS);
+      return;
     }
 
-    if (user) {
-      api
-        .getNotifications(false)
-        .then((res) => {
-          const rawItems = res?.notification_data || res?.notifications || [];
-          if (Array.isArray(rawItems) && rawItems.length > 0) {
-            const mapped: AppNotification[] = (rawItems as NotificationItem[]).map((n, idx: number) => {
+    let active = true;
+    void api.getNotifications(false)
+      .then((res) => {
+        if (!active) return;
+        const rawItems = res?.notification_data || res?.notifications || [];
+        const mapped: AppNotification[] = Array.isArray(rawItems)
+          ? (rawItems as NotificationItem[]).map((n, idx: number) => {
               const dataObj = typeof n.data === 'object' && n.data !== null ? n.data : {};
               return {
                 id: String(n.id || `api-${idx}`),
@@ -104,23 +131,18 @@ export default function NotificationDropdown() {
                 type: 'general',
                 href: '/notifications',
               };
-            });
-            setNotifications(mapped);
-            localStorage.setItem('noor_notifications', JSON.stringify(mapped));
-            return;
-          }
-          setNotifications(DEFAULT_NOTIFICATIONS);
-          localStorage.setItem('noor_notifications', JSON.stringify(DEFAULT_NOTIFICATIONS));
-        })
-        .catch(() => {
-          setNotifications(DEFAULT_NOTIFICATIONS);
-          localStorage.setItem('noor_notifications', JSON.stringify(DEFAULT_NOTIFICATIONS));
-        });
-    } else {
-      setNotifications(DEFAULT_NOTIFICATIONS);
-      localStorage.setItem('noor_notifications', JSON.stringify(DEFAULT_NOTIFICATIONS));
-    }
-  }, [user]);
+            })
+          : [];
+        saveNotifications(mapped.length > 0 ? mapped : DEFAULT_NOTIFICATIONS);
+      })
+      .catch(() => {
+        if (active) saveNotifications(DEFAULT_NOTIFICATIONS);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [storedNotifications, user]);
 
   // Click outside to close
   useEffect(() => {
@@ -150,8 +172,7 @@ export default function NotificationDropdown() {
 
   const handleMarkAllRead = async () => {
     const updated = notifications.map((n) => ({ ...n, isRead: true }));
-    setNotifications(updated);
-    localStorage.setItem('noor_notifications', JSON.stringify(updated));
+    saveNotifications(updated);
 
     if (user) {
       try {
@@ -164,8 +185,7 @@ export default function NotificationDropdown() {
 
   const handleItemClick = (notif: AppNotification) => {
     const updated = notifications.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n));
-    setNotifications(updated);
-    localStorage.setItem('noor_notifications', JSON.stringify(updated));
+    saveNotifications(updated);
     setIsOpen(false);
     router.push(notif.href);
   };
@@ -173,8 +193,7 @@ export default function NotificationDropdown() {
   const handleDeleteItem = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     const updated = notifications.filter((n) => n.id !== id);
-    setNotifications(updated);
-    localStorage.setItem('noor_notifications', JSON.stringify(updated));
+    saveNotifications(updated);
   };
 
   const getIcon = (type: AppNotification['type']) => {
@@ -320,4 +339,3 @@ export default function NotificationDropdown() {
     </div>
   );
 }
-

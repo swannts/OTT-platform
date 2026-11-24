@@ -14,7 +14,7 @@ export default async function Page({ params }) {
 
   const { post } = await getPost(title);
 
-  return <PostDetailsView post={post} />;
+  return <PostDetailsView key={title} post={post} />;
 }
 
 // ----------------------------------------------------------------------

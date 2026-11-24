@@ -1,6 +1,7 @@
 import 'package:nb_utils/nb_utils.dart';
 import 'package:swann_ott/screens/profile/model/profile_detail_resp.dart';
 import 'package:swann_ott/services/local_storage_service.dart';
+import 'package:swann_ott/services/auth_token_storage.dart';
 import 'package:swann_ott/utils/common_base.dart';
 
 import '../models/base_response_model.dart';
@@ -15,15 +16,12 @@ import 'network_utils.dart';
 class AuthServiceApis {
   static Future<void> createUser({required Map request}) async {
     await getApiResponse(APIEndPoints.register, request: request, method: HttpMethodType.POST);
-    setStringToLocal(SharedPreferenceConst.USER_PASSWORD, request[ApiRequestKeys.password]);
   }
 
   static Future<void> loginUser({required Map<String, dynamic> request, bool isSocialLogin = false}) async {
     if (await isIqonicProduct && (request[ApiRequestKeys.mobile] == Constants.defaultNumber || request[ApiRequestKeys.email] == Constants.DEFAULT_EMAIL)) {
       setBoolToLocal(SharedPreferenceConst.IS_DEMO_USER, true);
     }
-    setStringToLocal(SharedPreferenceConst.USER_PASSWORD, request[ApiRequestKeys.password]);
-    setJsonToLocal(SharedPreferenceConst.LOGIN_REQUEST, request);
     setBoolToLocal(SharedPreferenceConst.IS_SOCIAL_LOGIN_IN, isSocialLogin);
 
     UserResponse userData = UserResponse.fromJson(
@@ -49,6 +47,10 @@ class AuthServiceApis {
   }
 
   static Future<void> storeUserData(UserResponse userData) async {
+    if (userData.userData.apiToken.isEmpty) {
+      throw const FormatException('The authentication response did not include an access token.');
+    }
+    await AuthTokenStorage.write(userData.userData.apiToken);
     isLoggedIn(true);
 
     setBoolToLocal(SharedPreferenceConst.IS_LOGGED_IN, true);
@@ -63,6 +65,14 @@ class AuthServiceApis {
     currentSubscription.value.activePlanInAppPurchaseIdentifier = isIOS ? currentSubscription.value.appleInAppPurchaseIdentifier : currentSubscription.value.googleInAppPurchaseIdentifier;
     setJsonToLocal(SharedPreferenceConst.USER_DATA, loginUserData.value.toJson());
     setJsonToLocal(SharedPreferenceConst.CACHE_USER_SUBSCRIPTION_DATA, userData.userData.planDetails.toJson());
+  }
+
+  static Future<void> logoutCurrentDevice() async {
+    try {
+      await getApiResponse(APIEndPoints.logout);
+    } finally {
+      await AuthTokenStorage.clear();
+    }
   }
 
   static Future<ChangePasswordResponse> changePasswordApi({required Map request}) async {
@@ -124,33 +134,52 @@ class AuthServiceApis {
   }
 
   static Future<BaseResponseModel> deviceLogoutApi({required String deviceId}) async {
-    String id = deviceId.isNotEmpty ? "?${ApiRequestKeys.deviceIdKey}=$deviceId" : "";
-    return BaseResponseModel.fromJson(await getApiResponse("${APIEndPoints.deviceLogout}$id"));
+    final id = int.tryParse(deviceId);
+    if (id == null || id < 1) {
+      throw const FormatException('The selected device identifier is invalid.');
+    }
+    return BaseResponseModel.fromJson(await getApiResponse(
+      getEndPoint(endPoint: APIEndPoints.deviceLogout, params: ['id=$id']),
+    ));
   }
 
-  static Future<BaseResponseModel> deviceLogoutApiWithoutAuth({required String deviceId, required int userId}) async {
-    List<String> params = [];
-    params.add("${ApiRequestKeys.deviceIdKey}=$deviceId");
-    params.add("${ApiRequestKeys.userIdKey}=$userId");
-    return BaseResponseModel.fromJson(await getApiResponse(getEndPoint(endPoint: APIEndPoints.deviceLogoutNoAuth, params: params)));
+  static Future<BaseResponseModel> revokeDeviceSession({required String deviceId, required String managementToken}) async {
+    final id = int.tryParse(deviceId);
+    if (id == null || id < 1 || managementToken.isEmpty) {
+      throw const FormatException('The device revocation authorization is invalid.');
+    }
+    final response = await getApiResponse(
+      APIEndPoints.deviceSessionRevoke,
+      request: {'device_id': id},
+      method: HttpMethodType.POST,
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json; charset=utf-8',
+        'Authorization': 'Bearer $managementToken',
+      },
+    );
+    return BaseResponseModel.fromJson(Map<String, dynamic>.from(response));
   }
 
   static Future<BaseResponseModel> deleteAccountCompletely() async {
     return BaseResponseModel.fromJson(await getApiResponse(APIEndPoints.deleteUserAccount));
   }
 
-  static Future<BaseResponseModel> logOutAllAPIWithoutAuth({required int userId}) async {
-    List<String> params = [];
-    params.add("${ApiRequestKeys.deviceIdKey}=${currentDevice.value.deviceId}");
-    params.add("${ApiRequestKeys.userIdKey}=$userId");
-    return BaseResponseModel.fromJson(
-      await getApiResponse(
-        getEndPoint(
-          endPoint: APIEndPoints.logOutAllNoAuth,
-          params: params,
-        ),
-      ),
+  static Future<BaseResponseModel> revokeAllDeviceSessions({String? managementToken}) async {
+    if (managementToken == null || managementToken.isEmpty) {
+      return BaseResponseModel.fromJson(await getApiResponse(APIEndPoints.logOutAll));
+    }
+    final response = await getApiResponse(
+      APIEndPoints.deviceSessionsRevokeAll,
+      request: const {},
+      method: HttpMethodType.POST,
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json; charset=utf-8',
+        'Authorization': 'Bearer $managementToken',
+      },
     );
+    return BaseResponseModel.fromJson(Map<String, dynamic>.from(response));
   }
 
   //Edit Profile API

@@ -5,22 +5,24 @@ import (
 )
 
 type Config struct {
-	AppEnv         string
-	RabbitMQURL    string
-	DBDSN          string
-	RedisAddr      string
-	StorageDriver  string
-	StoragePath    string
+	AppEnv             string
+	RabbitMQURL        string
+	DBDSN              string
+	RedisAddr          string
+	StorageDriver      string
+	StoragePath        string
+	PrivateStoragePath string
 }
 
 func Load() *Config {
 	return &Config{
-		AppEnv:        getEnv("APP_ENV", "development"),
-		RabbitMQURL:   getEnv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672/"),
-		DBDSN:         getEnv("DB_DSN", "root:@tcp(mysql:3306)/swann?charset=utf8mb4&parseTime=True&loc=Local"),
-		RedisAddr:     getEnv("REDIS_ADDR", "redis:6379"),
-		StorageDriver: getEnv("STORAGE_DRIVER", "local"),
-		StoragePath:   getEnv("STORAGE_LOCAL_PATH", "/var/www/html/public/storage"),
+		AppEnv:             getEnv("APP_ENV", "development"),
+		RabbitMQURL:        getEnv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672/"),
+		DBDSN:              getEnv("DB_DSN", "root:@tcp(mysql:3306)/swann?charset=utf8mb4&parseTime=True&loc=Local"),
+		RedisAddr:          getEnv("REDIS_ADDR", "redis:6379"),
+		StorageDriver:      getEnv("STORAGE_DRIVER", "local"),
+		StoragePath:        getEnv("STORAGE_LOCAL_PATH", "/var/www/html/public/storage"),
+		PrivateStoragePath: getEnv("PRIVATE_STORAGE_PATH", "/var/www/html/storage/app/private"),
 	}
 }
 
@@ -31,3 +33,4 @@ func getEnv(key, defaultVal string) string {
 	return defaultVal
 }
 
+func GetEnv(key, defaultVal string) string { return getEnv(key, defaultVal) }

@@ -64,6 +64,8 @@ export const CarouselThumbs = forwardRef(({ children, slotProps, options, sx, ..
     </StyledRoot>
   );
 });
+CarouselThumbs.displayName = 'CarouselThumbs';
+
 
 // ----------------------------------------------------------------------
 

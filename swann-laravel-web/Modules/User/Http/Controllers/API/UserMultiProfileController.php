@@ -12,6 +12,7 @@ use Jenssegers\Agent\Agent;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
+use Modules\Subscriptions\Services\PlanEntitlementSnapshot;
 
 class UserMultiProfileController extends Controller
 {
@@ -126,33 +127,7 @@ class UserMultiProfileController extends Controller
 
 private function getSubscriptionProfileLimit($user) 
 {
-    if (!$user->subscriptionPackage) {
-        return 0;
-    }
-
-    $subscription = $user->subscriptionPackage;
-
-    if (isset($subscription->plan_type) && !empty($subscription->plan_type)) {
-        $planLimitations = json_decode($subscription->plan_type, true);
-
-        if (is_array($planLimitations)) {
-            foreach ($planLimitations as $limitation) {
-                if (isset($limitation['slug']) && $limitation['slug'] === 'profile-limit') {
-                    $limitData = $limitation['limit'] ?? null;
-                    
-                    if (is_array($limitData) && isset($limitData['value'])) {
-                        return (int)$limitData['value'];
-                    } elseif (is_string($limitData) || is_numeric($limitData)) {
-                        return (int)$limitData;
-                    }
-                    
-                    return 0;   
-                }
-            }
-        }
-    }
-
-    return 0;
+    return PlanEntitlementSnapshot::integerLimit($user->subscriptionPackage?->plan_type, 'profile-limit') ?? 1;
 }
 
     public function getprofile(Request $request, int $id)    
@@ -208,34 +183,25 @@ private function getSubscriptionProfileLimit($user)
         }
 
     }
+    $token = $request->user()?->currentAccessToken();
+    if (!$token instanceof \Laravel\Sanctum\PersonalAccessToken) {
+        return ApiResponse::error('A registered device session is required.', 401);
+    }
     $device = Device::where('user_id', $user_id)
-                    ->where('device_id', $request->ip())
+                    ->where('sanctum_token_id', $token->getKey())
                     ->orderBy('id','DESC')
                     ->first();
 
     if ($device) {
 
         Device::where('user_id', $user_id)
-                ->where('device_id', $request->ip())
+                ->where('sanctum_token_id', $token->getKey())
                 ->where('id','!=',$device->id)
                 ->delete();
 
         $device->update(['active_profile' => $id]);
     } else {
-        $agent = new Agent();
-        $device_id = $request->getClientIp();
-        $device_name =  $agent->browser();
-        $platform = $agent->platform();
-
-        $device = Device::create([
-                'user_id' => $user_id,
-                'device_id' => $device_id,
-                'device_name' => $device_name,
-                'platform' => $platform,
-                  'session_id' => session()->getId(),
-                'last_activity' => now(),
-                'active_profile' => $id
-            ]);
+        return ApiResponse::error('Register this device before selecting a profile.', 409);
 
     }
 

@@ -40,11 +40,11 @@ trait AuthTrait
                return ['status' => 406, 'message' => 'Unauthorized role & The provided credentials do not match our records'];
             }
 
-            Log::info('Login success (web)', ['user_id' => $user->id, 'ip' => $request->ip()]);
+            Log::info('Administrative web sign-in succeeded.');
             event(new UserLoginSuccess($request, auth()->user()));
             return ['status' => 200, 'message' => 'Login successful!'];
         }
-        Log::info('Login failed: invalid credentials (web)', ['email' => $email, 'ip' => $request->ip()]);
+        Log::info('Login failed: invalid credentials (web)');
         return false;
     }
 
