@@ -105,15 +105,23 @@ readiness.
   infrastructure ports private, and injects the customer API URL into the
   frontend image build and runtime. Laravel and both Next.js services also have
   configured HTTP health checks.
-- The existing Docker admin UI image (Next.js 15.5.29) returned HTTP 403 for
-  cross-origin login, logout, invitation acceptance, and proxied mutations. It
-  does not reflect the Next.js 16.4.6 source in this worktree.
-- `npm run test:bff` and `npm run test:bff:production` passed against a controlled
-  Laravel API stub, covering login, HttpOnly/SameSite cookie storage, production
-  Secure cookie storage, authenticated `/me` forwarding, invalid-session cookie
-  clearing, logout/revocation forwarding, and cross-origin login rejection. The
-  containerized admin UI is a stale Next.js 15.5.29 image, so the production test
-  used the current Next.js 16.4.6 build from the worktree.
+- Rebuilding the admin container exposed two Next.js 16 runtime failures missed
+  by static compilation: the global settings and language loaders read async
+  cookies synchronously. Both now await `cookies()`. The admin image also uses
+  Node 24 to satisfy the engine requirements of its locked Firebase packages.
+- The rebuilt local Docker admin UI runs Next.js 16.4.6 on Node 24.21.0. Its
+  homepage and sign-in route return HTTP 200, an unauthenticated `/api/admin/me/`
+  returns 401, and a cross-origin logout returns 403. The other OTT containers
+  and persistent volumes were left running and unchanged.
+- `npm run test:bff` and `npm run test:bff:production` pass against a controlled
+  Laravel API stub. They cover login, HttpOnly/SameSite cookie storage,
+  production Secure cookie storage, rendered homepage and sign-in pages in
+  production mode, authenticated `/me` forwarding, invalid-session cookie
+  clearing, logout/revocation forwarding, and cross-origin login rejection.
+- `next dev` still returns HTTP 500 for the admin home/sign-in pages with a
+  `RangeError: Maximum call stack size exceeded`; the production build and
+  production container render those pages successfully. This development-mode
+  failure remains a repository quality issue to investigate.
 - PHP syntax checks passed for all changed PHP files.
 - A tracked-source scan found no private-key, AWS access-key, or Stripe live
   secret literals. It found one Google-style API key in the app-configuration
@@ -196,6 +204,8 @@ readiness.
   available; see [Milestone 14](milestone-14-flutter-compatibility.md).
 - Full admin and customer lint scans exit successfully with zero errors or
   warnings.
+- The admin development-server rendering failure above remains unresolved even
+  though its production rendering and BFF checks pass.
 - Webhook tests cover signature rejection and replay deduplication for all four
   providers. Provider-backed payment fulfillment, refund reconciliation, and
   settlement reconciliation remain unverified.
