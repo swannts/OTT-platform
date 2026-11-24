@@ -18,6 +18,7 @@
 - The admin licensing endpoint and page now read/update ISO country allowlists alongside UTC dates. The additive `content_license_territories` migration preserves existing temporal policies and content data.
 - Playback resolves the configurable edge country header only when the immediate socket peer matches an explicitly configured trusted proxy CIDR, then validates the code against active catalog countries. Missing, invalid, or untrusted geo data denies playback only for items that have a territory allowlist.
 - Territory and time-window entitlement is rechecked at playback start, each heartbeat, and each signed private-media request. Signed media requests preserve the actual edge headers and socket peer for country resolution instead of constructing a synthetic request.
+- The technical operations health view reports whether trusted playback geo proxy ranges are absent, syntactically invalid, or configured but still externally unverified. It reports only the configured range count, never the CIDRs or country header; it cannot verify that the edge strips spoofed client headers.
 
 ## Changed database and API
 
@@ -37,6 +38,7 @@ Migration 000005 associates legacy devices to Sanctum tokens by matching the exi
 
 ## Validation
 
+- The playback geo readiness change passed PHP syntax validation, JSX parser validation, and `git diff --check`. Tests and builds were skipped per instruction.
 - After the account-status recheck change and regression coverage for expired subscriptions, expired PPV rentals, and an already-issued media URL after a ban, `PlaybackEntitlementTest` and `PlaybackSessionTest` passed on the isolated `ott_m13_test` MySQL schema: **20 tests, 44 assertions** (one existing PHPUnit deprecation). The test schema was migrated from scratch; the active application database was not used.
 - Focused playback-session and device-limit tests: **6 tests, 31 assertions passed** against an isolated MySQL test schema. This covers signed-manifest expiry while the playback session remains active and login rejection at the registered-device limit.
 - Earlier focused playback, session, TV device-binding, license-window, and support-operations checks passed **30 tests, 113 assertions**. The earlier full-suite result was **117 tests, 528 assertions**; it was not rerun for this increment. One existing PHPUnit deprecation remains.
@@ -49,6 +51,7 @@ Migration 000005 associates legacy devices to Sanctum tokens by matching the exi
 ## Remaining before this milestone is complete
 
 - Deployment must configure `PLAYBACK_GEO_TRUSTED_PROXY_CIDRS` with the actual edge CIDRs and ensure the edge strips any client-supplied country header before setting its own. No production edge CIDRs or per-title territory policies are configured in this workspace. Existing country-of-origin mappings remain descriptive metadata and are not treated as viewing rights.
+- A syntactically configured geo trust path remains explicitly unverified until the deployed edge behavior is checked; the operations health page does not prove proxy/header behavior.
 - DRM license authorization, CDN/origin signing integration, and production-scale delivery have not been configured or verified. Current private HLS delivery streams files through Laravel and is suitable for local validation, not a production CDN capacity claim.
 - The session concurrency gate serializes on the account row in the shared database, which provides cross-instance atomicity without requiring Redis. Multi-node/load validation remains outstanding.
 - Device-limit enforcement is retained in the existing authentication flow, but cross-platform device registration/revocation journeys need broader end-to-end testing.

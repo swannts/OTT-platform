@@ -42,6 +42,7 @@ final class AdminOperationsService
 
         $mediaProcessing = $this->mediaProcessingStatus();
         $checks['media_processing'] = ['status' => $mediaProcessing['status']];
+        $checks['playback_geo'] = $this->playbackGeoConfiguration();
 
         $workerUrl = (string) config('services.go_worker_health_url', 'http://worker:8081/health');
         try {
@@ -127,6 +128,40 @@ final class AdminOperationsService
             'processing' => $processing,
             'failed' => $failed,
             'stale_processing' => $staleProcessing,
+        ];
+    }
+
+    /** @return array{status: string, trusted_proxy_count: int, edge_header_forwarding_verified: false} */
+    private function playbackGeoConfiguration(): array
+    {
+        $header = config('playback.trusted_geo.country_header');
+        $cidrs = config('playback.trusted_geo.trusted_proxy_cidrs', []);
+        if (! is_string($header) || ! preg_match('/^[A-Za-z][A-Za-z0-9-]{0,63}$/', $header) || ! is_array($cidrs)) {
+            return ['status' => 'invalid', 'trusted_proxy_count' => 0, 'edge_header_forwarding_verified' => false];
+        }
+
+        $cidrs = array_values(array_filter($cidrs, static fn (mixed $cidr): bool => is_string($cidr) && trim($cidr) !== ''));
+        if ($cidrs === []) {
+            return ['status' => 'not_configured', 'trusted_proxy_count' => 0, 'edge_header_forwarding_verified' => false];
+        }
+
+        foreach ($cidrs as $cidr) {
+            $parts = explode('/', trim($cidr));
+            if (count($parts) > 2 || filter_var($parts[0], FILTER_VALIDATE_IP) === false) {
+                return ['status' => 'invalid', 'trusted_proxy_count' => 0, 'edge_header_forwarding_verified' => false];
+            }
+            if (isset($parts[1])) {
+                $maxPrefix = filter_var($parts[0], FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false ? 128 : 32;
+                if ($parts[1] === '' || ! ctype_digit($parts[1]) || (int) $parts[1] > $maxPrefix) {
+                    return ['status' => 'invalid', 'trusted_proxy_count' => 0, 'edge_header_forwarding_verified' => false];
+                }
+            }
+        }
+
+        return [
+            'status' => 'configured_unverified',
+            'trusted_proxy_count' => count($cidrs),
+            'edge_header_forwarding_verified' => false,
         ];
     }
 

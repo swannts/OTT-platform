@@ -24,12 +24,13 @@ import { rbacApi } from 'src/features/rbac/api/rbac.api';
 import { RbacPageHeader } from 'src/features/rbac/components/RbacPageHeader';
 
 const serviceLabels = {
-  application: 'Laravel API', database: 'Database', redis: 'Redis', rabbitmq: 'RabbitMQ', rabbitmq_management: 'RabbitMQ management', go_worker: 'Go worker', backups: 'Backups', media_processing: 'Media processing',
+  application: 'Laravel API', database: 'Database', redis: 'Redis', rabbitmq: 'RabbitMQ', rabbitmq_management: 'RabbitMQ management', go_worker: 'Go worker', backups: 'Backups', media_processing: 'Media processing', playback_geo: 'Playback geo trust',
 };
 
 function StatusChip({ status }) {
-  const color = status === 'ok' ? 'success' : status === 'degraded' ? 'warning' : status === 'not_configured' ? 'default' : 'error';
-  return <Chip size="small" color={color} label={status || 'unknown'} />;
+  const color = status === 'ok' ? 'success' : status === 'degraded' || status === 'configured_unverified' ? 'warning' : status === 'not_configured' ? 'default' : 'error';
+  const label = status === 'configured_unverified' ? 'configured · edge unverified' : status || 'unknown';
+  return <Chip size="small" color={color} label={label} />;
 }
 
 function formatBytes(value) {
@@ -140,6 +141,9 @@ export function TechnicalOperationsPage() {
       <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 2 }}>
         Release: {health?.deployment?.release_id || 'not configured'} · Released: {health?.deployment?.released_at || 'not reported'} · Queue connection: {health?.queue?.connection || '—'} · Waiting: {health?.queue?.queued ?? 'not reported'} · Reserved: {health?.queue?.reserved ?? 'not reported'} · Failed: {health?.queue?.failed ?? 'not reported'} · Checked: {health?.checked_at || '—'}
       </Typography>
+      {health?.services?.playback_geo && <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+        Trusted playback proxy ranges: {health.services.playback_geo.trusted_proxy_count} · Edge country-header forwarding and client-header stripping must be verified at deployment.
+      </Typography>}
       <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
         Incident email route: {health?.alerting?.mail_configured ? 'configured (delivery unverified)' : 'not configured'} · Minimum severity: {health?.alerting?.minimum_severity || 'not reported'}
       </Typography>
