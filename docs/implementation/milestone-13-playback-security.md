@@ -14,6 +14,10 @@
 - A configured maximum video height filters higher variants from the HLS master playlist and rejects direct requests for higher variant playlists or segments, so clients cannot bypass the quality restriction by skipping the master playlist.
 - Added an additive `content_license_windows` table and permission-checked admin API/UI for UTC licensing windows on movies, series, episodes, and videos. Schedule changes are audited; episode playback must fit both its own window and its parent series window. Existing catalog items without a configured window retain their current availability.
 - Playback denies content before a configured licensing start, at or after its end, and for invalid stored ranges. UTC-normalized `DATETIME` storage avoids database/server timezone shifts.
+- Added a separate country allowlist per content item. It does not infer viewing rights from the catalog's country-of-origin metadata. Episodes must satisfy both their own and their parent series' allowlists. An item with no allowlist remains unrestricted by territory.
+- The admin licensing endpoint and page now read/update ISO country allowlists alongside UTC dates. The additive `content_license_territories` migration preserves existing temporal policies and content data.
+- Playback resolves the configurable edge country header only when the immediate socket peer matches an explicitly configured trusted proxy CIDR, then validates the code against active catalog countries. Missing, invalid, or untrusted geo data denies playback only for items that have a territory allowlist.
+- Territory and time-window entitlement is rechecked at playback start, each heartbeat, and each signed private-media request. Signed media requests preserve the actual edge headers and socket peer for country resolution instead of constructing a synthetic request.
 
 ## Changed database and API
 
@@ -23,6 +27,7 @@ Additive migrations:
 - `2026_11_24_000004_add_consumed_at_to_tv_login_sessions.php`
 - `2026_11_24_000005_add_sanctum_binding_to_devices.php`
 - `2026_11_24_000021_create_content_license_windows_table.php`
+- `2026_11_24_000022_create_content_license_territories_table.php`
 
 Milestone 7 adds plan limitation definitions and configuration. Until a maximum quality is configured on a subscriber plan, playback has no plan-specific quality ceiling.
 
@@ -37,12 +42,13 @@ Migration 000005 associates legacy devices to Sanctum tokens by matching the exi
 - Earlier focused playback, session, TV device-binding, license-window, and support-operations checks passed **30 tests, 113 assertions**. The earlier full-suite result was **117 tests, 528 assertions**; it was not rerun for this increment. One existing PHPUnit deprecation remains.
 - Admin support UI lint passed, and the Next.js production build passed with the existing route-export warnings described in the project verification log.
 - PHP syntax checks passed for all touched PHP files.
+- No build or tests were run for the new territory policy slice in this increment, per the current instruction to focus on implementation only.
 - Next.js TypeScript check and production build passed on Next.js 16.4.6.
 - `git diff --check` passed; Git reports line-ending normalization warnings for two legacy CRLF files.
 
 ## Remaining before this milestone is complete
 
-- Geographic licensing cannot be enforced safely without a trusted edge/provider country signal and a defined interpretation of the existing country-of-origin mappings. Client-supplied country data is not trusted.
+- Deployment must configure `PLAYBACK_GEO_TRUSTED_PROXY_CIDRS` with the actual edge CIDRs and ensure the edge strips any client-supplied country header before setting its own. No production edge CIDRs or per-title territory policies are configured in this workspace. Existing country-of-origin mappings remain descriptive metadata and are not treated as viewing rights.
 - DRM license authorization, CDN/origin signing integration, and production-scale delivery have not been configured or verified. Current private HLS delivery streams files through Laravel and is suitable for local validation, not a production CDN capacity claim.
 - The session concurrency gate serializes on the account row in the shared database, which provides cross-instance atomicity without requiring Redis. Multi-node/load validation remains outstanding.
 - Device-limit enforcement is retained in the existing authentication flow, but cross-platform device registration/revocation journeys need broader end-to-end testing.

@@ -37,6 +37,7 @@ export function ContentLicensingPage() {
   const [contentId, setContentId] = useState('');
   const [startsAt, setStartsAt] = useState('');
   const [endsAt, setEndsAt] = useState('');
+  const [allowedCountryCodes, setAllowedCountryCodes] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadedContentKey, setLoadedContentKey] = useState('');
   const [error, setError] = useState('');
@@ -55,6 +56,7 @@ export function ContentLicensingPage() {
       const response = await rbacApi.contentLicenseWindow(contentType, contentId.trim());
       setStartsAt(toUtcInput(response.data?.starts_at));
       setEndsAt(toUtcInput(response.data?.ends_at));
+      setAllowedCountryCodes((response.data?.allowed_country_codes || []).join(', '));
       setContentId(contentId.trim());
       setLoadedContentKey(`${contentType}:${contentId.trim()}`);
       setMessage('Licensing window loaded.');
@@ -75,10 +77,17 @@ export function ContentLicensingPage() {
       await rbacApi.updateContentLicenseWindow(contentType, contentId.trim(), {
         starts_at: fromUtcInput(startsAt),
         ends_at: fromUtcInput(endsAt),
+        allowed_country_codes: allowedCountryCodes.split(',').map((code) => code.trim().toUpperCase()).filter(Boolean),
       });
-      setMessage('Licensing window saved in UTC.');
+      setMessage('Playback licensing saved. Dates use UTC; country restrictions require a trusted edge country signal.');
     } catch (saveError) {
-      setError(saveError.response?.data?.errors?.ends_at?.[0] || saveError.response?.data?.message || 'The licensing window could not be saved.');
+      const validationErrors = saveError.response?.data?.errors;
+      const firstValidationError = validationErrors ? Object.values(validationErrors).flat()[0] : null;
+      setError(
+        firstValidationError ||
+          saveError.response?.data?.message ||
+          'The licensing window could not be saved.'
+      );
     } finally {
       setLoading(false);
     }
@@ -92,7 +101,7 @@ export function ContentLicensingPage() {
       await rbacApi.updateContentLicenseWindow(contentType, contentId.trim(), { starts_at: null, ends_at: null });
       setStartsAt('');
       setEndsAt('');
-      setMessage('Licensing restrictions cleared.');
+      setMessage('Schedule cleared. Any country restrictions remain in effect.');
     } catch (clearError) {
       setError(clearError.response?.data?.message || 'The licensing window could not be cleared.');
     } finally {
@@ -104,7 +113,7 @@ export function ContentLicensingPage() {
     <DashboardContent>
       <RbacPageHeader
         title="Content licensing"
-        description="Set the UTC dates when catalog content is licensed for playback. Episode windows also honor their parent series window."
+        description="Set UTC playback dates and an optional country allowlist. Episodes also honor their parent series restrictions."
       />
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {message && <Alert severity="success" sx={{ mb: 2 }}>{message}</Alert>}
@@ -140,6 +149,15 @@ export function ContentLicensingPage() {
               Load window
             </Button>
           </Stack>
+          <TextField
+            fullWidth
+            label="Allowed country codes"
+            placeholder="BD, MY, ID"
+            helperText="Optional ISO country codes separated by commas. Blank allows all territories. Restricted titles deny playback when a trusted edge country cannot be resolved."
+            value={allowedCountryCodes}
+            onChange={(event) => setAllowedCountryCodes(event.target.value)}
+            disabled={!isLoaded || !canSchedule}
+          />
           <Typography variant="caption" color="text.secondary">
             Dates use UTC. Leave either date blank for an open boundary. Leave both blank to remove the schedule.
           </Typography>

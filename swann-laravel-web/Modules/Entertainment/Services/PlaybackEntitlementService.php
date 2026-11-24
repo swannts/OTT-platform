@@ -6,8 +6,10 @@ use App\Models\ContentLicenseWindow;
 use App\Models\Device;
 use App\Models\User;
 use App\Models\UserMultiProfile;
+use App\Support\Playback\TrustedCountryResolver;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\PersonalAccessToken;
 use Modules\Entertainment\Models\Entertainment;
 use Modules\Episode\Models\Episode;
@@ -94,6 +96,7 @@ class PlaybackEntitlementService
         }
 
         $this->assertWithinLicensingWindow($content, $type);
+        $this->assertAllowedTerritories($content, $type, $request);
 
         if ((int) $profile->is_child_profile === 1 && (int) $content->is_restricted === 1) {
             throw new AuthorizationException('This title is not available for a child profile.');
@@ -199,6 +202,45 @@ class PlaybackEntitlementService
                 || ($licenseWindow->ends_at && $licenseWindow->ends_at->lessThanOrEqualTo($now))
                 || ($licenseWindow->starts_at && $licenseWindow->ends_at && $licenseWindow->ends_at->lessThanOrEqualTo($licenseWindow->starts_at))) {
                 throw new AuthorizationException('This title is outside its licensed playback window.');
+            }
+        }
+    }
+
+    private function assertAllowedTerritories(object $content, string $type, Request $request): void
+    {
+        $contentType = match ($type) {
+            'movie', 'tvshow' => 'entertainment',
+            'episode' => 'episode',
+            'video' => 'video',
+        };
+        $licensedItems = [];
+
+        if ($type === 'episode' && $content->entertainment_id) {
+            $licensedItems[] = ['entertainment', (string) $content->entertainment_id];
+        }
+        $licensedItems[] = [$contentType, (string) $content->getKey()];
+
+        $policies = [];
+        foreach ($licensedItems as [$licensedType, $licensedId]) {
+            $allowedCountryCodes = DB::table('content_license_territories')
+                ->where('content_type', $licensedType)
+                ->where('content_id', $licensedId)
+                ->pluck('country_code')
+                ->all();
+
+            if ($allowedCountryCodes !== []) {
+                $policies[] = $allowedCountryCodes;
+            }
+        }
+
+        if ($policies === []) {
+            return;
+        }
+
+        $countryCode = app(TrustedCountryResolver::class)->resolve($request);
+        foreach ($policies as $allowedCountryCodes) {
+            if ($countryCode === null || ! in_array($countryCode, $allowedCountryCodes, true)) {
+                throw new AuthorizationException('This title is not licensed for playback in this territory.');
             }
         }
     }

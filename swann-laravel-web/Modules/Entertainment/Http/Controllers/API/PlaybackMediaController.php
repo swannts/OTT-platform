@@ -57,9 +57,8 @@ class PlaybackMediaController extends Controller
         $content = $contentModel::query()->whereKey($session->content_id)->first();
         abort_unless($content && (int) $content->media_asset_id === $assetId, 403, 'Media is no longer assigned to this title.');
 
-        $entitlementRequest = Request::create('/api/v3/playback/media', 'GET');
         try {
-            $entitlements->authorize($user, (string) $content->id, $session->content_type, (int) $session->profile_id, $entitlementRequest);
+            $entitlements->authorize($user, (string) $content->id, $session->content_type, (int) $session->profile_id, $request);
         } catch (AuthorizationException) {
             abort(403, 'Playback entitlement expired or was revoked.');
         }

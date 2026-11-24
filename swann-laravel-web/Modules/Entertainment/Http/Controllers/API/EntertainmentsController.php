@@ -189,30 +189,44 @@ class EntertainmentsController extends Controller
         ], 'Playback authorized.', 200);
     }
 
-    public function heartbeatPlayback(Request $request, string $sessionId, PlaybackSessionService $sessions, PlaybackMediaUrlService $mediaUrls)
+    public function heartbeatPlayback(Request $request, string $sessionId, PlaybackSessionService $sessions, PlaybackMediaUrlService $mediaUrls, PlaybackEntitlementService $entitlements)
     {
         $token = $request->user()->currentAccessToken();
         if (!$token instanceof PersonalAccessToken) {
             return ApiResponse::error('A registered playback session is required.', 401);
         }
+        $session = DB::table('playback_sessions')
+            ->where('session_id', $sessionId)
+            ->where('user_id', $request->user()->id)
+            ->where('device_token_id', $token->getKey())
+            ->whereNull('ended_at')
+            ->where('expires_at', '>', now())
+            ->first();
+        if (!$session) {
+            return ApiResponse::error('Playback session has expired or was revoked.', 403);
+        }
         try {
+            $entitlements->authorize(
+                $request->user(),
+                (string) $session->content_id,
+                (string) $session->content_type,
+                (int) $session->profile_id,
+                $request
+            );
             $expiresAt = $sessions->heartbeat($request->user(), $token, $sessionId);
         } catch (\Illuminate\Auth\Access\AuthorizationException $exception) {
             return ApiResponse::error($exception->getMessage(), 403);
         }
         $response = ['expires_at' => $expiresAt];
-        $session = DB::table('playback_sessions')->where('session_id', $sessionId)->where('user_id', $request->user()->id)->first();
-        if ($session) {
-            $model = match ($session->content_type) {
-                'movie', 'tvshow' => Entertainment::class,
-                'episode' => Episode::class,
-                'video' => Video::class,
-                default => null,
-            };
-            $assetId = $model ? $model::query()->whereKey($session->content_id)->value('media_asset_id') : null;
-            if ($assetId) {
-                $response['media_url'] = $mediaUrls->sign((int) $assetId, 'master.m3u8', $sessionId);
-            }
+        $model = match ($session->content_type) {
+            'movie', 'tvshow' => Entertainment::class,
+            'episode' => Episode::class,
+            'video' => Video::class,
+            default => null,
+        };
+        $assetId = $model ? $model::query()->whereKey($session->content_id)->value('media_asset_id') : null;
+        if ($assetId) {
+            $response['media_url'] = $mediaUrls->sign((int) $assetId, 'master.m3u8', $sessionId);
         }
         return ApiResponse::success($response, 'Playback session refreshed.', 200);
     }
