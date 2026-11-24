@@ -35,6 +35,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('media:uploads-clean-expired')->name('media-upload-cleanup')->hourly()->withoutOverlapping()->description('Clean expired private media upload chunks');
         $schedule->command('marketing:publish-scheduled')->name('marketing:publish-scheduled')->everyMinute()->withoutOverlapping()->description('Publish and expire approved marketing campaigns');
         $schedule->command('analytics:generate-scheduled-reports')->name('analytics:generate-scheduled-reports')->everyMinute()->withoutOverlapping()->description('Generate due privacy-preserving analytics reports');
+        $schedule->command('operations:prune-events')->name('operations:prune-events')->dailyAt('03:15')->withoutOverlapping();
         $schedule->command('backup:run')->name('production-backup')->dailyAt('01:30')->withoutOverlapping();
         $schedule->command('backup:clean')->name('production-backup-cleanup')->dailyAt('02:15')->withoutOverlapping();
         $schedule->command('backup:monitor')->name('production-backup-monitor')->dailyAt('02:45')->withoutOverlapping();

@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\User;
 use App\Services\AdminAnalyticsService;
 use App\Support\Rbac\ExplicitPermission;
+use App\Support\Operations\OperationsEventLogger;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -33,6 +34,7 @@ class GenerateScheduledAnalyticsReports extends Command
                     'report_run_id' => $report->id,
                     'exception' => $exception::class,
                 ]);
+                app(OperationsEventLogger::class)->record('analytics.report.failed');
                 DB::table('analytics_report_runs')->where('id', $report->id)->update(['status' => 'failed', 'error_code' => 'generation_failed', 'updated_at' => now()]);
             }
         });

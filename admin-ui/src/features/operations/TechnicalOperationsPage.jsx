@@ -52,11 +52,13 @@ function formatPercent(value) {
 export function TechnicalOperationsPage() {
   const { user } = useAuthContext();
   const canHealth = hasPermission(user, 'operations.health.view');
+  const canLogs = hasPermission(user, 'operations.logs.view');
   const canJobs = hasPermission(user, 'operations.jobs.view');
   const canRetry = hasPermission(user, 'operations.jobs.retry');
   const canIncidents = hasPermission(user, 'operations.incidents.manage');
   const canPlayback = hasPermission(user, 'analytics.playback.view');
   const [health, setHealth] = useState(null);
+  const [logs, setLogs] = useState([]);
   const [jobs, setJobs] = useState([]);
   const [incidents, setIncidents] = useState([]);
   const [playback, setPlayback] = useState([]);
@@ -66,20 +68,22 @@ export function TechnicalOperationsPage() {
 
   const loadOperations = useCallback(() => Promise.allSettled([
       ...(canHealth ? [rbacApi.operationsHealth()] : []),
+      ...(canLogs ? [rbacApi.operationsLogs({ per_page: 50 })] : []),
       ...(canJobs ? [rbacApi.operationsJobs({ per_page: 50 })] : []),
       ...(canIncidents ? [rbacApi.operationsIncidents({ per_page: 50 })] : []),
       ...(canPlayback ? [rbacApi.operationsPlayback()] : []),
-    ]), [canHealth, canIncidents, canJobs, canPlayback]);
+    ]), [canHealth, canIncidents, canJobs, canLogs, canPlayback]);
 
   const applyOperations = useCallback((requests) => {
     let index = 0;
     const failures = [];
     if (canHealth) { const result = requests[index++]; if (result.status === 'fulfilled') setHealth(result.value.data); else failures.push('service health'); }
+    if (canLogs) { const result = requests[index++]; if (result.status === 'fulfilled') setLogs(result.value.data || []); else failures.push('sanitized operations log'); }
     if (canJobs) { const result = requests[index++]; if (result.status === 'fulfilled') setJobs(result.value.data || []); else failures.push('failed jobs'); }
     if (canIncidents) { const result = requests[index++]; if (result.status === 'fulfilled') setIncidents(result.value.data || []); else failures.push('incidents'); }
     if (canPlayback) { const result = requests[index++]; if (result.status === 'fulfilled') setPlayback(result.value.data?.events || []); else failures.push('playback diagnostics'); }
     if (failures.length) setError(`Could not load ${failures.join(', ')}.`);
-  }, [canHealth, canJobs, canIncidents, canPlayback]);
+  }, [canHealth, canJobs, canIncidents, canLogs, canPlayback]);
 
   const refresh = useCallback(async () => {
     setError('');
@@ -165,6 +169,16 @@ export function TechnicalOperationsPage() {
       {playback.length ? <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
         {playback.map((event) => <Chip key={event.event_code} variant="outlined" label={`${event.event_code}: ${event.event_count}`} />)}
       </Stack> : <Typography color="text.secondary">No playback diagnostic events in this window.</Typography>}
+    </CardContent></Card>}
+
+    {canLogs && <Card sx={{ mb: 3 }}><CardContent>
+      <Typography variant="h6" sx={{ mb: 2 }}>Sanitized operations log</Typography>
+      <Table size="small"><TableHead><TableRow><TableCell>Time (UTC)</TableCell><TableCell>Severity</TableCell><TableCell>Service</TableCell><TableCell>Event</TableCell><TableCell>Count</TableCell><TableCell>Summary</TableCell></TableRow></TableHead>
+        <TableBody>{logs.map((event) => <TableRow key={event.id}><TableCell>{event.created_at}</TableCell><TableCell><Chip size="small" label={event.severity} /></TableCell><TableCell>{event.service}</TableCell><TableCell><Typography variant="body2" sx={{ fontFamily: 'monospace' }}>{event.event_code}</Typography></TableCell><TableCell>{event.occurrence_count}</TableCell><TableCell>{event.summary}</TableCell></TableRow>)}
+          {logs.length === 0 && <TableRow><TableCell colSpan={6} align="center">No sanitized operations events.</TableCell></TableRow>}
+        </TableBody>
+      </Table>
+      <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>The feed contains allowlisted event codes and summaries only; it never exposes raw log lines, exception messages, or request payloads.</Typography>
     </CardContent></Card>}
 
     {canJobs && <Card sx={{ mb: 3 }}><CardContent>

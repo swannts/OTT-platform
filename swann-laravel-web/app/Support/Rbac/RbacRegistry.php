@@ -82,7 +82,7 @@ final class RbacRegistry
             'analytics.playback.view' => 'View playback quality analytics.',
             'analytics.export' => 'Export authorized aggregate analytics.',
             'operations.health.view' => 'View service health.',
-            'operations.logs.view' => 'View sanitized application logs.',
+            'operations.logs.view' => 'View sanitized operational failure events.',
             'operations.jobs.view' => 'View background job status.',
             'operations.jobs.retry' => 'Retry approved background jobs.',
             'operations.incidents.manage' => 'Manage operational incidents.',

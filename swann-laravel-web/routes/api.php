@@ -178,6 +178,7 @@ Route::prefix('admin')->group(function () {
         Route::prefix('operations')->group(function (): void {
             Route::get('health', [\App\Http\Controllers\API\AdminTechnicalOperationsController::class, 'health'])->middleware('explicit.permission:operations.health.view');
             Route::get('playback', [\App\Http\Controllers\API\AdminTechnicalOperationsController::class, 'playback'])->middleware('explicit.permission:analytics.playback.view');
+            Route::get('logs', [\App\Http\Controllers\API\AdminTechnicalOperationsController::class, 'logs'])->middleware('explicit.permission:operations.logs.view');
             Route::get('jobs', [\App\Http\Controllers\API\AdminTechnicalOperationsController::class, 'jobs'])->middleware('explicit.permission:operations.jobs.view');
             Route::post('jobs/{job}/retry', [\App\Http\Controllers\API\AdminTechnicalOperationsController::class, 'retryJob'])->middleware('explicit.permission:operations.jobs.retry');
             Route::get('incidents', [\App\Http\Controllers\API\AdminTechnicalOperationsController::class, 'incidents'])->middleware('explicit.permission:operations.incidents.manage');

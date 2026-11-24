@@ -41,7 +41,7 @@ export function requiredPermissionsForPath(pathname) {
     return ['content.submit', 'content.review', 'content.approve', 'content.publish'];
   }
   if (pathname === '/dashboard/operations') {
-    return ['operations.health.view', 'operations.jobs.view', 'operations.jobs.retry', 'operations.incidents.manage', 'analytics.playback.view'];
+    return ['operations.health.view', 'operations.logs.view', 'operations.jobs.view', 'operations.jobs.retry', 'operations.incidents.manage', 'analytics.playback.view'];
   }
   if (pathname === '/dashboard/support') {
     return ['support.accounts.view', 'support.tickets.manage'];

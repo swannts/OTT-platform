@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Backend;
 
 use App\Authorizable;
 use App\Http\Controllers\Controller;
+use App\Support\Operations\OperationsEventLogger;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -74,6 +75,7 @@ class BackupController extends Controller
                     'disk' => $diskName,
                     'exception' => $exception::class,
                 ]);
+                app(OperationsEventLogger::class)->record('backup.destination.failed');
             }
         }
 
@@ -109,6 +111,7 @@ class BackupController extends Controller
             return redirect()->back();
         } catch (Throwable $exception) {
             Log::error('Laravel backup command raised an exception.', ['exception' => $exception::class]);
+            app(OperationsEventLogger::class)->record('backup.create.failed');
             Flash::error('The backup could not be created. Check the application logs.');
 
             return redirect()->back();

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Notifications\OperationsIncidentAlert;
 use App\Services\AdminOperationsService;
+use App\Support\Operations\OperationsEventLogger;
 use App\Support\Rbac\AdminAuditLogger;
 use App\Support\Rbac\ExplicitPermission;
 use Illuminate\Http\JsonResponse;
@@ -33,6 +34,35 @@ class AdminTechnicalOperationsController extends Controller
             ->where('occurred_at', '>=', now()->subHours(24))
             ->groupBy('event_code')->orderByDesc('event_count')->limit(30)->get();
         return response()->json(['data' => ['window_hours' => 24, 'events' => $events]]);
+    }
+
+    public function logs(Request $request): JsonResponse
+    {
+        abort_unless(ExplicitPermission::allows($request->user(), 'operations.logs.view'), 403);
+        abort_unless(Schema::hasTable('operations_events'), 503, 'Sanitized operations event storage is not configured.');
+
+        $validated = $request->validate([
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            'severity' => ['sometimes', 'string', 'in:warning,error,critical'],
+        ]);
+        $query = DB::table('operations_events')->orderByDesc('created_at')->orderByDesc('id');
+        if (isset($validated['severity'])) {
+            $query->where('severity', $validated['severity']);
+        }
+        $events = $query->paginate((int) ($validated['per_page'] ?? 50));
+
+        return response()->json([
+            'data' => $events->getCollection()->map(static fn (object $event): array => [
+                'id' => $event->id,
+                'event_code' => $event->event_code,
+                'service' => $event->service,
+                'severity' => $event->severity,
+                'summary' => $event->summary,
+                'occurrence_count' => $event->occurrence_count,
+                'created_at' => $event->created_at,
+            ])->values(),
+            'meta' => ['current_page' => $events->currentPage(), 'last_page' => $events->lastPage(), 'total' => $events->total()],
+        ]);
     }
 
     public function jobs(Request $request): JsonResponse
@@ -176,6 +206,7 @@ class AdminTechnicalOperationsController extends Controller
             ));
         } catch (\Throwable $exception) {
             Log::warning('Operations incident alert delivery failed.', ['exception' => $exception::class]);
+            app(OperationsEventLogger::class)->record('operations.incident.alert_failed');
         }
     }
 

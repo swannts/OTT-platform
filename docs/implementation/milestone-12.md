@@ -16,6 +16,7 @@
 - Optional queued email alerts route newly opened or state-changed incidents at or above a configurable severity threshold. Alert messages contain only the incident ID, status, and severity; recipients and SMTP delivery must be configured through deployment secrets.
 - Added an internal Go worker health endpoint that reports process, RabbitMQ connection, Redis TCP reachability, and database ping. Docker Compose exposes it only on the internal network.
 - Replaced the old operations summary page with a permission-aware health, queue, playback, failed-job, and incident UI.
+- Added a database-backed sanitized operations event feed. Producers can write only predefined event codes, service labels, severities, and fixed summaries; the API paginates these records behind `operations.logs.view` and never reads raw Laravel log files or returns exception messages or request payloads. Repeated events are aggregated per minute and aggregates are pruned after 30 days. The admin operations page exposes the feed only to staff with that permission. The additive migration refuses to discard non-empty event history on rollback.
 
 ## API and permissions
 
@@ -25,6 +26,7 @@ All routes require Sanctum authentication and `admin.access`:
 |---|---|---|
 | GET | `/api/admin/operations/health` | `operations.health.view` |
 | GET | `/api/admin/operations/playback` | `analytics.playback.view` |
+| GET | `/api/admin/operations/logs` | `operations.logs.view` |
 | GET | `/api/admin/operations/jobs` | `operations.jobs.view` |
 | POST | `/api/admin/operations/jobs/{uuid}/retry` | `operations.jobs.retry` |
 | GET | `/api/admin/operations/incidents` | `operations.incidents.manage` |
@@ -48,7 +50,8 @@ and consumers. Keep the development overlay when rebuilding:
 
 - `TechnicalOperationsTest`, `AnalyticsOperationsTest`, `SupportOperationsTest`, and `AdminContentWorkflowTest`: 19 tests, 162 assertions passed.
 - The new media-processing health aggregates were reviewed against the Laravel job schema and Go worker lease heartbeat/reclaim behavior. No tests were run for this increment, per instruction.
+- The sanitized event feed and redacted diagnostic producers received source review and PHP syntax checks only. Builds and tests remain deferred per instruction.
 - Admin UI production build passed; existing Next.js dynamic-export warnings and a Node URL deprecation warning remain. The repo has no ESLint config, so standalone ESLint could not run; Next.js build performed its integrated lint/type phase.
 - The full Go suite passed under Go 1.22 in a disposable container. The worker image rebuilt successfully, and its internal live health endpoint reports all five checks as healthy. Queue inspection remains aggregate-only; no dead-letter payloads were read or replayed.
-- RabbitMQ reports queue counts and consumer counts, but the UI does not read message bodies or offer arbitrary DLQ replay. CDN delivery, DRM license telemetry, host-wide resource metrics, and sanitized application-log browsing have no configured telemetry/provider in this repository and remain unimplemented. Incident email routing is implemented, but SMTP configuration and delivery remain unverified. Backup freshness and encrypted archive verification are configured, but an actual database/media restore rehearsal remains outstanding.
+- RabbitMQ reports queue counts and consumer counts, but the UI does not read message bodies or offer arbitrary DLQ replay. CDN delivery, DRM license telemetry, and host-wide resource metrics have no configured telemetry/provider in this repository and remain unimplemented. The sanitized operations event feed covers selected application failures; it is not a raw or comprehensive application log viewer. Incident email routing is implemented, but SMTP configuration and delivery remain unverified. Backup freshness and encrypted archive verification are configured, but an actual database/media restore rehearsal remains outstanding.
 - No production-readiness claim is made from these local checks.

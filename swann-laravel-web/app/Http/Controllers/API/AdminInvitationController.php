@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Policies\AdminRolePolicy;
 use App\Support\Rbac\AdminAuditLogger;
 use App\Support\Rbac\ExplicitPermission;
+use App\Support\Operations\OperationsEventLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -82,6 +83,7 @@ class AdminInvitationController extends Controller
             $invitation->forceFill(['revoked_at' => now()])->save();
             $this->audit->record($request->user(), 'staff.invitation.delivery_failed', AdminInvitation::class, $invitation->getKey(), null, ['email' => $this->maskedEmail($email)], 'failure');
             Log::warning('Administrative invitation delivery failed.', ['exception' => $exception::class]);
+            app(OperationsEventLogger::class)->record('admin.invitation.delivery_failed');
 
             return response()->json(['message' => 'The invitation could not be delivered.'], 503);
         }
