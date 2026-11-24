@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Lock, Sparkles, ShieldCheck } from 'lucide-react';
 
 interface LockedPlayerProps {
@@ -20,9 +21,11 @@ export default function LockedPlayer({ title, poster }: LockedPlayerProps) {
       {/* Background Poster with Cinematic Gradient & Blur */}
       {poster && (
         <div className="absolute inset-0 pointer-events-none">
-          <img
+          <Image
             src={poster}
             alt={title}
+            fill
+            sizes="100vw"
             className="w-full h-full object-cover opacity-20 filter blur-md scale-105"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#05080c] via-[#05080c]/80 to-[#05080c]/60" />
@@ -68,4 +71,3 @@ export default function LockedPlayer({ title, poster }: LockedPlayerProps) {
     </div>
   );
 }
-

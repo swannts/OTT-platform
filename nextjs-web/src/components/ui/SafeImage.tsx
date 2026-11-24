@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { DEFAULT_FALLBACK_IMAGE } from '@/constants';
 import { blurHashToDataURL } from '@/lib/blurhash';
@@ -8,7 +9,7 @@ import { Skeleton } from './Skeleton';
 
 export const DEFAULT_ISLAMIC_FALLBACK = DEFAULT_FALLBACK_IMAGE;
 
-export interface SafeImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src'> {
+export interface SafeImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src' | 'width' | 'height'> {
   src?: string | null;
   fallbackSrc?: string;
   blurhash?: string | null;
@@ -34,6 +35,7 @@ export default function SafeImage({
   aspectRatio = 'auto',
   priority = false,
   showSkeleton = false,
+  sizes = '100vw',
   className,
   containerClassName,
   ...props
@@ -48,44 +50,12 @@ export default function SafeImage({
     () => (blurhash ? blurHashToDataURL(blurhash, 32, 32) : null),
     [blurhash]
   );
-  const imgRef = useRef<HTMLImageElement | null>(null);
-
-  // Check if image is already loaded (crucial for cached images during route navigation)
-  const checkImageComplete = useCallback((node: HTMLImageElement | null) => {
-    if (!node) return;
-    if (node.complete) {
-      if (node.naturalWidth > 0) {
-        setLoadedSource(imgSrc);
-      } else if (node.currentSrc || node.src) {
-        // Failed to load
-        if (imgSrc !== fallbackSrc) {
-          setFailedSource(cleanTarget);
-        } else {
-          setLoadedSource(fallbackSrc);
-        }
-      }
-    }
-  }, [imgSrc, fallbackSrc, cleanTarget]);
-
-  // Callback ref so we immediately evaluate cached images upon DOM node creation
-  const setRef = useCallback((node: HTMLImageElement | null) => {
-    imgRef.current = node;
-    checkImageComplete(node);
-  }, [checkImageComplete]);
-
   // Safety Watchdog: If an image is cached or network stalls on page change,
   // never leave the user stuck on the blurhash color forever.
   useEffect(() => {
     if (isLoaded) return;
 
     const timer = setTimeout(() => {
-      if (imgRef.current?.complete) {
-        if (imgRef.current.naturalWidth > 0) {
-          setLoadedSource(imgSrc);
-          return;
-        }
-      }
-
       // If image didn't resolve in 2 seconds, gracefully show fallback and reveal
       if (imgSrc !== fallbackSrc) {
         setFailedSource(cleanTarget);
@@ -105,12 +75,8 @@ export default function SafeImage({
   const handleError = () => {
     if (imgSrc !== fallbackSrc) {
       setFailedSource(cleanTarget);
-      if (imgRef.current?.complete && imgRef.current.naturalWidth > 0) {
-        setLoadedSource(fallbackSrc);
-      }
-    } else {
-      setLoadedSource(fallbackSrc);
     }
+    setLoadedSource(fallbackSrc);
   };
 
   return (
@@ -147,16 +113,18 @@ export default function SafeImage({
       ) : null}
 
       {/* 3. Primary Image Layer */}
-      <img
-        ref={setRef}
+      <Image
         src={imgSrc}
         alt={alt}
+        fill
+        sizes={sizes}
+        priority={priority}
         onLoad={handleLoad}
         onError={handleError}
         decoding="async"
         loading={priority ? 'eager' : (props.loading || 'lazy')}
         className={cn(
-          'relative z-10 w-full h-full object-cover transition-opacity duration-300 ease-in-out',
+          'z-10 object-cover transition-opacity duration-300 ease-in-out',
           isLoaded ? 'opacity-100' : 'opacity-0',
           className
         )}

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { getYouTubeEmbedUrl, extractYouTubeId } from '@/lib/youtube';
 import { api } from '@/lib/api';
 import { ExternalLink, RefreshCw, Play, AlertCircle } from 'lucide-react';
@@ -119,9 +120,11 @@ export default function YouTubeConnector({
       {!isLoaded && !hasError && (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/90">
           {poster && (
-            <img
+            <Image
               src={poster}
               alt={title}
+              fill
+              sizes="100vw"
               className="absolute inset-0 w-full h-full object-cover opacity-25 filter blur-sm"
             />
           )}

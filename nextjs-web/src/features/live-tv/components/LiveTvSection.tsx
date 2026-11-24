@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
   setSelectedChannel,
@@ -138,6 +139,7 @@ export default function LiveTvSection({ initialChannels }: LiveTvSectionProps) {
             {channels.map((channel) => {
               const isSelected = activeChannel?.id === channel.id;
               const channelTitle = getChannelName(channel);
+              const channelImage = channel.poster_image || channel.thumbnail_image;
               return (
                 <button
                   key={channel.id}
@@ -149,10 +151,13 @@ export default function LiveTvSection({ initialChannels }: LiveTvSectionProps) {
                       : 'bg-[#0c1218] hover:bg-white/5 border-white/[0.08]'
                   }`}
                 >
-                  {channel.poster_image || channel.thumbnail_image ? (
-                    <img
-                      src={channel.poster_image || channel.thumbnail_image}
+                  {channelImage ? (
+                    <Image
+                      src={channelImage}
                       alt={channelTitle}
+                      width={56}
+                      height={56}
+                      sizes="56px"
                       className="w-14 h-14 rounded-lg object-cover flex-shrink-0 bg-neutral-900 border border-white/10"
                     />
                   ) : (
@@ -185,4 +190,3 @@ export default function LiveTvSection({ initialChannels }: LiveTvSectionProps) {
     </div>
   );
 }
-

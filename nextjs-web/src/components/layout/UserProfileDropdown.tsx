@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth, useLanguage } from '@/providers';
@@ -81,10 +82,12 @@ export default function UserProfileDropdown() {
         aria-expanded={isOpen}
       >
         {userAvatar && !imgError ? (
-          <img
+          <Image
             src={userAvatar}
             alt={user?.name || 'User Profile'}
             onError={() => setImgError(true)}
+            fill
+            sizes="36px"
             className="w-full h-full object-cover"
           />
         ) : (
@@ -107,12 +110,14 @@ export default function UserProfileDropdown() {
               {/* Logged in User Card */}
               <div className="px-4 py-3 border-b border-white/10 bg-white/[0.02]">
                 <div className="flex items-center space-x-3 mb-2">
-                  <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center ring-2 ring-[#E5B869]/50 flex-shrink-0 bg-[#E5B869]/20">
+                  <div className="relative w-10 h-10 rounded-full overflow-hidden flex items-center justify-center ring-2 ring-[#E5B869]/50 flex-shrink-0 bg-[#E5B869]/20">
                     {userAvatar && !imgError ? (
-                      <img
+                      <Image
                         src={userAvatar}
                         alt={user.name}
                         onError={() => setImgError(true)}
+                        fill
+                        sizes="40px"
                         className="w-full h-full object-cover"
                       />
                     ) : (

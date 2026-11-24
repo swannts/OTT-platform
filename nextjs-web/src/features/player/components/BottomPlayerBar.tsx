@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
   loadActiveTrack,
@@ -72,9 +73,11 @@ export default function BottomPlayerBar() {
           className="group flex items-center space-x-3.5 bg-[#0a1017]/95 hover:bg-[#111a26] border border-[#E5B869]/40 hover:border-[#E5B869] rounded-full p-2 pr-4 shadow-[0_12px_36px_rgba(0,0,0,0.8)] backdrop-blur-2xl cursor-pointer transition-all hover:scale-105"
         >
           <div className="relative w-11 h-11 rounded-full overflow-hidden border border-[#E5B869]/40 flex-shrink-0 shadow-md">
-            <img
+            <Image
               src={thumbnail}
               alt={activeItem.name || 'Mini player'}
+              fill
+              sizes="44px"
               className="w-full h-full object-cover"
             />
             {isPlaying && (
@@ -140,9 +143,11 @@ export default function BottomPlayerBar() {
           {/* Left: Track Thumbnail, Title & Live Equalizer */}
           <div className="flex items-center space-x-3.5 min-w-0 flex-1 sm:flex-initial sm:max-w-xs md:max-w-sm">
             <div className="relative w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 border border-[#E5B869]/30 shadow-md group">
-              <img
+              <Image
                 src={thumbnail}
                 alt={activeItem.name || 'Currently Playing'}
+                fill
+                sizes="48px"
                 className="w-full h-full object-cover"
               />
               <Link

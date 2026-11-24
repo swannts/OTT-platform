@@ -76,9 +76,10 @@ readiness.
   1,364 files and has **0 errors and 0 warnings** after replacing unsafe
   React Hook Form `watch()` subscriptions, correcting the calendar callback
   dependency, using optimized decorative images, and removing obsolete lint
-  suppressions. Full customer lint covers 176 files with zero errors and 18
-  image-element warnings. Customer TypeScript check and Next.js 16.4.6
-  production build pass. The latest build also completed static generation
+  suppressions. Full customer lint covers 158 files with **0 errors and 0
+  warnings** after migrating the remaining reported image elements to
+  `next/image`. Customer TypeScript check and Next.js 16.4.6 production build
+  pass. The latest build also completed static generation
   without the earlier transient blog-table query error. The admin UI has no
   lint warnings.
 - Go worker: `go test ./...` passed in the Go 1.22 container; handler and health
@@ -173,8 +174,8 @@ readiness.
 - Milestone 14 remains partially verified: a Firebase client for `com.swann.ott`,
   physical-device smoke tests, and iOS build/device validation on macOS are not
   available; see [Milestone 14](milestone-14-flutter-compatibility.md).
-- Full admin lint now exits successfully with zero errors or warnings.
-  Customer lint retains 18 image-element warnings.
+- Full admin and customer lint scans exit successfully with zero errors or
+  warnings.
 - Webhook tests cover signature rejection and replay deduplication for all four
   providers. Provider-backed payment fulfillment, refund reconciliation, and
   settlement reconciliation remain unverified.

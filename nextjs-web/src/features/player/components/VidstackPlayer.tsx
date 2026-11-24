@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+import Image from 'next/image';
 import '@vidstack/react/player/styles/base.css';
 import {
   MediaPlayer,
@@ -433,9 +434,11 @@ function VidstackCinematicOverlay({
       {waiting && (
         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm pointer-events-none transition-opacity duration-300">
           {poster && (
-            <img
+            <Image
               src={poster}
               alt={title}
+              fill
+              sizes="100vw"
               className="absolute inset-0 w-full h-full object-cover opacity-20 filter blur-md"
             />
           )}

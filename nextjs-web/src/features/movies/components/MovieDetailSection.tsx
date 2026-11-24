@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { ContentDetails, LocalizedGenre } from '@/types';
 import { Play, Plus, Check, Star, Clock, Calendar } from 'lucide-react';
 import { MediaRow, ReviewSection } from '@/components/shared';
@@ -56,9 +57,11 @@ export default function MovieDetailSection({ initialMovie }: MovieDetailSectionP
     <div className="min-h-screen pb-20 select-none">
       {/* Hero Backdrop Header */}
       <div className="relative w-full h-[60vh] sm:h-[70vh] overflow-hidden">
-        <img
+        <Image
           src={backdropUrl}
           alt={movie.name}
+          fill
+          sizes="100vw"
           className="w-full h-full object-cover object-top"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#070a0e] via-[#070a0e]/60 to-transparent" />
@@ -182,4 +185,3 @@ export default function MovieDetailSection({ initialMovie }: MovieDetailSectionP
     </div>
   );
 }
-
