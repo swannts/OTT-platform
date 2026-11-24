@@ -601,6 +601,23 @@ class ApiClient {
     });
   }
 
+  async recordPlaybackEvent(
+    sessionId: string,
+    eventType: 'startup_failed' | 'started' | 'rebuffered' | 'quality_changed',
+    durationMs?: number,
+    quality?: 'auto' | '480p' | '720p' | '1080p' | '1440p' | '2160p'
+  ): Promise<void> {
+    await this.request('/v3/playback/diagnostics', {
+      method: 'POST',
+      body: JSON.stringify({
+        session_id: sessionId,
+        event_type: eventType,
+        ...(durationMs === undefined ? {} : { duration_ms: durationMs }),
+        ...(quality === undefined ? {} : { quality }),
+      }),
+    });
+  }
+
   async getSeoSettings(): Promise<SeoMetadata> {
     return this.request<SeoMetadata>('/v3/seo-settings');
   }

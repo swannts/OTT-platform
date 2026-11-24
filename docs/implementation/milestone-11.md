@@ -12,6 +12,7 @@
 - Extended the session-bound playback diagnostics endpoint to accept allowlisted `startup_failed`, `started`, `rebuffered`, and `quality_changed` event types, with bounded duration and quality values. It still rejects arbitrary player messages and is tied to the caller’s active playback session.
 - Added CSV exports protected by both `analytics.export` and the relevant group permission. Exports contain aggregates only, escape spreadsheet formulas, and record an audit event.
 - Added scheduled report runs. The scheduler processes up to 100 due reports per minute, rechecks the requester’s export and group permissions, stores aggregate JSON, and makes each result available only to its creator while that group permission remains active.
+- The Next.js customer player sends session-bound startup, rebuffer, and selected-quality events through the existing allowlisted diagnostics API, which feeds the corresponding playback analytics.
 
 ## Metric definitions and limits
 

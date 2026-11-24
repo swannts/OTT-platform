@@ -38,6 +38,8 @@ export interface VidstackPlayerProps {
   isLive?: boolean;
   onBack?: () => void;
   onError?: (event: Event) => void;
+  onPlaying?: () => void;
+  onWaiting?: () => void;
   onQualityChange?: (url: string, qualityType: string) => void;
   onTimeUpdate?: (time: number) => void;
 }
@@ -552,6 +554,8 @@ export default function VidstackPlayer({
   isLive = false,
   onBack,
   onError,
+  onPlaying,
+  onWaiting,
   onQualityChange,
   onTimeUpdate,
 }: VidstackPlayerProps) {
@@ -594,6 +598,8 @@ export default function VidstackPlayer({
         onError={(event) => {
           onError?.(event);
         }}
+        onPlaying={onPlaying}
+        onWaiting={onWaiting}
         onAutoPlayFail={() => {
           // Gracefully handle browser policy autoplay restrictions
         }}
