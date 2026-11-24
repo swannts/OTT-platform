@@ -31,7 +31,8 @@ Migration 000005 associates legacy devices to Sanctum tokens by matching the exi
 
 ## Validation
 
-- Focused Laravel playback, session, TV device-binding, and license-window tests: **22 tests, 52 assertions passed**; focused support operations tests: **8 tests, 61 assertions passed**. The full suite passes **117 tests, 528 assertions** in the backend container using its isolated in-memory SQLite test configuration; one existing PHPUnit deprecation remains.
+- Focused playback-session and device-limit tests: **6 tests, 31 assertions passed** against an isolated MySQL test schema. This covers signed-manifest expiry while the playback session remains active and login rejection at the registered-device limit.
+- Earlier focused playback, session, TV device-binding, license-window, and support-operations checks passed **30 tests, 113 assertions**. The earlier full-suite result was **117 tests, 528 assertions**; it was not rerun for this increment. One existing PHPUnit deprecation remains.
 - Admin support UI lint passed, and the Next.js production build passed with the existing route-export warnings described in the project verification log.
 - PHP syntax checks passed for all touched PHP files.
 - Next.js TypeScript check and production build passed on Next.js 16.4.6.

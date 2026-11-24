@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\UserMultiProfile;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
@@ -168,6 +169,15 @@ class PlaybackSessionTest extends TestCase
 
         $highQualityUrl = app(PlaybackMediaUrlService::class)->sign($asset->id, '1080p_00001.ts', $session['session_id']);
         $this->get($highQualityUrl)->assertForbidden();
+
+        $this->travel(91)->seconds();
+        try {
+            $expiresAt = Carbon::parse(DB::table('playback_sessions')->where('session_id', $session['session_id'])->value('expires_at'));
+            $this->assertTrue($expiresAt->isFuture(), 'The playback session should still be active after the URL expires.');
+            $this->get($url)->assertForbidden();
+        } finally {
+            $this->travelBack();
+        }
 
         app(PlaybackSessionService::class)->end($user, $token, $session['session_id']);
         $this->get($url)->assertForbidden();
