@@ -1,7 +1,7 @@
 import { z as zod } from 'zod';
 import { useMemo } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, useWatch, Controller } from 'react-hook-form';
 import { isValidPhoneNumber } from 'react-phone-number-input/input';
 
 import Box from '@mui/material/Box';
@@ -81,13 +81,12 @@ export function UserNewEditForm({ currentUser }) {
 
   const {
     reset,
-    watch,
     control,
     handleSubmit,
     formState: { isSubmitting },
   } = methods;
 
-  const values = watch();
+  const values = useWatch({ control });
 
   const onSubmit = handleSubmit(async (data) => {
     try {

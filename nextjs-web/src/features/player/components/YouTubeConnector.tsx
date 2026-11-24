@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getYouTubeEmbedUrl, extractYouTubeId } from '@/lib/youtube';
 import { api } from '@/lib/api';
-import { ExternalLink, RefreshCw, Play, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ExternalLink, RefreshCw, Play, AlertCircle } from 'lucide-react';
 
 interface YouTubeConnectorProps {
   contentId: string | number;
@@ -148,4 +148,3 @@ export default function YouTubeConnector({
     </div>
   );
 }
-

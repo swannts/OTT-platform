@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { BlogPost } from '@/types';
-import { Clock, Calendar, ArrowRight, Sparkles } from 'lucide-react';
+import { Clock, ArrowRight, Sparkles } from 'lucide-react';
 import { DEFAULT_FALLBACK_IMAGE } from '@/constants';
 import { formatDhakaDate } from '@/lib/datetime';
 
@@ -91,4 +91,3 @@ export default function BlogHero({ post }: BlogHeroProps) {
     </div>
   );
 }
-

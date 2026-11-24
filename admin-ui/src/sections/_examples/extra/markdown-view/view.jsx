@@ -143,11 +143,11 @@ export function MarkdownView() {
         }}
       >
         <ComponentBlock title="Html content" sx={{ pt: 0 }}>
-          <Markdown children={htmlContent} />
+          <Markdown>{htmlContent}</Markdown>
         </ComponentBlock>
 
         <ComponentBlock title="Mardown content" sx={{ pt: 0 }}>
-          <Markdown children={mardownContent} />
+          <Markdown>{mardownContent}</Markdown>
         </ComponentBlock>
       </ComponentContainer>
     </>

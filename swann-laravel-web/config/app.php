@@ -19,6 +19,13 @@ return [
 
     'name' => env('APP_NAME', 'Swann'),
 
+    'admin_bootstrap' => [
+        'email' => env('ADMIN_BOOTSTRAP_EMAIL'),
+        'password' => env('ADMIN_BOOTSTRAP_PASSWORD'),
+        'name' => env('ADMIN_BOOTSTRAP_NAME', 'Platform Administrator'),
+    ],
+    'demo_seed_password' => env('DEMO_SEED_PASSWORD'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment

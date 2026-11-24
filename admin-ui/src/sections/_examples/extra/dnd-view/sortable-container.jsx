@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useId, useRef, useState, useEffect } from 'react';
 import {
   arraySwap,
   arrayMove,
@@ -42,6 +42,8 @@ export function SortableContainer({ itemCount = 12, swap = false, layout = 'grid
   const createItems = [...Array(itemCount)].map((_, index) => index + 1);
 
   const [items, setItems] = useState(createItems);
+  const idPrefix = useId();
+  const addedItemCount = useRef(0);
 
   const sensors = useSensors(
     useSensor(MouseSensor),
@@ -50,8 +52,6 @@ export function SortableContainer({ itemCount = 12, swap = false, layout = 'grid
   );
 
   const isFirstAnnouncement = useRef(true);
-
-  const randomId = Math.floor(Math.random() * 200);
 
   const [activeId, setActiveId] = useState(null);
 
@@ -74,7 +74,8 @@ export function SortableContainer({ itemCount = 12, swap = false, layout = 'grid
   }, [activeId]);
 
   const handleAdd = () => {
-    setItems([...items, randomId]);
+    const id = `${idPrefix}-${addedItemCount.current++}`;
+    setItems((currentItems) => [...currentItems, id]);
   };
 
   const handleRemove = (id) => {

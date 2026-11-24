@@ -28,9 +28,15 @@ export function useThumbs(mainApi, options) {
 
   useEffect(() => {
     if (!mainApi) return;
-    onSelect();
+    const frame = window.requestAnimationFrame(onSelect);
     mainApi.on('select', onSelect);
     mainApi.on('reInit', onSelect);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      mainApi.off('select', onSelect);
+      mainApi.off('reInit', onSelect);
+    };
   }, [mainApi, onSelect]);
 
   return {

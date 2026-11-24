@@ -27,16 +27,27 @@ export function useCarouselAutoScroll(mainApi) {
     playOrStop();
   }, [mainApi]);
 
+  const handlePlay = useCallback(() => setIsPlaying(true), []);
+  const handleStop = useCallback(() => setIsPlaying(false), []);
+  const handleReInit = useCallback(() => setIsPlaying(false), []);
+
   useEffect(() => {
     const autoScroll = mainApi?.plugins()?.autoScroll;
     if (!autoScroll) return;
 
-    setIsPlaying(autoScroll.isPlaying());
+    const frame = window.requestAnimationFrame(() => setIsPlaying(autoScroll.isPlaying()));
     mainApi
-      .on('autoScroll:play', () => setIsPlaying(true))
-      .on('autoScroll:stop', () => setIsPlaying(false))
-      .on('reInit', () => setIsPlaying(false));
-  }, [mainApi]);
+      .on('autoScroll:play', handlePlay)
+      .on('autoScroll:stop', handleStop)
+      .on('reInit', handleReInit);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      mainApi.off('autoScroll:play', handlePlay);
+      mainApi.off('autoScroll:stop', handleStop);
+      mainApi.off('reInit', handleReInit);
+    };
+  }, [handlePlay, handleReInit, handleStop, mainApi]);
 
   return { isPlaying, onTogglePlay, onClickAutoplay };
 }

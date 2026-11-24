@@ -14,6 +14,11 @@ readiness.
   forwarding login, logout, invitation acceptance, or proxied mutations. The
   admin bearer token remains in the server-managed cookie flow.
 - Admin login is tested to return HTTP 429 after five attempts in one minute.
+- Administrative permission checks re-read account eligibility from the database and deny
+  inactive or banned accounts, including requests using an already-issued token. Staff
+  deactivation locks the account row, updates status, and revokes all Sanctum tokens in one
+  transaction. Admin login issues its token while holding the same row lock, preventing a
+  login/deactivation race from leaving a newly issued session behind.
 - Laravel admin role lookup and authorization continue to use the dedicated admin
   role scope. Sensitive role operations require explicit permissions and the
   role policy prevents assignment of inactive/non-admin roles and protects fixed
@@ -33,6 +38,15 @@ readiness.
   retains the active key for the existing local data; `.env.example` contains
   placeholders only. Production configuration requires secrets to be injected
   through a deployment secret store.
+- Production `db:seed` now bypasses legacy demo seeders and preserves uploaded
+  storage. It applies the additive RBAC foundation and can create one initial
+  Super Admin only from an explicit deployment email and a 16-character
+  bootstrap secret; reruns do not reset an existing password. The destructive
+  permission-truncating auth seeders reject production, and local demo accounts
+  require a private `DEMO_SEED_PASSWORD`.
+- Removed hard-coded demo account credentials from the Next.js and Laravel
+  login screens and replaced seeded sample passwords with the private local
+  seed setting.
 - `docker-compose.production.yml` sets `APP_DEBUG=false`, requires an HTTPS API,
   admin, and customer origin, requires immutable image references for all
   application and infrastructure containers, binds web ports to loopback for a TLS reverse proxy, and
@@ -46,22 +60,27 @@ readiness.
 
 ## Validation performed
 
-- Laravel PHPUnit suite: **99 tests, 482 assertions passed**; one existing
-  PHPUnit deprecation remains.
-- Admin RBAC feature suite: **6 tests, 32 assertions passed**, including the
-  login rate limit.
+- Laravel PHPUnit suite: **117 tests, 528 assertions passed** in the backend
+  container using its isolated in-memory SQLite test configuration; one
+  existing PHPUnit deprecation remains. Production seeder safety coverage is
+  **4 tests and 11 assertions**.
+- Admin RBAC feature suite: **9 tests, 37 assertions passed**, including login rate limiting,
+  immediate session revocation on staff deactivation, and denial of inactive or banned account tokens.
 - Composer locked dependency audit: **0 advisories**.
 - Admin UI dependency audit: **0 vulnerabilities**. Next.js 16.4.6 production
   build passed with Webpack (the project has a custom SVG Webpack loader).
 - Customer Next.js dependency audit: **0 vulnerabilities**. TypeScript check and
   production build passed on Next.js 16.4.6.
 - Changed admin BFF/auth files, admin authentication/RBAC pages, OTT operations
-  pages, 35 React component files, and the product list pass focused ESLint. Full
-  admin lint still reports **91 errors and 23 warnings** across the existing UI.
-  Full customer lint now has zero errors and 50 warnings after fixing Hook
-  ordering, playback ref/state issues, and
-  client data loading. Customer type-check and production build pass; the
-  repository-wide admin lint backlog remains unresolved.
+  pages, and the UI cleanup pass focused ESLint. The full admin lint scan covers
+  1,364 files and has **0 errors and 0 warnings** after replacing unsafe
+  React Hook Form `watch()` subscriptions, correcting the calendar callback
+  dependency, using optimized decorative images, and removing obsolete lint
+  suppressions. Full customer lint covers 176 files with zero errors and 18
+  image-element warnings. Customer TypeScript check and Next.js 16.4.6
+  production build pass. The latest build also completed static generation
+  without the earlier transient blog-table query error. The admin UI has no
+  lint warnings.
 - Go worker: `go test ./...` passed in the Go 1.22 container; handler and health
   packages have tests, while other packages report no test files.
 - Flutter dependency resolution and tests passed on Flutter 3.47.0 / Dart 3.13.0:
@@ -146,15 +165,16 @@ readiness.
 - No load test, expected-traffic profile, production database query benchmark,
   CDN origin/signing integration, DRM license provider, or real payment-provider
   reconciliation was exercised.
-- Milestone 13 remains partial: trusted geolocation and licensing-window data,
-  provider/CDN/DRM delivery, Redis-backed multi-node concurrency, and full session
-  lifecycle audit/revocation operations remain outstanding; see
+- Milestone 13 remains partial: a trusted geolocation signal and authoritative
+  licensing-window data, provider/CDN/DRM delivery, and multi-node/load
+  verification remain outstanding; session lifecycle diagnostics and
+  support-initiated revocation are implemented locally. See
   [Milestone 13](milestone-13-playback-security.md).
 - Milestone 14 remains partially verified: a Firebase client for `com.swann.ott`,
   physical-device smoke tests, and iOS build/device validation on macOS are not
   available; see [Milestone 14](milestone-14-flutter-compatibility.md).
-- Repository-wide Next.js lint has the findings listed above. The changed admin
-  BFF files pass focused lint, but full lint acceptance is not met.
+- Full admin lint now exits successfully with zero errors or warnings.
+  Customer lint retains 18 image-element warnings.
 - Webhook tests cover signature rejection and replay deduplication for all four
   providers. Provider-backed payment fulfillment, refund reconciliation, and
   settlement reconciliation remain unverified.

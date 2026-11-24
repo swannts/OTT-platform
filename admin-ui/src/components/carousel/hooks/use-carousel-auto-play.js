@@ -27,16 +27,27 @@ export function useCarouselAutoPlay(mainApi) {
     playOrStop();
   }, [mainApi]);
 
+  const handlePlay = useCallback(() => setIsPlaying(true), []);
+  const handleStop = useCallback(() => setIsPlaying(false), []);
+  const handleReInit = useCallback(() => setIsPlaying(false), []);
+
   useEffect(() => {
     const autoplay = mainApi?.plugins()?.autoplay;
     if (!autoplay) return;
 
-    setIsPlaying(autoplay.isPlaying());
+    const frame = window.requestAnimationFrame(() => setIsPlaying(autoplay.isPlaying()));
     mainApi
-      .on('autoplay:play', () => setIsPlaying(true))
-      .on('autoplay:stop', () => setIsPlaying(false))
-      .on('reInit', () => setIsPlaying(false));
-  }, [mainApi]);
+      .on('autoplay:play', handlePlay)
+      .on('autoplay:stop', handleStop)
+      .on('reInit', handleReInit);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      mainApi.off('autoplay:play', handlePlay);
+      mainApi.off('autoplay:stop', handleStop);
+      mainApi.off('reInit', handleReInit);
+    };
+  }, [handlePlay, handleReInit, handleStop, mainApi]);
 
   return { isPlaying, onTogglePlay, onClickAutoplay };
 }

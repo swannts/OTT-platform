@@ -4,8 +4,6 @@ namespace Database\Seeders;
 
 use App\Models\Setting;
 use Illuminate\Database\Seeder;
-use Illuminate\Filesystem\Filesystem;
-use Illuminate\Support\Facades\Schema;
 use Modules\LiveTV\database\seeders\LiveTvCategoryTableSeeder;
 use Modules\LiveTV\database\seeders\LiveTvChannelTableSeeder;
 use Modules\Ad\database\seeders\VastAdsSettingTableSeeder;
@@ -20,17 +18,16 @@ class DatabaseSeeder extends Seeder
      *
      * @return void
      */
-    public function run()
+    public function run(): void
     {
+        if (! app()->environment(['local', 'testing'])) {
+            $this->call(ProductionAdminBootstrapSeeder::class);
+
+            return;
+        }
 
 
         \Artisan::call('cache:clear');
-        Schema::disableForeignKeyConstraints();
-        $file = new Filesystem;
-
-        $file->cleanDirectory('storage/app/public');
-
-
         if (env('IS_DUMMY_DATA') == false) {
 
             $this->call(AuthTableSeeder::class);
@@ -67,7 +64,6 @@ class DatabaseSeeder extends Seeder
             $this->call(\Database\Seeders\BlogSeeder::class);
             $this->call(\Database\Seeders\IslamicContentSeeder::class);
 
-            Schema::enableForeignKeyConstraints();
             \Artisan::call('cache:clear');
         }
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -48,21 +48,9 @@ export function BankingQuickTransfer({ title, subheader, list, sx, ...other }) {
 
   const [amount, setAmount] = useState(0);
 
-  const [autoWidth, setAutoWidth] = useState(24);
+  const autoWidth = amount ? amount.toString().length * 24 : 24;
 
   const contactInfo = list.find((_, index) => index === carousel.dots.selectedIndex);
-
-  useEffect(() => {
-    if (amount) {
-      handleAutoWidth();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [amount]);
-
-  const handleAutoWidth = useCallback(() => {
-    const getNumberLength = amount.toString().length;
-    setAutoWidth(getNumberLength * 24);
-  }, [amount]);
 
   const handleChangeSlider = useCallback((event, newValue) => {
     setAmount(newValue);

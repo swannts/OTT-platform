@@ -35,22 +35,22 @@ const lgKey = 'lg';
 export function HomeHero({ sx, ...other }) {
   const theme = useTheme();
 
-  const scroll = useScrollPercent();
+  const [scrollElementRef, scrollPercent, scrollY] = useScrollPercent();
 
   const mdUp = useResponsive('up', mdKey);
 
-  const distance = mdUp ? scroll.percent : 0;
+  const distance = mdUp ? scrollPercent : 0;
 
-  const y1 = useTransformY(scroll.scrollY, distance * -7);
-  const y2 = useTransformY(scroll.scrollY, distance * -6);
-  const y3 = useTransformY(scroll.scrollY, distance * -5);
-  const y4 = useTransformY(scroll.scrollY, distance * -4);
-  const y5 = useTransformY(scroll.scrollY, distance * -3);
+  const y1 = useTransformY(scrollY, distance * -7);
+  const y2 = useTransformY(scrollY, distance * -6);
+  const y3 = useTransformY(scrollY, distance * -5);
+  const y4 = useTransformY(scrollY, distance * -4);
+  const y5 = useTransformY(scrollY, distance * -3);
 
   const opacity = useTransform(
-    scroll.scrollY,
+    scrollY,
     [0, 1],
-    [1, mdUp ? Number((1 - scroll.percent / 100).toFixed(1)) : 1]
+    [1, mdUp ? Number((1 - scrollPercent / 100).toFixed(1)) : 1]
   );
 
   const renderHeading = (
@@ -228,7 +228,7 @@ export function HomeHero({ sx, ...other }) {
 
   return (
     <Stack
-      ref={scroll.elementRef}
+      ref={scrollElementRef}
       component="section"
       sx={{
         overflow: 'hidden',
@@ -338,5 +338,5 @@ function useScrollPercent() {
     }
   });
 
-  return { elementRef, percent, scrollY };
+  return [elementRef, percent, scrollY];
 }

@@ -51,6 +51,12 @@ export const navData = [
         permissions: ['content.submit', 'content.review', 'content.approve', 'content.publish'],
       },
       {
+        title: 'Content licensing',
+        path: '/dashboard/content/licensing',
+        icon: ICONS.lock,
+        permission: 'content.view',
+      },
+      {
         title: 'Media library',
         path: '/dashboard/media',
         icon: ICONS.blog,

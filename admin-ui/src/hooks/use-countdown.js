@@ -10,14 +10,7 @@ export function useCountdownDate(date) {
     seconds: '00',
   });
 
-  useEffect(() => {
-    setNewTime();
-    const interval = setInterval(setNewTime, 1000);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const setNewTime = () => {
+  const setNewTime = useCallback(() => {
     const startTime = date;
 
     const endTime = new Date();
@@ -39,7 +32,17 @@ export function useCountdownDate(date) {
       minutes: getMinutes,
       seconds: getSeconds,
     });
-  };
+  }, [date]);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(setNewTime);
+    const interval = setInterval(setNewTime, 1000);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      clearInterval(interval);
+    };
+  }, [setNewTime]);
 
   return countdown;
 }

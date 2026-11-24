@@ -13,7 +13,7 @@ export default async function Page({ params }) {
 
   const { product } = await getProduct(id);
 
-  return <ProductDetailsView product={product} />;
+  return <ProductDetailsView key={product?.id ?? 'new'} product={product} />;
 }
 
 // ----------------------------------------------------------------------

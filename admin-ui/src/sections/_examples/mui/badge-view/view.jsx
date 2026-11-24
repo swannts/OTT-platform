@@ -42,19 +42,22 @@ export function BadgeView() {
           <Badge
             badgeContent={99}
             color="error"
-            children={<Iconify icon="fluent:mail-24-filled" width={24} />}
-          />
+          >
+            <Iconify icon="fluent:mail-24-filled" width={24} />
+          </Badge>
           <Badge
             badgeContent={100}
             color="error"
-            children={<Iconify icon="fluent:mail-24-filled" width={24} />}
-          />
+          >
+            <Iconify icon="fluent:mail-24-filled" width={24} />
+          </Badge>
           <Badge
             badgeContent={1000}
             max={999}
             color="error"
-            children={<Iconify icon="fluent:mail-24-filled" width={24} />}
-          />
+          >
+            <Iconify icon="fluent:mail-24-filled" width={24} />
+          </Badge>
         </ComponentBlock>
       ),
     },

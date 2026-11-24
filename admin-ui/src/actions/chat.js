@@ -55,7 +55,7 @@ export function useGetConversations() {
       conversationsValidating: isValidating,
       conversationsEmpty: !isLoading && !allIds.length,
     };
-  }, [data?.conversations, error, isLoading, isValidating]);
+  }, [data, error, isLoading, isValidating]);
 
   return memoizedValue;
 }

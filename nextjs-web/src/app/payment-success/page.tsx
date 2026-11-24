@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
@@ -10,7 +10,6 @@ import { CheckCircle2, Crown, Sparkles, ArrowRight } from 'lucide-react';
 
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const { refreshSubscription } = useAuth();
 
   const gateway = searchParams?.get('gateway') || 'stripe';
@@ -18,20 +17,17 @@ function PaymentSuccessContent() {
   const isFree = searchParams?.get('free') === '1';
 
   const [isVerifying, setIsVerifying] = useState(!isFree && !!sessionId);
-  const [success, setSuccess] = useState(isFree || false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     async function verify() {
       if (isFree) {
-        setSuccess(true);
         await refreshSubscription();
         return;
       }
 
       if (!sessionId) {
-        setSuccess(true);
-        await refreshSubscription();
+        setErrorMessage('Payment verification details are missing. No subscription changes were confirmed.');
         setIsVerifying(false);
         return;
       }
@@ -41,7 +37,6 @@ function PaymentSuccessContent() {
           gateway,
           session_id: sessionId,
         });
-        setSuccess(true);
         await refreshSubscription();
       } catch (err: unknown) {
         setErrorMessage(err instanceof Error ? err.message : 'Payment verification failed.');
@@ -132,4 +127,3 @@ export default function PaymentSuccessPage() {
     </Suspense>
   );
 }
-

@@ -169,7 +169,7 @@ export function TourDetailsContent({ tour }) {
 
   const renderContent = (
     <>
-      <Markdown children={tour?.content} />
+      <Markdown>{tour?.content}</Markdown>
 
       <Stack spacing={2}>
         <Typography variant="h6"> Services</Typography>

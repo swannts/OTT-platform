@@ -20,7 +20,7 @@ export function JobDetailsContent({ job }) {
     <Card sx={{ p: 3, gap: 3, display: 'flex', flexDirection: 'column' }}>
       <Typography variant="h4">{job?.title}</Typography>
 
-      <Markdown children={job?.content} />
+      <Markdown>{job?.content}</Markdown>
 
       <Stack spacing={2}>
         <Typography variant="h6">Skills</Typography>

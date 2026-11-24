@@ -1,4 +1,4 @@
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
 import Box from '@mui/material/Box';
@@ -81,14 +81,14 @@ export function ReactHookForm({ debug }) {
   });
 
   const {
-    watch,
+    control,
     reset,
     setValue,
     handleSubmit,
     formState: { isSubmitting },
   } = methods;
 
-  const values = watch();
+  const values = useWatch({ control });
 
   const onSubmit = handleSubmit(async (data) => {
     try {

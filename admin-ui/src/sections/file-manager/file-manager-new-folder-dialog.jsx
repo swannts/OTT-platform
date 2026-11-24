@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
@@ -25,12 +25,6 @@ export function FileManagerNewFolderDialog({
 }) {
   const [files, setFiles] = useState([]);
 
-  useEffect(() => {
-    if (!open) {
-      setFiles([]);
-    }
-  }, [open]);
-
   const handleDrop = useCallback(
     (acceptedFiles) => {
       setFiles([...files, ...acceptedFiles]);
@@ -38,8 +32,13 @@ export function FileManagerNewFolderDialog({
     [files]
   );
 
-  const handleUpload = () => {
+  const handleClose = () => {
+    setFiles([]);
     onClose();
+  };
+
+  const handleUpload = () => {
+    handleClose();
     console.info('ON UPLOAD');
   };
 
@@ -53,7 +52,7 @@ export function FileManagerNewFolderDialog({
   };
 
   return (
-    <Dialog fullWidth maxWidth="sm" open={open} onClose={onClose} {...other}>
+    <Dialog fullWidth maxWidth="sm" open={open} onClose={handleClose} {...other}>
       <DialogTitle sx={{ p: (theme) => theme.spacing(3, 3, 2, 3) }}> {title} </DialogTitle>
 
       <DialogContent dividers sx={{ pt: 1, pb: 0, border: 'none' }}>

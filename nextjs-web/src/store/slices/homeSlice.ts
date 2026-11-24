@@ -112,7 +112,7 @@ export const fetchTvShows = createAsyncThunk<MediaItem[], void>(
 
 export const fetchContinueWatching = createAsyncThunk<MediaItem[], void>(
   'home/fetchContinueWatching',
-  async (_, { rejectWithValue }) => {
+  async () => {
     try {
       const res = await api.getContinueWatching();
       return Array.isArray(res) ? res.map(normalizeMediaItem) : [];
@@ -234,4 +234,3 @@ export const selectHomeLoading = (state: { home: HomeState }) => state.home.isLo
 export const selectHomeError = (state: { home: HomeState }) => state.home.error;
 
 export default homeSlice.reducer;
-

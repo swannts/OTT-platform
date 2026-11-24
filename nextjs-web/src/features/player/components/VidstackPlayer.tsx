@@ -152,7 +152,7 @@ function VidstackCinematicOverlay({
       setDismissedResumeKey(resumeKey);
       if (resumeBannerTimerRef.current) clearTimeout(resumeBannerTimerRef.current);
     } catch {}
-  }, [remote, contentId, contentType, resumeKey]);
+  }, [remote, contentId, contentType, resumeKey, triggerHud]);
 
   // Playback preservation across stream and quality switches
   const lastKnownTimeRef = useRef<number>(initialTime);
@@ -253,7 +253,7 @@ function VidstackCinematicOverlay({
         } catch {}
       },
     }));
-  }, [rawHlsQualities]);
+  }, [rawHlsQualities, triggerHud]);
 
 
   // Controls Auto-Hide

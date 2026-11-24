@@ -1,5 +1,5 @@
 import { z as zod } from 'zod';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMemo, useEffect, useCallback } from 'react';
 
@@ -70,13 +70,13 @@ export function PostNewEditForm({ currentPost }) {
 
   const {
     reset,
-    watch,
+    control,
     setValue,
     handleSubmit,
     formState: { isSubmitting, isValid },
   } = methods;
 
-  const values = watch();
+  const values = useWatch({ control });
 
   useEffect(() => {
     if (currentPost) {

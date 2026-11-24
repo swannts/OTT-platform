@@ -27,7 +27,6 @@ export function Markdown({ children, sx, ...other }) {
 
   return (
     <StyledRoot
-      children={content}
       components={components}
       rehypePlugins={rehypePlugins}
       /* base64-encoded images
@@ -37,16 +36,19 @@ export function Markdown({ children, sx, ...other }) {
       className={markdownClasses.root}
       sx={sx}
       {...other}
-    />
+    >
+      {content}
+    </StyledRoot>
   );
 }
 
 const rehypePlugins = [rehypeRaw, rehypeHighlight, [remarkGfm, { singleTilde: false }]];
 
 const components = {
-  img: ({ node, ...other }) => (
+  img: ({ node, alt, ...other }) => (
     <Image
       ratio="16/9"
+      alt={alt ?? ''}
       className={markdownClasses.content.image}
       sx={{ borderRadius: 2 }}
       {...other}

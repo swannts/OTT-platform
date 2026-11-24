@@ -1,5 +1,3 @@
-import { useState, useEffect } from 'react';
-
 import Box from '@mui/material/Box';
 import Table from '@mui/material/Table';
 import Stack from '@mui/material/Stack';
@@ -61,11 +59,7 @@ const TABLE_HEAD = [
 export function SortingSelectingTable() {
   const table = useTable({ defaultOrderBy: 'calories' });
 
-  const [tableData, setTableData] = useState([]);
-
-  useEffect(() => {
-    setTableData(TABLE_DATA);
-  }, []);
+  const tableData = TABLE_DATA;
 
   const dataFiltered = applyFilter({
     inputData: tableData,

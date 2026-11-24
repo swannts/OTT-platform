@@ -12,15 +12,19 @@ export function useCookies(key, initialState, defaultValues, options) {
   const canReset = !isEqual(state, defaultValues);
 
   useEffect(() => {
-    const restoredValue = getStorage(key);
+    const frame = window.requestAnimationFrame(() => {
+      const restoredValue = getStorage(key);
 
-    if (restoredValue) {
-      if (multiValue) {
-        set((prevValue) => ({ ...prevValue, ...restoredValue }));
-      } else {
-        set(restoredValue);
+      if (restoredValue) {
+        if (multiValue) {
+          set((prevValue) => ({ ...prevValue, ...restoredValue }));
+        } else {
+          set(restoredValue);
+        }
       }
-    }
+    });
+
+    return () => window.cancelAnimationFrame(frame);
   }, [key, multiValue]);
 
   const setState = useCallback(

@@ -5,7 +5,6 @@ import { Markdown } from 'src/components/markdown';
 export function ProductDetailsDescription({ description }) {
   return (
     <Markdown
-      children={description}
       sx={{
         p: 3,
         '& p, li, ol': {
@@ -20,6 +19,8 @@ export function ProductDetailsDescription({ description }) {
           },
         },
       }}
-    />
+    >
+      {description}
+    </Markdown>
   );
 }

@@ -38,10 +38,15 @@ export function NavList({ data, render, slotProps, cssVars, enabledRootRedirect 
 
   const multiList = !singleList;
 
+  const handleCloseMenu = useCallback(() => {
+    setOpenMenu(false);
+  }, []);
+
   useEffect(() => {
-    if (openMenu) {
-      handleCloseMenu();
-    }
+    const frame = window.requestAnimationFrame(() => {
+      if (openMenu) handleCloseMenu();
+    });
+    return () => window.cancelAnimationFrame(frame);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
@@ -60,11 +65,12 @@ export function NavList({ data, render, slotProps, cssVars, enabledRootRedirect 
   }, []);
 
   useEffect(() => {
-    handleGetClientRect();
+    const frame = window.requestAnimationFrame(handleGetClientRect);
 
     window.addEventListener('scroll', handleGetClientRect);
 
     return () => {
+      window.cancelAnimationFrame(frame);
       window.removeEventListener('scroll', handleGetClientRect);
     };
   }, [handleGetClientRect]);
@@ -74,10 +80,6 @@ export function NavList({ data, render, slotProps, cssVars, enabledRootRedirect 
       setOpenMenu(true);
     }
   }, [data.children]);
-
-  const handleCloseMenu = useCallback(() => {
-    setOpenMenu(false);
-  }, []);
 
   const renderNavItem = (
     <NavItem
@@ -112,7 +114,7 @@ export function NavList({ data, render, slotProps, cssVars, enabledRootRedirect 
           disableScrollLock
           keepMounted={multiList}
           open={openMenu}
-          anchorEl={navItemRef.current}
+          anchorEl={() => navItemRef.current}
           anchorReference="anchorPosition"
           anchorPosition={{
             top: clientRect.top - 20,

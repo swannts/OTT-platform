@@ -28,14 +28,19 @@ export function NavList({ data }) {
 
   const [openMenu, setOpenMenu] = useState(false);
 
+  const handleCloseMenu = useCallback(() => {
+    setOpenMenu(false);
+  }, []);
+
   const active = useActiveLink(data.path, !!data.children);
 
   const [clientRect, setClientRect] = useState({ top: 0, height: 0 });
 
   useEffect(() => {
-    if (openMenu) {
-      handleCloseMenu();
-    }
+    const frame = window.requestAnimationFrame(() => {
+      if (openMenu) handleCloseMenu();
+    });
+    return () => window.cancelAnimationFrame(frame);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
@@ -44,10 +49,6 @@ export function NavList({ data }) {
       setOpenMenu(true);
     }
   }, [data.children]);
-
-  const handleCloseMenu = useCallback(() => {
-    setOpenMenu(false);
-  }, []);
 
   const renderNavItem = (
     <NavItem

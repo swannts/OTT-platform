@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect } from 'react';
 import { useFieldArray, useFormContext } from 'react-hook-form';
 
 import Box from '@mui/material/Box';
@@ -51,50 +51,29 @@ export function InvoiceNewEditDetails() {
     remove(index);
   };
 
-  const handleClearService = useCallback(
-    (index) => {
-      setValue(`items[${index}].quantity`, 1);
-      setValue(`items[${index}].price`, 0);
-      setValue(`items[${index}].total`, 0);
-    },
-    [setValue]
-  );
+  const handleClearService = (index) => {
+    setValue(`items[${index}].quantity`, 1);
+    setValue(`items[${index}].price`, 0);
+    setValue(`items[${index}].total`, 0);
+  };
 
-  const handleSelectService = useCallback(
-    (index, option) => {
-      setValue(
-        `items[${index}].price`,
-        INVOICE_SERVICE_OPTIONS.find((service) => service.name === option)?.price
-      );
-      setValue(
-        `items[${index}].total`,
-        values.items.map((item) => item.quantity * item.price)[index]
-      );
-    },
-    [setValue, values.items]
-  );
+  const handleSelectService = (index, option) => {
+    setValue(
+      `items[${index}].price`,
+      INVOICE_SERVICE_OPTIONS.find((service) => service.name === option)?.price
+    );
+    setValue(`items[${index}].total`, values.items.map((item) => item.quantity * item.price)[index]);
+  };
 
-  const handleChangeQuantity = useCallback(
-    (event, index) => {
-      setValue(`items[${index}].quantity`, Number(event.target.value));
-      setValue(
-        `items[${index}].total`,
-        values.items.map((item) => item.quantity * item.price)[index]
-      );
-    },
-    [setValue, values.items]
-  );
+  const handleChangeQuantity = (event, index) => {
+    setValue(`items[${index}].quantity`, Number(event.target.value));
+    setValue(`items[${index}].total`, values.items.map((item) => item.quantity * item.price)[index]);
+  };
 
-  const handleChangePrice = useCallback(
-    (event, index) => {
-      setValue(`items[${index}].price`, Number(event.target.value));
-      setValue(
-        `items[${index}].total`,
-        values.items.map((item) => item.quantity * item.price)[index]
-      );
-    },
-    [setValue, values.items]
-  );
+  const handleChangePrice = (event, index) => {
+    setValue(`items[${index}].price`, Number(event.target.value));
+    setValue(`items[${index}].total`, values.items.map((item) => item.quantity * item.price)[index]);
+  };
 
   const renderTotal = (
     <Stack

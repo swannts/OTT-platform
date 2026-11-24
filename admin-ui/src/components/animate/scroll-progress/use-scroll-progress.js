@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useMemo } from 'react';
+import { useRef } from 'react';
 import { useScroll } from 'framer-motion';
 
 // ----------------------------------------------------------------------
@@ -14,10 +14,5 @@ export function useScrollProgress(target = 'document') {
     target === 'container' ? options : undefined
   );
 
-  const memoizedValue = useMemo(
-    () => ({ elementRef, scrollXProgress, scrollYProgress }),
-    [elementRef, scrollXProgress, scrollYProgress]
-  );
-
-  return memoizedValue;
+  return [elementRef, scrollXProgress, scrollYProgress];
 }

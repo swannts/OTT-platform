@@ -7,6 +7,16 @@ import { useAuth } from '@/context/AuthContext';
 import { Lock, Mail, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import Logo from '@/components/layout/Logo';
 
+function safeInternalRedirect(candidate: string, origin: string): string {
+  try {
+    const destination = new URL(candidate, origin);
+    if (destination.origin !== origin) return '/';
+    return `${destination.pathname}${destination.search}${destination.hash}`;
+  } catch {
+    return '/';
+  }
+}
+
 function LoginFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -22,9 +32,9 @@ function LoginFormContent() {
   // If already authenticated, redirect
   useEffect(() => {
     if (!isLoading && user) {
-      window.location.href = redirect;
+      router.replace(safeInternalRedirect(redirect, window.location.origin));
     }
-  }, [user, isLoading, redirect]);
+  }, [user, isLoading, redirect, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,18 +42,12 @@ function LoginFormContent() {
     setIsSubmitting(true);
     try {
       await login({ email, password });
-      window.location.href = redirect;
+      router.replace(safeInternalRedirect(redirect, window.location.origin));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Invalid email or password.');
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const fillQuickAccount = (testEmail: string) => {
-    setEmail(testEmail);
-    setPassword('12345678');
-    setError(null);
   };
 
   return (
@@ -134,37 +138,6 @@ function LoginFormContent() {
           </button>
         </form>
 
-        {/* Quick Testing Account Pills */}
-        <div className="pt-2 border-t border-white/[0.08] space-y-2">
-          <div className="flex items-center justify-between text-[11px] text-gray-400">
-            <span>Quick Test Credentials:</span>
-            <span className="text-[10px] text-gray-500">pw: 12345678</span>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            <button
-              type="button"
-              onClick={() => fillQuickAccount('admin@swann.com')}
-              className="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] hover:text-[#E5B869] text-gray-300 border border-white/10 transition-colors cursor-pointer"
-            >
-              👑 Admin
-            </button>
-            <button
-              type="button"
-              onClick={() => fillQuickAccount('john@gmail.com')}
-              className="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] hover:text-[#E5B869] text-gray-300 border border-white/10 transition-colors cursor-pointer"
-            >
-              ⭐ Subscriber (VIP)
-            </button>
-            <button
-              type="button"
-              onClick={() => fillQuickAccount('jorge@gmail.com')}
-              className="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] hover:text-[#E5B869] text-gray-300 border border-white/10 transition-colors cursor-pointer"
-            >
-              👤 Free User
-            </button>
-          </div>
-        </div>
-
         <div className="text-center text-xs text-gray-400 pt-1">
           Don&apos;t have an account?{' '}
           <Link href="/register" className="text-[#E5B869] hover:text-[#f3cf8a] font-semibold transition-colors hover:underline">
@@ -183,4 +156,3 @@ export default function LoginPage() {
     </Suspense>
   );
 }
-

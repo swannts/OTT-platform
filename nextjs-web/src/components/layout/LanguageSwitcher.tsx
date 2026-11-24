@@ -33,12 +33,6 @@ export default function LanguageSwitcher({
 
   const activeLocale = availableLocales.find((l) => l.code === locale) || availableLocales[0];
 
-  // Quick 1-click toggle for compact variant
-  const handleToggle = () => {
-    const nextLocale = locale === 'en' ? 'bn' : 'en';
-    setLocale(nextLocale);
-  };
-
   if (variant === 'pill') {
     return (
       <div className={`inline-flex items-center p-0.5 rounded-full bg-white/[0.06] border border-white/10 ${className}`}>
@@ -114,4 +108,3 @@ export default function LanguageSwitcher({
     </div>
   );
 }
-

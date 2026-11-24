@@ -21,8 +21,6 @@ import {
   Maximize2,
   X,
   ChevronDown,
-  Sparkles,
-  Gauge,
 } from 'lucide-react';
 
 export default function BottomPlayerBar() {

@@ -1,5 +1,3 @@
-/* eslint-disable consistent-return */
-/* eslint-disable default-case */
 import { KeyboardCode, closestCorners, getFirstCollision } from '@dnd-kit/core';
 
 // ----------------------------------------------------------------------

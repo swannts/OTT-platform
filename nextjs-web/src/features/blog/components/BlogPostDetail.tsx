@@ -9,7 +9,6 @@ import {
   Clock,
   Calendar,
   Eye,
-  Share2,
   Copy,
   Check,
   BookOpen,

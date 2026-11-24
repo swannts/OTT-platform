@@ -54,7 +54,7 @@ export function PostDetailsHomeView({ post, latestPosts }) {
         <Stack sx={{ maxWidth: 720, mx: 'auto' }}>
           <Typography variant="subtitle1">{post?.description}</Typography>
 
-          <Markdown children={post?.content} />
+          <Markdown>{post?.content}</Markdown>
 
           <Stack
             spacing={3}

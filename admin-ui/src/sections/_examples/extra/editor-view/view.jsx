@@ -99,7 +99,7 @@ export function EditorView() {
           }}
         >
           <Typography variant="h6">Preview</Typography>
-          <Markdown children={content} />
+          <Markdown>{content}</Markdown>
         </Stack>
       </ComponentContainer>
     </>

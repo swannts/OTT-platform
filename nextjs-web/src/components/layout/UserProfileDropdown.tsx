@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth, useLanguage } from '@/providers';
 import {
-  User as UserIcon,
   LogOut,
   Crown,
   Heart,
@@ -15,16 +14,14 @@ import {
   CreditCard,
   LogIn,
   UserPlus,
-  Sparkles,
 } from 'lucide-react';
 
 export default function UserProfileDropdown() {
   const router = useRouter();
-  const { user, subscription, login, logout, isLoading } = useAuth();
+  const { user, subscription, logout } = useAuth();
   const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [imgError, setImgError] = useState(false);
-  const [isLoggingInDemo, setIsLoggingInDemo] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close on click outside and escape key
@@ -54,19 +51,7 @@ export default function UserProfileDropdown() {
   const handleSignOut = async () => {
     setIsOpen(false);
     await logout();
-    window.location.href = '/';
-  };
-
-  const handleDemoLogin = async () => {
-    setIsLoggingInDemo(true);
-    try {
-      await login({ email: 'admin@swann.com', password: '12345678' });
-      setIsOpen(false);
-    } catch (err) {
-      console.error('Demo login failed:', err);
-    } finally {
-      setIsLoggingInDemo(false);
-    }
+    router.replace('/');
   };
 
   // Derive user initials (e.g. "SA" or "U")
@@ -251,18 +236,6 @@ export default function UserProfileDropdown() {
                   <UserPlus className="w-3.5 h-3.5" />
                   <span>{t('create_account', 'Create Account')}</span>
                 </Link>
-
-                <div className="pt-2 border-t border-white/10">
-                  <button
-                    type="button"
-                    onClick={handleDemoLogin}
-                    disabled={isLoggingInDemo}
-                    className="flex items-center justify-center space-x-1.5 w-full text-[11px] text-[#E5B869] hover:text-[#f3cf8a] py-1.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
-                  >
-                    <Sparkles className="w-3 h-3 text-[#E5B869]" />
-                    <span>{isLoggingInDemo ? t('loading', 'Signing in...') : t('demo_login', '1-Click Demo Login (Admin)')}</span>
-                  </button>
-                </div>
               </div>
             </div>
           )}
@@ -271,4 +244,3 @@ export default function UserProfileDropdown() {
     </div>
   );
 }
-

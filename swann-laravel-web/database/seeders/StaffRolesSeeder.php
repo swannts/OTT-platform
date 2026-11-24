@@ -64,13 +64,22 @@ class StaffRolesSeeder extends Seeder
         $videoEditorRole->syncPermissions($validEditorPermissions);
 
         // 3. Create Sample Staff Accounts for Testing / Review
+        if (! app()->environment(['local', 'testing'])) {
+            return;
+        }
+
+        $demoSeedPassword = (string) config('app.demo_seed_password');
+        if ($demoSeedPassword === '') {
+            return;
+        }
+
         $channelManager = User::updateOrCreate(
             ['email' => 'channel.manager@noorcinema.com'],
             [
                 'first_name' => 'Channel',
                 'last_name' => 'Manager',
                 'user_type' => 'channel_manager',
-                'password' => Hash::make('12345678'),
+                'password' => Hash::make($demoSeedPassword),
                 'status' => 1,
                 'email_verified_at' => now(),
             ]
@@ -83,7 +92,7 @@ class StaffRolesSeeder extends Seeder
                 'first_name' => 'Video',
                 'last_name' => 'Editor',
                 'user_type' => 'video_editor',
-                'password' => Hash::make('12345678'),
+                'password' => Hash::make($demoSeedPassword),
                 'status' => 1,
                 'email_verified_at' => now(),
             ]
@@ -95,4 +104,3 @@ class StaffRolesSeeder extends Seeder
         app()['cache']->forget('spatie.permission.cache');
     }
 }
-
