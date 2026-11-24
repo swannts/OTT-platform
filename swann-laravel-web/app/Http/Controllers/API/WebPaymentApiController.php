@@ -306,7 +306,7 @@ class WebPaymentApiController extends Controller
                 return ApiResponse::error('Payment is incomplete or does not match this account and purchase.', 422);
             }
 
-            $purchase = $this->fulfillVerifiedPayment(
+            $purchase = app(\App\Services\Payments\FulfillVerifiedPayment::class)->execute(
                 'stripe',
                 $intent->id,
                 $user->id,
@@ -332,7 +332,7 @@ class WebPaymentApiController extends Controller
 
     private function toMinorUnits(float $amount, string $currency, string $gateway = 'stripe'): int
     {
-        return (int) round($amount * $this->currencyMultiplier($currency, $gateway));
+        return (int) round($amount * app(\App\Services\Payments\FulfillVerifiedPayment::class)->currencyMultiplier($currency, $gateway));
     }
 
     /** Receive provider-confirmed Stripe payments even if the client disconnects. */
@@ -489,7 +489,7 @@ class WebPaymentApiController extends Controller
                 throw new \RuntimeException('Razorpay order has no valid purchase ID.');
             }
 
-            $this->fulfillVerifiedPayment(
+            app(\App\Services\Payments\FulfillVerifiedPayment::class)->execute(
                 'razorpay', $paymentId, $userId, $purchaseType, $purchaseId,
                 (int) $payment->amount, strtoupper((string) $payment->currency), $promotionId, $contentType,
                 !empty($notes['coupon_reservation']) ? (string) $notes['coupon_reservation'] : null
@@ -681,7 +681,7 @@ class WebPaymentApiController extends Controller
 
         $expiresKey = $expiresAt?->utc()->format('YmdHis') ?? 'lifetime';
         $providerReference = 'rc_' . $user->id . '_' . substr(hash('sha256', $productIdentifier . '|' . $expiresKey), 0, 32);
-        $subscription = $this->fulfillVerifiedPayment(
+        $subscription = app(\App\Services\Payments\FulfillVerifiedPayment::class)->execute(
             'revenuecat', $providerReference, $user->id, 'subscription', (int) $plan->id,
             0, 'USD'
         );
@@ -735,7 +735,7 @@ class WebPaymentApiController extends Controller
             throw new \RuntimeException('Stripe payment metadata is incomplete.');
         }
 
-        $this->fulfillVerifiedPayment(
+        app(\App\Services\Payments\FulfillVerifiedPayment::class)->execute(
             'stripe', $providerReference, $userId, $purchaseType, $purchaseId, $amountMinor,
             $currency, !empty($metadata['promotion_id']) ? (int) $metadata['promotion_id'] : null,
             (string) ($metadata['content_type'] ?? ''),
@@ -850,11 +850,11 @@ class WebPaymentApiController extends Controller
         // If amount is 0, activate plan immediately
         if ($finalPrice <= 0) {
             $subscription = DB::transaction(function () use ($user, $plan, $promotionId, $couponReservationToken, $calcData) {
-                $subscription = $this->activateUserSubscription(
+                $subscription = app(\App\Services\Payments\FulfillVerifiedPayment::class)->activateUserSubscription(
                     $user->id, $plan, 0, 'free', 'FREE-' . strtoupper(\Illuminate\Support\Str::uuid()),
                     $promotionId, strtoupper((string) $calcData['currency'])
                 );
-                if ($promotionId) $this->consumeCouponReservation($couponReservationToken, (int) $promotionId, (int) $user->id, (int) $subscription->id);
+                if ($promotionId) app(\App\Services\Payments\FulfillVerifiedPayment::class)->consumeCouponReservation($couponReservationToken, (int) $promotionId, (int) $user->id, (int) $subscription->id);
                 return $subscription;
             });
 
@@ -925,7 +925,7 @@ class WebPaymentApiController extends Controller
                 }
 
                 $transactionId = (string) ($session->payment_intent ?: $session->id);
-                $subscription = $this->fulfillVerifiedPayment(
+                $subscription = app(\App\Services\Payments\FulfillVerifiedPayment::class)->execute(
                     'stripe', $transactionId, $user->id, 'subscription', $plan->id,
                     (int) $session->amount_total, strtoupper((string) $session->currency),
                     !empty($metadata->promotion_id) ? (int) $metadata->promotion_id : null,
@@ -972,7 +972,7 @@ class WebPaymentApiController extends Controller
                     return ApiResponse::error('The plan associated with this order is unavailable.', 404);
                 }
 
-                $subscription = $this->fulfillVerifiedPayment(
+                $subscription = app(\App\Services\Payments\FulfillVerifiedPayment::class)->execute(
                     'razorpay', (string) $payment->id, $user->id, 'subscription', $plan->id,
                     (int) $payment->amount, strtoupper((string) $payment->currency),
                     !empty($notes['promotion_id']) ? (int) $notes['promotion_id'] : null,
@@ -1005,7 +1005,7 @@ class WebPaymentApiController extends Controller
                 return ApiResponse::error('The plan associated with this payment is unavailable.', 404);
             }
 
-            $subscription = $this->fulfillVerifiedPayment(
+            $subscription = app(\App\Services\Payments\FulfillVerifiedPayment::class)->execute(
                 'paystack', (string) $request->reference, $user->id, 'subscription', $plan->id,
                 (int) $data['amount'], strtoupper((string) $data['currency']),
                 !empty($metadata['promotion_id']) ? (int) $metadata['promotion_id'] : null,
@@ -1132,7 +1132,7 @@ class WebPaymentApiController extends Controller
             'coupon_code' => 'nullable|string',
         ]);
 
-        $content = $this->resolveContentModel($request->type, $request->movie_id);
+        $content = app(\App\Services\Payments\FulfillVerifiedPayment::class)->resolveContentModel($request->type, $request->movie_id);
         if (! $content) {
             return ApiResponse::error('Content not found.', 404);
         }
@@ -1197,7 +1197,7 @@ class WebPaymentApiController extends Controller
         ]);
 
         $user = Auth::user();
-        $content = $this->resolveContentModel($request->type, $request->movie_id);
+        $content = app(\App\Services\Payments\FulfillVerifiedPayment::class)->resolveContentModel($request->type, $request->movie_id);
         if (!$content) {
             return ApiResponse::error('Content not found.', 404);
         }
@@ -1219,7 +1219,7 @@ class WebPaymentApiController extends Controller
             return ApiResponse::error('This content is not eligible for free checkout.', 422);
         }
         if ($finalPrice <= 0) {
-            $ppv = $this->activatePayPerViewAccess($user->id, $content, $request->type, 0, 'free', 'FREE-' . bin2hex(random_bytes(12)));
+            $ppv = app(\App\Services\Payments\FulfillVerifiedPayment::class)->activatePayPerViewAccess($user->id, $content, $request->type, 0, 'free', 'FREE-' . bin2hex(random_bytes(12)));
             return ApiResponse::success(['success' => true, 'ppv' => $ppv], 'Content rented successfully.', 200);
         }
 
@@ -1317,13 +1317,13 @@ class WebPaymentApiController extends Controller
 
                 $contentId = (int) ($metadata->movie_id ?? 0);
                 $contentType = (string) ($metadata->type ?? '');
-                $content = $this->resolveContentModel($contentType, $contentId);
+                $content = app(\App\Services\Payments\FulfillVerifiedPayment::class)->resolveContentModel($contentType, $contentId);
                 if (!$content) {
                     return ApiResponse::error('Content associated with this payment was not found.', 404);
                 }
 
                 $transactionId = (string) ($session->payment_intent ?: $session->id);
-                $ppv = $this->fulfillVerifiedPayment(
+                $ppv = app(\App\Services\Payments\FulfillVerifiedPayment::class)->execute(
                     'stripe', $transactionId, $user->id, 'pay_per_view', $content->id,
                     (int) $session->amount_total, strtoupper((string) $session->currency), null, $contentType
                 );
@@ -1344,7 +1344,7 @@ class WebPaymentApiController extends Controller
 
             $contentId = (int) ($notes['content_id'] ?? 0);
             $contentType = (string) ($notes['content_type'] ?? '');
-            $content = $this->resolveContentModel($contentType, $contentId);
+            $content = app(\App\Services\Payments\FulfillVerifiedPayment::class)->resolveContentModel($contentType, $contentId);
             if (!$content) {
                 return ApiResponse::error('Content associated with this order was not found.', 404);
             }
@@ -1357,7 +1357,7 @@ class WebPaymentApiController extends Controller
                 return ApiResponse::error('Razorpay payment is not captured for this order.', 400);
             }
 
-            $ppv = $this->fulfillVerifiedPayment(
+            $ppv = app(\App\Services\Payments\FulfillVerifiedPayment::class)->execute(
                 'razorpay', (string) $payment->id, $user->id, 'pay_per_view', $content->id,
                 (int) $payment->amount, strtoupper((string) $payment->currency), null, $contentType
             );
@@ -1389,71 +1389,6 @@ class WebPaymentApiController extends Controller
     // Internal Helper Methods
     // ─────────────────────────────────────────────────────────────────────────
 
-    private function fulfillVerifiedPayment(
-        string $gateway,
-        string $providerReference,
-        int $userId,
-        string $purchaseType,
-        int $purchaseId,
-        int $amountMinor,
-        string $currency,
-        ?int $promotionId = null,
-        ?string $contentType = null,
-        ?string $couponReservationToken = null
-    ) {
-        return DB::transaction(function () use ($gateway, $providerReference, $userId, $purchaseType, $purchaseId, $amountMinor, $currency, $promotionId, $contentType, $couponReservationToken) {
-            $receipt = VerifiedPayment::query()->firstOrCreate(
-                ['gateway' => $gateway, 'provider_reference' => $providerReference],
-                [
-                    'user_id' => $userId,
-                    'purchase_type' => $purchaseType,
-                    'purchase_id' => $purchaseId,
-                    'amount_minor' => $amountMinor,
-                    'currency' => strtoupper($currency),
-                ]
-            );
-            $receipt = VerifiedPayment::query()->whereKey($receipt->id)->lockForUpdate()->firstOrFail();
-
-            if ((int) $receipt->user_id !== $userId
-                || $receipt->purchase_type !== $purchaseType
-                || (int) $receipt->purchase_id !== $purchaseId
-                || (int) $receipt->amount_minor !== $amountMinor
-                || strtoupper($receipt->currency) !== strtoupper($currency)) {
-                throw new \RuntimeException('Provider transaction was already associated with a different purchase.');
-            }
-
-            if ($receipt->fulfilled_at) {
-                return $receipt->fulfillment_type === 'subscription'
-                    ? Subscription::findOrFail($receipt->fulfillment_id)
-                    : PayPerView::findOrFail($receipt->fulfillment_id);
-            }
-
-            $amount = $amountMinor / $this->currencyMultiplier($currency, $gateway);
-            if ($purchaseType === 'subscription') {
-                $plan = Plan::where('id', $purchaseId)->where('status', 1)->firstOrFail();
-                $fulfillment = $this->activateUserSubscription($userId, $plan, $amount, $gateway, $providerReference, $promotionId, strtoupper($currency));
-                if ($promotionId || $couponReservationToken) {
-                    $this->consumeCouponReservation($couponReservationToken, (int) $promotionId, $userId, (int) $fulfillment->id);
-                }
-                $receipt->fulfillment_type = 'subscription';
-            } elseif ($purchaseType === 'pay_per_view') {
-                $content = $this->resolveContentModel((string) $contentType, $purchaseId);
-                if (!$content) {
-                    throw new \RuntimeException('The content associated with the verified payment no longer exists.');
-                }
-                $fulfillment = $this->activatePayPerViewAccess($userId, $content, (string) $contentType, $amount, $gateway, $providerReference);
-                $receipt->fulfillment_type = 'pay_per_view';
-            } else {
-                throw new \RuntimeException('Unsupported verified payment purchase type.');
-            }
-
-            $receipt->fulfillment_id = $fulfillment->id;
-            $receipt->fulfilled_at = now();
-            $receipt->save();
-
-            return $fulfillment;
-        });
-    }
 
     private function beginProviderEvent(string $gateway, string $eventId, string $eventType, string $providerReference, string $payload): bool
     {
@@ -1579,7 +1514,7 @@ class WebPaymentApiController extends Controller
             throw new \RuntimeException('Paystack transaction could not be independently verified.');
         }
         $plan = Plan::query()->whereKey($planId)->where('status', 1)->firstOrFail();
-        $this->fulfillVerifiedPayment(
+        app(\App\Services\Payments\FulfillVerifiedPayment::class)->execute(
             'paystack', $reference, $userId, 'subscription', $planId, (int) $verified['amount'],
             strtoupper((string) $verified['currency']), !empty($metadata['promotion_id']) ? (int) $metadata['promotion_id'] : null,
             null, !empty($metadata['coupon_reservation']) ? (string) $metadata['coupon_reservation'] : null
@@ -1688,101 +1623,8 @@ class WebPaymentApiController extends Controller
         ]);
     }
 
-    private function consumeCouponReservation(?string $token, int $couponId, int $userId, int $subscriptionId): void
-    {
-        $reservation = null;
-        if ($token) {
-            $reservation = DB::table('subscription_coupon_reservations')->where('token', $token)->lockForUpdate()->first();
-            if (!$reservation || (int) $reservation->user_id !== $userId
-                || ($couponId > 0 && (int) $reservation->coupon_id !== $couponId)) {
-                throw new \RuntimeException('Coupon checkout reservation does not match the verified subscription payment.');
-            }
-            if ($reservation->status === 'redeemed') {
-                if ((int) $reservation->subscription_id === $subscriptionId) return;
-                throw new \RuntimeException('Coupon reservation was already used for another subscription.');
-            }
-            if ($reservation->status !== 'pending') {
-                throw new \RuntimeException('Coupon checkout reservation is no longer available.');
-            }
-            $couponId = (int) $reservation->coupon_id;
-        }
 
-        if ($couponId <= 0) return;
-        $coupon = Coupon::query()->lockForUpdate()->find($couponId);
-        if (!$coupon) throw new \RuntimeException('The coupon associated with this payment no longer exists.');
 
-        DB::table('user_coupon_redeem')->insert([
-            'coupon_code' => $coupon->code, 'discount' => $coupon->discount,
-            'user_id' => $userId, 'coupon_id' => $coupon->id, 'booking_id' => $subscriptionId,
-            'created_at' => now(), 'updated_at' => now(),
-        ]);
-
-        if ($reservation) {
-            DB::table('subscription_coupon_reservations')->where('id', $reservation->id)->update([
-                'status' => 'redeemed', 'redeemed_at' => now(), 'subscription_id' => $subscriptionId, 'updated_at' => now(),
-            ]);
-        }
-    }
-
-    private function currencyMultiplier(string $currency, string $gateway = 'stripe'): int
-    {
-        // Paystack requires a 100x subunit amount for every currently supported currency,
-        // including XOF, which otherwise has no ISO subunit.
-        if (strtolower($gateway) === 'paystack') return 100;
-
-        // Stripe's charge minor-unit rules. UGX stays at 100x for backward compatibility.
-        // Razorpay follows the ISO zero-decimal set, including UGX. Its 3-decimal currencies are not enabled here.
-        $zeroDecimalCurrencies = ['BIF', 'CLP', 'DJF', 'GNF', 'JPY', 'KMF', 'KRW', 'MGA', 'PYG', 'RWF', 'VND', 'VUV', 'XAF', 'XOF', 'XPF'];
-        if (strtolower($gateway) === 'razorpay') $zeroDecimalCurrencies[] = 'UGX';
-
-        return in_array(strtoupper($currency), $zeroDecimalCurrencies, true) ? 1 : 100;
-    }
-
-    private function activateUserSubscription(int $userId, Plan $plan, float $amount, string $paymentType, string $transactionId, ?int $promotionId = null, string $currency = 'USD'): Subscription
-    {
-        // Deactivate previous active subscriptions
-        Subscription::where('user_id', $userId)
-            ->where('status', 'active')
-            ->update(['status' => 'inactive']);
-
-        $startDate = now()->toDateTimeString();
-        $endDate = $this->get_plan_expiration_date($startDate, $plan->duration, $plan->duration_value);
-
-        $limitationData = PlanResource::collection([$plan]);
-
-        $subscription = Subscription::create([
-            'plan_id' => $plan->id,
-            'user_id' => $userId,
-            'start_date' => $startDate,
-            'end_date' => $endDate,
-            'status' => 'active',
-            'amount' => $plan->price,
-            'discount_percentage' => $plan->discount_percentage,
-            'total_amount' => $amount,
-            'name' => $plan->name,
-            'identifier' => $plan->identifier,
-            'type' => $plan->duration,
-            'duration' => $plan->duration_value,
-            'level' => $plan->level,
-            'plan_type' => json_encode($limitationData),
-            'coupon_id' => $promotionId,
-        ]);
-
-        SubscriptionTransactions::create([
-            'subscriptions_id' => $subscription->id,
-            'user_id' => $userId,
-            'amount' => $amount,
-            'currency_code' => strtoupper($currency),
-            'payment_type' => $paymentType,
-            'payment_status' => 'paid',
-            'transaction_id' => $transactionId,
-        ]);
-
-        User::where('id', $userId)->update(['is_subscribe' => 1]);
-        Cache::flush();
-
-        return $subscription;
-    }
 
     private function startEligibleTrial(User $user, Plan $plan): ?Subscription
     {
@@ -1818,49 +1660,7 @@ class WebPaymentApiController extends Controller
         }, 3);
     }
 
-    private function activatePayPerViewAccess(int $userId, $content, string $type, float $amount, string $paymentType, string $transactionId): PayPerView
-    {
-        $accessDuration = (int) ($content->available_for ?? $content->access_duration ?? 2);
-        $viewExpiry = now()->addDays($accessDuration);
 
-        $ppv = PayPerView::create([
-            'user_id' => $userId,
-            'movie_id' => $content->id,
-            'type' => $type,
-            'content_price' => $content->price ?? 0,
-            'price' => $amount,
-            'discount_percentage' => $content->discount_percentage ?? 0,
-            'view_expiry_date' => $viewExpiry,
-            'access_duration' => $accessDuration,
-            'available_for' => $accessDuration,
-        ]);
-
-        PayperviewTransaction::create([
-            'user_id' => $userId,
-            'amount' => $amount,
-            'payment_type' => $paymentType,
-            'payment_status' => 'paid',
-            'transaction_id' => $transactionId,
-            'pay_per_view_id' => $ppv->id,
-        ]);
-
-        return $ppv;
-    }
-
-    private function resolveContentModel(string $type, int $id)
-    {
-        switch ($type) {
-            case 'movie':
-            case 'tvshow':
-                return Entertainment::find($id);
-            case 'video':
-                return Video::find($id);
-            case 'episode':
-                return Episode::find($id);
-            default:
-                return null;
-        }
-    }
 
     private function createStripeSubscriptionSession(Plan $plan, float $price, string $currency, User $user, ?int $promotionId, string $frontendUrl, ?string $reservationToken = null)
     {
