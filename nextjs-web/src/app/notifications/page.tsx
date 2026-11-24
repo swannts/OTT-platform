@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -9,12 +9,9 @@ import { Spinner } from '@/components/ui';
 import { formatDhakaDateTime } from '@/lib/datetime';
 import {
   Bell,
-  CheckCircle2,
   Trash2,
   Film,
   Tv,
-  Calendar,
-  AlertCircle,
   ExternalLink,
 } from 'lucide-react';
 
@@ -40,18 +37,8 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/login?redirect=/notifications');
-      return;
-    }
-    if (user) {
-      loadNotifications();
-    }
-  }, [user, isLoading, router]);
-
-  const loadNotifications = async () => {
-    setLoading(true);
+  const loadNotifications = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
       const res = await api.getNotifications(false);
       const items = (Array.isArray(res) ? res : res?.notifications || res?.data || []) as unknown as NotificationItem[];
@@ -61,7 +48,32 @@ export default function NotificationsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (!isLoading && !user) {
+      router.push('/login?redirect=/notifications');
+      return;
+    }
+    let active = true;
+    void api.getNotifications(false)
+      .then((res) => {
+        if (!active) return;
+        const items = (Array.isArray(res) ? res : res?.notifications || res?.data || []) as unknown as NotificationItem[];
+        setNotifications(items);
+      })
+      .catch(() => {
+        if (active) setNotifications([]);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [user, isLoading, router]);
 
   const handleMarkAllRead = async () => {
     try {
@@ -121,7 +133,7 @@ export default function NotificationsPage() {
           <Bell className="w-12 h-12 text-gray-600 mx-auto mb-3" />
           <h3 className="text-lg font-bold text-white mb-1">No New Notifications</h3>
           <p className="text-xs text-gray-400 max-w-sm mx-auto">
-            You're all caught up! When new movies, series episodes, or account updates happen, you'll see them here.
+            You&apos;re all caught up! When new movies, series episodes, or account updates happen, you&apos;ll see them here.
           </p>
         </div>
       ) : (
@@ -191,4 +203,3 @@ export default function NotificationsPage() {
     </div>
   );
 }
-

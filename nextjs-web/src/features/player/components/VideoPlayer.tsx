@@ -37,48 +37,45 @@ export default function VideoPlayer({
   isLive = false,
   onBack,
 }: VideoPlayerProps) {
-  const [selectedQualityUrl, setSelectedQualityUrl] = useState<string>(videoUrl);
-  const [selectedQualityType, setSelectedQualityType] = useState<string>(urlType);
+  const [qualityOverride, setQualityOverride] = useState<{
+    sourceVideoUrl: string;
+    sourceUrlType: string;
+    videoUrl: string;
+    urlType: string;
+  } | null>(null);
+  const hasCurrentOverride = qualityOverride?.sourceVideoUrl === videoUrl && qualityOverride.sourceUrlType === urlType;
+  const selectedQualityUrl = hasCurrentOverride ? qualityOverride.videoUrl : videoUrl;
+  const selectedQualityType = hasCurrentOverride ? qualityOverride.urlType : urlType;
   const [isQualitySwitch, setIsQualitySwitch] = useState<boolean>(false);
   const currentTimeRef = useRef<number>(initialTime);
-  const selectedQualityUrlRef = useRef<string>(videoUrl);
+  const selectedQualityUrlRef = useRef<string>(selectedQualityUrl);
   const [resumeTime, setResumeTime] = useState<number>(initialTime);
-  const [sessionValid, setSessionValid] = useState(true);
+  const [sessionState, setSessionState] = useState({ playbackSessionId, valid: true });
+  const sessionValid = sessionState.playbackSessionId === playbackSessionId ? sessionState.valid : true;
 
   useEffect(() => {
     if (!playbackSessionId) return;
-    setSessionValid(true);
     const timer = window.setInterval(() => {
       void api.heartbeatPlaybackSession(playbackSessionId).then((refreshed) => {
         if (refreshed.media_url && refreshed.media_url !== selectedQualityUrlRef.current) {
           selectedQualityUrlRef.current = refreshed.media_url;
           setResumeTime(currentTimeRef.current);
           setIsQualitySwitch(true);
-          setSelectedQualityUrl(refreshed.media_url);
-          setSelectedQualityType('HLS');
+          setQualityOverride({ sourceVideoUrl: videoUrl, sourceUrlType: urlType, videoUrl: refreshed.media_url, urlType: 'HLS' });
         }
-      }).catch(() => setSessionValid(false));
+      }).catch(() => setSessionState({ playbackSessionId, valid: false }));
     }, 45_000);
     return () => {
       window.clearInterval(timer);
       void api.endPlaybackSession(playbackSessionId).catch(() => undefined);
     };
-  }, [playbackSessionId]);
+  }, [playbackSessionId, urlType, videoUrl]);
 
   useEffect(() => {
     selectedQualityUrlRef.current = selectedQualityUrl;
   }, [selectedQualityUrl]);
 
-  useEffect(() => {
-    setSelectedQualityUrl(videoUrl);
-    setSelectedQualityType(urlType);
-  }, [videoUrl, urlType]);
-
   const isCurrentYouTube = isYouTubeVideo(selectedQualityUrl, selectedQualityType);
-
-  if (!hasAccess || !sessionValid) {
-    return <LockedPlayer title={title} poster={poster} />;
-  }
 
   const handleQualityChange = useCallback(
     (url: string, qualityType: string) => {
@@ -94,11 +91,14 @@ export default function VideoPlayer({
         setResumeTime(currentProgress);
       }
       setIsQualitySwitch(true);
-      setSelectedQualityUrl(cleanUrl);
-      setSelectedQualityType(qualityType);
+      setQualityOverride({ sourceVideoUrl: videoUrl, sourceUrlType: urlType, videoUrl: cleanUrl, urlType: qualityType });
     },
-    [selectedQualityUrl, contentId, contentType, initialTime]
+    [selectedQualityUrl, contentId, contentType, initialTime, urlType, videoUrl]
   );
+
+  if (!hasAccess || !sessionValid) {
+    return <LockedPlayer title={title} poster={poster} />;
+  }
 
   return (
     <div className="space-y-3">

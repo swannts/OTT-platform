@@ -21,11 +21,7 @@ export default function HeroBanner({ items }: HeroBannerProps) {
   const [isPaused, setIsPaused] = useState(false);
   const fadeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  if (!items || items.length === 0) {
-    return null;
-  }
-
-  const slides = items;
+  const slides = items || [];
 
   // Smooth fade transition handler
   const transitionToSlide = useCallback(
@@ -46,11 +42,13 @@ export default function HeroBanner({ items }: HeroBannerProps) {
   );
 
   const handleNext = useCallback(() => {
+    if (slides.length === 0) return;
     const next = (currentIndex + 1) % slides.length;
     transitionToSlide(next);
   }, [currentIndex, slides.length, transitionToSlide]);
 
   const handlePrev = useCallback(() => {
+    if (slides.length === 0) return;
     const prev = (currentIndex - 1 + slides.length) % slides.length;
     transitionToSlide(prev);
   }, [currentIndex, slides.length, transitionToSlide]);
@@ -74,13 +72,16 @@ export default function HeroBanner({ items }: HeroBannerProps) {
 
   // Keyboard navigation support
   useEffect(() => {
+    if (slides.length === 0) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') handlePrev();
       if (e.key === 'ArrowRight') handleNext();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handlePrev, handleNext]);
+  }, [handlePrev, handleNext, slides.length]);
+
+  if (slides.length === 0) return null;
 
   const current = slides[currentIndex] || slides[0];
   if (!current) return null;
