@@ -51,4 +51,11 @@ export const rbacApi = {
     } };
   }),
   operationsOverview: () => axios.get(`${base}/operations/overview`).then((response) => response.data),
+  operationsHealth: () => axios.get(`${base}/operations/health`).then((response) => response.data),
+  operationsPlayback: () => axios.get(`${base}/operations/playback`).then((response) => response.data),
+  operationsJobs: (params) => axios.get(`${base}/operations/jobs`, { params }).then((response) => response.data),
+  retryOperationsJob: (id) => axios.post(`${base}/operations/jobs/${encodeURIComponent(id)}/retry`).then((response) => response.data),
+  operationsIncidents: (params) => axios.get(`${base}/operations/incidents`, { params }).then((response) => response.data),
+  createOperationsIncident: (data) => axios.post(`${base}/operations/incidents`, data).then((response) => response.data),
+  updateOperationsIncident: (id, data) => axios.patch(`${base}/operations/incidents/${id}`, data).then((response) => response.data),
 };

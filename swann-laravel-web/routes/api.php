@@ -173,6 +173,15 @@ Route::prefix('admin')->group(function () {
         Route::post('analytics/reports', [\App\Http\Controllers\API\AdminAnalyticsController::class, 'scheduleReport'])->middleware('explicit.permission:analytics.export');
         Route::get('analytics/reports/{report}', [\App\Http\Controllers\API\AdminAnalyticsController::class, 'report'])->whereNumber('report')->middleware('explicit.permission:analytics.export');
         Route::get('operations/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'operations'])->middleware('explicit.permission:operations.health.view');
+        Route::prefix('operations')->group(function (): void {
+            Route::get('health', [\App\Http\Controllers\API\AdminTechnicalOperationsController::class, 'health'])->middleware('explicit.permission:operations.health.view');
+            Route::get('playback', [\App\Http\Controllers\API\AdminTechnicalOperationsController::class, 'playback'])->middleware('explicit.permission:analytics.playback.view');
+            Route::get('jobs', [\App\Http\Controllers\API\AdminTechnicalOperationsController::class, 'jobs'])->middleware('explicit.permission:operations.jobs.view');
+            Route::post('jobs/{job}/retry', [\App\Http\Controllers\API\AdminTechnicalOperationsController::class, 'retryJob'])->middleware('explicit.permission:operations.jobs.retry');
+            Route::get('incidents', [\App\Http\Controllers\API\AdminTechnicalOperationsController::class, 'incidents'])->middleware('explicit.permission:operations.incidents.manage');
+            Route::post('incidents', [\App\Http\Controllers\API\AdminTechnicalOperationsController::class, 'createIncident'])->middleware('explicit.permission:operations.incidents.manage');
+            Route::patch('incidents/{incident}', [\App\Http\Controllers\API\AdminTechnicalOperationsController::class, 'updateIncident'])->whereNumber('incident')->middleware('explicit.permission:operations.incidents.manage');
+        });
 
         Route::prefix('support')->group(function (): void {
             Route::get('overview', [\App\Http\Controllers\API\AdminSupportController::class, 'overview'])->middleware('explicit.permission:support.tickets.manage');

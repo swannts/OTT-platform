@@ -90,7 +90,7 @@ export const navData = [
         title: 'Operations & reports',
         path: '/dashboard/operations',
         icon: ICONS.analytics,
-        permissions: ['media.view', 'subscriptions.view', 'finance.payments.view', 'marketing.campaigns.manage', 'analytics.audience.view', 'operations.health.view'],
+        permissions: ['operations.health.view', 'operations.jobs.view', 'operations.jobs.retry', 'operations.incidents.manage', 'analytics.playback.view'],
       },
       {
         title: 'Roles',

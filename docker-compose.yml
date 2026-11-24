@@ -55,6 +55,7 @@ services:
       APP_ENV: ${APP_ENV:-production}
       APP_DEBUG: "${APP_DEBUG:-false}"
       APP_URL: ${APP_URL:-http://localhost:8000}
+      GO_WORKER_HEALTH_URL: http://worker:8081/health
       ADMIN_UI_URL: ${ADMIN_UI_URL:-http://localhost:3032}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       APP_KEY: ${APP_KEY:-base64:eOBE3Er2LEKZXYIYsvdDITgCkheE7RBU+nDRQMQTpLA=}
@@ -93,6 +94,8 @@ services:
       dockerfile: Dockerfile
     image: swann-worker:prod
     container_name: swann-worker
+    expose:
+      - "8081"
     restart: always
     environment:
       APP_ENV: ${APP_ENV:-production}
