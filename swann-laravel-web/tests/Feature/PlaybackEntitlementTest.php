@@ -218,6 +218,36 @@ class PlaybackEntitlementTest extends TestCase
         app(PlaybackEntitlementService::class)->authorize($user, $contentId, 'movie', $profile->id, $request);
     }
 
+    public function test_expired_subscription_does_not_grant_paid_playback(): void
+    {
+        $user = User::factory()->create();
+        $profile = $this->createProfile($user, false);
+        $request = request()->duplicate();
+        $request->setUserResolver(fn () => $user);
+        $this->activateProfile($user, $profile);
+        $planId = DB::table('plan')->insertGetId([
+            'name' => 'Expired playback plan',
+            'identifier' => 'expired-playback-'.Str::uuid(),
+            'level' => 3,
+            'status' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('subscriptions')->insert([
+            'user_id' => $user->id,
+            'plan_id' => $planId,
+            'status' => 'active',
+            'start_date' => now()->subMonth(),
+            'end_date' => now()->subSecond(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $contentId = $this->createContent('paid', 0, $planId);
+
+        $this->expectException(AuthorizationException::class);
+        app(PlaybackEntitlementService::class)->authorize($user, $contentId, 'movie', $profile->id, $request);
+    }
+
     public function test_active_subscriber_with_a_sufficient_plan_can_play_paid_title(): void
     {
         $user = User::factory()->create();
@@ -302,6 +332,10 @@ class PlaybackEntitlementTest extends TestCase
 
         $result = app(PlaybackEntitlementService::class)->authorize($user, $contentId, 'movie', $profile->id, $request);
         $this->assertSame($contentId, $result['content']->id);
+
+        DB::table('pay_per_views')->where('id', $purchaseId)->update(['view_expiry_date' => now()->subSecond()]);
+        $this->expectException(AuthorizationException::class);
+        app(PlaybackEntitlementService::class)->authorize($user, $contentId, 'movie', $profile->id, $request);
     }
 
     public function test_legacy_decrypt_endpoint_is_not_registered(): void

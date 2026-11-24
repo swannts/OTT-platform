@@ -190,6 +190,10 @@ class PlaybackSessionTest extends TestCase
         $highQualityUrl = app(PlaybackMediaUrlService::class)->sign($asset->id, '1080p_00001.ts', $session['session_id']);
         $this->get($highQualityUrl)->assertForbidden();
 
+        DB::table('users')->where('id', $user->id)->update(['is_banned' => 1]);
+        $this->get($matches[1])->assertForbidden();
+        DB::table('users')->where('id', $user->id)->update(['is_banned' => 0]);
+
         $this->travel(91)->seconds();
         try {
             $expiresAt = Carbon::parse(DB::table('playback_sessions')->where('session_id', $session['session_id'])->value('expires_at'));
