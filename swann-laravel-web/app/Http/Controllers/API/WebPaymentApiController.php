@@ -558,13 +558,29 @@ class WebPaymentApiController extends Controller
 
         try {
             $payload = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
-            $event = $payload['event'] ?? [];
-            $eventType = (string) ($event['type'] ?? '');
+        } catch (\JsonException) {
+            return ApiResponse::error('Invalid RevenueCat webhook payload.', 400);
+        }
+
+        $event = $payload['event'] ?? [];
+        $eventId = (string) ($event['id'] ?? '');
+        $eventType = (string) ($event['type'] ?? '');
+        if ($eventId === '') {
+            return ApiResponse::error('RevenueCat webhook event ID is required.', 400);
+        }
+
+        $providerReference = (string) ($event['transaction_id'] ?? $event['original_transaction_id'] ?? '');
+        if (!$this->beginProviderEvent('revenuecat', $eventId, $eventType ?: 'unknown', $providerReference, $request->getContent())) {
+            return response()->json(['received' => true, 'duplicate' => true], 200);
+        }
+
+        try {
             if (!in_array($eventType, [
                 'INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE',
                 'CANCELLATION', 'EXPIRATION', 'REFUND', 'REFUND_REVERSED',
                 'SUBSCRIPTION_EXTENDED', 'TRANSFER',
             ], true)) {
+                $this->finishProviderEvent('revenuecat', $eventId, 'processed');
                 return response()->json(['received' => true], 200);
             }
 
@@ -585,9 +601,11 @@ class WebPaymentApiController extends Controller
                 $this->syncRevenueCatSubscription($user);
             }
 
+            $this->finishProviderEvent('revenuecat', $eventId, 'processed');
             return response()->json(['received' => true], 200);
         } catch (Exception $e) {
-            Log::error('RevenueCat webhook reconciliation failed.', ['exception' => $e::class]);
+            $this->finishProviderEvent('revenuecat', $eventId, 'failed', $e::class);
+            Log::error('RevenueCat webhook reconciliation failed.', ['event_id' => $eventId, 'exception' => $e::class]);
             return ApiResponse::error('RevenueCat webhook processing failed.', 500);
         }
     }
@@ -1850,7 +1868,7 @@ class WebPaymentApiController extends Controller
             ], 'Stripe checkout session created successfully.', 200);
         } catch (Exception $e) {
             $this->releaseCouponReservation($reservationToken);
-            Log::error('Stripe session creation error', ['error' => $e->getMessage()]);
+            Log::error('Sensitive or user-provided values omitted from logs');
             return ApiResponse::error('Unable to start payment. Please try again.', 502);
         }
     }

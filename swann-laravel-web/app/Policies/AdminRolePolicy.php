@@ -11,12 +11,12 @@ class AdminRolePolicy
 {
     public function viewAny(User $user): bool
     {
-        return $role->is_admin_role && $this->hasPermission($user, 'admin.roles.view');
+        return $this->hasPermission($user, 'admin.roles.view');
     }
 
     public function view(User $user, Role $role): bool
     {
-        return $this->hasPermission($user, 'admin.roles.view');
+        return $role->is_admin_role && $this->hasPermission($user, 'admin.roles.view');
     }
 
     public function create(User $user): bool

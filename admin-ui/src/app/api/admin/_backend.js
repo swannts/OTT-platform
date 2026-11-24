@@ -1,6 +1,24 @@
 import { cookies } from 'next/headers';
 
 const TOKEN_COOKIE = 'ott_admin_token';
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+export function rejectCrossOriginMutation(request) {
+  if (SAFE_METHODS.has(request.method.toUpperCase())) return null;
+
+  const expectedOrigin = new URL(request.url).origin;
+  const origin = request.headers.get('origin');
+  if (origin && origin !== expectedOrigin) {
+    return Response.json({ message: 'Cross-origin requests are not allowed.' }, { status: 403 });
+  }
+
+  const fetchSite = request.headers.get('sec-fetch-site');
+  if (fetchSite && fetchSite !== 'same-origin') {
+    return Response.json({ message: 'Cross-site requests are not allowed.' }, { status: 403 });
+  }
+
+  return null;
+}
 
 export function backendUrl(path) {
   const base = process.env.LARAVEL_API_URL;

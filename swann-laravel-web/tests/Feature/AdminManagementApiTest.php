@@ -57,6 +57,40 @@ class AdminManagementApiTest extends TestCase
         $this->assertDatabaseHas('admin_audit_logs', ['action' => 'staff.roles.updated']);
     }
 
+    public function test_admin_can_list_administrative_roles_with_the_view_permission(): void
+    {
+        $this->getJson('/api/admin/roles')
+            ->assertOk()
+            ->assertJsonStructure(['data', 'meta'])
+            ->assertJsonFragment(['name' => 'super-admin']);
+    }
+
+    public function test_role_details_cannot_expose_a_customer_role(): void
+    {
+        $customerRole = Role::query()->create([
+            'name' => 'subscriber',
+            'title' => 'Subscriber',
+            'guard_name' => 'web',
+            'is_fixed' => true,
+            'is_admin_role' => false,
+            'is_active' => true,
+        ]);
+
+        $this->getJson("/api/admin/roles/{$customerRole->getKey()}")
+            ->assertForbidden();
+    }
+
+    public function test_admin_login_is_rate_limited_after_five_attempts(): void
+    {
+        $credentials = ['email' => 'unknown-admin@example.test', 'password' => 'not-a-valid-password'];
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $this->postJson('/api/admin/login', $credentials)->assertUnprocessable();
+        }
+
+        $this->postJson('/api/admin/login', $credentials)->assertTooManyRequests();
+    }
+
     public function test_invitation_is_single_use_and_audit_masks_email_address(): void
     {
         Mail::fake();

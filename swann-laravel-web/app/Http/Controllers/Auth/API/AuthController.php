@@ -136,7 +136,7 @@ class AuthController extends Controller
     $user = User::with(['subscriptionPackage', 'userMultiProfile'])->where('email', request('email'))->first();
         if ($user == null) {
             RateLimiter::hit($request->throttleKey());
-            Log::info('Login failed: user not found', ['email' => $request->input('email'), 'ip' => $request->ip()]);
+            Log::info('Login failed: user not found');
             return ApiResponse::error(__('messages.register_before_login'), 400);
         }
 
@@ -227,7 +227,7 @@ class AuthController extends Controller
         return $this->sendResponse($loginResource, $message);
     } else {
         RateLimiter::hit($request->throttleKey());
-        Log::info('Login failed: invalid credentials', ['email' => $request->input('email'), 'ip' => $request->ip()]);
+        Log::info('Login failed: invalid credentials');
         return $this->sendError(__('messages.not_matched'), ['error' => __('messages.unauthorised')], 200);
     }
 }

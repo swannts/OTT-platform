@@ -241,7 +241,7 @@ class ImportTVshowsJob implements ShouldQueue
     public function handle()
     {
         \Log::info("=== ImportTVshowsJob STARTED ===");
-        \Log::info("File path: {$this->filePath}");
+        \Log::info('Import diagnostic details redacted');
         \Log::info("User ID: {$this->userId}");
         
         $user = User::find($this->userId);
@@ -250,13 +250,13 @@ class ImportTVshowsJob implements ShouldQueue
             return;
         }
         
-        \Log::info("User found: {$user->name} ({$user->email})");
+        \Log::info('Import diagnostic details redacted');
 
         $extension = pathinfo($this->filePath, PATHINFO_EXTENSION);
         $fullPath = storage_path('app/' . $this->filePath);
         \Log::info("File extension: {$extension}");
-        \Log::info("Full path: {$fullPath}");
-        \Log::info("File exists: " . (file_exists($fullPath) ? 'YES' : 'NO'));
+        \Log::info('Import diagnostic details redacted');
+        \Log::info('Import diagnostic details redacted');
         
         $rows = [];
         
@@ -274,7 +274,7 @@ class ImportTVshowsJob implements ShouldQueue
                 ]));
                 \Log::info("CSV processing completed. Rows count: " . $rows->count());
             } catch (\Exception $e) {
-                \Log::error("CSV processing error: " . $e->getMessage());
+                \Log::error('Import diagnostic details redacted');
                 return;
             }
         } else {
@@ -319,9 +319,9 @@ class ImportTVshowsJob implements ShouldQueue
                 $data = array_combine($requiredHeader, $row);
                 
                 // Debug: Log the data array to see what we're getting
-                \Log::info("Processing row data: " . json_encode($data));
-                \Log::info("Thumbnail URL from CSV: " . ($data['Thumbnail URL'] ?? 'NOT_FOUND'));
-                \Log::info("Poster URL from CSV: " . ($data['Poster URL'] ?? 'NOT_FOUND'));
+                \Log::info('Import diagnostic details redacted');
+                \Log::info('Import diagnostic details redacted');
+                \Log::info('Import diagnostic details redacted');
                 
                 // Check if the data array has the correct keys
                 if (!isset($data['Thumbnail URL']) || !isset($data['Poster URL'])) {
@@ -399,7 +399,7 @@ class ImportTVshowsJob implements ShouldQueue
                 }
                 if (!empty($rowErrors)) {
                     $failed++;
-                    \Log::error("Validation failed for '{$data['Name']}': " . implode('; ', $rowErrors));
+                    \Log::error('Import diagnostic details redacted');
                     $errorRows[] = array_merge($data, ['Errors' => implode('; ', $rowErrors)]);
                     continue;
                 }
@@ -408,13 +408,13 @@ class ImportTVshowsJob implements ShouldQueue
                     DB::beginTransaction();
                     
                     // Process image URLs
-                    \Log::info("About to call handleImageUrl for thumbnail: " . ($data['Thumbnail URL'] ?? 'NULL'));    
+                    \Log::info('Import diagnostic details redacted');
                     $thumbnailUrl = $this->handleImageUrl($data['Thumbnail URL'] ?? null, 'tvshow', $data['Name'] ?? null, 'thumb');
-                    \Log::info("About to call handleImageUrl for poster: " . ($data['Poster URL'] ?? 'NULL'));
+                    \Log::info('Import diagnostic details redacted');
                     $posterUrl = $this->handleImageUrl($data['Poster URL'] ?? null, 'tvshow', $data['Name'] ?? null, 'poster');
                     $posterTvUrl = $this->handleImageUrl($data['Poster TV URL'] ?? null, 'tvshow', $data['Name'] ?? null, 'poster_tv');
                     \Log::info("Thumbnail URL processing result: " . ($thumbnailUrl ?: 'NULL'));
-                    \Log::info("Poster URL processing result: " . ($posterUrl ?: 'NULL'));
+                    \Log::info('Import diagnostic details redacted');
                     
                     // Validate that we have local image paths, not external URLs
                     if ($thumbnailUrl && filter_var($thumbnailUrl, FILTER_VALIDATE_URL)) {
@@ -422,7 +422,7 @@ class ImportTVshowsJob implements ShouldQueue
                         $thumbnailUrl = null;
                     }
                     if ($posterUrl && filter_var($posterUrl, FILTER_VALIDATE_URL)) {
-                        \Log::warning("Poster URL is still external, setting to null: " . $posterUrl);
+                        \Log::warning('Import diagnostic details redacted');
                         $posterUrl = null;
                     }
                     
@@ -481,12 +481,12 @@ class ImportTVshowsJob implements ShouldQueue
                     
                     DB::commit();
                     $success++;
-                    \Log::info("Successfully created TV show: {$data['Name']} (ID: {$newTVshow->id})");
+                    \Log::info('Import diagnostic details redacted');
                 } catch (\Exception $e) {
                     \Log::error("-------------------Failed to create TV show ");
                     DB::rollBack();
                     $failed++;
-                    \Log::error("Failed to create TV show '{$data['Name']}': " . $e->getMessage());
+                    \Log::error('Import diagnostic details redacted');
                     $errorRows[] = array_merge($data, ['Errors' => __('messages.tvshow_creation_failed') . ': ' . $e->getMessage()]);
                 }
             }
@@ -526,9 +526,9 @@ class ImportTVshowsJob implements ShouldQueue
         $this->cleanupTempDirectory();
         
         try {
-            \Log::info("Completion email sent to: {$user->email}");
+            \Log::info('Import diagnostic details redacted');
         } catch (\Exception $e) {
-            \Log::error('Failed to send TV shows import completion email: ' . $e->getMessage());
+            \Log::error('Import diagnostic details redacted');
         }
     }
 
@@ -668,18 +668,18 @@ class ImportTVshowsJob implements ShouldQueue
             return null;
         }
 
-        \Log::info("Processing image URL: {$imageUrl}");
+        \Log::info('Import diagnostic details redacted');
         
         // Skip if it's already a local path (starts with / or doesn't contain http)
         if (!str_starts_with($imageUrl, 'http')) {
-            \Log::info("Image URL is already local, returning filename: {$imageUrl}");
+            \Log::info('Import diagnostic details redacted');
             return basename($imageUrl); // Return just the filename
         }
 
         try {
             // Validate URL
             if (!filter_var($imageUrl, FILTER_VALIDATE_URL)) {
-                \Log::warning("Invalid image URL provided: {$imageUrl}");
+                \Log::warning('Import diagnostic details redacted');
                 return null;
             }
 
@@ -688,7 +688,7 @@ class ImportTVshowsJob implements ShouldQueue
             $imageUrl = $this->convertUnsplashUrl($imageUrl);
             
             if ($originalUrl !== $imageUrl) {
-                \Log::info("Converted Unsplash Plus URL: {$originalUrl} -> {$imageUrl}");
+                \Log::info('Import diagnostic details redacted');
             }
 
             // Generate unique filename
@@ -704,7 +704,7 @@ class ImportTVshowsJob implements ShouldQueue
             }else{
                 $filename = 'tvshow'.time() . '_' . $type . '.' . $extension;
             }
-            \Log::info("Attempting to download image from: {$imageUrl}");
+            \Log::info('Import diagnostic details redacted');
 
             // Set headers to mimic a browser request
             $response = Http::withHeaders([
@@ -720,7 +720,7 @@ class ImportTVshowsJob implements ShouldQueue
             \Log::info("HTTP response status: " . $response->status());
             
             if (!$response->successful()) {
-                \Log::warning("Failed to download image from URL: {$imageUrl}. Status: " . $response->status());
+                \Log::warning('Import diagnostic details redacted');
                 
                 // Try alternative URL formats for Unsplash
                 if (strpos($imageUrl, 'images.unsplash.com') !== false) {
@@ -753,7 +753,7 @@ class ImportTVshowsJob implements ShouldQueue
             // Validate that it's actually an image
             $imageInfo = getimagesizefromstring($response->body());
             if ($imageInfo === false) {
-                \Log::warning("Downloaded content is not a valid image: {$imageUrl}");
+                \Log::warning('Import diagnostic details redacted');
                 // Return null if image validation fails
                 return null;
             }
@@ -780,12 +780,12 @@ class ImportTVshowsJob implements ShouldQueue
                 Storage::disk('public')->delete($tempPath);
                 return $processedFileName; // return final filename
             } else {
-                \Log::error("❌ Failed to save temp image: {$tempPath}");
+                \Log::error('Import diagnostic details redacted');
                 return null;
             }
 
         } catch (\Exception $e) {
-            \Log::error("Error downloading image from URL {$imageUrl}: " . $e->getMessage());
+            \Log::error('Import diagnostic details redacted');
             // Return null if image download fails
             return null;
         }
@@ -855,7 +855,7 @@ class ImportTVshowsJob implements ShouldQueue
                 \Log::info("🟢 No temp directory to clean up");
             }
         } catch (\Exception $e) {
-            \Log::error("❌ Error cleaning up temp directory: " . $e->getMessage());
+            \Log::error('Import diagnostic details redacted');
         }
     }
 }

@@ -44,7 +44,7 @@ trait AuthTrait
             event(new UserLoginSuccess($request, auth()->user()));
             return ['status' => 200, 'message' => 'Login successful!'];
         }
-        Log::info('Login failed: invalid credentials (web)', ['email' => $email, 'ip' => $request->ip()]);
+        Log::info('Login failed: invalid credentials (web)');
         return false;
     }
 

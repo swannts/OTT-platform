@@ -1,6 +1,9 @@
-import { backendRequest } from '../_backend';
+import { backendRequest, rejectCrossOriginMutation } from '../_backend';
 
 async function proxy(request, context) {
+  const originError = rejectCrossOriginMutation(request);
+  if (originError) return originError;
+
   try {
     const { segments } = await context.params;
     const path = `/api/admin/${segments.map(encodeURIComponent).join('/')}${new URL(request.url).search}`;

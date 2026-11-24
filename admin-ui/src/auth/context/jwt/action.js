@@ -14,7 +14,6 @@ export const signInWithPassword = async ({ email, password }) => {
 
     return res.data.user;
   } catch (error) {
-    console.error('Error during sign in:', error);
     throw error;
   }
 };
@@ -29,7 +28,6 @@ export const signOut = async () => {
   try {
     await axios.post(endpoints.auth.signOut);
   } catch (error) {
-    console.error('Error during sign out:', error);
     throw error;
   }
 };

@@ -361,7 +361,7 @@ class CommonNotification extends Notification implements ShouldQueue
                 $token = $client->fetchAccessTokenWithAssertion();
                 
                 if (isset($token['error'])) {
-                    Log::error('FCM Token Error: ' . json_encode($token));
+                    Log::error('FCM access token request failed');
                     return null;
                 }
 
