@@ -27,7 +27,8 @@ export function backendUrl(path) {
 }
 
 export async function backendRequest(path, options = {}) {
-  const token = cookies().get(TOKEN_COOKIE)?.value;
+  const cookieStore = await cookies();
+  const token = cookieStore.get(TOKEN_COOKIE)?.value;
   if (!token) return Response.json({ message: 'Unauthenticated.' }, { status: 401 });
   const response = await fetch(backendUrl(path), {
     ...options,

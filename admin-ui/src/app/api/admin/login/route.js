@@ -15,7 +15,8 @@ export async function POST(request) {
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) return Response.json(body, { status: response.status });
-    cookies().set(TOKEN_COOKIE, body.token, {
+    const cookieStore = await cookies();
+    cookieStore.set(TOKEN_COOKIE, body.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

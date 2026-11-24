@@ -6,6 +6,7 @@ export async function POST(request) {
   if (originError) return originError;
 
   try { await backendRequest('/api/admin/logout', { method: 'POST' }); } catch { /* Always clear the local session. */ }
-  cookies().set(TOKEN_COOKIE, '', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 0 });
+  const cookieStore = await cookies();
+  cookieStore.set(TOKEN_COOKIE, '', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 0 });
   return Response.json({ message: 'Signed out.' });
 }

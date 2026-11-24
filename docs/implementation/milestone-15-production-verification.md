@@ -14,6 +14,8 @@ readiness.
   forwarding login, logout, invitation acceptance, or proxied mutations. The
   admin bearer token remains in the server-managed cookie flow.
 - Admin login is tested to return HTTP 429 after five attempts in one minute.
+- The admin BFF awaits Next.js 16 asynchronous cookie APIs for login, session lookup,
+  logout, and authenticated backend forwarding.
 - Administrative permission checks re-read account eligibility from the database and deny
   inactive or banned accounts, including requests using an already-issued token. Staff
   deactivation locks the account row, updates status, and revokes all Sanctum tokens in one
@@ -101,8 +103,15 @@ readiness.
   infrastructure ports private, and injects the customer API URL into the
   frontend image build and runtime. Laravel and both Next.js services also have
   configured HTTP health checks.
-- A live Next.js BFF smoke test returned HTTP 403 for cross-origin login,
-  logout, invitation-acceptance, and proxied mutation requests.
+- The existing Docker admin UI image (Next.js 15.5.29) returned HTTP 403 for
+  cross-origin login, logout, invitation acceptance, and proxied mutations. It
+  does not reflect the Next.js 16.4.6 source in this worktree.
+- `npm run test:bff` and `npm run test:bff:production` passed against a controlled
+  Laravel API stub, covering login, HttpOnly/SameSite cookie storage, production
+  Secure cookie storage, authenticated `/me` forwarding, invalid-session cookie
+  clearing, logout/revocation forwarding, and cross-origin login rejection. The
+  containerized admin UI is a stale Next.js 15.5.29 image, so the production test
+  used the current Next.js 16.4.6 build from the worktree.
 - PHP syntax checks passed for all changed PHP files.
 - A tracked-source scan found no private-key, AWS access-key, or Stripe live
   secret literals. It found one Google-style API key in the app-configuration
