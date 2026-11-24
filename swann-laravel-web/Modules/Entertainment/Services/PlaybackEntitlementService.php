@@ -68,7 +68,14 @@ class PlaybackEntitlementService
         if (! $device) {
             throw new AuthorizationException('Select this profile on the current device before playback.');
         }
-        $device->forceFill(['last_activity' => now()])->save();
+        $activityUpdateBefore = now()->subMinutes(5);
+        if ($device->last_activity === null || $device->last_activity->lessThanOrEqualTo($activityUpdateBefore)) {
+            Device::query()->whereKey($device->getKey())
+                ->where(function ($query) use ($activityUpdateBefore): void {
+                    $query->whereNull('last_activity')->orWhere('last_activity', '<=', $activityUpdateBefore);
+                })
+                ->update(['last_activity' => now()]);
+        }
 
         $model = match ($type) {
             'movie', 'tvshow' => Entertainment::class,

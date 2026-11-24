@@ -19,6 +19,7 @@
 - Playback resolves the configurable edge country header only when the immediate socket peer matches an explicitly configured trusted proxy CIDR, then validates the code against active catalog countries. Missing, invalid, or untrusted geo data denies playback only for items that have a territory allowlist.
 - Territory and time-window entitlement is rechecked at playback start, each heartbeat, and each signed private-media request. Signed media requests preserve the actual edge headers and socket peer for country resolution instead of constructing a synthetic request.
 - The technical operations health view reports whether trusted playback geo proxy ranges are absent, syntactically invalid, or configured but still externally unverified. It reports only the configured range count, never the CIDRs or country header; it cannot verify that the edge strips spoofed client headers.
+- Device activity timestamps are refreshed at most once every five minutes during entitlement checks, avoiding a database write for every signed HLS manifest or segment while still verifying the bound device and profile on each request.
 
 ## Changed database and API
 
@@ -38,7 +39,7 @@ Migration 000005 associates legacy devices to Sanctum tokens by matching the exi
 
 ## Validation
 
-- The playback geo readiness change passed PHP syntax validation, JSX parser validation, and `git diff --check`. Tests and builds were skipped per instruction.
+- The playback geo readiness and throttled device-activity changes passed PHP syntax validation, JSX parser validation, and `git diff --check`. Tests and builds were skipped per instruction.
 - After the account-status recheck change and regression coverage for expired subscriptions, expired PPV rentals, and an already-issued media URL after a ban, `PlaybackEntitlementTest` and `PlaybackSessionTest` passed on the isolated `ott_m13_test` MySQL schema: **20 tests, 44 assertions** (one existing PHPUnit deprecation). The test schema was migrated from scratch; the active application database was not used.
 - Focused playback-session and device-limit tests: **6 tests, 31 assertions passed** against an isolated MySQL test schema. This covers signed-manifest expiry while the playback session remains active and login rejection at the registered-device limit.
 - Earlier focused playback, session, TV device-binding, license-window, and support-operations checks passed **30 tests, 113 assertions**. The earlier full-suite result was **117 tests, 528 assertions**; it was not rerun for this increment. One existing PHPUnit deprecation remains.
