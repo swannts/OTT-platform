@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Notifications\OperationsIncidentAlert;
 use App\Services\AdminOperationsService;
 use App\Support\Rbac\AdminAuditLogger;
 use App\Support\Rbac\ExplicitPermission;
@@ -10,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 
@@ -103,6 +105,8 @@ class AdminTechnicalOperationsController extends Controller
             $audit->record($request->user(), 'operations.incident.created', 'operations_incident', $id, null, ['severity' => $data['severity'], 'status' => 'open']);
             return DB::table('operations_incidents')->find($id);
         });
+        $this->notifyIncidentRoute($incident);
+
         return response()->json(['data' => $incident], 201);
     }
 
@@ -113,7 +117,7 @@ class AdminTechnicalOperationsController extends Controller
             'assigned_to' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
             'summary' => ['sometimes', 'string', 'max:3000'],
         ]);
-        $updated = DB::transaction(function () use ($incident, $data, $request, $audit) {
+        $result = DB::transaction(function () use ($incident, $data, $request, $audit): array {
             $row = DB::table('operations_incidents')->where('id', $incident)->lockForUpdate()->first();
             abort_if($row === null, 404);
             $before = ['status' => $row->status, 'assigned_to' => $row->assigned_to];
@@ -137,9 +141,41 @@ class AdminTechnicalOperationsController extends Controller
             DB::table('operations_incidents')->where('id', $incident)->update($update);
             $after = ['status' => $update['status'] ?? $row->status, 'assigned_to' => $update['assigned_to'] ?? $row->assigned_to];
             $audit->record($request->user(), 'operations.incident.updated', 'operations_incident', $incident, $before, $after);
-            return DB::table('operations_incidents')->find($incident);
+            return [
+                'incident' => DB::table('operations_incidents')->find($incident),
+                'state_changed' => isset($data['status']) && $data['status'] !== $row->status,
+            ];
         });
-        return response()->json(['data' => $updated]);
+        if ($result['state_changed']) {
+            $this->notifyIncidentRoute($result['incident']);
+        }
+
+        return response()->json(['data' => $result['incident']]);
+    }
+
+    private function notifyIncidentRoute(object $incident): void
+    {
+        $recipient = filter_var(config('operations.alerts.mail_to'), FILTER_VALIDATE_EMAIL);
+        if ($recipient === false || $recipient === null) {
+            return;
+        }
+
+        $severityOrder = ['low' => 1, 'medium' => 2, 'high' => 3, 'critical' => 4];
+        $minimum = config('operations.alerts.minimum_severity', 'high');
+        if (! isset($severityOrder[$incident->severity], $severityOrder[$minimum])
+            || $severityOrder[$incident->severity] < $severityOrder[$minimum]) {
+            return;
+        }
+
+        try {
+            Notification::route('mail', $recipient)->notify(new OperationsIncidentAlert(
+                (int) $incident->id,
+                (string) $incident->severity,
+                (string) $incident->status,
+            ));
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
     }
 
     /** @return list<class-string> */

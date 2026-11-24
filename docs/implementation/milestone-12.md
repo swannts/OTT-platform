@@ -12,6 +12,7 @@
 - Failed Laravel jobs are paginated and expose only queue, connection, basic job type, failure time, and an explicit retryable flag. The retry endpoint accepts only the two campaign jobs whose handlers recheck consent/publication and use idempotent delivery records.
 - Playback diagnostic events are aggregated by event code over a fixed 24-hour window and require `analytics.playback.view`.
 - Incidents support open, acknowledge, resolve, and reopen transitions. Updates are transactional and audited; summaries are bounded and affected service names are allowlisted.
+- Optional queued email alerts route newly opened or state-changed incidents at or above a configurable severity threshold. Alert messages contain only the incident ID, status, and severity; recipients and SMTP delivery must be configured through deployment secrets.
 - Added an internal Go worker health endpoint that reports process, RabbitMQ connection, Redis TCP reachability, and database ping. Docker Compose exposes it only on the internal network.
 - Replaced the old operations summary page with a permission-aware health, queue, playback, failed-job, and incident UI.
 
@@ -33,7 +34,7 @@ All routes require Sanctum authentication and `admin.access`:
 
 Migration `2026_11_24_000020_create_operations_incidents_table.php` is additive. It refuses to drop incident history on rollback. The worker health endpoint listens on `WORKER_HEALTH_ADDR` (default `:8081`); Laravel calls `GO_WORKER_HEALTH_URL` (default `http://worker:8081/health`). RabbitMQ queue detail requires the management API and the `RABBITMQ_MANAGEMENT_URL`, `RABBITMQ_USER`, and `RABBITMQ_PASSWORD` settings. Credentials stay server-side.
 
-Production backup storage requires a private bucket, region, and dedicated archive password through the `AWS_BACKUP_*` and `BACKUP_ARCHIVE_PASSWORD` settings. Workload identity may supply S3 credentials; otherwise use a scoped key pair. `BACKUP_MAX_STORAGE_MB` controls both the cleanup ceiling and freshness monitor limit; tune it to the real database and media archive footprint. Configure `BACKUP_NOTIFICATION_EMAIL` to enable backup mail notifications. The scheduler service runs the application schedule, so deploy only one scheduler unless the shared cache supports Laravel's single-server locking for every scheduled entry.
+Production backup storage requires a private bucket, region, and dedicated archive password through the `AWS_BACKUP_*` and `BACKUP_ARCHIVE_PASSWORD` settings. Workload identity may supply S3 credentials; otherwise use a scoped key pair. `BACKUP_MAX_STORAGE_MB` controls both the cleanup ceiling and freshness monitor limit; tune it to the real database and media archive footprint. Configure `BACKUP_NOTIFICATION_EMAIL` to enable backup mail notifications and `OPERATIONS_ALERT_EMAIL` plus `OPERATIONS_ALERT_MINIMUM_SEVERITY` for incident email routing. Production Compose requires the SMTP host and verified sender address. The scheduler service runs the application schedule, so deploy only one scheduler unless the shared cache supports Laravel's single-server locking for every scheduled entry.
 
 Apply the Laravel migration, rebuild and restart the Go worker image, then
 verify the authenticated operations page and each service check. The local

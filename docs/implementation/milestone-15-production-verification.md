@@ -150,7 +150,9 @@ readiness.
    not overwrite an existing local `.env`. Inject a unique Laravel `APP_KEY`,
    database and MySQL root passwords, RabbitMQ credentials, Meilisearch master
    key, exact HTTPS origins, and a public `NEXT_PUBLIC_API_URL` from the secret
-   manager or deployment environment. Replace every application and
+   manager or deployment environment. Configure `MAIL_HOST`, a verified
+   `MAIL_FROM_ADDRESS`, and the remaining `MAIL_*` settings if outbound email is
+   used. Replace every application and
    infrastructure image variable with a tested immutable image reference.
 2. Set `ADMIN_UI_IMAGE`, `BACKEND_IMAGE`, `FRONTEND_IMAGE`, `WORKER_IMAGE`,
    `MYSQL_IMAGE`, `REDIS_IMAGE`, `RABBITMQ_IMAGE`, and `MEILISEARCH_IMAGE` to
@@ -160,9 +162,11 @@ readiness.
    reachable by the deployment's TLS reverse proxy.
    Also create a private backup bucket separate from customer media, inject its
    region and a dedicated archive-encryption password, and configure a narrowly
-   scoped S3 identity (or workload identity). Set `BACKUP_NOTIFICATION_EMAIL`
-   if mail alerts are desired, and size `BACKUP_MAX_STORAGE_MB` for expected
-   archive size and retention. Run one scheduler service against the shared
+   scoped S3 identity (or workload identity). Configure SMTP and set
+   `BACKUP_NOTIFICATION_EMAIL` for backup alerts; set `OPERATIONS_ALERT_EMAIL`
+   and `OPERATIONS_ALERT_MINIMUM_SEVERITY` for incident alerts. Size
+   `BACKUP_MAX_STORAGE_MB` for expected archive size and retention. Run one
+   scheduler service against the shared
    Laravel cache; a production bucket and restore rehearsal are still required
    before treating backups as operationally verified.
 3. For a new MySQL data volume, Compose creates the configured least-privilege
