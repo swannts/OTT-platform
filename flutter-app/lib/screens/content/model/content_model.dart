@@ -5,6 +5,21 @@ import 'package:swann_ott/screens/review/model/review_model.dart';
 import 'package:swann_ott/utils/common_functions.dart';
 import 'package:swann_ott/utils/constants.dart';
 
+String _serverIdFromJson(dynamic value) {
+  if (value is String) return value.trim();
+  if (value is int) return value.toString();
+  return '';
+}
+
+int _legacyIdFromJson(dynamic value) {
+  if (value is int) return value;
+  if (value is String) return int.tryParse(value) ?? -1;
+  return -1;
+}
+
+dynamic _serializedId(int legacyId, String serverId) =>
+    serverId.isNotEmpty ? serverId : legacyId;
+
 class ContentResponse {
   bool status;
   ContentModel data;
@@ -40,6 +55,8 @@ class ContentResponse {
 
 class ContentModel {
   int id;
+  /// Preserve Laravel UUID identifiers while retaining integer IDs for local stores.
+  String serverId;
   ContentData details;
   DownloadDataModel downloadData;
   List<VideoData> trailerData;
@@ -105,8 +122,26 @@ class ContentModel {
           ? id
           : 0;
 
+  String get playbackContentId => serverId.isNotEmpty
+      ? serverId
+      : details.serverId.isNotEmpty
+          ? details.serverId
+          : id >= 0
+              ? id.toString()
+              : '';
+
+  String get serverEntertainmentId {
+    if ((isEpisode || isSeason) &&
+        details.tvShowData?.serverId.isNotEmpty == true) {
+      return details.tvShowData!.serverId;
+    }
+    if (details.serverId.isNotEmpty) return details.serverId;
+    return serverId.isNotEmpty ? serverId : (id >= 0 ? id.toString() : '');
+  }
+
   ContentModel({
     this.id = -1,
+    this.serverId = '',
     required this.details,
     required this.downloadData,
     this.trailerData = const <VideoData>[],
@@ -123,7 +158,8 @@ class ContentModel {
 
   factory ContentModel.fromContentJson(Map<String, dynamic> json) {
     return ContentModel(
-      id: json['id'] is int ? json['id'] : -1,
+      id: _legacyIdFromJson(json['id']),
+      serverId: _serverIdFromJson(json['id']),
       details: json['details'] is Map ? ContentData.fromDetailsJson(json['details']) : ContentData(),
       downloadData: json['download_data'] is Map ? DownloadDataModel.fromJson(json['download_data']) : DownloadDataModel(downloadQualities: []),
       trailerData: json['trailer_data'] is List ? List<VideoData>.from(json['trailer_data'].map((x) => VideoData.fromTrailerJson(x))) : [],
@@ -140,7 +176,7 @@ class ContentModel {
 
   Map<String, dynamic> toContentJson() {
     return {
-      'id': id,
+      'id': _serializedId(id, serverId),
       'details': details.toDetailsJson(),
       'download_data': downloadData.toJson(),
       'trailer_data': trailerData.map((e) => e.toTrailerJson()).toList(),
@@ -157,7 +193,8 @@ class ContentModel {
 
   factory ContentModel.fromLiveContentJson(Map<String, dynamic> json) {
     return ContentModel(
-      id: json['id'] is int ? json['id'] : -1,
+      id: _legacyIdFromJson(json['id']),
+      serverId: _serverIdFromJson(json['id']),
       details: json['details'] is Map ? ContentData.fromLiveContentDetailsJson(json['details']) : ContentData(),
       videoQualities: json['video_qualities'] is List ? List<VideoData>.from(json['video_qualities'].map((x) => VideoData.fromQualityJson(x))) : [],
       suggestedContent: json['suggested_content'] is List ? List<PosterDataModel>.from(json['suggested_content'].map((x) => PosterDataModel.fromPosterJson(x))) : [],
@@ -177,6 +214,7 @@ class ContentModel {
 
 class ContentData {
   int id;
+  String serverId;
   String name;
   String type;
   int isDeviceSupported;
@@ -221,12 +259,21 @@ class ContentData {
           ? id
           : 0;
 
+  String get entertainmentServerId {
+    if (isSeason && tvShowData?.serverId.isNotEmpty == true) {
+      return tvShowData!.serverId;
+    }
+    if (serverId.isNotEmpty) return serverId;
+    return entertainmentId >= 0 ? entertainmentId.toString() : '';
+  }
+
   String get entertainmentType => isSeason ? VideoType.tvshow : type;
 
   ContentData({
     this.name = "",
     this.type = "",
     this.id = -1,
+    this.serverId = '',
     this.isDeviceSupported = 0,
     this.isInWatchList = 0,
     this.isLiked = 0,
@@ -252,7 +299,8 @@ class ContentData {
 
   factory ContentData.fromDetailsJson(Map<String, dynamic> json) {
     return ContentData(
-      id: json['id'] is int ? json['id'] : -1,
+      id: _legacyIdFromJson(json['id']),
+      serverId: _serverIdFromJson(json['id']),
       name: json['name'] is String ? json['name'] : "",
       type: json['type'] is String ? json['type'] : "",
       isDeviceSupported: json['is_device_supported'] is int ? json['is_device_supported'] : 0,
@@ -290,7 +338,7 @@ class ContentData {
 
   Map<String, dynamic> toDetailsJson() {
     return {
-      'id': id,
+      'id': _serializedId(id, serverId),
       'name': name,
       'type': type,
       'is_device_supported': isDeviceSupported,
@@ -318,7 +366,8 @@ class ContentData {
 
   factory ContentData.fromLiveContentDetailsJson(Map<String, dynamic> json) {
     return ContentData(
-      id: json['id'] is int ? json['id'] : -1,
+      id: _legacyIdFromJson(json['id']),
+      serverId: _serverIdFromJson(json['id']),
       name: json['name'] is String ? json['name'] : "",
       type: json['type'] is String ? json['type'] : "",
       isDeviceSupported: json['is_device_supported'] is int ? json['is_device_supported'] : 0,
@@ -334,7 +383,7 @@ class ContentData {
 
   Map<String, dynamic> toLiveContentDetailsJson() {
     return {
-      'id': id,
+      'id': _serializedId(id, serverId),
       'name': name,
       'type': type,
       'is_device_supported': isDeviceSupported,
@@ -350,6 +399,7 @@ class ContentData {
   ContentModel toContentModel() {
     return ContentModel(
       id: id,
+      serverId: serverId,
       details: this,
       downloadData: DownloadDataModel(downloadQualities: []),
       // Add other default or empty fields as necessary
@@ -358,7 +408,8 @@ class ContentData {
 
   factory ContentData.fromSliderDetailsJson(Map<String, dynamic> json) {
     return ContentData(
-      id: json['id'] is int ? json['id'] : -1,
+      id: _legacyIdFromJson(json['id']),
+      serverId: _serverIdFromJson(json['id']),
       name: json['name'] is String
           ? json['name']
           : json['title'] is String
@@ -383,7 +434,7 @@ class ContentData {
 
   Map<String, dynamic> toSliderDetailsJson() {
     return {
-      'id': id,
+      'id': _serializedId(id, serverId),
       'name': name,
       'type': type,
       'is_device_supported': isDeviceSupported,
@@ -404,7 +455,8 @@ class ContentData {
 
   factory ContentData.fromListJson(Map<String, dynamic> json) {
     return ContentData(
-      id: json['id'] is int ? json['id'] : -1,
+      id: _legacyIdFromJson(json['id']),
+      serverId: _serverIdFromJson(json['id']),
       name: json['name'] is String
           ? json['name']
           : json['title'] is String
@@ -425,7 +477,7 @@ class ContentData {
 
   Map<String, dynamic> toListJson() {
     return {
-      'id': id,
+      'id': _serializedId(id, serverId),
       'name': name,
       'type': type,
       'is_device_supported': isDeviceSupported,
@@ -446,11 +498,8 @@ class ContentData {
     return ContentData(
       name: json['name'] is String ? json['name'] : "",
       type: contentType,
-      id: json['episode_id'] is int
-          ? json['episode_id']
-          : json['id'] is int
-              ? json['id']
-              : -1,
+      id: _legacyIdFromJson(json['episode_id'] ?? json['id']),
+      serverId: _serverIdFromJson(json['episode_id'] ?? json['id']),
       duration: json['total_duration'] is String ? json['total_duration'] : "",
       watchedDuration: json['watched_duration'] is String ? json['watched_duration'] : "",
       isDeviceSupported: json['is_device_supported'] is int ? json['is_device_supported'] : -1,
@@ -464,7 +513,7 @@ class ContentData {
 
   Map<String, dynamic> toContinueWatchJson() {
     return {
-      'id': id,
+      'id': _serializedId(id, serverId),
       'name': name,
       'type': type,
       'is_device_supported': isDeviceSupported,
@@ -481,6 +530,8 @@ class ContentData {
 
   factory ContentData.fromEpisodeJson(Map<String, dynamic> json) {
     return ContentData(
+      id: _legacyIdFromJson(json['id']),
+      serverId: _serverIdFromJson(json['id']),
       name: json['name'] is String ? json['name'] : "",
       type: json['type'] is String ? json['type'] : "",
       description: json['short_description'] is String ? json['short_description'] : "",
@@ -498,6 +549,7 @@ class ContentData {
 
   Map<String, dynamic> toEpisodeJson() {
     return {
+      'id': _serializedId(id, serverId),
       'name': name,
       'type': type,
       "short_description": description,
@@ -518,6 +570,7 @@ class ContentData {
 
 class TvShowData {
   int id;
+  String serverId;
   String name;
   int seasonId;
   int totalEpisode;
@@ -525,6 +578,7 @@ class TvShowData {
 
   TvShowData({
     this.id = -1,
+    this.serverId = '',
     this.name = "",
     this.seasonId = -1,
     this.totalEpisode = -1,
@@ -533,7 +587,8 @@ class TvShowData {
 
   factory TvShowData.fromJson(Map<String, dynamic> json) {
     return TvShowData(
-      id: json['id'] is int ? json['id'] : -1,
+      id: _legacyIdFromJson(json['id']),
+      serverId: _serverIdFromJson(json['id']),
       name: json['name'] is String ? json['name'] : "",
       seasonId: json['season_id'] is int ? json['season_id'] : -1,
       totalEpisode: json['total_episode'] is int ? json['total_episode'] : -1,
@@ -543,7 +598,7 @@ class TvShowData {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      'id': _serializedId(id, serverId),
       'name': name,
       'season_id': seasonId,
       'total_episode': totalEpisode,
@@ -554,12 +609,14 @@ class TvShowData {
 
 class SeasonData {
   int id;
+  String serverId;
   String name;
   int seasonId;
   int totalEpisode;
 
   SeasonData({
     this.id = -1,
+    this.serverId = '',
     this.name = "",
     this.seasonId = -1,
     this.totalEpisode = -1,
@@ -567,7 +624,8 @@ class SeasonData {
 
   factory SeasonData.fromJson(Map<String, dynamic> json) {
     return SeasonData(
-      id: json['id'] is int ? json['id'] : -1,
+      id: _legacyIdFromJson(json['id']),
+      serverId: _serverIdFromJson(json['id']),
       name: json['name'] is String ? json['name'] : "",
       seasonId: json['season_id'] is int ? json['season_id'] : -1,
       totalEpisode: json['total_episode'] is int ? json['total_episode'] : -1,
@@ -576,7 +634,7 @@ class SeasonData {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      'id': _serializedId(id, serverId),
       'name': name,
       'season_id': seasonId,
       'total_episode': totalEpisode,
@@ -789,6 +847,7 @@ class Cast {
 
 class PosterDataModel {
   int id;
+  String serverId;
   String posterImage;
   ContentData details;
   DownloadDataModel? downloadData;
@@ -817,10 +876,20 @@ class PosterDataModel {
               ? id
               : -1;
 
+  String get entertainmentServerId {
+    if (details.isSeason && details.tvShowData?.serverId.isNotEmpty == true) {
+      return details.tvShowData!.serverId;
+    }
+    if (details.serverId.isNotEmpty) return details.serverId;
+    if (serverId.isNotEmpty) return serverId;
+    return entertainmentId >= 0 ? entertainmentId.toString() : '';
+  }
+
   String get entertainmentType => details.isSeason ? VideoType.tvshow : details.type;
 
   PosterDataModel({
     this.id = -1,
+    this.serverId = '',
     this.posterImage = '',
     required this.details,
     this.downloadData,
@@ -830,7 +899,8 @@ class PosterDataModel {
 
   factory PosterDataModel.fromPosterJson(Map<String, dynamic> json) {
     return PosterDataModel(
-      id: json['id'] is int ? json['id'] : -1,
+      id: _legacyIdFromJson(json['id']),
+      serverId: _serverIdFromJson(json['id']),
       posterImage: json['poster_image'] is String ? json['poster_image'] : "",
       details: json['details'] is Map ? ContentData.fromListJson(json['details']) : ContentData(),
       downloadData: json['download_data'] is Map ? DownloadDataModel.fromJson(json['download_data']) : null,
@@ -840,7 +910,7 @@ class PosterDataModel {
 
   Map<String, dynamic> toPosterJson() {
     return {
-      'id': id,
+      'id': _serializedId(id, serverId),
       'poster_image': posterImage,
       'details': details.toListJson(),
       'download_data': downloadData?.toJson(),
@@ -850,7 +920,8 @@ class PosterDataModel {
 
   factory PosterDataModel.fromSliderJson(Map<String, dynamic> json) {
     return PosterDataModel(
-      id: json['id'] is int ? json['id'] : -1,
+      id: _legacyIdFromJson(json['id']),
+      serverId: _serverIdFromJson(json['id']),
       posterImage: json['poster_image'] is String ? json['poster_image'] : "",
       details: json['details'] is Map ? ContentData.fromSliderDetailsJson(json['details']) : ContentData(),
     );
@@ -858,7 +929,7 @@ class PosterDataModel {
 
   Map<String, dynamic> toSliderJson() {
     return {
-      'id': id,
+      'id': _serializedId(id, serverId),
       'poster_image': posterImage,
       'details': details.toSliderDetailsJson(),
     };
@@ -866,7 +937,8 @@ class PosterDataModel {
 
   factory PosterDataModel.fromThumbnailJson(Map<String, dynamic> json) {
     return PosterDataModel(
-      id: json['id'] is int ? json['id'] : -1,
+      id: _legacyIdFromJson(json['id']),
+      serverId: _serverIdFromJson(json['id']),
       posterImage: json['thumbnail_image'] is String ? json['thumbnail_image'] : "",
       details: json['details'] is Map ? ContentData.fromListJson(json['details']) : ContentData(),
     );
@@ -874,7 +946,7 @@ class PosterDataModel {
 
   Map<String, dynamic> toThumbnailJson() {
     return {
-      'id': id,
+      'id': _serializedId(id, serverId),
       'thumbnail_image': posterImage,
       'details': details.toListJson(),
     };
@@ -882,7 +954,8 @@ class PosterDataModel {
 
   factory PosterDataModel.fromContinueWatchJson(Map<String, dynamic> json) {
     return PosterDataModel(
-      id: json['id'] is int ? json['id'] : -1,
+      id: _legacyIdFromJson(json['id']),
+      serverId: _serverIdFromJson(json['id']),
       posterImage: json['thumbnail_image'] is String ? json['thumbnail_image'] : "",
       details: json['details'] is Map ? ContentData.fromContinueWatchJson(json['details']) : ContentData(),
     );
@@ -890,7 +963,7 @@ class PosterDataModel {
 
   Map<String, dynamic> toContinueWatchJson() {
     return {
-      'id': id,
+      'id': _serializedId(id, serverId),
       'thumbnail_image': posterImage,
       'details': details.toContinueWatchJson(),
     };
@@ -898,7 +971,8 @@ class PosterDataModel {
 
   factory PosterDataModel.fromEpisodeJson(Map<String, dynamic> json) {
     return PosterDataModel(
-      id: json['id'] is int ? json['id'] : -1,
+      id: _legacyIdFromJson(json['id']),
+      serverId: _serverIdFromJson(json['id']),
       posterImage: json['poster_image'] is String ? json['poster_image'] : "",
       details: json['details'] is Map ? ContentData.fromEpisodeJson(json['details']) : ContentData(),
       downloadData: json['download_data'] is Map ? DownloadDataModel.fromJson(json['download_data']) : null,
@@ -908,7 +982,7 @@ class PosterDataModel {
 
   Map<String, dynamic> toEpisodeJson() {
     return {
-      'id': id,
+      'id': _serializedId(id, serverId),
       'poster_image': posterImage,
       'details': details.toEpisodeJson(),
       'download_data': downloadData?.toJson(),
@@ -918,7 +992,8 @@ class PosterDataModel {
 
   factory PosterDataModel.fromSearchPosterJson(Map<String, dynamic> json) {
     return PosterDataModel(
-      id: json['id'] is int ? json['id'] : -1,
+      id: _legacyIdFromJson(json['id']),
+      serverId: _serverIdFromJson(json['id']),
       posterImage: json['poster_image'] is String ? json['poster_image'] : "",
       details: json['details'] is Map ? ContentData.fromListJson(json['details']) : ContentData(),
       rentalData: json['rental_data'] is Map ? RentalData.fromJson(json['rental_data']) : null,
@@ -928,7 +1003,7 @@ class PosterDataModel {
 
   Map<String, dynamic> toSearchPosterJson() {
     return {
-      'id': id,
+      'id': _serializedId(id, serverId),
       'poster_image': posterImage,
       'details': details.toListJson(),
       'rental_data': rentalData?.toJson(),

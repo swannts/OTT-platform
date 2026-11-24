@@ -234,7 +234,7 @@ class VideoPlayersController extends GetxController with WidgetsBindingObserver 
         if (videoModel.isOneTimePurchase)
           CoreServiceApis.startDate(
             request: {
-              ApiRequestKeys.entertainmentIdKey: videoModel.id,
+              ApiRequestKeys.entertainmentIdKey: videoModel.playbackContentId,
               ApiRequestKeys.entertainmentTypeKey: videoModel.details.type,
               ApiRequestKeys.userIdKey: loginUserData.value.id,
             },
@@ -242,7 +242,7 @@ class VideoPlayersController extends GetxController with WidgetsBindingObserver 
 
         CoreServiceApis.storeViewDetails(
           request: {
-            ApiRequestKeys.entertainmentIdKey: videoModel.id,
+            ApiRequestKeys.entertainmentIdKey: videoModel.playbackContentId,
             ApiRequestKeys.entertainmentTypeKey: videoModel.details.type,
             ApiRequestKeys.userIdKey: loginUserData.value.id,
           },
@@ -269,8 +269,12 @@ class VideoPlayersController extends GetxController with WidgetsBindingObserver 
       throw Exception('This content type is not supported for protected playback.');
     }
 
+    final contentId = videoModel.playbackContentId;
+    if (contentId.isEmpty) {
+      throw Exception('The content identifier is missing. Reload the title and try again.');
+    }
     final authorization = await CoreServiceApis.authorizePlayback(
-      contentId: videoModel.id,
+      contentId: contentId,
       type: contentType,
       profileId: profileId,
     );
@@ -414,7 +418,7 @@ class VideoPlayersController extends GetxController with WidgetsBindingObserver 
 
   //region Save Progress
   Future<void> saveContentToContinueWatch() async {
-    if (videoModel.id > 0 && !isFromDownloads && (videoModel.details.type == VideoType.episode || videoModel.details.type == VideoType.movie || videoModel.details.type == VideoType.video)) {
+    if (videoModel.playbackContentId.isNotEmpty && !isFromDownloads && (videoModel.details.type == VideoType.episode || videoModel.details.type == VideoType.movie || videoModel.details.type == VideoType.video)) {
       String watchedTime = '';
       String totalWatchedTime = '';
       if (playerManager.currentPosition.value.inSeconds == playerManager.currentVideoDuration.value.inSeconds) {
@@ -431,12 +435,12 @@ class VideoPlayersController extends GetxController with WidgetsBindingObserver 
 
       await CoreServiceApis.saveContinueWatch(
         request: {
-          ApiRequestKeys.entertainmentIdKey: videoModel.entertainmentId,
+          ApiRequestKeys.entertainmentIdKey: videoModel.serverEntertainmentId,
           ApiRequestKeys.watchedTimeKey: watchedTime,
           ApiRequestKeys.totalWatchedTimeKey: totalWatchedTime,
           ApiRequestKeys.entertainmentTypeKey: getTypeForContinueWatch(type: videoModel.details.type.toLowerCase()),
           if (selectedAccountProfile.value.id != 0) ApiRequestKeys.profileIdKey: selectedAccountProfile.value.id,
-          if (videoModel.details.type.toLowerCase() == VideoType.episode) ApiRequestKeys.episodeIdKey: videoModel.id,
+          if (videoModel.details.type.toLowerCase() == VideoType.episode) ApiRequestKeys.episodeIdKey: videoModel.playbackContentId,
         },
       ).catchError((e) {
         log("Error ==> $e");
@@ -637,7 +641,7 @@ class VideoPlayersController extends GetxController with WidgetsBindingObserver 
 
   Future<void> storeViewCompleted() async {
     final Map<String, dynamic> request = {
-      ApiRequestKeys.entertainmentIdKey: videoModel.id,
+      ApiRequestKeys.entertainmentIdKey: videoModel.playbackContentId,
       ApiRequestKeys.userIdKey: loginUserData.value.id,
       ApiRequestKeys.entertainmentTypeKey: videoModel.details.type,
       ApiRequestKeys.profileIdKey: selectedAccountProfile.value.id,
@@ -658,7 +662,7 @@ class VideoPlayersController extends GetxController with WidgetsBindingObserver 
     stage(VideoPlayerStage.loading);
 
     await CoreServiceApis.getContentDetails(
-      contentId: episodeData.id,
+      contentId: episodeData.entertainmentServerId,
       type: episodeData.details.type,
     ).whenComplete(() {
       playerManager.isBuffering(false);

@@ -34,6 +34,10 @@ administrative permission data.
   downloads retain their local playback path; live TV remains on its existing
   live playback flow because the protected VOD API does not accept live-channel
   content types.
+- Content, episode, and coming-soon models retain Laravel's string/UUID
+  identifiers alongside existing integer fields used by local flows. Detail,
+  playback, reminder, watchlist, PPV, and progress requests send the preserved
+  server identifier; legacy numeric-string IDs still parse as integers.
 - Added focused playback-contract tests and localized the three base strings
   missing from Arabic, German, Greek, and French, which prevented Flutter test
   compilation.
@@ -44,15 +48,16 @@ not replaced by browser-cookie assumptions.
 
 ## Validation
 
-- Flutter dependency resolution: passed with Flutter 3.47.0 / Dart 3.13.0.
-- `flutter test --no-pub`: passed (3 cases: two playback authorization
-  contracts and one stale-token serialization case).
+- Flutter dependency resolution: passed with Flutter 3.50.0 / Dart 3.14.0.
+- `flutter test --no-pub`: passed (5 cases: playback authorization parsing,
+  malformed-response rejection, stale-token serialization, and UUID/numeric
+  content and coming-soon ID compatibility).
 - Focused analyzer over modified Dart files: no errors; existing lint/info
   findings remain in the touched files.
-- Whole-app `flutter analyze --no-pub`: no Dart compile errors after the locale
-  repairs, but exits nonzero with the repository's lint/info backlog (163
-  reported issues: one pre-existing warning in `TrailerWidget` and the
-  remainder info-level findings).
+- Focused analysis of the changed Dart files reported no errors; existing
+  info-level lint findings remain. Whole-app `flutter analyze --no-pub` reports
+  383 existing issues (one warning in `TrailerWidget`, 382 info-level findings)
+  and exits nonzero; it reports no Dart compile errors.
 - Laravel `CustomerDeviceSessionRevocationTest`: passed (4 tests, 14
   assertions) inside the running backend container. It verifies the scoped
   ability, account isolation, playback termination, device/token revocation,

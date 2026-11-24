@@ -1237,7 +1237,7 @@ class CoreServiceApis {
   }
 
   static Future<PlaybackAuthorization> authorizePlayback({
-    required int contentId,
+    required String contentId,
     required String type,
     required int profileId,
   }) async {
@@ -1280,14 +1280,14 @@ class CoreServiceApis {
   }
 
   static Future<ContentModel> getContentDetails({
-    required int contentId,
+    required String contentId,
     required String type,
     int tvShowId = 0,
     int seasonId = 0,
     bool requiresReleasedDataOnly = true,
   }) async {
     List<String> params = [];
-    if (contentId > 0) params.add('${ApiRequestKeys.idKey}=$contentId');
+    if (contentId.isNotEmpty) params.add('${ApiRequestKeys.idKey}=$contentId');
     if (type.isNotEmpty) params.add('${ApiRequestKeys.typeKey}=$type');
     if (requiresReleasedDataOnly)
       params.add('${ApiRequestKeys.isReleasedKey}=1');

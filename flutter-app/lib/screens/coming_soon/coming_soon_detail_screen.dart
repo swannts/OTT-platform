@@ -45,7 +45,7 @@ class ComingSoonDetailScreen extends StatelessWidget {
         }
       },
       child: Obx(() {
-        final currentData = detailsCont.getUpdatedItem(comingSoonData.id) ?? comingSoonData;
+        final currentData = detailsCont.getUpdatedItem(comingSoonData.requestId) ?? comingSoonData;
         final contentDetailModel = detailsCont.contentDetail.value;
         bool hasContentDetail = contentDetailModel != null && contentDetailModel.id != 0;
         bool isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
@@ -303,7 +303,7 @@ class ComingSoonDetailScreen extends StatelessWidget {
               12.height,
               Obx(
                 () {
-                  final updatedData = detailsCont.getUpdatedItem(comingSoonData.id) ?? comingSoonData;
+                  final updatedData = detailsCont.getUpdatedItem(comingSoonData.requestId) ?? comingSoonData;
                   if (isReminderMe.value != updatedData.isRemind.getBoolInt()) {
                     isReminderMe.value = updatedData.isRemind.getBoolInt();
                   }

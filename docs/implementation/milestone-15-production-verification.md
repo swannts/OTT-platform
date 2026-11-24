@@ -95,9 +95,11 @@ readiness.
   lint warnings.
 - Go worker: `go test ./...` passed in the Go 1.22 container; handler and health
   packages have tests, while other packages report no test files.
-- Flutter dependency resolution and tests passed on Flutter 3.47.0 / Dart 3.13.0:
-  **3 tests passed**. Whole-app `flutter analyze --no-pub` exits nonzero with
-  163 existing findings (one warning and 162 info-level lints, no errors).
+- Flutter dependency resolution and tests passed on Flutter 3.50.0 / Dart 3.14.0:
+  **5 tests passed**, including UUID/numeric content and coming-soon ID
+  compatibility. Whole-app
+  `flutter analyze --no-pub` exits nonzero with 383 findings (one warning and
+  382 info-level lints, no Dart errors).
 - Production Compose configuration parsed with placeholder values. The merged
   configuration sets debug off, publishes only loopback-bound web ports, keeps
   infrastructure ports private, and injects the customer API URL into the

@@ -227,7 +227,7 @@ class PaymentController extends BaseController {
               : 'subscription/process-payment',
           request: isRent.value
               ? {
-                  'movie_id': contentModel.id,
+                  'movie_id': contentModel.playbackContentId,
                   'type': contentData.type,
                   'payment_method': 'free'
                 }
@@ -246,7 +246,7 @@ class PaymentController extends BaseController {
         request: isRent.value
             ? {
                 'purchase_type': 'pay_per_view',
-                'movie_id': contentModel.id,
+                'movie_id': contentModel.playbackContentId,
                 'type': contentData.type,
               }
             : {
@@ -291,7 +291,7 @@ class PaymentController extends BaseController {
         endpoint: endpoint,
         request: isRent.value
             ? {
-                'movie_id': contentModel.id,
+                'movie_id': contentModel.playbackContentId,
                 'type': contentData.type,
                 'payment_method': 'razorpay',
               }

@@ -301,7 +301,7 @@ class ContentDetailsScreen extends StatelessWidget {
                                             return;
                                           }
                                         }
-                                        contentDetailsController.watchListContent(context, contentDetailsController.content.value!.id);
+                                        contentDetailsController.watchListContent(context, contentDetailsController.content.value!.playbackContentId);
                                       },
                                     );
                                   },
@@ -615,6 +615,7 @@ class ContentDetailsScreen extends StatelessWidget {
                                                                       episodeData.details.seasonList = contentDetailsController.content.value!.details.seasonList;
                                                                       final ContentModel episodeContent = ContentModel(
                                                                         id: episodeData.id,
+                                                                        serverId: episodeData.serverId,
                                                                         details: episodeData.details,
                                                                         downloadData: episodeDownloadData,
                                                                         trailerData: episodeData.trailerData,
