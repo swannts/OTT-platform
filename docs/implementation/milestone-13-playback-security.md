@@ -5,6 +5,7 @@
 - Device records are bound to server-issued Sanctum token row IDs. Login, registration, profile selection, TV pairing, and logout use that binding instead of request IP addresses or client-supplied device IDs.
 - TV pairing codes are consumed when a token is issued so polling cannot mint repeated device sessions.
 - Playback validates account, token-bound device, selected account-owned profile, publication state, child restrictions, subscription plan and exact expiration time, and PPV rental window.
+- Playback entitlement checks re-read account status from the database, and session creation and heartbeats recheck active/non-banned status while holding the account row lock. A suspended or banned account cannot start or refresh playback through an already-authenticated request context.
 - Paid PPV playback now requires a fulfilled `verified_payments` receipt linked to the provider transaction. A legacy row with only `payment_status=paid` is not sufficient. Zero-cost purchases remain supported.
 - Playback sessions support idempotent starts, account-level concurrency serialization, heartbeats, expiration, and owner/device-bound termination. The default active stream limit is one; an active plan may raise it through its existing simultaneous-stream limitation.
 - M6 private HLS assets are served through short-lived signed URLs. Manifests are rewritten so child playlists and segments receive their own signed URLs. Each file request rechecks the live session, device, profile, media assignment, and current entitlement. Ending/revoking the session prevents subsequent requests from using copied links.
@@ -31,6 +32,7 @@ Migration 000005 associates legacy devices to Sanctum tokens by matching the exi
 
 ## Validation
 
+- After the account-status recheck change, `PlaybackEntitlementTest` and `PlaybackSessionTest` passed on the isolated `ott_m13_test` MySQL schema: **19 tests, 41 assertions** (one existing PHPUnit deprecation). The test schema was migrated from scratch; the active application database was not used.
 - Focused playback-session and device-limit tests: **6 tests, 31 assertions passed** against an isolated MySQL test schema. This covers signed-manifest expiry while the playback session remains active and login rejection at the registered-device limit.
 - Earlier focused playback, session, TV device-binding, license-window, and support-operations checks passed **30 tests, 113 assertions**. The earlier full-suite result was **117 tests, 528 assertions**; it was not rerun for this increment. One existing PHPUnit deprecation remains.
 - Admin support UI lint passed, and the Next.js production build passed with the existing route-export warnings described in the project verification log.

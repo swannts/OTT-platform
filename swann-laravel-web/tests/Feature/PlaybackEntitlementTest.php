@@ -64,6 +64,30 @@ class PlaybackEntitlementTest extends TestCase
         app(PlaybackEntitlementService::class)->authorize($user, $this->createContent('free'), 'movie', $profile->id, $request);
     }
 
+    public function test_playback_rechecks_current_account_status_for_existing_device_tokens(): void
+    {
+        $contentId = $this->createContent('free');
+
+        foreach ([['status' => 0, 'is_banned' => 0], ['status' => 1, 'is_banned' => 1]] as $accountState) {
+            $user = User::factory()->create();
+            $profile = $this->createProfile($user, false);
+            $request = request()->duplicate();
+            $request->setUserResolver(fn () => $user);
+            $this->activateProfile($user, $profile);
+
+            // Keep the authenticated model and token, as can happen when an
+            // account is disabled while a request still holds its auth context.
+            DB::table('users')->where('id', $user->id)->update($accountState);
+
+            try {
+                app(PlaybackEntitlementService::class)->authorize($user, $contentId, 'movie', $profile->id, $request);
+                $this->fail('Suspended and banned accounts must not retain playback access through existing tokens.');
+            } catch (AuthorizationException) {
+                $this->assertTrue(true);
+            }
+        }
+    }
+
     public function test_child_profile_cannot_play_restricted_title_even_when_it_is_free(): void
     {
         $user = User::factory()->create();

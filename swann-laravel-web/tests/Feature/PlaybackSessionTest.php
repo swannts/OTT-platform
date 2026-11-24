@@ -89,6 +89,26 @@ class PlaybackSessionTest extends TestCase
         $this->assertNotNull(DB::table('playback_sessions')->where('session_id', $session['session_id'])->value('ended_at'));
     }
 
+    public function test_suspended_account_cannot_start_or_refresh_a_playback_session(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('playback-test')->accessToken;
+        $service = app(PlaybackSessionService::class);
+        $session = $service->start($user, $token, 1, 'content-1', 'movie');
+
+        DB::table('users')->where('id', $user->id)->update(['status' => 0]);
+
+        try {
+            $service->start($user, $token, 1, 'content-2', 'movie');
+            $this->fail('A suspended account must not start another playback session.');
+        } catch (AuthorizationException) {
+            $this->assertSame(1, DB::table('playback_sessions')->where('user_id', $user->id)->whereNull('ended_at')->count());
+        }
+
+        $this->expectException(AuthorizationException::class);
+        $service->heartbeat($user, $token, $session['session_id']);
+    }
+
     public function test_customer_end_endpoint_records_one_diagnostic_event_for_idempotent_end(): void
     {
         $user = User::factory()->create();

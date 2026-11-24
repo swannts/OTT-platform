@@ -33,6 +33,16 @@ class PlaybackEntitlementService
     /** @return array{content: Entertainment, profile: UserMultiProfile} */
     public function authorize(User $user, string $contentId, string $type, int $profileId, Request $request): array
     {
+        $accountIsEligible = User::query()
+            ->whereKey($user->getKey())
+            ->where('status', 1)
+            ->where('is_banned', 0)
+            ->exists();
+
+        if (! $accountIsEligible) {
+            throw new AuthorizationException('This account is not eligible for playback.');
+        }
+
         $profile = UserMultiProfile::query()
             ->where('id', $profileId)
             ->where('user_id', $user->id)

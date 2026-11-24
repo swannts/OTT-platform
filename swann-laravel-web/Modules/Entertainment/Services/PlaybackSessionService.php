@@ -19,7 +19,11 @@ class PlaybackSessionService
     {
         return DB::transaction(function () use ($user, $token, $profileId, $contentId, $contentType): array {
             // Serialize starts per account so simultaneous requests cannot exceed the limit.
-            DB::table('users')->where('id', $user->id)->lockForUpdate()->first();
+            $account = DB::table('users')->where('id', $user->id)->lockForUpdate()->first();
+            if (! $account || (int) $account->status !== 1 || (int) $account->is_banned !== 0) {
+                throw new AuthorizationException('This account is not eligible for playback.');
+            }
+
             $now = now();
             DB::table('playback_sessions')
                 ->where('user_id', $user->id)
@@ -80,24 +84,31 @@ class PlaybackSessionService
 
     public function heartbeat(User $user, PersonalAccessToken $token, string $sessionId): string
     {
-        $now = now();
-        $updated = DB::table('playback_sessions')
-            ->where('session_id', $sessionId)
-            ->where('user_id', $user->id)
-            ->where('device_token_id', $token->getKey())
-            ->whereNull('ended_at')
-            ->where('expires_at', '>', $now)
-            ->update([
-                'last_heartbeat_at' => $now,
-                'expires_at' => $now->copy()->addSeconds(self::HEARTBEAT_TTL_SECONDS),
-                'updated_at' => $now,
-            ]);
+        return DB::transaction(function () use ($user, $token, $sessionId): string {
+            $account = DB::table('users')->where('id', $user->id)->lockForUpdate()->first();
+            if (! $account || (int) $account->status !== 1 || (int) $account->is_banned !== 0) {
+                throw new AuthorizationException('This account is not eligible for playback.');
+            }
 
-        if ($updated !== 1) {
-            throw new AuthorizationException('Playback session has expired or was revoked.');
-        }
+            $now = now();
+            $updated = DB::table('playback_sessions')
+                ->where('session_id', $sessionId)
+                ->where('user_id', $user->id)
+                ->where('device_token_id', $token->getKey())
+                ->whereNull('ended_at')
+                ->where('expires_at', '>', $now)
+                ->update([
+                    'last_heartbeat_at' => $now,
+                    'expires_at' => $now->copy()->addSeconds(self::HEARTBEAT_TTL_SECONDS),
+                    'updated_at' => $now,
+                ]);
 
-        return $now->copy()->addSeconds(self::HEARTBEAT_TTL_SECONDS)->toIso8601String();
+            if ($updated !== 1) {
+                throw new AuthorizationException('Playback session has expired or was revoked.');
+            }
+
+            return $now->copy()->addSeconds(self::HEARTBEAT_TTL_SECONDS)->toIso8601String();
+        }, 3);
     }
 
     /** @return array{content_type:string, content_id:string}|null Session details only when this call ended it. */
