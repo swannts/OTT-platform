@@ -39,6 +39,9 @@ final class AdminOperationsService
         $backupStatus = $this->backupStatus();
         $checks['backups'] = ['status' => $backupStatus['status']];
 
+        $mediaProcessing = $this->mediaProcessingStatus();
+        $checks['media_processing'] = ['status' => $mediaProcessing['status']];
+
         $workerUrl = (string) config('services.go_worker_health_url', 'http://worker:8081/health');
         try {
             $worker = Http::timeout(2)->acceptJson()->get($workerUrl);
@@ -70,6 +73,35 @@ final class AdminOperationsService
             'queue' => $queueCounts,
             'rabbitmq_queues' => $rabbitQueues,
             'backups' => $backupStatus,
+            'media_processing' => $mediaProcessing,
+        ];
+    }
+
+    /** @return array{status: string, queued: int, processing: int, failed: int, stale_processing: int} */
+    private function mediaProcessingStatus(): array
+    {
+        if (!Schema::hasTable('media_processing_jobs')) {
+            return ['status' => 'not_configured', 'queued' => 0, 'processing' => 0, 'failed' => 0, 'stale_processing' => 0];
+        }
+
+        $counts = DB::table('media_processing_jobs')
+            ->select('status', DB::raw('count(*) as job_count'))
+            ->groupBy('status')
+            ->pluck('job_count', 'status');
+        $queued = (int) ($counts['queued'] ?? 0);
+        $processing = (int) ($counts['processing'] ?? 0);
+        $failed = (int) ($counts['failed'] ?? 0);
+        $staleProcessing = DB::table('media_processing_jobs')
+            ->where('status', 'processing')
+            ->where('updated_at', '<', now()->subMinutes(15))
+            ->count();
+
+        return [
+            'status' => $failed > 0 || $staleProcessing > 0 ? 'degraded' : 'ok',
+            'queued' => $queued,
+            'processing' => $processing,
+            'failed' => $failed,
+            'stale_processing' => $staleProcessing,
         ];
     }
 

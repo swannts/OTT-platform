@@ -24,11 +24,11 @@ import { rbacApi } from 'src/features/rbac/api/rbac.api';
 import { RbacPageHeader } from 'src/features/rbac/components/RbacPageHeader';
 
 const serviceLabels = {
-  application: 'Laravel API', database: 'Database', redis: 'Redis', rabbitmq: 'RabbitMQ', rabbitmq_management: 'RabbitMQ management', go_worker: 'Go worker', backups: 'Backups',
+  application: 'Laravel API', database: 'Database', redis: 'Redis', rabbitmq: 'RabbitMQ', rabbitmq_management: 'RabbitMQ management', go_worker: 'Go worker', backups: 'Backups', media_processing: 'Media processing',
 };
 
 function StatusChip({ status }) {
-  const color = status === 'ok' ? 'success' : status === 'degraded' ? 'warning' : 'error';
+  const color = status === 'ok' ? 'success' : status === 'degraded' ? 'warning' : status === 'not_configured' ? 'default' : 'error';
   return <Chip size="small" color={color} label={status || 'unknown'} />;
 }
 
@@ -138,6 +138,14 @@ export function TechnicalOperationsPage() {
       </Typography>
       {health?.rabbitmq_queues && <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 1.5 }}>
         {health.rabbitmq_queues.map((queue) => <Chip key={queue.name} variant="outlined" label={`${queue.name}: ${queue.messages} messages, ${queue.consumers} consumers`} />)}
+      </Stack>}
+      {health?.media_processing && health.media_processing.status !== 'not_configured' && <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 1.5 }}>
+        <Chip variant="outlined" label={`Media jobs: ${health.media_processing.queued} queued · ${health.media_processing.processing} processing · ${health.media_processing.failed} failed`} />
+        <Chip
+          variant="outlined"
+          color={health.media_processing.stale_processing > 0 ? 'warning' : 'default'}
+          label={`Stale processing (>15 min): ${health.media_processing.stale_processing}`}
+        />
       </Stack>}
       {health?.backups?.disks?.length > 0 && <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 1.5 }}>
         {health.backups.disks.map((disk, index) => <Chip key={index} variant="outlined" label={`Backup disk ${index + 1}: ${disk.backup_count} archives · ${disk.latest_at || 'no recent backup'}`} />)}
