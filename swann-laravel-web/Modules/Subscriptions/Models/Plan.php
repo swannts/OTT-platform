@@ -30,6 +30,11 @@ class Plan extends BaseModel
         return $this->hasMany(Subscription::class, 'plan_id', 'id');
     }
 
+    public function regionalPrices()
+    {
+        return $this->hasMany(PlanRegionalPrice::class, 'plan_id')->orderBy('country_code');
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class, 'created_by', 'id')->withTrashed();

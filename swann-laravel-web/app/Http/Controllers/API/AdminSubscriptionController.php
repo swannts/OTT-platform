@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Modules\Subscriptions\Models\Plan;
 use Modules\Subscriptions\Models\Subscription;
 use Modules\Coupon\Models\Coupon;
@@ -19,7 +20,7 @@ class AdminSubscriptionController extends Controller
     public function index(Request $request): JsonResponse
     {
         abort_unless(ExplicitPermission::allows($request->user(), 'subscriptions.view'), 403);
-        $query = Plan::query()->with('planLimitation.limitation_data')->withCount('subscriptions');
+        $query = Plan::query()->with(['planLimitation.limitation_data', 'regionalPrices'])->withCount('subscriptions');
         if ($request->filled('search')) {
             $search = trim((string) $request->input('search'));
             $query->where(fn ($builder) => $builder->where('name', 'like', "%{$search}%")
@@ -31,6 +32,8 @@ class AdminSubscriptionController extends Controller
         $page = $query->orderByDesc('updated_at')->paginate(min(max($request->integer('per_page', 25), 1), 100));
         $page->getCollection()->transform(function (Plan $plan): Plan {
             $plan->setAttribute('entitlements', $this->planLimits($plan));
+            $regionalPrices = $this->regionalPricePayload($plan);
+            $plan->unsetRelation('regionalPrices')->setAttribute('regional_prices', $regionalPrices);
             return $plan;
         });
         return response()->json($page);
@@ -55,17 +58,28 @@ class AdminSubscriptionController extends Controller
             'limits.max_video_quality' => ['sometimes', 'nullable', 'integer', 'in:480,720,1080,1440,2160'],
             'description' => ['nullable', 'string', 'max:5000'],
             'status' => ['sometimes', 'boolean'],
+            'regional_prices' => ['sometimes', 'array', 'max:250'],
+            'regional_prices.*.country_code' => ['required', 'string', 'regex:/^[A-Z]{2}$/', 'distinct', Rule::exists('countries', 'code')->where(fn ($query) => $query->where('status', 1)->whereNull('deleted_at'))],
+            'regional_prices.*.currency_code' => ['required', 'string', 'regex:/^[A-Z]{3}$/', Rule::exists('currencies', 'currency_code')->where(fn ($query) => $query->whereNull('deleted_at')->whereIn('no_of_decimal', [0, 2]))],
+            'regional_prices.*.amount' => ['required', 'numeric', 'decimal:0,2', 'min:0', 'max:99999999'],
         ]);
+        $this->validatePrimaryPricePrecision($data['price']);
+        $this->validateRegionalPricePrecision($data['regional_prices'] ?? []);
         $data['identifier'] = $data['identifier'] ?? Str::slug($data['name']).'-'.Str::lower(Str::random(6));
         $data['status'] = (bool) ($data['status'] ?? false);
         $limits = $data['limits'] ?? null;
+        $regionalPrices = $data['regional_prices'] ?? [];
         unset($data['limits']);
-        $plan = DB::transaction(function () use ($request, $data, $limits, $audit): Plan {
+        unset($data['regional_prices']);
+        $plan = DB::transaction(function () use ($request, $data, $limits, $regionalPrices, $audit): Plan {
             $plan = Plan::query()->create($data);
             $plan->forceFill(['created_by' => $request->user()->getKey()])->save();
             if ($limits !== null) $this->syncPlanLimits($plan, $limits);
-            $plan->load('planLimitation.limitation_data');
+            $this->syncRegionalPrices($plan, $regionalPrices);
+            $plan->load(['planLimitation.limitation_data', 'regionalPrices']);
             $plan->setAttribute('entitlements', $this->planLimits($plan));
+            $regionalPricePayload = $this->regionalPricePayload($plan);
+            $plan->unsetRelation('regionalPrices')->setAttribute('regional_prices', $regionalPricePayload);
             $audit->record($request->user(), 'subscription.plan.created', 'plan', (int) $plan->id, null, $this->snapshot($plan));
             return $plan;
         });
@@ -91,22 +105,45 @@ class AdminSubscriptionController extends Controller
             'limits.simultaneous_streams' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:10'],
             'limits.max_video_quality' => ['sometimes', 'nullable', 'integer', 'in:480,720,1080,1440,2160'],
             'description' => ['sometimes', 'nullable', 'string', 'max:5000'],
+            'regional_prices' => ['sometimes', 'array', 'max:250'],
+            'regional_prices.*.country_code' => ['required', 'string', 'regex:/^[A-Z]{2}$/', 'distinct', Rule::exists('countries', 'code')->where(fn ($query) => $query->where('status', 1)->whereNull('deleted_at'))],
+            'regional_prices.*.currency_code' => ['required', 'string', 'regex:/^[A-Z]{3}$/', Rule::exists('currencies', 'currency_code')->where(fn ($query) => $query->whereNull('deleted_at')->whereIn('no_of_decimal', [0, 2]))],
+            'regional_prices.*.amount' => ['required', 'numeric', 'decimal:0,2', 'min:0', 'max:99999999'],
         ]);
+        if (array_key_exists('price', $data)) $this->validatePrimaryPricePrecision($data['price']);
+        $this->validateRegionalPricePrecision($data['regional_prices'] ?? []);
         $limits = $data['limits'] ?? null;
+        $regionalPrices = $data['regional_prices'] ?? null;
         unset($data['limits']);
-        $plan = DB::transaction(function () use ($request, $data, $limits, $plan, $audit): Plan {
+        unset($data['regional_prices']);
+        $plan = DB::transaction(function () use ($request, $data, $limits, $regionalPrices, $plan, $audit): Plan {
             $locked = Plan::query()->lockForUpdate()->findOrFail($plan->id);
             $before = $this->snapshot($locked);
             $locked->fill($data);
             $locked->forceFill(['updated_by' => $request->user()->getKey()])->save();
             if ($limits !== null) $this->syncPlanLimits($locked, $limits);
+            if ($regionalPrices !== null) $this->syncRegionalPrices($locked, $regionalPrices);
+            $locked->load('regionalPrices');
             $audit->record($request->user(), 'subscription.plan.updated', 'plan', (int) $locked->id, $before, $this->snapshot($locked));
             return $locked;
         });
 
-        $fresh = $plan->fresh()->load('planLimitation.limitation_data');
+        $fresh = $plan->fresh()->load(['planLimitation.limitation_data', 'regionalPrices']);
         $fresh->setAttribute('entitlements', $this->planLimits($fresh));
+        $regionalPrices = $this->regionalPricePayload($fresh);
+        $fresh->unsetRelation('regionalPrices')->setAttribute('regional_prices', $regionalPrices);
         return response()->json(['data' => $fresh]);
+    }
+
+    public function pricingOptions(Request $request): JsonResponse
+    {
+        abort_unless(ExplicitPermission::allows($request->user(), 'subscriptions.view'), 403);
+        return response()->json(['data' => [
+            'countries' => DB::table('countries')->where('status', 1)->whereNull('deleted_at')->whereNotNull('code')
+                ->orderBy('name')->get(['code', 'name'])->map(static fn ($row): array => ['code' => strtoupper($row->code), 'name' => $row->name])->values(),
+            'currencies' => DB::table('currencies')->whereNull('deleted_at')->whereIn('no_of_decimal', [0, 2])->orderBy('currency_code')
+                ->get(['currency_code', 'currency_name', 'no_of_decimal'])->map(static fn ($row): array => ['code' => strtoupper($row->currency_code), 'name' => $row->currency_name, 'decimal_places' => (int) $row->no_of_decimal])->values(),
+        ]]);
     }
 
     public function archive(Request $request, Plan $plan, AdminAuditLogger $audit): JsonResponse
@@ -285,7 +322,63 @@ class AdminSubscriptionController extends Controller
     {
         return array_merge($plan->only(['name', 'identifier', 'price', 'level', 'duration', 'duration_value', 'trial_days', 'description', 'status']), [
             'entitlements' => $this->planLimits($plan),
+            'regional_prices' => $plan->regionalPrices()->get(['country_code', 'currency_code', 'amount'])
+                ->map(static fn ($price): array => ['country_code' => $price->country_code, 'currency_code' => $price->currency_code, 'amount' => (float) $price->amount])->values()->all(),
         ]);
+    }
+
+    private function regionalPricePayload(Plan $plan): array
+    {
+        return $plan->regionalPrices->map(static fn ($price): array => [
+            'country_code' => $price->country_code,
+            'currency_code' => $price->currency_code,
+            'amount' => (float) $price->amount,
+        ])->values()->all();
+    }
+
+    private function syncRegionalPrices(Plan $plan, array $prices): void
+    {
+        $countryCodes = collect($prices)->pluck('country_code')->all();
+        $query = $plan->regionalPrices();
+        if ($countryCodes === []) {
+            $query->delete();
+            return;
+        }
+
+        $query->whereNotIn('country_code', $countryCodes)->delete();
+        foreach ($prices as $price) {
+            $plan->regionalPrices()->updateOrCreate(
+                ['country_code' => $price['country_code']],
+                ['currency_code' => $price['currency_code'], 'amount' => $price['amount']],
+            );
+        }
+    }
+
+    private function validateRegionalPricePrecision(array $prices): void
+    {
+        foreach ($prices as $price) {
+            $decimalPlaces = (int) DB::table('currencies')->where('currency_code', $price['currency_code'])->value('no_of_decimal');
+            if ($decimalPlaces === 0 && preg_match('/^\d+(?:\.0+)?$/', (string) $price['amount']) !== 1) {
+                abort(422, 'Zero-decimal currencies require whole-number regional prices.');
+            }
+        }
+    }
+
+    private function validatePrimaryPricePrecision(mixed $amount): void
+    {
+        $currencyCode = strtoupper((string) (GetcurrentCurrency() ?: 'USD'));
+        $currency = DB::table('currencies')->whereRaw('UPPER(currency_code) = ?', [$currencyCode])->whereNull('deleted_at')->first();
+        if ($currency === null) return;
+
+        $decimalPlaces = (int) $currency->no_of_decimal;
+        if (! in_array($decimalPlaces, [0, 2], true)) {
+            abort(422, 'The configured primary currency precision is not supported by the payment providers.');
+        }
+
+        $pattern = $decimalPlaces === 0 ? '/^\d+(?:\.0+)?$/' : '/^\d+(?:\.\d{1,2})?$/';
+        if (preg_match($pattern, (string) $amount) !== 1) {
+            abort(422, 'The plan price does not match the configured primary currency precision.');
+        }
     }
 
     private function planLimits(Plan $plan): array

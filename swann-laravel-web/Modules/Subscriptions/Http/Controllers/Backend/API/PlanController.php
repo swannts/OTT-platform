@@ -10,6 +10,7 @@ use Modules\Subscriptions\Http\Requests\PlanRequest;
 use Modules\Subscriptions\Models\Plan;
 use Modules\Subscriptions\Models\PlanLimitationMapping;
 use Modules\Subscriptions\Transformers\PlanResource;
+use Modules\Subscriptions\Services\PlanPricingService;
 
 class PlanController extends Controller
 {
@@ -126,12 +127,21 @@ class PlanController extends Controller
     public function planList(Request $request){
         
         $perPage = $request->input('per_page', 10);
-        $plan_list = Plan::query()->with('planLimitation');
+        $plan_list = Plan::query()->with(['planLimitation', 'regionalPrices']);
 
         $plan_list =$plan_list->where('status',1);
 
         $plan = $plan_list->orderBy('updated_at', 'desc');
         $plan = $plan->paginate($perPage);
+
+        $pricing = app(PlanPricingService::class);
+        $plan->getCollection()->each(function (Plan $item) use ($pricing, $request): void {
+            $resolved = $pricing->resolve($item, $request);
+            $item->setAttribute('display_price', $resolved['amount']);
+            $item->setAttribute('display_total_price', $resolved['discounted_amount']);
+            $item->setAttribute('display_currency', $resolved['currency']);
+            $item->setAttribute('pricing_country', $resolved['country_code']);
+        });
 
         $responseData = PlanResource::collection($plan);
         

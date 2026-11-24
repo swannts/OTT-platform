@@ -4,6 +4,7 @@ const API = '/api/admin/subscriptions';
 
 export const subscriptionsApi = {
   plans: (params) => axios.get(`${API}/plans`, { params }).then((response) => response.data),
+  pricingOptions: () => axios.get(`${API}/pricing-options`).then((response) => response.data),
   createPlan: (data) => axios.post(`${API}/plans`, data).then((response) => response.data),
   updatePlan: (id, data) => axios.put(`${API}/plans/${id}`, data).then((response) => response.data),
   archivePlan: (id) => axios.post(`${API}/plans/${id}/archive`).then((response) => response.data),

@@ -32,6 +32,7 @@ const numberOrNull = (value) => value === '' || value === null || value === unde
 export function SubscriptionManagementPage() {
   const { user } = useAuthContext();
   const [plans, setPlans] = useState([]);
+  const [pricingOptions, setPricingOptions] = useState({ countries: [], currencies: [] });
   const [coupons, setCoupons] = useState([]);
   const [performance, setPerformance] = useState([]);
   const [subscribers, setSubscribers] = useState([]);
@@ -53,9 +54,10 @@ export function SubscriptionManagementPage() {
   const canViewSubscribers = hasPermission(user, 'subscriptions.subscribers.view');
 
   const loadSubscriptions = useCallback(async () => {
-    const [plansResponse, performanceResponse] = await Promise.all([
+    const [plansResponse, performanceResponse, pricingOptionsResponse] = await Promise.all([
       subscriptionsApi.plans({ per_page: 100 }),
       subscriptionsApi.performance(),
+      subscriptionsApi.pricingOptions(),
     ]);
     const subscribersResponse = canViewSubscribers
       ? await subscriptionsApi.subscribers({ per_page: 10 })
@@ -63,11 +65,12 @@ export function SubscriptionManagementPage() {
     const couponsResponse = canManageCoupons
       ? await subscriptionsApi.coupons({ per_page: 100 })
       : null;
-    return { plansResponse, performanceResponse, subscribersResponse, couponsResponse };
+    return { plansResponse, performanceResponse, pricingOptionsResponse, subscribersResponse, couponsResponse };
   }, [canManageCoupons, canViewSubscribers]);
 
-  const applySubscriptions = useCallback(({ plansResponse, performanceResponse, subscribersResponse, couponsResponse }) => {
+  const applySubscriptions = useCallback(({ plansResponse, performanceResponse, pricingOptionsResponse, subscribersResponse, couponsResponse }) => {
     setPlans(plansResponse.data || []);
+    setPricingOptions(pricingOptionsResponse.data || { countries: [], currencies: [] });
     setPerformance(performanceResponse.data || []);
     setSubscribers(subscribersResponse?.data || []);
     setCoupons(couponsResponse?.data || []);
@@ -117,6 +120,7 @@ export function SubscriptionManagementPage() {
     values.duration_value = Number(values.duration_value);
     values.trial_days = Number(values.trial_days || 0);
     values.status = values.status === 'true';
+    values.regional_prices = editing?.regional_prices || [];
     values.limits = {
       device_limit: numberOrNull(form.get('device_limit')),
       profile_limit: numberOrNull(form.get('profile_limit')),
@@ -198,10 +202,10 @@ export function SubscriptionManagementPage() {
         <Card><CardContent>
           <Typography variant="h6" sx={{ mb: 2 }}>Plans</Typography>
           {loading ? <Typography color="text.secondary">Loading plans…</Typography> : plans.length === 0 ? <Typography color="text.secondary">No plans found.</Typography> : (
-            <Table size="small"><TableHead><TableRow><TableCell>Name</TableCell><TableCell>Price</TableCell><TableCell>Billing</TableCell><TableCell>Level</TableCell><TableCell>Subscribers</TableCell><TableCell>Status</TableCell><TableCell align="right">Actions</TableCell></TableRow></TableHead>
+            <Table size="small"><TableHead><TableRow><TableCell>Name</TableCell><TableCell>Base price</TableCell><TableCell>Regional prices</TableCell><TableCell>Billing</TableCell><TableCell>Level</TableCell><TableCell>Subscribers</TableCell><TableCell>Status</TableCell><TableCell align="right">Actions</TableCell></TableRow></TableHead>
               <TableBody>{plans.map((plan) => <TableRow key={plan.id} hover>
                 <TableCell><Typography variant="subtitle2">{plan.name}</Typography><Typography variant="caption" color="text.secondary">{plan.identifier}</Typography></TableCell>
-                <TableCell>{plan.price}</TableCell><TableCell>{plan.duration_value} {plan.duration}{plan.duration_value === 1 ? '' : 's'}</TableCell><TableCell>{plan.level}</TableCell><TableCell>{plan.subscriptions_count ?? 0}</TableCell><TableCell>{plan.status ? 'Active' : 'Archived'}</TableCell>
+                <TableCell>{plan.price}</TableCell><TableCell>{plan.regional_prices?.length || 0} countries</TableCell><TableCell>{plan.duration_value} {plan.duration}{plan.duration_value === 1 ? '' : 's'}</TableCell><TableCell>{plan.level}</TableCell><TableCell>{plan.subscriptions_count ?? 0}</TableCell><TableCell>{plan.status ? 'Active' : 'Archived'}</TableCell>
                 <TableCell align="right"><Stack direction="row" justifyContent="flex-end" spacing={1}>{canUpdate && <Button size="small" onClick={() => setEditing({ ...plan, price: String(plan.price ?? ''), level: String(plan.level), duration_value: String(plan.duration_value), trial_days: String(plan.trial_days ?? 0), device_limit: String(plan.entitlements?.['device-limit'] ?? ''), profile_limit: String(plan.entitlements?.['profile-limit'] ?? ''), simultaneous_streams: String(plan.entitlements?.['simultaneous-streams'] ?? ''), max_video_quality: String(plan.entitlements?.['max-video-quality'] ?? '') })}>Edit</Button>}{canArchive && plan.status && <Button size="small" color="warning" disabled={busy} onClick={() => archive(plan)}>Archive</Button>}</Stack></TableCell>
               </TableRow>)}</TableBody>
             </Table>
@@ -239,11 +243,38 @@ export function SubscriptionManagementPage() {
           {simulationResult && <Alert sx={{ mt: 2 }} severity={simulationResult.eligible ? 'success' : 'warning'}>Eligible: {simulationResult.eligible ? 'yes' : 'no'} · {Object.entries(simulationResult.checks).map(([key, value]) => `${key.replaceAll('_', ' ')} ${value ? 'pass' : 'fail'}`).join(' · ')}</Alert>}
         </CardContent></Card>
       </Stack>
-      <Dialog open={Boolean(editing)} onClose={() => !busy && setEditing(null)} fullWidth maxWidth="sm">
+      <Dialog open={Boolean(editing)} onClose={() => !busy && setEditing(null)} fullWidth maxWidth="md">
         <DialogTitle>{editing?.id ? 'Edit plan' : 'Create plan'}</DialogTitle>
         <form onSubmit={save}><DialogContent><Stack spacing={2} sx={{ pt: 1}}>
           <TextField name="name" label="Plan name" defaultValue={editing?.name ?? ''} required inputProps={{ maxLength: 120 }} />
           <TextField name="price" label="Base price" type="number" defaultValue={editing?.price ?? ''} required inputProps={{ min: 0, step: '0.01' }} />
+          <Stack spacing={1}>
+            <Stack direction="row" alignItems="center" justifyContent="space-between">
+              <Typography variant="subtitle2">Regional price overrides</Typography>
+              <Button size="small" onClick={() => setEditing({ ...editing, regional_prices: [...(editing.regional_prices || []), { country_code: '', currency_code: pricingOptions.currencies[0]?.code || '', amount: '' }] })}>Add country price</Button>
+            </Stack>
+            <Typography variant="caption" color="text.secondary">With no overrides, checkout uses the base price and primary currency. Once overrides exist, checkout requires a trusted edge country and an exact country price.</Typography>
+            {(editing?.regional_prices || []).map((regionalPrice, index) => <Stack key={`${regionalPrice.country_code}-${index}`} direction={{ xs: 'column', md: 'row' }} spacing={1} alignItems={{ md: 'center' }}>
+              <TextField select label="Country" value={regionalPrice.country_code} onChange={(event) => {
+                const next = [...editing.regional_prices];
+                next[index] = { ...next[index], country_code: event.target.value };
+                setEditing({ ...editing, regional_prices: next });
+              }} fullWidth>
+                {pricingOptions.countries.filter((country) => country.code === regionalPrice.country_code || !editing.regional_prices.some((row, rowIndex) => rowIndex !== index && row.country_code === country.code)).map((country) => <MenuItem key={country.code} value={country.code}>{country.name} ({country.code})</MenuItem>)}
+              </TextField>
+              <TextField select label="Currency" value={regionalPrice.currency_code} onChange={(event) => {
+                const next = [...editing.regional_prices];
+                next[index] = { ...next[index], currency_code: event.target.value };
+                setEditing({ ...editing, regional_prices: next });
+              }} fullWidth>{pricingOptions.currencies.map((currency) => <MenuItem key={currency.code} value={currency.code}>{currency.name} ({currency.code})</MenuItem>)}</TextField>
+              <TextField label="Amount" type="number" value={regionalPrice.amount} onChange={(event) => {
+                const next = [...editing.regional_prices];
+                next[index] = { ...next[index], amount: event.target.value };
+                setEditing({ ...editing, regional_prices: next });
+              }} inputProps={{ min: 0, step: pricingOptions.currencies.find((currency) => currency.code === regionalPrice.currency_code)?.decimal_places === 0 ? '1' : '0.01' }} fullWidth />
+              <Button color="error" onClick={() => setEditing({ ...editing, regional_prices: editing.regional_prices.filter((_, rowIndex) => rowIndex !== index) })}>Remove</Button>
+            </Stack>)}
+          </Stack>
           <TextField name="level" label="Entitlement level" type="number" defaultValue={editing?.level ?? '1'} required inputProps={{ min: 0 }} />
           <Stack direction="row" spacing={2}><TextField name="duration_value" label="Duration count" type="number" defaultValue={editing?.duration_value ?? '1'} required inputProps={{ min: 1, max: 120 }} /><TextField name="duration" label="Billing period" select defaultValue={editing?.duration ?? 'month'} fullWidth>{['day', 'week', 'month', 'year'].map((value) => <MenuItem key={value} value={value}>{value}</MenuItem>)}</TextField></Stack>
           {canManageTrials && <TextField name="trial_days" label="Free trial days (first subscription only)" type="number" defaultValue={editing?.trial_days ?? '0'} inputProps={{ min: 0, max: 90 }} />}

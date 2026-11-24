@@ -128,6 +128,7 @@ Route::prefix('admin')->group(function () {
         Route::get('media/drm', [\App\Http\Controllers\API\AdminMediaController::class, 'drmConfiguration'])->middleware('explicit.permission:media.drm.configure');
         Route::get('subscriptions/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'subscriptions'])->middleware('explicit.permission:subscriptions.view');
         Route::get('subscriptions/plans', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'index'])->middleware('explicit.permission:subscriptions.view');
+        Route::get('subscriptions/pricing-options', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'pricingOptions'])->middleware('explicit.permission:subscriptions.view');
         Route::post('subscriptions/plans', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'store'])->middleware('explicit.permission:subscriptions.plans.create');
         Route::put('subscriptions/plans/{plan}', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'update'])->middleware('explicit.permission:subscriptions.plans.update');
         Route::post('subscriptions/plans/{plan}/archive', [\App\Http\Controllers\API\AdminSubscriptionController::class, 'archive'])->middleware('explicit.permission:subscriptions.plans.archive');

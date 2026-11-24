@@ -25,6 +25,7 @@ use Modules\Frontend\Models\PayperviewTransaction;
 use Modules\Subscriptions\Models\Plan;
 use Modules\Subscriptions\Models\Subscription;
 use Modules\Subscriptions\Models\SubscriptionTransactions;
+use Modules\Subscriptions\Services\PlanPricingService;
 use Modules\Subscriptions\Trait\SubscriptionTrait;
 use Modules\Subscriptions\Transformers\PlanResource;
 use Modules\Subscriptions\Transformers\SubscriptionResource;
@@ -42,10 +43,19 @@ class WebPaymentApiController extends Controller
      */
     public function getPlans(Request $request)
     {
-        $plans = Plan::with('planLimitation')
+        $plans = Plan::with(['planLimitation', 'regionalPrices'])
             ->where('status', 1)
             ->orderBy('level', 'asc')
             ->get();
+
+        $pricing = app(PlanPricingService::class);
+        $plans->each(function (Plan $plan) use ($pricing, $request): void {
+            $resolved = $pricing->resolve($plan, $request);
+            $plan->setAttribute('display_price', $resolved['amount']);
+            $plan->setAttribute('display_total_price', $resolved['discounted_amount']);
+            $plan->setAttribute('display_currency', $resolved['currency']);
+            $plan->setAttribute('pricing_country', $resolved['country_code']);
+        });
 
         return ApiResponse::success(PlanResource::collection($plans), 'Plans retrieved successfully', 200);
     }
@@ -66,11 +76,13 @@ class WebPaymentApiController extends Controller
             return ApiResponse::error('Selected plan is invalid or inactive.', 404);
         }
 
-        $basePrice = $plan->price;
+        $resolvedPrice = app(PlanPricingService::class)->resolve($plan, $request);
+        $basePrice = $resolvedPrice['amount'];
         $planDiscountAmount = 0;
+        $decimalPlaces = $resolvedPrice['decimal_places'];
         if ($plan->discount_percentage > 0) {
-            $planDiscountAmount = ($basePrice * $plan->discount_percentage) / 100;
-            $basePrice = $basePrice - $planDiscountAmount;
+            $planDiscountAmount = round(($basePrice * $plan->discount_percentage) / 100, $decimalPlaces);
+            $basePrice = round($basePrice - $planDiscountAmount, $decimalPlaces);
         }
 
         $couponDiscountAmount = 0;
@@ -92,64 +104,74 @@ class WebPaymentApiController extends Controller
 
         $coupon = $couponQuery->first();
         if ($coupon) {
+            if ($coupon->discount_type === 'fixed' && $resolvedPrice['regional']
+                && $resolvedPrice['currency'] !== strtoupper((string) (GetcurrentCurrency() ?: 'USD'))) {
+                return ApiResponse::error('Fixed-amount coupons are not configured for this regional currency.', 422);
+            }
             if (!$this->couponUsageAvailable($coupon, Auth::id())) {
                 return ApiResponse::error('This coupon has reached its redemption limit.', 422);
             }
             if ($coupon->discount_type === 'fixed') {
-                $couponDiscountAmount = min($basePrice, (float) $coupon->discount);
+                $couponDiscountAmount = round(min($basePrice, (float) $coupon->discount), $decimalPlaces);
             } else {
-                $couponDiscountAmount = ($basePrice * (float) $coupon->discount) / 100;
+                $couponDiscountAmount = round(($basePrice * (float) $coupon->discount) / 100, $decimalPlaces);
             }
             $couponData = [
                 'id' => $coupon->id,
                 'coupon_code' => $coupon->code,
                 'discount_type' => $coupon->discount_type,
                 'discount' => $coupon->discount,
-                'discount_amount' => round($couponDiscountAmount, 2),
+                'discount_amount' => round($couponDiscountAmount, $decimalPlaces),
             ];
         } elseif ($request->filled('coupon_code')) {
             return ApiResponse::error('The provided coupon code is invalid or has expired.', 422);
         }
 
-        $subtotalAfterDiscounts = max(0, $basePrice - $couponDiscountAmount);
+        $subtotalAfterDiscounts = max(0, round($basePrice - $couponDiscountAmount, $decimalPlaces));
 
         // Calculate active taxes
         $taxes = Tax::active()->get();
+        if ($resolvedPrice['regional']
+            && $resolvedPrice['currency'] !== strtoupper((string) (GetcurrentCurrency() ?: 'USD'))
+            && $taxes->contains(static fn ($tax): bool => strtolower((string) $tax->type) === 'fixed')) {
+            return ApiResponse::error('Fixed taxes are not configured for this regional currency.', 422);
+        }
         $totalTax = 0;
         $taxBreakdown = [];
 
         foreach ($taxes as $tax) {
             $taxAmount = 0;
             if (strtolower($tax->type) === 'fixed') {
-                $taxAmount = (float) $tax->value;
+                $taxAmount = round((float) $tax->value, $decimalPlaces);
             } else {
-                $taxAmount = ($subtotalAfterDiscounts * (float) $tax->value) / 100;
+                $taxAmount = round(($subtotalAfterDiscounts * (float) $tax->value) / 100, $decimalPlaces);
             }
             $totalTax += $taxAmount;
             $taxBreakdown[] = [
                 'title' => $tax->title,
                 'type' => $tax->type,
                 'value' => $tax->value,
-                'tax_amount' => round($taxAmount, 2),
+                'tax_amount' => round($taxAmount, $decimalPlaces),
             ];
         }
 
-        $finalTotal = round($subtotalAfterDiscounts + $totalTax, 2);
+        $finalTotal = round($subtotalAfterDiscounts + $totalTax, $decimalPlaces);
 
         return ApiResponse::success([
             'plan_id' => $plan->id,
             'plan_name' => $plan->name,
-            'original_price' => (float) $plan->price,
+            'original_price' => (float) $resolvedPrice['amount'],
+            'pricing_country' => $resolvedPrice['country_code'],
             'plan_discount_percentage' => (float) $plan->discount_percentage,
-            'plan_discount_amount' => round($planDiscountAmount, 2),
-            'price_after_plan_discount' => round($basePrice, 2),
+            'plan_discount_amount' => round($planDiscountAmount, $decimalPlaces),
+            'price_after_plan_discount' => round($basePrice, $decimalPlaces),
             'coupon' => $couponData,
-            'coupon_discount_amount' => round($couponDiscountAmount, 2),
-            'subtotal' => round($subtotalAfterDiscounts, 2),
-            'total_tax' => round($totalTax, 2),
+            'coupon_discount_amount' => round($couponDiscountAmount, $decimalPlaces),
+            'subtotal' => round($subtotalAfterDiscounts, $decimalPlaces),
+            'total_tax' => round($totalTax, $decimalPlaces),
             'taxes' => $taxBreakdown,
             'total_amount' => $finalTotal,
-            'currency' => GetcurrentCurrency() ?: 'USD',
+            'currency' => $resolvedPrice['currency'],
         ], 'Price calculated successfully', 200);
     }
 
@@ -183,7 +205,7 @@ class WebPaymentApiController extends Controller
             }
         }
         $pricingRequest = $purchaseType === 'subscription'
-            ? new Request(['plan_id' => $request->integer('plan_id'), 'coupon_code' => $request->input('coupon_code'), 'coupon_id' => $request->input('coupon_id')])
+            ? $request
             : new Request(['movie_id' => $request->integer('movie_id'), 'type' => $request->input('type')]);
         $pricingResponse = $purchaseType === 'subscription'
             ? $this->calculateSubscriptionPrice($pricingRequest)
@@ -308,9 +330,9 @@ class WebPaymentApiController extends Controller
         }
     }
 
-    private function toMinorUnits(float $amount, string $currency): int
+    private function toMinorUnits(float $amount, string $currency, string $gateway = 'stripe'): int
     {
-        return (int) round($amount * $this->currencyMultiplier($currency));
+        return (int) round($amount * $this->currencyMultiplier($currency, $gateway));
     }
 
     /** Receive provider-confirmed Stripe payments even if the client disconnects. */
@@ -443,6 +465,8 @@ class WebPaymentApiController extends Controller
                 || (string) ($payment->order_id ?? '') !== $orderId
                 || (int) $payment->amount !== (int) ($order['amount'] ?? 0)
                 || strtoupper((string) $payment->currency) !== strtoupper((string) ($order['currency'] ?? ''))
+                || (isset($notes['amount_minor']) && (int) $notes['amount_minor'] !== (int) ($order['amount'] ?? 0))
+                || (isset($notes['currency']) && strtoupper((string) $notes['currency']) !== strtoupper((string) ($order['currency'] ?? '')))
                 || !ctype_digit((string) ($notes['user_id'] ?? ''))) {
                 throw new \RuntimeException('Razorpay payment does not match its captured order.');
             }
@@ -705,7 +729,9 @@ class WebPaymentApiController extends Controller
         $currency = strtoupper((string) ($payment['currency'] ?? ''));
 
         if ($userId <= 0 || $purchaseId <= 0 || $amountMinor <= 0 || $currency === ''
-            || !in_array($purchaseType, ['subscription', 'pay_per_view'], true)) {
+            || !in_array($purchaseType, ['subscription', 'pay_per_view'], true)
+            || (isset($metadata['currency']) && strtoupper((string) $metadata['currency']) !== $currency)
+            || (isset($metadata['amount_minor']) && (int) $metadata['amount_minor'] !== $amountMinor)) {
             throw new \RuntimeException('Stripe payment metadata is incomplete.');
         }
 
@@ -796,11 +822,7 @@ class WebPaymentApiController extends Controller
         }
 
         // Calculate pricing
-        $calcRequest = new Request([
-            'plan_id' => $plan->id,
-            'coupon_code' => $request->coupon_code,
-            'coupon_id' => $request->coupon_id,
-        ]);
+        $calcRequest = $request;
         $priceCalculation = $this->calculateSubscriptionPrice($calcRequest)->getData(true);
 
         if (! ($priceCalculation['status'] ?? false)) {
@@ -827,10 +849,10 @@ class WebPaymentApiController extends Controller
 
         // If amount is 0, activate plan immediately
         if ($finalPrice <= 0) {
-            $subscription = DB::transaction(function () use ($user, $plan, $promotionId, $couponReservationToken) {
+            $subscription = DB::transaction(function () use ($user, $plan, $promotionId, $couponReservationToken, $calcData) {
                 $subscription = $this->activateUserSubscription(
                     $user->id, $plan, 0, 'free', 'FREE-' . strtoupper(\Illuminate\Support\Str::uuid()),
-                    $promotionId, strtoupper(GetcurrentCurrency() ?: 'USD')
+                    $promotionId, strtoupper((string) $calcData['currency'])
                 );
                 if ($promotionId) $this->consumeCouponReservation($couponReservationToken, (int) $promotionId, (int) $user->id, (int) $subscription->id);
                 return $subscription;
@@ -845,7 +867,7 @@ class WebPaymentApiController extends Controller
 
         // Determine frontend callback URL
         $frontendUrl = rtrim((string) env('FRONTEND_URL', env('APP_URL')), '/');
-        $currency = GetcurrentCurrency() ?: 'USD';
+        $currency = strtoupper((string) $calcData['currency']);
 
         switch ($paymentMethod) {
             case 'stripe':
@@ -887,9 +909,12 @@ class WebPaymentApiController extends Controller
                 $stripe = new StripeClient(GetpaymentMethod('stripe_secretkey'));
                 $session = $stripe->checkout->sessions->retrieve($request->session_id);
                 $metadata = $session->metadata;
+                $expectedCurrency = strtoupper((string) ($metadata->currency ?? (GetcurrentCurrency() ?: 'USD')));
+                $expectedAmount = isset($metadata->amount_minor) ? (int) $metadata->amount_minor : null;
                 if ($session->payment_status !== 'paid'
                     || (string) ($metadata->user_id ?? '') !== (string) $user->id
-                    || strtoupper((string) $session->currency) !== strtoupper(GetcurrentCurrency() ?: 'USD')) {
+                    || strtoupper((string) $session->currency) !== $expectedCurrency
+                    || ($expectedAmount !== null && (int) $session->amount_total !== $expectedAmount)) {
                     return ApiResponse::error('Stripe payment is incomplete or does not match this account.', 400);
                 }
 
@@ -921,8 +946,12 @@ class WebPaymentApiController extends Controller
 
                 $order = $api->order->fetch($request->order_id);
                 $notes = $order['notes'] ?? [];
+                $expectedCurrency = strtoupper((string) ($notes['currency'] ?? (GetcurrentCurrency() ?: 'USD')));
+                $expectedAmount = isset($notes['amount_minor']) ? (int) $notes['amount_minor'] : null;
                 if ((string) ($notes['user_id'] ?? '') !== (string) $user->id
-                    || ($notes['purchase_type'] ?? '') !== 'subscription') {
+                    || ($notes['purchase_type'] ?? '') !== 'subscription'
+                    || strtoupper((string) ($order['currency'] ?? '')) !== $expectedCurrency
+                    || ($expectedAmount !== null && (int) ($order['amount'] ?? 0) !== $expectedAmount)) {
                     return ApiResponse::error('Razorpay order does not belong to this account.', 403);
                 }
 
@@ -959,14 +988,18 @@ class WebPaymentApiController extends Controller
             ])->get('https://api.paystack.co/transaction/verify/' . urlencode($request->reference));
             $body = $response->json();
             $data = $body['data'] ?? [];
+            $metadata = $data['metadata'] ?? [];
+            $expectedCurrency = strtoupper((string) ($metadata['currency'] ?? (GetcurrentCurrency() ?: 'USD')));
+            $expectedAmount = isset($metadata['amount_minor']) ? (int) $metadata['amount_minor'] : null;
             if (!$response->successful() || !($body['status'] ?? false) || ($data['status'] ?? '') !== 'success'
-                || (string) ($data['metadata']['user_id'] ?? '') !== (string) $user->id
+                || (string) ($metadata['user_id'] ?? '') !== (string) $user->id
                 || strtolower((string) ($data['customer']['email'] ?? '')) !== strtolower((string) $user->email)
-                || strtoupper((string) ($data['currency'] ?? '')) !== strtoupper(GetcurrentCurrency() ?: 'USD')) {
+                || strtoupper((string) ($data['currency'] ?? '')) !== $expectedCurrency
+                || ($expectedAmount !== null && (int) ($data['amount'] ?? 0) !== $expectedAmount)) {
                 return ApiResponse::error('Paystack payment could not be verified for this account.', 400);
             }
 
-            $planId = (int) ($data['metadata']['plan_id'] ?? 0);
+            $planId = (int) ($metadata['plan_id'] ?? 0);
             $plan = Plan::where('id', $planId)->where('status', 1)->first();
             if (!$plan) {
                 return ApiResponse::error('The plan associated with this payment is unavailable.', 404);
@@ -975,9 +1008,9 @@ class WebPaymentApiController extends Controller
             $subscription = $this->fulfillVerifiedPayment(
                 'paystack', (string) $request->reference, $user->id, 'subscription', $plan->id,
                 (int) $data['amount'], strtoupper((string) $data['currency']),
-                !empty($data['metadata']['promotion_id']) ? (int) $data['metadata']['promotion_id'] : null,
+                !empty($metadata['promotion_id']) ? (int) $metadata['promotion_id'] : null,
                 null,
-                !empty($data['metadata']['coupon_reservation']) ? (string) $data['metadata']['coupon_reservation'] : null
+                !empty($metadata['coupon_reservation']) ? (string) $metadata['coupon_reservation'] : null
             );
 
             return ApiResponse::success(['subscription' => new SubscriptionResource($subscription)], 'Subscription activated successfully.', 200);
@@ -1191,7 +1224,7 @@ class WebPaymentApiController extends Controller
         }
 
         $frontendUrl = rtrim((string) env('FRONTEND_URL', env('APP_URL')), '/');
-        $amountMinor = $this->toMinorUnits($finalPrice, $currency);
+        $amountMinor = $this->toMinorUnits($finalPrice, $currency, $paymentMethod);
 
         if ($paymentMethod === 'stripe') {
             try {
@@ -1395,7 +1428,7 @@ class WebPaymentApiController extends Controller
                     : PayPerView::findOrFail($receipt->fulfillment_id);
             }
 
-            $amount = $amountMinor / $this->currencyMultiplier($currency);
+            $amount = $amountMinor / $this->currencyMultiplier($currency, $gateway);
             if ($purchaseType === 'subscription') {
                 $plan = Plan::where('id', $purchaseId)->where('status', 1)->firstOrFail();
                 $fulfillment = $this->activateUserSubscription($userId, $plan, $amount, $gateway, $providerReference, $promotionId, strtoupper($currency));
@@ -1540,6 +1573,8 @@ class WebPaymentApiController extends Controller
             || (string) ($verified['metadata']['user_id'] ?? '') !== (string) $userId
             || (int) ($verified['amount'] ?? 0) !== (int) ($webhookData['amount'] ?? -1)
             || strtoupper((string) ($verified['currency'] ?? '')) !== strtoupper((string) ($webhookData['currency'] ?? ''))
+            || (isset($metadata['amount_minor']) && (int) $metadata['amount_minor'] !== (int) ($verified['amount'] ?? 0))
+            || (isset($metadata['currency']) && strtoupper((string) $metadata['currency']) !== strtoupper((string) ($verified['currency'] ?? '')))
             || !$user || strtolower((string) ($verified['customer']['email'] ?? '')) !== strtolower((string) $user->email)) {
             throw new \RuntimeException('Paystack transaction could not be independently verified.');
         }
@@ -1689,9 +1724,16 @@ class WebPaymentApiController extends Controller
         }
     }
 
-    private function currencyMultiplier(string $currency): int
+    private function currencyMultiplier(string $currency, string $gateway = 'stripe'): int
     {
-        $zeroDecimalCurrencies = ['BIF', 'CLP', 'DJF', 'GNF', 'JPY', 'KMF', 'KRW', 'MGA', 'PYG', 'RWF', 'UGX', 'VND', 'VUV', 'XAF', 'XOF', 'XPF'];
+        // Paystack requires a 100x subunit amount for every currently supported currency,
+        // including XOF, which otherwise has no ISO subunit.
+        if (strtolower($gateway) === 'paystack') return 100;
+
+        // Stripe's charge minor-unit rules. UGX stays at 100x for backward compatibility.
+        // Razorpay follows the ISO zero-decimal set, including UGX. Its 3-decimal currencies are not enabled here.
+        $zeroDecimalCurrencies = ['BIF', 'CLP', 'DJF', 'GNF', 'JPY', 'KMF', 'KRW', 'MGA', 'PYG', 'RWF', 'VND', 'VUV', 'XAF', 'XOF', 'XPF'];
+        if (strtolower($gateway) === 'razorpay') $zeroDecimalCurrencies[] = 'UGX';
 
         return in_array(strtoupper($currency), $zeroDecimalCurrencies, true) ? 1 : 100;
     }
@@ -1847,6 +1889,8 @@ class WebPaymentApiController extends Controller
                     'promotion_id' => (string) ($promotionId ?? ''),
                     'coupon_reservation' => (string) ($reservationToken ?? ''),
                     'user_id' => (string) $user->id,
+                    'amount_minor' => (string) $unitAmount,
+                    'currency' => strtoupper($currency),
                 ],
                 'payment_intent_data' => ['metadata' => [
                     'purchase_type' => 'subscription',
@@ -1855,6 +1899,8 @@ class WebPaymentApiController extends Controller
                     'promotion_id' => (string) ($promotionId ?? ''),
                     'coupon_reservation' => (string) ($reservationToken ?? ''),
                     'user_id' => (string) $user->id,
+                    'amount_minor' => (string) $unitAmount,
+                    'currency' => strtoupper($currency),
                 ]],
                 'success_url' => "{$frontendUrl}/payment-success?gateway=stripe&session_id={CHECKOUT_SESSION_ID}",
                 'cancel_url' => "{$frontendUrl}/pricing",
@@ -1882,7 +1928,7 @@ class WebPaymentApiController extends Controller
         try {
             $order = $api->order->create([
                 'receipt' => 'sub_' . bin2hex(random_bytes(12)),
-                'amount' => $this->toMinorUnits($price, $currency),
+                'amount' => $this->toMinorUnits($price, $currency, 'razorpay'),
                 'currency' => strtoupper($currency),
                 'payment_capture' => 1,
                 'notes' => [
@@ -1891,6 +1937,8 @@ class WebPaymentApiController extends Controller
                     'plan_id' => (string) $plan->id,
                     'promotion_id' => (string) ($promotionId ?? ''),
                     'coupon_reservation' => (string) ($reservationToken ?? ''),
+                    'amount_minor' => (string) $this->toMinorUnits($price, $currency, 'razorpay'),
+                    'currency' => strtoupper($currency),
                 ],
             ]);
 
@@ -1898,7 +1946,7 @@ class WebPaymentApiController extends Controller
 
             return ApiResponse::success([
                 'key' => $razorpayKey,
-                'amount' => $this->toMinorUnits($price, $currency),
+                'amount' => $this->toMinorUnits($price, $currency, 'razorpay'),
                 'currency' => strtoupper($currency),
                 'name' => config('app.name'),
                 'description' => "Subscription Plan: {$plan->name}",
@@ -1927,7 +1975,7 @@ class WebPaymentApiController extends Controller
             'Authorization' => 'Bearer ' . $secretKey,
         ])->post('https://api.paystack.co/transaction/initialize', [
             'email' => $user->email,
-            'amount' => $this->toMinorUnits($price, $currency),
+            'amount' => $this->toMinorUnits($price, $currency, 'paystack'),
             'currency' => strtoupper($currency),
             'callback_url' => $callbackUrl,
             'metadata' => [
@@ -1936,6 +1984,8 @@ class WebPaymentApiController extends Controller
                 'promotion_id' => $promotionId,
                 'coupon_reservation' => $reservationToken,
                 'user_id' => $user->id,
+                'amount_minor' => $this->toMinorUnits($price, $currency, 'paystack'),
+                'currency' => strtoupper($currency),
             ],
         ]);
 
