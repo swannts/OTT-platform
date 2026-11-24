@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { DEFAULT_FALLBACK_IMAGE } from '@/constants';
 import { blurHashToDataURL } from '@/lib/blurhash';
@@ -39,10 +39,15 @@ export default function SafeImage({
   ...props
 }: SafeImageProps) {
   const cleanTarget = typeof src === 'string' && src.trim() ? src.trim() : fallbackSrc;
-  const [imgSrc, setImgSrc] = useState<string>(cleanTarget);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [hasError, setHasError] = useState(false);
-  const [blurDataUrl, setBlurDataUrl] = useState<string | null>(null);
+  const [failedSource, setFailedSource] = useState<string | null>(null);
+  const [loadedSource, setLoadedSource] = useState<string | null>(null);
+  const hasError = failedSource === cleanTarget;
+  const imgSrc = hasError ? fallbackSrc : cleanTarget;
+  const isLoaded = loadedSource === imgSrc;
+  const blurDataUrl = useMemo(
+    () => (blurhash ? blurHashToDataURL(blurhash, 32, 32) : null),
+    [blurhash]
+  );
   const imgRef = useRef<HTMLImageElement | null>(null);
 
   // Check if image is already loaded (crucial for cached images during route navigation)
@@ -50,18 +55,17 @@ export default function SafeImage({
     if (!node) return;
     if (node.complete) {
       if (node.naturalWidth > 0) {
-        setIsLoaded(true);
+        setLoadedSource(imgSrc);
       } else if (node.currentSrc || node.src) {
         // Failed to load
-        if (!hasError && imgSrc !== fallbackSrc) {
-          setHasError(true);
-          setImgSrc(fallbackSrc);
+        if (imgSrc !== fallbackSrc) {
+          setFailedSource(cleanTarget);
         } else {
-          setIsLoaded(true);
+          setLoadedSource(fallbackSrc);
         }
       }
     }
-  }, [hasError, imgSrc, fallbackSrc]);
+  }, [imgSrc, fallbackSrc, cleanTarget]);
 
   // Callback ref so we immediately evaluate cached images upon DOM node creation
   const setRef = useCallback((node: HTMLImageElement | null) => {
@@ -69,85 +73,43 @@ export default function SafeImage({
     checkImageComplete(node);
   }, [checkImageComplete]);
 
-  // Sync state if src changes
-  useEffect(() => {
-    const nextSrc = typeof src === 'string' && src.trim() ? src.trim() : fallbackSrc;
-    setImgSrc(nextSrc);
-    setHasError(false);
-
-    // If cached in memory, immediately mark loaded
-    if (imgRef.current) {
-      if (imgRef.current.complete && imgRef.current.naturalWidth > 0) {
-        setIsLoaded(true);
-        return;
-      }
-    }
-
-    setIsLoaded(false);
-
-    // Check again on next microtask/frame after React commits DOM changes
-    const raf = requestAnimationFrame(() => {
-      checkImageComplete(imgRef.current);
-    });
-
-    return () => cancelAnimationFrame(raf);
-  }, [src, fallbackSrc, checkImageComplete]);
-
-  // Decode blurhash to lightweight data URL on client after mount
-  useEffect(() => {
-    if (!blurhash) {
-      setBlurDataUrl(null);
-      return;
-    }
-    const dataUrl = blurHashToDataURL(blurhash, 32, 32);
-    setBlurDataUrl(dataUrl);
-  }, [blurhash]);
-
   // Safety Watchdog: If an image is cached or network stalls on page change,
   // never leave the user stuck on the blurhash color forever.
   useEffect(() => {
     if (isLoaded) return;
 
-    // Check immediately in case DOM complete updated
-    if (imgRef.current?.complete && imgRef.current.naturalWidth > 0) {
-      setIsLoaded(true);
-      return;
-    }
-
     const timer = setTimeout(() => {
       if (imgRef.current?.complete) {
         if (imgRef.current.naturalWidth > 0) {
-          setIsLoaded(true);
+          setLoadedSource(imgSrc);
           return;
         }
       }
 
       // If image didn't resolve in 2 seconds, gracefully show fallback and reveal
-      if (!hasError && imgSrc !== fallbackSrc) {
-        setHasError(true);
-        setImgSrc(fallbackSrc);
-        setIsLoaded(true);
+      if (imgSrc !== fallbackSrc) {
+        setFailedSource(cleanTarget);
+        setLoadedSource(fallbackSrc);
       } else {
-        setIsLoaded(true);
+        setLoadedSource(fallbackSrc);
       }
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [imgSrc, isLoaded, hasError, fallbackSrc]);
+  }, [imgSrc, isLoaded, fallbackSrc, cleanTarget]);
 
   const handleLoad = () => {
-    setIsLoaded(true);
+    setLoadedSource(imgSrc);
   };
 
   const handleError = () => {
-    if (!hasError && imgSrc !== fallbackSrc) {
-      setHasError(true);
-      setImgSrc(fallbackSrc);
+    if (imgSrc !== fallbackSrc) {
+      setFailedSource(cleanTarget);
       if (imgRef.current?.complete && imgRef.current.naturalWidth > 0) {
-        setIsLoaded(true);
+        setLoadedSource(fallbackSrc);
       }
     } else {
-      setIsLoaded(true);
+      setLoadedSource(fallbackSrc);
     }
   };
 

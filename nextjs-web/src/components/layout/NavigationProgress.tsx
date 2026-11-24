@@ -8,19 +8,22 @@ function NavigationProgressBar() {
   const searchParams = useSearchParams();
   const [progress, setProgress] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
+  const [navigationStart, setNavigationStart] = useState<string | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const search = searchParams.toString();
+  const currentRoute = `${pathname}${search ? `?${search}` : ''}`;
+  const isComplete = isVisible && navigationStart !== null && currentRoute !== navigationStart;
 
   // Complete progress on route change
   useEffect(() => {
-    if (isVisible) {
-      setProgress(100);
-      const timeout = setTimeout(() => {
-        setIsVisible(false);
-        setProgress(0);
-      }, 250);
-      return () => clearTimeout(timeout);
-    }
-  }, [pathname, searchParams]);
+    if (!isComplete) return;
+    const timeout = setTimeout(() => {
+      setIsVisible(false);
+      setProgress(0);
+      setNavigationStart(null);
+    }, 250);
+    return () => clearTimeout(timeout);
+  }, [isComplete]);
 
   // Listen for internal link clicks
   useEffect(() => {
@@ -53,6 +56,7 @@ function NavigationProgressBar() {
 
       // Start progress bar
       if (timerRef.current) clearInterval(timerRef.current);
+      setNavigationStart(currentUrl);
       setIsVisible(true);
       setProgress(15);
 
@@ -87,7 +91,7 @@ function NavigationProgressBar() {
       <div
         className="h-full bg-gradient-to-r from-[#B88A38] via-[#E5B869] to-[#F3CF8A] shadow-[0_0_12px_rgba(229,184,105,0.9)] transition-all duration-200 ease-out"
         style={{
-          width: `${progress}%`,
+          width: `${isComplete ? 100 : progress}%`,
           opacity: isVisible ? 1 : 0,
           transition: progress === 100 ? 'width 150ms ease-out, opacity 250ms 100ms ease-out' : 'width 200ms ease-out',
         }}
@@ -103,4 +107,3 @@ export default function NavigationProgress() {
     </Suspense>
   );
 }
-

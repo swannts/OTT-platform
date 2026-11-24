@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { BlogPost, BlogCategory } from '@/types';
 import BlogCard from './BlogCard';
-import { Search, X, BookOpen, Filter } from 'lucide-react';
+import { Search, X, BookOpen } from 'lucide-react';
 
 interface BlogGridProps {
   initialPosts: BlogPost[];
@@ -102,7 +102,7 @@ export default function BlogGrid({ initialPosts, categories }: BlogGridProps) {
           <BookOpen className="w-12 h-12 text-gray-600 mx-auto" />
           <h3 className="text-lg font-bold text-white">No articles found</h3>
           <p className="text-xs text-gray-400 max-w-sm mx-auto">
-            We couldn't find any stories matching your filters. Try selecting a different category or clearing your search.
+            We couldn&apos;t find any stories matching your filters. Try selecting a different category or clearing your search.
           </p>
           <button
             type="button"
@@ -119,4 +119,3 @@ export default function BlogGrid({ initialPosts, categories }: BlogGridProps) {
     </div>
   );
 }
-

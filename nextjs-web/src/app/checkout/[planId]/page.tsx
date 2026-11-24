@@ -29,8 +29,10 @@ export default function CheckoutPage() {
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [pricingPlanId, setPricingPlanId] = useState<number | null>(null);
+  const [isPricingLoading, setIsPricingLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const isLoading = isPricingLoading || pricingPlanId !== planId;
 
   // Currency resolver
   const currencySymbol = useMemo(() => {
@@ -126,11 +128,12 @@ export default function CheckoutPage() {
 
   // Load live pricing breakdown
   const loadPricing = async (code?: string) => {
-    setIsLoading(true);
+    setIsPricingLoading(true);
     setCouponError(null);
     try {
       const calc = await api.calculatePrice(planId, code);
       setCalculation(calc);
+      setPricingPlanId(planId);
       if (code) {
         setAppliedCoupon(code);
       }
@@ -139,14 +142,34 @@ export default function CheckoutPage() {
         setCouponError(err instanceof Error ? err.message : t('invalid_coupon', 'Invalid promo code'));
       } else {
         setCalculation(null);
+        setPricingPlanId(planId);
       }
     } finally {
-      setIsLoading(false);
+      setIsPricingLoading(false);
     }
   };
 
   useEffect(() => {
-    loadPricing();
+    let active = true;
+    void api.calculatePrice(planId)
+      .then((calc) => {
+        if (!active) return;
+        setCalculation(calc);
+        setPricingPlanId(planId);
+      })
+      .catch(() => {
+        if (active) {
+          setCalculation(null);
+          setPricingPlanId(planId);
+        }
+      })
+      .finally(() => {
+        if (active) setIsPricingLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, [planId]);
 
   const handleApplyCoupon = (e: React.FormEvent) => {

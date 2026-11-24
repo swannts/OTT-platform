@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import Link from 'next/link';
 import { User as UserIcon, CheckCircle2, AlertCircle, Save, Camera, Mail, Phone, Calendar, Sparkles, Crown, Upload, X } from 'lucide-react';
 import { Spinner } from '@/components/ui';
@@ -50,7 +50,7 @@ export function ProfileSection({
   const [dateOfBirth, setDateOfBirth] = useState(user.date_of_birth || '');
 
   // Normalize image URL (handle local 127.0.0.1 vs localhost cross-origin differences)
-  const normalizedAvatar = React.useMemo(() => {
+  const normalizedAvatar = (() => {
     const raw = user?.profile_image || user?.avatar;
     if (!raw || typeof raw !== 'string') return null;
     const trimmed = raw.trim();
@@ -65,7 +65,7 @@ export function ProfileSection({
       }
     }
     return trimmed;
-  }, [user?.profile_image, user?.avatar]);
+  })();
 
   // Check if saved avatar was a theme gradient preset
   const isPresetColor = Boolean(
@@ -79,13 +79,9 @@ export function ProfileSection({
     return AVATAR_PRESETS[0].color;
   });
 
-  const [hasImgError, setHasImgError] = useState(false);
+  const [failedAvatarSource, setFailedAvatarSource] = useState<string | null>(null);
+  const hasImgError = normalizedAvatar !== null && failedAvatarSource === normalizedAvatar;
   const [useThemeAvatar, setUseThemeAvatar] = useState(isPresetColor || !normalizedAvatar);
-
-  // Reset image error if user avatar changes
-  useEffect(() => {
-    setHasImgError(false);
-  }, [normalizedAvatar]);
 
   // Custom photo upload state
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -106,7 +102,7 @@ export function ProfileSection({
 
   const handleUseCustomPhoto = () => {
     setUseThemeAvatar(false);
-    setHasImgError(false);
+    setFailedAvatarSource(null);
     handleRemoveStagedPhoto();
   };
 
@@ -128,7 +124,7 @@ export function ProfileSection({
     const objectUrl = URL.createObjectURL(file);
     setPreviewUrl(objectUrl);
     setUseThemeAvatar(false);
-    setHasImgError(false);
+    setFailedAvatarSource(null);
     setMessage({ type: 'success', text: `Selected "${file.name}". Click "Save Changes" to upload.` });
   };
 
@@ -223,7 +219,7 @@ export function ProfileSection({
                 <img
                   src={normalizedAvatar}
                   alt={user.name || 'User'}
-                  onError={() => setHasImgError(true)}
+                  onError={() => setFailedAvatarSource(normalizedAvatar)}
                   className="w-full h-full object-cover"
                 />
               </div>

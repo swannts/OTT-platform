@@ -1,6 +1,8 @@
 // Cypress custom commands
 /// <reference types="cypress" />
 
+/* Cypress custom commands extend its global namespace by design. */
+/* eslint-disable @typescript-eslint/no-namespace */
 declare namespace Cypress {
   interface Chainable {
     getBySel(selector: string, options?: Partial<Cypress.Loggable & Cypress.Timeoutable & Cypress.Withinable & Cypress.Shadow>): Chainable<JQuery<HTMLElement>>;
