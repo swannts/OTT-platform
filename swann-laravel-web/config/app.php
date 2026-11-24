@@ -5,6 +5,8 @@ use Illuminate\Support\Facades\Facade;
 return [
 
     'version' => '2.2.1',
+    'release_id' => env('APP_RELEASE_ID'),
+    'released_at' => env('APP_RELEASED_AT'),
 
     /*
     |--------------------------------------------------------------------------

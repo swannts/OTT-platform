@@ -138,7 +138,7 @@ export function TechnicalOperationsPage() {
         </Grid>)}
       </Grid>
       <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 2 }}>
-        Queue connection: {health?.queue?.connection || '—'} · Waiting: {health?.queue?.queued ?? 'not reported'} · Reserved: {health?.queue?.reserved ?? 'not reported'} · Failed: {health?.queue?.failed ?? 'not reported'} · Checked: {health?.checked_at || '—'}
+        Release: {health?.deployment?.release_id || 'not configured'} · Released: {health?.deployment?.released_at || 'not reported'} · Queue connection: {health?.queue?.connection || '—'} · Waiting: {health?.queue?.queued ?? 'not reported'} · Reserved: {health?.queue?.reserved ?? 'not reported'} · Failed: {health?.queue?.failed ?? 'not reported'} · Checked: {health?.checked_at || '—'}
       </Typography>
       {health?.rabbitmq_queues && <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 1.5 }}>
         {health.rabbitmq_queues.map((queue) => <Chip key={queue.name} variant="outlined" label={`${queue.name}: ${queue.messages} messages, ${queue.consumers} consumers`} />)}

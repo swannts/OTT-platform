@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Redis;
@@ -65,9 +66,23 @@ final class AdminOperationsService
         }
 
         $statuses = array_column($checks, 'status');
+        $releaseId = config('app.release_id');
+        $releaseId = is_string($releaseId) && preg_match('/^[A-Za-z0-9._+-]{1,80}$/', $releaseId) ? $releaseId : null;
+        $releasedAt = config('app.released_at');
+        if (is_string($releasedAt) && $releasedAt !== '') {
+            try {
+                $releasedAt = CarbonImmutable::parse($releasedAt)->utc()->toIso8601String();
+            } catch (\Throwable) {
+                $releasedAt = null;
+            }
+        } else {
+            $releasedAt = null;
+        }
+
         return [
             'status' => count(array_filter($statuses, static fn (string $status): bool => $status !== 'ok' && $status !== 'not_configured')) > 0 ? 'degraded' : 'ok',
             'checked_at' => now('UTC')->toIso8601String(),
+            'deployment' => ['release_id' => $releaseId, 'released_at' => $releasedAt],
             'services' => $checks,
             'runtime_resources' => app(RuntimeResourceMetrics::class)->snapshot(),
             'queue' => $queueCounts,
