@@ -55,7 +55,7 @@ services:
     ports: !override
       - "127.0.0.1:${BACKEND_PORT:?Set BACKEND_PORT for the local TLS proxy}:8000"
     healthcheck:
-      test: ["CMD-SHELL", "php -r 'exit(@file_get_contents(\"http://127.0.0.1:8000/up\") === false ? 1 : 0);'"]
+      test: ["CMD-SHELL", "php -r 'exit(str_contains((get_headers(\"http://127.0.0.1:8000/up\")[0] ?? \"\"), \" 200 \") ? 0 : 1);'"]
       interval: 30s
       timeout: 5s
       retries: 3

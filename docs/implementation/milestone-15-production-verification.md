@@ -55,15 +55,21 @@ readiness.
   infrastructure health checks remain enabled.
 - `NEXT_PUBLIC_API_URL` is required for both the customer Next.js build and its
   runtime environment so browser requests do not fall back to localhost.
+- Added an unauthenticated, middleware-free Laravel `/up` process-health route.
+  The production Compose probe now checks for HTTP 200, so a 404 or 500 can no
+  longer be reported healthy merely because the server returned a response body.
 - Restored the missing World module admin list Blade view so its existing admin
   route and feature test work.
 
 ## Validation performed
 
-- Laravel PHPUnit suite: **117 tests, 528 assertions passed** in the backend
+- Laravel PHPUnit suite: **118 tests, 530 assertions passed** in the backend
   container using its isolated in-memory SQLite test configuration; one
   existing PHPUnit deprecation remains. Production seeder safety coverage is
   **4 tests and 11 assertions**.
+- The new public `/up` route passes its regression test. The live backend returns
+  HTTP 200 there, and the production health-check expression accepts that status
+  while rejecting an HTTP 404.
 - Admin RBAC feature suite: **9 tests, 37 assertions passed**, including login rate limiting,
   immediate session revocation on staff deactivation, and denial of inactive or banned account tokens.
 - Composer locked dependency audit: **0 advisories**.
