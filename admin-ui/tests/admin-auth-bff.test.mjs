@@ -153,12 +153,10 @@ test('admin BFF keeps the Sanctum token server-side across login, session, and l
   }
   assert.ok(ready, `Next.js did not become ready.\n${nextOutput}`);
 
-  if (productionMode) {
-    const homeResponse = await fetch(`${origin}/`);
-    assert.equal(homeResponse.status, 200, `admin homepage failed to render.\n${nextOutput}`);
-    const signInPage = await fetch(`${origin}/auth/jwt/sign-in/`);
-    assert.equal(signInPage.status, 200, `admin sign-in page failed to render.\n${nextOutput}`);
-  }
+  const homeResponse = await fetch(`${origin}/`);
+  assert.equal(homeResponse.status, 200, `admin homepage failed to render.\n${nextOutput}`);
+  const signInPage = await fetch(`${origin}/auth/jwt/sign-in/`);
+  assert.equal(signInPage.status, 200, `admin sign-in page failed to render.\n${nextOutput}`);
 
   const loginResponse = await fetch(`${origin}/api/admin/login/`, {
     method: 'POST',

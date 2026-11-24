@@ -116,12 +116,12 @@ readiness.
 - `npm run test:bff` and `npm run test:bff:production` pass against a controlled
   Laravel API stub. They cover login, HttpOnly/SameSite cookie storage,
   production Secure cookie storage, rendered homepage and sign-in pages in
-  production mode, authenticated `/me` forwarding, invalid-session cookie
-  clearing, logout/revocation forwarding, and cross-origin login rejection.
-- `next dev` still returns HTTP 500 for the admin home/sign-in pages with a
-  `RangeError: Maximum call stack size exceeded`; the production build and
-  production container render those pages successfully. This development-mode
-  failure remains a repository quality issue to investigate.
+  development and production modes, authenticated `/me` forwarding,
+  invalid-session cookie clearing, logout/revocation forwarding, and
+  cross-origin login rejection. The development render regression was caused by
+  React development elements with circular owner references nested in MUI theme
+  default props; the theme now removes those values during MUI's recursive merge
+  and restores them afterward.
 - PHP syntax checks passed for all changed PHP files.
 - A tracked-source scan found no private-key, AWS access-key, or Stripe live
   secret literals. It found one Google-style API key in the app-configuration
@@ -204,8 +204,6 @@ readiness.
   available; see [Milestone 14](milestone-14-flutter-compatibility.md).
 - Full admin and customer lint scans exit successfully with zero errors or
   warnings.
-- The admin development-server rendering failure above remains unresolved even
-  though its production rendering and BFF checks pass.
 - Webhook tests cover signature rejection and replay deduplication for all four
   providers. Provider-backed payment fulfillment, refund reconciliation, and
   settlement reconciliation remain unverified.
