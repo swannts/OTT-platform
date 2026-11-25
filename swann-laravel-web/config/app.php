@@ -27,6 +27,7 @@ return [
         'name' => env('ADMIN_BOOTSTRAP_NAME', 'Platform Administrator'),
     ],
     'demo_seed_password' => env('DEMO_SEED_PASSWORD'),
+    'demo_catalog_replace' => env('DEMO_CATALOG_REPLACE', false),
 
     /*
     |--------------------------------------------------------------------------

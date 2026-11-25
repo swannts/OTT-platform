@@ -32,6 +32,7 @@ class IslamicContentSeeder extends Seeder
     public function run()
     {
         $this->ensureLocalOrTestingEnvironment();
+        $this->ensureDemoCatalogReplacementEnabled();
 
         Schema::disableForeignKeyConstraints();
 

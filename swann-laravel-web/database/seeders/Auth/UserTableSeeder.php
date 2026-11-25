@@ -8,8 +8,6 @@ use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Schema;
-use App\Models\Address;
 use App\Models\UserMultiProfile;
 use Laravolt\Avatar\Facade as Avatar;
 use Illuminate\Support\Facades\Storage;
@@ -35,11 +33,6 @@ class UserTableSeeder extends Seeder
         if ($demoSeedPassword === '') {
             return;
         }
-
-        Schema::disableForeignKeyConstraints();
-
-        // Add the master administrator, user id of 1
-        $avatarPath = config('app.avatar_base_path');
 
          if(env('IS_DUMMY_DATA')==false){
 
@@ -385,13 +378,22 @@ class UserTableSeeder extends Seeder
             foreach ($users as $key => $user_data) {
                 $featureImage = $user_data['file_url'] ?? null;
                 $userData = Arr::except($user_data, ['file_url']);
-                $user = User::create($userData);
+                $user = User::query()->firstOrNew(['email' => $userData['email']]);
+                $isNewUser = ! $user->exists;
 
+                // Never reset a pre-existing account's password or profile
+                // fields just because the fixture is run again.
+                if ($isNewUser) {
+                    $user->fill($userData);
+                    $user->save();
+                }
                 $user->assignRole($user_data['user_type']);
-                event(new UserCreated($user));
+                if ($isNewUser) {
+                    event(new UserCreated($user));
+                }
 
 
-                if (isset($featureImage) &&  $featureImage !='') {
+                if ($isNewUser && isset($featureImage) &&  $featureImage !='') {
 
 
                   $profile_image = $this->uploadToSpaces($featureImage);
@@ -402,13 +404,9 @@ class UserTableSeeder extends Seeder
 
                 }
 
-                $user->save();
-
                 $this->createOrUpdateProfile($user);
                 $this->createOrUpdateChildProfile($user);
             }
-
-            Schema::enableForeignKeyConstraints();
     }
 
     private function uploadToSpaces($publicPath)

@@ -11,6 +11,9 @@ use Database\Seeders\ProductionAdminBootstrapSeeder;
 use Database\Seeders\Auth\UserTableSeeder;
 use Database\Seeders\Auth\PermissionRoleTableSeeder;
 use Database\Seeders\LocalDemoCatalogSeeder;
+use Database\Seeders\IslamicContentSeeder;
+use Database\Seeders\BangladeshIslamicContentSeeder;
+use Database\Seeders\NoorContentSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -69,6 +72,7 @@ class ProductionSeederSafetyTest extends TestCase
             \Database\Seeders\ClipsTableSeeder::class,
             \Database\Seeders\IslamicContentSeeder::class,
             \Database\Seeders\BangladeshIslamicContentSeeder::class,
+            NoorContentSeeder::class,
             \Database\Seeders\BlogSeeder::class,
             \Database\Seeders\MobileSettingsTableSeeder::class,
             \Database\Seeders\StaffRolesSeeder::class,
@@ -124,7 +128,33 @@ class ProductionSeederSafetyTest extends TestCase
         }
     }
 
-    public function test_production_refuses_legacy_permission_truncating_seeders(): void
+    public function test_catalog_replacement_seeders_require_explicit_local_opt_in(): void
+    {
+        app()->detectEnvironment(static fn (): string => 'local');
+        config(['app.demo_catalog_replace' => false]);
+        $genreId = (string) \Illuminate\Support\Str::uuid();
+        \Illuminate\Support\Facades\DB::table('genres')->insert([
+            'id' => $genreId,
+            'name' => 'Keep this catalog row',
+            'slug' => 'keep-this-catalog-row',
+            'status' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        foreach ([IslamicContentSeeder::class, BangladeshIslamicContentSeeder::class, NoorContentSeeder::class] as $seederClass) {
+            try {
+                app($seederClass)->run();
+                $this->fail("{$seederClass} should require explicit demo-catalog replacement opt-in.");
+            } catch (LogicException) {
+                $this->assertTrue(true);
+            }
+        }
+
+        $this->assertDatabaseHas('genres', ['id' => $genreId, 'slug' => 'keep-this-catalog-row']);
+    }
+
+    public function test_production_refuses_legacy_permission_seeders(): void
     {
         Permission::query()->firstOrCreate(['name' => 'preserve-me', 'guard_name' => 'web']);
         app()->detectEnvironment(static fn (): string => 'production');
@@ -139,6 +169,22 @@ class ProductionSeederSafetyTest extends TestCase
         }
     }
 
+    public function test_legacy_permission_seeder_preserves_canonical_permissions(): void
+    {
+        Permission::query()->create([
+            'name' => 'admin.notifications.view',
+            'guard_name' => 'web',
+            'is_fixed' => true,
+        ]);
+
+        app(PermissionRoleTableSeeder::class)->run();
+
+        $this->assertDatabaseHas('permissions', [
+            'name' => 'admin.notifications.view',
+            'guard_name' => 'web',
+        ]);
+    }
+
     public function test_sample_users_are_not_seeded_without_a_private_demo_password(): void
     {
         config(['app.demo_seed_password' => null]);
@@ -146,6 +192,25 @@ class ProductionSeederSafetyTest extends TestCase
         app(UserTableSeeder::class)->run();
 
         $this->assertDatabaseCount('users', 0);
+    }
+
+    public function test_legacy_sample_users_can_be_seeded_repeatedly_without_resetting_existing_passwords(): void
+    {
+        config(['app.demo_seed_password' => 'local-only-test-password']);
+        $existingAdmin = User::factory()->create([
+            'email' => 'admin@swann.com',
+            'user_type' => 'admin',
+            'password' => Hash::make('keep-this-password'),
+        ]);
+        $originalPasswordHash = $existingAdmin->password;
+
+        app(PermissionRoleTableSeeder::class)->run();
+        app(UserTableSeeder::class)->run();
+        $userCountAfterFirstRun = User::query()->count();
+        app(UserTableSeeder::class)->run();
+
+        $this->assertSame($userCountAfterFirstRun, User::query()->count());
+        $this->assertSame($originalPasswordHash, $existingAdmin->fresh()->password);
     }
 
     public function test_bootstrap_seeder_creates_a_super_admin_once_without_overwriting_existing_passwords(): void

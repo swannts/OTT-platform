@@ -17,6 +17,7 @@ class BangladeshIslamicContentSeeder extends Seeder
     public function run(): void
     {
         $this->ensureLocalOrTestingEnvironment();
+        $this->ensureDemoCatalogReplacementEnabled();
 
         Schema::disableForeignKeyConstraints();
 

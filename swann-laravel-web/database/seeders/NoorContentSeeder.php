@@ -3,16 +3,21 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
 use Modules\Entertainment\Models\Entertainment;
 use Modules\Banner\Models\Banner;
 use Modules\LiveTV\Models\LiveTvChannel;
 use App\Models\MobileSetting;
+use Database\Seeders\Concerns\LocalOnlySeeder;
 
 class NoorContentSeeder extends Seeder
 {
+    use LocalOnlySeeder;
+
     public function run()
     {
+        $this->ensureLocalOrTestingEnvironment();
+        $this->ensureDemoCatalogReplacementEnabled();
+
         // 1. Seed / Update Hero Series in Entertainment
         $heroShow = Entertainment::firstOrNew(['id' => 1]);
         $heroShow->name = 'The Life of Prophet Muhammad';
