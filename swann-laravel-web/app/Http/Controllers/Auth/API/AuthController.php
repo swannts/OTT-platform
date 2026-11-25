@@ -9,6 +9,7 @@ use App\Http\Requests\Auth\ChangePinRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\VerifyOtpRequest;
 use App\Http\Requests\Auth\VerifyPinRequest;
+use App\Services\Auth\AccountManagementService;
 use App\Services\Auth\DeviceLimitService;
 use App\Services\Auth\ParentalControlService;
 use App\Http\Resources\LoginResource;
@@ -47,6 +48,7 @@ class AuthController extends Controller
     public function __construct(
         private readonly DeviceLimitService $deviceLimit,
         private readonly ParentalControlService $parentalControl,
+        private readonly AccountManagementService $accountManagement,
     ) {}
 
     
@@ -497,86 +499,37 @@ protected function checkDeviceLimit(User $user, ?string $deviceId = null, bool $
             'old_password' => 'required',
             'new_password' => 'required|min:8',
         ]);
+
         $authenticatedUser = \Auth::user();
-        $currentToken = $authenticatedUser?->currentAccessToken();
-        $user = User::where('id', $authenticatedUser?->id)->first();
-        if ($user == '') {
+        if (! $authenticatedUser) {
             return ApiResponse::error(__('messages.user_notfound'), 400);
         }
 
-        $hashedPassword = $user->password;
-
-        $match = Hash::check($request->old_password, $hashedPassword);
-
-        if ($request->new_password == $request->old_password) {
-            $message = __('messages.old_new_pass_same');
-
-            return ApiResponse::error(__('messages.same_pass'), 400);
+        $result = $this->accountManagement->changePassword($authenticatedUser, $request);
+        if (! $result['ok']) {
+            return ApiResponse::error($result['message'], $result['status']);
         }
-        
-        if ($match) {
 
-            if ($currentToken && method_exists($currentToken, 'getKey')) {
-                \DB::table('playback_sessions')->where('user_id', $user->id)
-                    ->where('device_token_id', $currentToken->getKey())->whereNull('ended_at')
-                    ->update(['ended_at' => now(), 'updated_at' => now()]);
-                Device::where('user_id', $user->id)->where('sanctum_token_id', $currentToken->getKey())->delete();
-                $currentToken->delete();
-            }
-
-            $user->fill([
-                'password' => Hash::make($request->new_password),
-            ])->save();
-
-            $issuedToken = $user->createToken(setting('app_name'));
-            $success['api_token'] = $issuedToken->plainTextToken;
-            Device::create([
-                'user_id' => $user->id,
-                'sanctum_token_id' => $issuedToken->accessToken->getKey(),
-                'device_id' => (string) \Illuminate\Support\Str::uuid(),
-                'device_name' => $request->input('device_name', 'OTT device'),
-                'platform' => $request->input('platform', 'unknown'),
-                'active_profile' => $user->userMultiProfile()->value('id'),
-                'session_id' => session()->getId(),
-                'last_activity' => now(),
-            ]);
-            $success['name'] = $user->name;
-
-            $data = [
-                'notification_type' => 'change_password', // Use your template type
-                'user_id' => $user->id,
-                'user_name' => $user->full_name,
-            ];
-            SendBulkNotification::dispatch($data)->onQueue('notifications');
-
-
-            return ApiResponse::success($success, __('messages.pass_successfull'), 200);
-        } else {
-            return ApiResponse::error(__('messages.check_old_password'), 200);
-        }
+        return ApiResponse::success($result['data'], $result['message'], 200);
     }
 
     public function updateProfile(Request $request)
     {
         $user = Auth::user();
-        // if ($request->has('id') && !empty($request->id)) {
-        //     $user = User::where('id', $user->id)->first();
-        // }
         if ($user == null) {
-
             return ApiResponse::error(__('messages.no_record'), 400);
         }
 
         try {
             $request->validate([
-                'email' => 'required|email|unique:users,email,' . $user->id,
-                'mobile' => 'required|unique:users,mobile,' . $user->id,
-            'date_of_birth' => 'required|date|before_or_equal:today',
+                'email' => 'required|email|unique:users,email,'.$user->id,
+                'mobile' => 'required|unique:users,mobile,'.$user->id,
+                'date_of_birth' => 'required|date|before_or_equal:today',
             ]);
         } catch (ValidationException $e) {
             $errors = $e->errors();
             $firstError = collect($errors)->flatten()->first();
-            
+
             return ApiResponse::error(
                 $firstError ?? __('messages.validation_error'),
                 422,
@@ -584,56 +537,12 @@ protected function checkDeviceLimit(User $user, ?string $deviceId = null, bool $
             );
         }
 
-        $data = $request->except(['is_banned', 'status', 'user_type', 'password', 'id', 'email_verified_at', 'is_subscribe','pin','otp','is_parental_lock_enable','deleted_at','created_at','updated_at','file_url']);
-
-        $user->update($data);
-        if ($request->hasFile('file_url')) {
-            $file = $request->file('file_url');
-
-            $file = $this->stripExif($file);
-           $activeDisk = env('ACTIVE_STORAGE', 'local');
-
-           $filename = $file->getClientOriginalName();
-
-           if ($activeDisk == 'local') {
-            $destinationPath = 'swann-laravel';
-            $filePath = $file->storeAs($destinationPath, $filename, 'public');
-            $file_url = '/storage/' . $filePath;
-
-        } else {
-
-            $folderPath = 'swann-laravel/' .  $filename ;
-            Storage::disk( $activeDisk )->put($folderPath, file_get_contents($file));
-            $baseUrl = env('DO_SPACES_URL');
-            $file_url = $baseUrl . '/' . $folderPath;
-        }
-
-            $data['file_url']=extractFileNameFromUrl($file_url,'users');
-
-        } else {
-            $data['file_url'] = $user->file_url;
-        }
-        $user->update(['file_url' => $data['file_url']]);
-        $user_data = User::find($user->id);
-        $user_data->save();
-
-        $message = __('messages.profile_update');
-        $user_data['user_role'] = $user->getRoleNames();
-        $user_data['file_url'] = setBaseUrlWithFileName($user->file_url, 'image', 'users');
-
-        unset($user_data['roles']);
-        unset($user_data['media']);
-
-        $data = $user_data->toArray();
-        $data['date_of_birth'] = $user_data->date_of_birth
-            ? \Carbon\Carbon::parse($user_data->date_of_birth)->format('Y-m-d')
-            : null;
-        unset($data['roles'], $data['media']);
+        $data = $this->accountManagement->updateProfile($user, $request);
 
         return response()->json([
             'status' => true,
             'data' => $data,
-            'message' => $message,
+            'message' => __('messages.profile_update'),
         ], 200);
     }
 
@@ -652,55 +561,14 @@ protected function checkDeviceLimit(User $user, ?string $deviceId = null, bool $
 
         return ApiResponse::success($user, __('messages.user_details_successfull'), 200);
     }
-    private function stripExif($file)
-{
-    try {
-        if (!str_starts_with($file->getMimeType(), 'image/')) {
-            return $file;
-        }
-
-        $tempPath = sys_get_temp_dir() . '/' . uniqid('clean_') . '_' . $file->getClientOriginalName();
-
-        Image::load($file->getRealPath())
-            ->optimize()
-            ->save($tempPath);
-        return new \Illuminate\Http\UploadedFile(
-            $tempPath,
-            $file->getClientOriginalName(),
-            $file->getMimeType(),
-            null,
-            true
-        );
-
-    } catch (\Throwable $e) {
-        \Log::warning('Could not strip image EXIF metadata.', ['exception' => $e::class]);
-        return $file;
-    }
-}
 
     public function deleteAccount(Request $request)
     {
-        $user_id = \Auth::user()->id;
-        $user = User::with('userMultiProfile')->where('id', $user_id)->first();
-        if ($user == null) {
-            $message = __('messages.user_not_found');
-
-            return ApiResponse::error($message, 200);
+        if (! $this->accountManagement->deleteAccount((int) \Auth::user()->id)) {
+            return ApiResponse::error(__('messages.user_not_found'), 200);
         }
-        Device::where('user_id', $user->id)->forceDelete();
-        $user->userMultiProfile()->forceDelete();
-        Subscription::where('user_id', $user->id)->update(['status' => 'deactivated']);
-        User::where('id', $user->id)->forceDelete();
-        ContinueWatch::where('user_id', $user->id)->delete();
-        Watchlist::where('user_id',$user->id)->delete();
-        EntertainmentDownload::where('user_id',$user->id)->delete();
-        UserReminder::where('user_id', $user->id)->delete();
 
-        $user->forceDelete();
-
-        $message = __('messages.delete_account');
-
-        return ApiResponse::success(null, $message, 200);
+        return ApiResponse::success(null, __('messages.delete_account'), 200);
     }
 
 
