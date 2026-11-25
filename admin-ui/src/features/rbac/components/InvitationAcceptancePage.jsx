@@ -55,7 +55,7 @@ export function InvitationAcceptancePage({ token }) {
                 <Alert severity="success">
                   Your invitation has been accepted. You can sign in now.
                 </Alert>
-                <Button variant="contained" onClick={() => router.push('/auth/jwt/sign-in')}>
+                <Button variant="contained" onClick={() => router.push('/login')}>
                   Go to sign in
                 </Button>
               </>

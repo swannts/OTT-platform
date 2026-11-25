@@ -8,5 +8,5 @@ export const metadata = {
 };
 
 export default function Page() {
-  redirect('/auth/jwt/sign-in/');
+  redirect('/login');
 }

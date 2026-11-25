@@ -1,0 +1,17 @@
+FROM node:24-alpine AS development
+
+WORKDIR /app
+
+ENV NODE_ENV=development \
+    NEXT_TELEMETRY_DISABLED=1 \
+    CYPRESS_INSTALL_BINARY=0 \
+    WATCHPACK_POLLING=true
+
+COPY package.json package-lock.json ./
+RUN npm ci --legacy-peer-deps
+
+COPY . .
+
+EXPOSE 3000
+
+CMD ["npm", "run", "dev", "--", "--hostname", "0.0.0.0"]

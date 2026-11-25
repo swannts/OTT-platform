@@ -36,20 +36,22 @@ Next.js is the only end-user web frontend. Laravel's public Blade page routes ar
 
 ## Quick Start with Docker (Development Mode)
 
-The entire full stack (Frontend + Backend + MySQL + Redis + Meilisearch) is orchestrated with Docker Compose, featuring live source reload and hot refresh.
+The root Compose file runs the local development stack: the admin UI, customer Next.js frontend, Laravel API, Go worker, MySQL, Redis, RabbitMQ, and Meilisearch. Flutter is not included.
 
 ### 1. Launch All Services
 ```bash
-docker compose up -d
+docker compose up --build -d
 ```
 
 ### 2. Service Access & Endpoints
 | Service | URL | Notes |
 | :--- | :--- | :--- |
 | **Next.js Web Client** | [http://localhost:3000](http://localhost:3000) | Fast Refresh / Turbopack |
+| **Admin UI** | [http://localhost:3032](http://localhost:3032) | Fast Refresh |
 | **Laravel API & CMS** | [http://localhost:8000](http://localhost:8000) | REST API v3 + Admin CMS |
-| **MySQL Database** | `localhost:3306` | DB: `swann`, User: `root`, Password: none |
+| **MySQL Database** | `localhost:3306` | DB: `swann`, User: `root`, Password: `swann-local` |
 | **Redis Cache** | `localhost:6379` | Cache & session storage |
+| **RabbitMQ Management** | [http://localhost:15672](http://localhost:15672) | User: `swann`, Password: `swann-local` |
 | **Meilisearch** | [http://localhost:7700](http://localhost:7700) | Full-text search engine |
 
 ### 3. Common Docker Commands
@@ -63,12 +65,17 @@ docker compose logs -f frontend
 # View backend logs only
 docker compose logs -f backend
 
-# Run artisan command inside backend container
+# Run database migrations inside the backend container
 docker compose exec backend php artisan migrate
+
+# Seed the local development database
+docker compose exec backend php artisan db:seed
 
 # Stop all services
 docker compose down
 ```
+
+This repository uses only the root `docker-compose.yml` for local development.
 
 ---
 

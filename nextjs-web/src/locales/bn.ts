@@ -165,6 +165,8 @@ export const bn: Record<TranslationKey, string> = {
   free_movies: 'ফ্রি সিনেমা',
   popular_videos: 'জনপ্রিয় ভিডিও ও রিমাইন্ডার',
   recommended_titles: 'সুপারিশকৃত কনটেন্ট',
+  home_catalog_empty_title: 'অর্থবহ গল্পের সংগ্রহ শিগগিরই আসছে',
+  home_catalog_empty_description: 'এখনও কোনো কনটেন্ট প্রকাশ করা হয়নি। অনুগ্রহ করে পরে আবার দেখুন।',
 
   // Hero Section
   hero_watch_now: 'এখন দেখুন',
@@ -179,4 +181,3 @@ export const bn: Record<TranslationKey, string> = {
   you_have: 'আপনার বাকি আছে',
   days_remaining: 'মেয়াদ',
 };
-

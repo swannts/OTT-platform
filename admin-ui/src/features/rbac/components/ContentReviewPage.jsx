@@ -98,7 +98,16 @@ export function ContentReviewPage() {
         )}
         {(canReview || canPublish) && (
           <Card>
-            <Tabs value={activeStatus} onChange={(_, value) => { setLoading(true); setError(''); setStatus(value); }} aria-label="Content review status">
+            <Tabs
+              value={activeStatus}
+              variant="standard"
+              onChange={(_, value) => {
+                setLoading(true);
+                setError('');
+                setStatus(value);
+              }}
+              aria-label="Content review status"
+            >
               {canReview && <Tab value="in_review" label="Needs review" />}
               {canPublish && <Tab value="approved" label="Approved" />}
             </Tabs>

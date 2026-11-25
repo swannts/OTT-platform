@@ -37,7 +37,7 @@ export interface VidstackPlayerProps {
   poster?: string;
   isLive?: boolean;
   onBack?: () => void;
-  onError?: (event: Event) => void;
+  onError?: (event: { code?: number } | { detail?: { code?: number } }) => void;
   onPlaying?: () => void;
   onWaiting?: () => void;
   onQualityChange?: (url: string, qualityType: string) => void;

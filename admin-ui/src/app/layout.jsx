@@ -44,7 +44,7 @@ export default async function RootLayout({ children }) {
 
   return (
     <html lang={lang ?? 'en'} suppressHydrationWarning>
-      <body>
+      <body suppressHydrationWarning>
         {getInitColorSchemeScript}
 
         <I18nProvider lang={CONFIG.isStaticExport ? undefined : lang}>

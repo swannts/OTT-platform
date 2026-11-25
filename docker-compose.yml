@@ -1,83 +1,90 @@
+name: swann-ott-local
+
 services:
   admin-ui:
     build:
       context: ./admin-ui
-      dockerfile: Dockerfile
-    image: swann-admin-ui:prod
-    container_name: swann-admin-ui
-    restart: always
+      dockerfile: docker/Dockerfile.dev
+    image: swann-admin-ui:dev
+    init: true
     ports:
-      - "${ADMIN_PORT:-3032}:3032"
+      - "127.0.0.1:${ADMIN_PORT:-3032}:3032"
     environment:
-      NODE_ENV: production
+      NODE_ENV: development
       LARAVEL_API_URL: http://backend:8000
-    networks:
-      - ott-net
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - ./admin-ui:/app
+      - admin-node-modules:/app/node_modules
+      - admin-next-cache:/app/.next
     depends_on:
-      - backend
+      backend:
+        condition: service_started
 
   frontend:
     build:
       context: ./nextjs-web
-      dockerfile: Dockerfile
-      target: runner
-      args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api}
-        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Swann OTT}
-    image: swann-frontend:prod
-    container_name: swann-frontend
-    restart: always
+      dockerfile: docker/Dockerfile.dev
+      target: development
+    image: swann-frontend:dev
+    init: true
     ports:
-      - "${FRONTEND_PORT:-3000}:3000"
+      - "127.0.0.1:${FRONTEND_PORT:-3000}:3000"
     environment:
-      NODE_ENV: production
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api}
-      INTERNAL_API_URL: ${INTERNAL_API_URL:-http://backend:8000/api}
-      PORT: 3000
-      HOSTNAME: "0.0.0.0"
-    networks:
-      - ott-net
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://localhost:${BACKEND_PORT:-8000}/api
+      INTERNAL_API_URL: http://backend:8000/api
+      NEXT_TELEMETRY_DISABLED: "1"
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - ./nextjs-web:/app
+      - frontend-node-modules:/app/node_modules
+      - frontend-next-cache:/app/.next
     depends_on:
-      - backend
+      backend:
+        condition: service_started
 
   backend:
     build:
       context: ./swann-laravel-web
-      dockerfile: Dockerfile
-    image: swann-backend:prod
-    container_name: swann-backend
-    restart: always
+      dockerfile: docker/Dockerfile.dev
+    image: swann-backend:dev
+    init: true
+    command: ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000", "--no-reload"]
     extra_hosts:
       - host.docker.internal:host-gateway
     ports:
-      - "${BACKEND_PORT:-8000}:8000"
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
     environment:
-      APP_ENV: ${APP_ENV:-production}
-      APP_DEBUG: "${APP_DEBUG:-false}"
-      APP_URL: ${APP_URL:-http://localhost:8000}
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_KEY: ${APP_KEY:-base64:eOBE3Er2LEKZXYIYsvdDITgCkheE7RBU+nDRQMQTpLA=}
+      APP_URL: http://localhost:${BACKEND_PORT:-8000}
+      ADMIN_UI_URL: http://localhost:${ADMIN_PORT:-3032}
+      FRONTEND_URL: http://localhost:${FRONTEND_PORT:-3000}
       GO_WORKER_HEALTH_URL: http://worker:8081/health
-      ADMIN_UI_URL: ${ADMIN_UI_URL:-http://localhost:3032}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
-      APP_KEY: ${APP_KEY:?Set APP_KEY in the deployment environment}
       DB_CONNECTION: mysql
       DB_HOST: mysql
       DB_PORT: 3306
       DB_DATABASE: ${DB_DATABASE:-swann}
       DB_USERNAME: ${DB_USERNAME:-root}
-      DB_PASSWORD: "${DB_PASSWORD:-}"
+      DB_PASSWORD: ${DB_PASSWORD:-swann-local}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      QUEUE_CONNECTION: database
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
-      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASS:-guest}
+      RABBITMQ_USER: ${RABBITMQ_USER:-swann}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-swann-local}
       MEILISEARCH_HOST: http://meilisearch:7700
+      SANCTUM_STATEFUL_DOMAINS: localhost:3000,localhost:3032,127.0.0.1:3000,127.0.0.1:3032
+      CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:3032
     volumes:
-      # In production, only persist storage/app/public for uploaded media
+      - ./swann-laravel-web:/var/www/html
+      - backend-vendor:/var/www/html/vendor
       - ./swann-laravel-web/storage/app/public:/var/www/html/storage/app/public
       - ./swann-laravel-web/storage/app/private:/var/www/html/storage/app/private
-    networks:
-      - ott-net
+      - backend-bootstrap-cache:/var/www/html/bootstrap/cache
     depends_on:
       mysql:
         condition: service_healthy
@@ -91,47 +98,71 @@ services:
   worker:
     build:
       context: ./go-worker
-      dockerfile: Dockerfile
-    image: swann-worker:prod
-    container_name: swann-worker
+      dockerfile: docker/Dockerfile.dev
+    image: swann-worker:dev
+    init: true
     expose:
       - "8081"
-    restart: always
     environment:
-      APP_ENV: ${APP_ENV:-production}
-      RABBITMQ_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672/
-      DB_DSN: ${DB_USERNAME:-root}:${DB_PASSWORD:-}@tcp(mysql:3306)/${DB_DATABASE:-swann}?charset=utf8mb4&parseTime=True&loc=Local
+      APP_ENV: development
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-swann}:${RABBITMQ_PASSWORD:-swann-local}@rabbitmq:5672/
+      DB_DSN: ${DB_USERNAME:-root}:${DB_PASSWORD:-swann-local}@tcp(mysql:3306)/${DB_DATABASE:-swann}?charset=utf8mb4&parseTime=True&loc=Local
       REDIS_ADDR: redis:6379
       STORAGE_DRIVER: local
       STORAGE_LOCAL_PATH: /var/www/html/public/storage
       PRIVATE_STORAGE_PATH: /var/www/html/storage/app/private
     volumes:
+      - ./go-worker:/app
+      - go-worker-modules:/go/pkg/mod
       - ./swann-laravel-web/storage/app/public:/var/www/html/public/storage
       - ./swann-laravel-web/storage/app/private:/var/www/html/storage/app/private
-    networks:
-      - ott-net
     depends_on:
-      rabbitmq:
-        condition: service_healthy
       mysql:
         condition: service_healthy
       redis:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  mysql:
+    image: mysql/mysql-server:8.0
+    ports:
+      - "127.0.0.1:${DB_FORWARD_PORT:-3306}:3306"
+    environment:
+      MYSQL_ROOT_HOST: "%"
+      MYSQL_DATABASE: ${DB_DATABASE:-swann}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-swann-local}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot --password=$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1:${REDIS_FORWARD_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
-    container_name: swann-rabbitmq
-    restart: always
     ports:
-      - "127.0.0.1:5672:5672"
-      - "127.0.0.1:15672:15672"
+      - "127.0.0.1:${RABBITMQ_FORWARD_PORT:-5672}:5672"
+      - "127.0.0.1:${RABBITMQ_UI_PORT:-15672}:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-swann}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-swann-local}
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
-    networks:
-      - ott-net
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
@@ -139,54 +170,14 @@ services:
       retries: 10
       start_period: 20s
 
-  mysql:
-    image: mysql/mysql-server:8.0
-    container_name: swann-mysql
-    restart: always
-    ports:
-      - "127.0.0.1:3306:3306"
-    environment:
-      MYSQL_ROOT_HOST: "%"
-      MYSQL_DATABASE: ${DB_DATABASE:-swann}
-      MYSQL_ROOT_PASSWORD: "${DB_PASSWORD:-}"
-      MYSQL_ALLOW_EMPTY_PASSWORD: "${MYSQL_ALLOW_EMPTY_PASSWORD:-yes}"
-    volumes:
-      - mysql-data:/var/lib/mysql
-    networks:
-      - ott-net
-    healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot --password=$${MYSQL_ROOT_PASSWORD} --silent || mysqladmin ping -h localhost -uroot --silent"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
-
-  redis:
-    image: redis:alpine
-    container_name: swann-redis
-    restart: always
-    ports:
-      - "127.0.0.1:6379:6379"
-    volumes:
-      - redis-data:/data
-    networks:
-      - ott-net
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
   meilisearch:
-    image: getmeili/meilisearch:latest
-    container_name: swann-meilisearch
-    restart: always
+    image: getmeili/meilisearch:v1.12
     ports:
-      - "127.0.0.1:7700:7700"
+      - "127.0.0.1:${MEILISEARCH_FORWARD_PORT:-7700}:7700"
+    environment:
+      MEILI_ENV: development
     volumes:
-      - meilisearch-data:/data.ms
-    networks:
-      - ott-net
+      - meilisearch-data:/meili_data
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--spider", "http://127.0.0.1:7700/health"]
       interval: 5s
@@ -194,16 +185,15 @@ services:
       retries: 10
       start_period: 20s
 
-networks:
-  ott-net:
-    driver: bridge
-
 volumes:
+  admin-node-modules:
+  admin-next-cache:
+  frontend-node-modules:
+  frontend-next-cache:
+  backend-vendor:
+  backend-bootstrap-cache:
+  go-worker-modules:
   mysql-data:
-    driver: local
   redis-data:
-    driver: local
   rabbitmq-data:
-    driver: local
   meilisearch-data:
-    driver: local

@@ -3,6 +3,15 @@ const isStaticExport = 'false';
 const nextConfig = {
   trailingSlash: true,
   basePath: process.env.NEXT_PUBLIC_BASE_PATH,
+  async redirects() {
+    return [
+      {
+        source: '/auth/jwt/sign-in',
+        destination: '/login/',
+        permanent: false,
+      },
+    ];
+  },
   env: {
     BUILD_STATIC_EXPORT: isStaticExport,
   },

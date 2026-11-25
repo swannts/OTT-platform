@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Backend\BackendController;
+use App\Http\Controllers\Backend\API\SwaggerUiController;
 use App\Http\Controllers\Backend\BackupController;
 use App\Http\Controllers\Backend\SettingController;
 use App\Http\Controllers\Backend\UserController;
@@ -10,6 +11,7 @@ use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\RolePermission;
 use App\Http\Controllers\SearchController;
+use Dedoc\Scramble\Http\Middleware\RestrictedDocsAccess;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Artisan;
 use App\Http\Controllers\Backend\MobileSettingController;
@@ -29,6 +31,13 @@ use App\Http\Controllers\Backend\ShortDramaPluginInstallerController;
 
 // Auth Routes
 require __DIR__ . '/auth.php';
+
+Route::middleware(RestrictedDocsAccess::class)->prefix('docs/swagger')->name('docs.swagger.')->group(function (): void {
+    Route::get('/', fn () => view('docs.swagger'))->name('index');
+    Route::get('/assets/{asset}', [SwaggerUiController::class, 'asset'])
+        ->where('asset', '[A-Za-z0-9.-]+')
+        ->name('assets');
+});
 
 
 Route::group(['middleware' => ['checkInstallation']], function () {

@@ -66,10 +66,10 @@ export default function VideoPlayer({
     lastRebufferReportedAtRef.current = 0;
   }, [playbackSessionId]);
 
-  const reportPlayerError = useCallback((event: Event) => {
+  const reportPlayerError = useCallback((event: { code?: number } | { detail?: { code?: number } }) => {
     if (!playbackSessionId) return;
 
-    const code = (event as CustomEvent<{ code?: number }>).detail?.code;
+    const code = ('detail' in event ? event.detail?.code : undefined) ?? ('code' in event ? event.code : undefined);
     const errorCode = code === 2
       ? 'network_error'
       : code === 3

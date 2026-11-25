@@ -155,8 +155,11 @@ test('admin BFF keeps the Sanctum token server-side across login, session, and l
 
   const homeResponse = await fetch(`${origin}/`);
   assert.equal(homeResponse.status, 200, `admin homepage failed to render.\n${nextOutput}`);
-  const signInPage = await fetch(`${origin}/auth/jwt/sign-in/`);
+  const signInPage = await fetch(`${origin}/login`);
   assert.equal(signInPage.status, 200, `admin sign-in page failed to render.\n${nextOutput}`);
+  const legacySignInPage = await fetch(`${origin}/auth/jwt/sign-in/`, { redirect: 'manual' });
+  assert.equal(legacySignInPage.status, 307);
+  assert.equal(legacySignInPage.headers.get('location'), '/login/');
 
   const loginResponse = await fetch(`${origin}/api/admin/login/`, {
     method: 'POST',

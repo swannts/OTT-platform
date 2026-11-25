@@ -1,0 +1,16 @@
+FROM node:24-alpine
+
+WORKDIR /app
+
+ENV NODE_ENV=development \
+    NEXT_TELEMETRY_DISABLED=1 \
+    WATCHPACK_POLLING=true
+
+COPY package.json package-lock.json .npmrc ./
+RUN npm ci
+
+COPY . .
+
+EXPOSE 3032
+
+CMD ["npm", "run", "dev", "--", "--webpack", "--hostname", "0.0.0.0"]

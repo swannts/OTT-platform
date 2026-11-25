@@ -6,9 +6,18 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 export function rejectCrossOriginMutation(request) {
   if (SAFE_METHODS.has(request.method.toUpperCase())) return null;
 
-  const expectedOrigin = new URL(request.url).origin;
+  const requestUrl = new URL(request.url);
+  const host = request.headers.get('host');
+  const protocol = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim() || requestUrl.protocol.slice(0, -1);
+  const expectedOrigin = host ? new URL(`${protocol}://${host}`).origin : requestUrl.origin;
   const origin = request.headers.get('origin');
-  if (origin !== expectedOrigin) {
+  let originMatches = false;
+  try {
+    originMatches = new URL(origin).origin === expectedOrigin;
+  } catch {
+    // Missing or malformed origins are rejected for mutating requests.
+  }
+  if (!originMatches) {
     return Response.json({ message: 'Cross-origin requests are not allowed.' }, { status: 403 });
   }
 

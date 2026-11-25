@@ -163,6 +163,8 @@ export const en = {
   free_movies: 'Free Movies',
   popular_videos: 'Popular Videos & Reminders',
   recommended_titles: 'Recommended Titles',
+  home_catalog_empty_title: 'A library of meaningful stories is on its way',
+  home_catalog_empty_description: 'There is no published content to show yet. Please check back soon.',
 
   // Hero Section
   hero_watch_now: 'Watch Now',
@@ -179,4 +181,3 @@ export const en = {
 };
 
 export type TranslationKey = keyof typeof en;
-

@@ -21,7 +21,7 @@ export function AuthProvider({ children }) {
       const res = await axios.get(endpoints.auth.me);
       setState({ user: res.data.user, loading: false });
     } catch (error) {
-      console.error(error);
+      if (error.response?.status !== 401) console.error(error);
       setState({ user: null, loading: false });
     }
   }, [setState]);
