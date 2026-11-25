@@ -4,7 +4,13 @@ namespace App\Http\Controllers\Auth\API;
 
 use App\Http\Controllers\Auth\Trait\AuthTrait;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\ChangeParentalLockRequest;
+use App\Http\Requests\Auth\ChangePinRequest;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Requests\Auth\VerifyOtpRequest;
+use App\Http\Requests\Auth\VerifyPinRequest;
+use App\Services\Auth\DeviceLimitService;
+use App\Services\Auth\ParentalControlService;
 use App\Http\Resources\LoginResource;
 use App\Http\Resources\RegisterResource;
 use App\Http\Resources\SocialLoginResource;
@@ -37,6 +43,11 @@ use Illuminate\Http\JsonResponse;
 class AuthController extends Controller
 {
     use AuthTrait;
+
+    public function __construct(
+        private readonly DeviceLimitService $deviceLimit,
+        private readonly ParentalControlService $parentalControl,
+    ) {}
 
     
     /**
@@ -342,82 +353,7 @@ class AuthController extends Controller
 
 protected function checkDeviceLimit(User $user, ?string $deviceId = null, bool $isLoginFlow = true): ?JsonResponse
 {
-    // For login flow: delete old devices first, then check if existing device exists
-    if ($isLoginFlow) {
-        Device::where('user_id', $user->id)
-            ->whereIn('platform', ['Windows', 'Linux', 'Mac', 'web'])
-            ->where('updated_at', '<', now()->subDays(2))
-            ->delete();
-
-        // Check if device already exists - if yes, skip limit check
-        if ($deviceId) {
-            $existingDevice = Device::where('user_id', $user->id)
-                ->where('device_id', $deviceId)
-                ->first();
-            
-            if ($existingDevice) {
-                return null; // Allow login for existing device
-            }
-        }
-    }
-
-    $count = Device::where('user_id', $user->id)->count();
-
-    $devicesQuery = Device::where('user_id', $user->id);
-
-    // For socialLogin: exclude current device from query
-    if (!$isLoginFlow && $deviceId) {
-        $devicesQuery->where('device_id', '!=', $deviceId);
-    }
-
-    $devices = $devicesQuery->get();
-
-    // Format devices - include session_id and last_activity for login flow
-    $other_device = $devices->map(function ($device) use ($isLoginFlow) {
-        $formatted = [
-            'id' => $device->id,
-            'user_id' => $device->user_id,
-            'device_id' => $device->device_id,
-            'device_name' => $device->device_name,
-            'active_profile' => $device->active_profile,
-            'platform' => $device->platform,
-            'created_at' => formatDateTimeWithTimezone($device->created_at),
-            'updated_at' => formatDateTimeWithTimezone($device->updated_at),
-            'deleted_at' => $device->deleted_at,
-        ];
-        
-        // Add session_id and last_activity for login flow (matching original logic)
-        if ($isLoginFlow) {
-            $formatted['session_id'] = session()->getId();
-            $formatted['last_activity'] = now();
-        }
-        
-        return $formatted;
-    });
-
-
-    $subscription = $user->subscriptionPackage;
-    $limit = PlanEntitlementSnapshot::integerLimit($subscription?->plan_type, 'device-limit')
-        ?? max(1, (int) config('constant.DEVICE_LIMIT', 1));
-    $shouldCheck = $count >= $limit && ($isLoginFlow || $other_device->isNotEmpty());
-    if ($shouldCheck) {
-        Auth::logout();
-        if ($isLoginFlow) {
-            $deviceManagementToken = $user->createToken(
-                'device-management',
-                ['device-sessions:manage'],
-                now()->addMinutes(5)
-            )->plainTextToken;
-            return response()->json([
-                'error' => __('messages.device_limit_reached'),
-                'other_device' => $other_device,
-                'device_management_token' => $deviceManagementToken,
-            ], 406);
-        }
-        return ApiResponse::error(__('messages.device_limit_reached'), 406, null, ['other_device' => $other_device]);
-    }
-    
-    return null; // ✅ allow login
+    return $this->deviceLimit->check($user, $deviceId, $isLoginFlow);
 }
 
     /**
@@ -803,52 +739,19 @@ protected function checkDeviceLimit(User $user, ?string $deviceId = null, bool $
     //         'message' => $message,
     //     ], 200);
     // }
-    public function changePin(Request $request)
+    public function changePin(ChangePinRequest $request)
     {
-        (isset($request->pin) && is_array($request->pin)) &&
-        $request->merge([
-            'pin' => isset($request->pin) ? implode("",$request->pin): NULL,
-            'confirm_pin' => isset($request->confirm_pin) ? implode("",$request->confirm_pin) : NULL,
-        ]);
-
-        $request->validate([
-            'pin' => 'required|digits:4',
-            'confirm_pin' => 'required_with:pin|same:pin|digits:4'
-        ]);
-
-        $userId = $request->user()->id;
-
-        if(empty($userId)){
+        $user = User::find($request->user()->id);
+        if (! $user) {
             return ApiResponse::error(__('frontend.something_went_wrong'), 400);
         }
-        $user = User::find($userId);
 
-        $storedPin = (string) ($user->pin_hash ?: $user->pin);
-        if ($storedPin !== '' && $this->pinMatches($storedPin, (string) $request->pin)) {
-            return ApiResponse::error(__('frontend.new_pin_must_be_different'), 400);
+        $result = $this->parentalControl->changePin($user, (string) $request->pin);
+        if (! $result['ok']) {
+            return ApiResponse::error($result['message'], $result['status']);
         }
 
-        $message = (!empty($user->otp)) ? __('messages.change_pin_successfull') : __('messages.set_pin_successfull');
-        
-        $isNewPin = empty($user->pin_hash) && empty($user->pin);
-        
-        $updateData = [
-            'pin_hash' => Hash::make((string) $request->pin),
-            'pin' => null,
-        ];
-        
-        if ($isNewPin) {
-            $updateData['is_parental_lock_enable'] = 1;
-        }
-        
-        $user->update($updateData);
-
-        return ApiResponse::success(
-            null,
-            $message,
-            200,
-            ['is_parental_lock_enable' => $user->is_parental_lock_enable]
-        );
+        return ApiResponse::success(null, $result['message'], 200, $result['extra']);
     }
 
     /**
@@ -858,37 +761,14 @@ protected function checkDeviceLimit(User $user, ?string $deviceId = null, bool $
      */
     public function sendOtp(Request $request)
     {
-        $userId = $request->user()->id;
-        if(empty($userId)){
+        $user = User::find($request->user()->id);
+        if (! $user) {
             return ApiResponse::error('Something went wrong please try again.!', 422);
         }
-        $user = User::find($userId);
-        if($user){
-            
-            $otp = rand(config('constant.OTP_MIN'),config('constant.OTP_MAX'));
-         
-            $user->update(['otp' => $otp]);
 
-            try {
-                $notificationData = [
-                    'user_type' => 'user',
-                    'user_id' => $user->id,
-                    'user_name' => $user->full_name ?? $user->first_name . ' ' . $user->last_name,
-                    'otp' => $otp,
-                    'notification_type' => 'parental_control_otp',
-                ];
+        $this->parentalControl->sendOtp($user);
 
-                $user->notify((new CommonNotification('parental_control_otp', $notificationData))->onQueue('notifications'));
-            } catch (\Exception $e) {
-                \Log::error('OTP notification delivery failed.', ['exception' => $e::class]);
-                $bodyData = ['body' => 'Change Your Pin OTP is : '. $otp];
-                Mail::to($user->email)->send(new sendOtp($bodyData));
-            }
-
-            return ApiResponse::success(null, "OTP sent successfully", 200);
-        }else{
-            return ApiResponse::error('Something went wrong please try again.!', 422);
-        }
+        return ApiResponse::success(null, 'OTP sent successfully', 200);
     }
 
     /**
@@ -896,29 +776,18 @@ protected function checkDeviceLimit(User $user, ?string $deviceId = null, bool $
      * @param $request
      * @return \Illuminate\Http\Response
      */
-    public function verifyOtp(Request $request)
+    public function verifyOtp(VerifyOtpRequest $request)
     {
-        $userId = $request->user()->id;
-        if(empty($userId)){
+        $user = $request->user();
+        if (! $user) {
             return ApiResponse::error(__('messages.something_went_wrong'), 422);
         }
 
-        (isset($request->otp) && is_array($request->otp)) &&
-        $request->merge([
-            'otp' => isset($request->otp) ? implode("",$request->otp): NULL
-        ]);
-
-        $request->validate([
-            'otp' => 'required|min:4|max:4'
-        ]);
-
-        $user  = User::where([['id','=',$userId],['otp','=',$request->otp]])->first();
-        if($user){
-            $user->update(['otp' => null]);
+        if ($this->parentalControl->verifyOtp($user, (string) $request->otp)) {
             return ApiResponse::success(null, __('messages.otp_verified_successfully'), 200);
-        } else{
-            return ApiResponse::error(__('messages.invalid_otp'), 200);
         }
+
+        return ApiResponse::error(__('messages.invalid_otp'), 200);
     }
 
     /**
@@ -926,46 +795,18 @@ protected function checkDeviceLimit(User $user, ?string $deviceId = null, bool $
      * @param $request
      * @return \Illuminate\Http\Response
      */
-    public function verifyPin(Request $request)
+    public function verifyPin(VerifyPinRequest $request)
     {
-
-        $userId = $request->user()->id;
-        if(empty($userId)){
+        $user = User::find($request->user()->id);
+        if (! $user) {
             return ApiResponse::error('Something went wrong please try again.!', 422);
         }
 
-        (isset($request->pin) && is_array($request->pin)) &&
-        $request->merge([
-            'pin' => isset($request->pin) ? implode("",$request->pin): NULL
-        ]);
-
-        $request->validate([
-            'pin' => 'required'
-        ]);
-
-        $user = User::find($userId);
-        $storedPin = (string) ($user?->pin_hash ?: $user?->pin);
-        if ($user && $this->pinMatches($storedPin, (string) $request->pin)) {
-            if (!$user->pin_hash) {
-                $user->forceFill(['pin_hash' => Hash::make((string) $request->pin), 'pin' => null])->save();
-            }
-            return ApiResponse::success(null, "Pin verified successfully", 200);
-        } else{
-            return ApiResponse::error('Invalid Pin', 400);
-        }
-    }
-
-    private function pinMatches(string $storedPin, string $providedPin): bool
-    {
-        if ($storedPin === '') {
-            return false;
+        if ($this->parentalControl->verifyPin($user, (string) $request->pin)) {
+            return ApiResponse::success(null, 'Pin verified successfully', 200);
         }
 
-        if (str_starts_with($storedPin, '$2y$') || str_starts_with($storedPin, '$argon2')) {
-            return Hash::check($providedPin, $storedPin);
-        }
-
-        return hash_equals($storedPin, $providedPin);
+        return ApiResponse::error('Invalid Pin', 400);
     }
 
     /**
@@ -973,28 +814,21 @@ protected function checkDeviceLimit(User $user, ?string $deviceId = null, bool $
      * @param $request
      * @return \Illuminate\Http\Response
      */
-    public function changeParentalLock(Request $request)
+    public function changeParentalLock(ChangeParentalLockRequest $request)
     {
-        $userId = $request->user()->id;
-        if(empty($userId)){
+        $user = $request->user();
+        if (! $user) {
             return ApiResponse::error('Something went wrong please try again.!', 422);
         }
 
-        $request->validate([
-            'is_parental_lock_enable' => 'required|in:0,1'
-        ]);
-
-        $user  = User::where('id',$userId)->update([
-            'is_parental_lock_enable' => $request->is_parental_lock_enable
-        ]);
-        if($user){
-            $message = $request->is_parental_lock_enable == 1
+        if ($this->parentalControl->setParentalLock($user, (int) $request->is_parental_lock_enable)) {
+            $message = (int) $request->is_parental_lock_enable === 1
                 ? __('messages.parental_lock_active_successfully')
                 : __('messages.parental_lock_inactive_successfully');
 
             return ApiResponse::success(null, $message, 200);
-        } else{
-            return ApiResponse::error('Something went wrong please try again.!', 422);
         }
+
+        return ApiResponse::error('Something went wrong please try again.!', 422);
     }
 }
