@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\Request;
 use App\Models\MobileSetting;
+use Modules\Entertainment\Http\Requests\API\PlaybackDetailsRequest;
 use Modules\Entertainment\Models\Entertainment;
+use Modules\Entertainment\Services\ContentMediaMetadataService;
+use Modules\Entertainment\Services\PlaybackAuthorizationAction;
 use Modules\Entertainment\Transformers\SeasonResourceV3;
 use Modules\Entertainment\Transformers\EpisodeResourceV3;
 use Modules\Entertainment\Transformers\MovieDetailDataResource;;
@@ -74,119 +77,14 @@ class EntertainmentsController extends Controller
         $this->recommendationService = $recommendationService;
     }
 
-    public function playbackDetails(Request $request, PlaybackEntitlementService $entitlements, PlaybackSessionService $sessions, PlaybackMediaUrlService $mediaUrls, MediaReadinessService $mediaReadiness, PlaybackDiagnosticRecorder $diagnostics)
+    public function playbackDetails(PlaybackDetailsRequest $request, PlaybackAuthorizationAction $action)
     {
-        $validated = $request->validate([
-            'id' => ['required', 'string', 'max:64'],
-            'type' => ['required', 'in:movie,tvshow,episode,video'],
-            'profile_id' => ['required', 'integer', 'min:1'],
-        ]);
-
-        try {
-            $result = $entitlements->authorize($request->user(), $validated['id'], $validated['type'], (int) $validated['profile_id'], $request);
-        } catch (\Illuminate\Auth\Access\AuthorizationException $exception) {
-            $diagnostics->record($request->user(), 'playback.authorization_denied', $validated['type'], $validated['id']);
-            \Illuminate\Support\Facades\Log::notice('Customer playback authorization denied.', [
-                'user_id' => $request->user()->id,
-                'content_id' => $validated['id'],
-                'content_type' => $validated['type'],
-                'profile_id' => (int) $validated['profile_id'],
-                'reason' => $exception->getMessage(),
-            ]);
-            return ApiResponse::error($exception->getMessage(), 403);
+        $result = $action->execute($request, $request->validated());
+        if (! $result['ok']) {
+            return ApiResponse::error($result['message'], $result['status']);
         }
 
-        $content = $result['content'];
-        $mediaAsset = null;
-        if ($content->media_asset_id) {
-            $mediaAsset = MediaAsset::query()->whereKey($content->media_asset_id)->where('status', 'ready')->first();
-            if (!$mediaAsset || !$mediaReadiness->inspect($mediaAsset)['ready']) {
-                $diagnostics->record($request->user(), 'playback.media_not_ready', $validated['type'], (string) $content->id);
-                return ApiResponse::error('The linked media asset is not ready for protected playback.', 503);
-            }
-        } elseif (!in_array(strtolower((string) ($content->movie_access ?? $content->access ?? 'free')), ['', 'free'], true)) {
-            return ApiResponse::error('Protected playback requires a private, signed media asset.', 503);
-        }
-        $qualityRows = collect();
-        if ($validated['type'] === 'movie' || $validated['type'] === 'tvshow') {
-            $qualityRows = EntertainmentStreamContentMapping::query()
-                ->where('entertainment_id', $content->id)
-                ->get(['id', 'type as url_type', 'url', 'quality']);
-        } elseif ($validated['type'] === 'episode') {
-            $qualityRows = EpisodeStreamContentMapping::query()
-                ->where('episode_id', $content->id)
-                ->get(['id', 'type as url_type', 'url', 'quality']);
-        } else {
-            $qualityRows = VideoStreamContentMapping::query()
-                ->where('video_id', $content->id)
-                ->get(['id', 'type as url_type', 'url', 'quality']);
-        }
-
-        $type = $validated['type'];
-        $qualities = [[
-            'quality' => 'default_quality',
-            'url' => ($content->video_upload_type ?? '') === 'Local'
-                ? setBaseUrlWithFileName(trim((string) $content->video_url_input), 'video', $type)
-                : trim((string) $content->video_url_input),
-            'url_type' => trim((string) ($content->video_upload_type ?? 'URL')),
-        ]];
-        foreach ($qualityRows as $quality) {
-            $qualities[] = [
-                'id' => $quality->id,
-                'quality' => trim((string) $quality->quality),
-                'url_type' => trim((string) $quality->url_type),
-                'url' => $quality->url_type === 'Local'
-                    ? setBaseUrlWithFileName(trim((string) $quality->url), 'video', $type)
-                    : trim((string) $quality->url),
-            ];
-        }
-
-        if (!$mediaAsset && empty($qualities[0]['url'])) {
-            return ApiResponse::error('Playback is not configured for this title.', 404);
-        }
-
-        $token = $request->user()->currentAccessToken();
-        if (!$token instanceof PersonalAccessToken) {
-            return ApiResponse::error('A registered playback session is required.', 401);
-        }
-        try {
-            $session = $sessions->start(
-                $request->user(),
-                $token,
-                (int) $result['profile']->id,
-                (string) $content->id,
-                $type
-            );
-        } catch (\Illuminate\Auth\Access\AuthorizationException $exception) {
-            return ApiResponse::error($exception->getMessage(), 403);
-        }
-        $diagnostics->record($request->user(), 'playback.session_started', $type, (string) $content->id, $session['session_id']);
-
-        if ($mediaAsset) {
-            $manifestUrl = $mediaUrls->sign((int) $mediaAsset->id, 'master.m3u8', $session['session_id']);
-            $qualities = [[
-                'quality' => 'Auto',
-                'url_type' => 'HLS',
-                'url' => $manifestUrl,
-            ]];
-            $session['media_url'] = $manifestUrl;
-        }
-
-        \Illuminate\Support\Facades\Log::info('Customer playback session started.', [
-            'user_id' => $request->user()->id,
-            'playback_session_id' => $session['session_id'],
-            'content_id' => (string) $content->id,
-            'content_type' => $type,
-            'profile_id' => (int) $result['profile']->id,
-        ]);
-
-        return ApiResponse::success([
-            'content_id' => $content->id,
-            'content_type' => $type,
-            'profile_id' => $result['profile']->id,
-            'playback_session' => $session,
-            'video_qualities' => $qualities,
-        ], 'Playback authorized.', 200);
+        return ApiResponse::success($result['data'], $result['message'], 200);
     }
 
     public function heartbeatPlayback(Request $request, string $sessionId, PlaybackSessionService $sessions, PlaybackMediaUrlService $mediaUrls, PlaybackEntitlementService $entitlements)
@@ -2920,7 +2818,7 @@ class EntertainmentsController extends Controller
         return ApiResponse::success($responseData, __('movie.movie_list'), 200);
     }
 
-    public function contentDetailsV3(Request $request)
+    public function contentDetailsV3(Request $request, ContentMediaMetadataService $mediaMetadata)
     {
 
         $id = $request->id;
@@ -2934,7 +2832,7 @@ class EntertainmentsController extends Controller
             : false;
         $cacheKey = 'common_content_detail_v3_'.$id . '_' . $profileId . '_' . $request->type . '_' . ($userId ?? 0) . '_' . app()->getLocale();
 
-         $responseData = cacheApiResponse($cacheKey, 10, function () use ($request, $id,$device_type, $userId, $profileId, $isChildProfile) {
+         $responseData = cacheApiResponse($cacheKey, 10, function () use ($request, $id, $device_type, $userId, $profileId, $isChildProfile, $mediaMetadata) {
 
 
             $user_id = $userId ?? 0;
@@ -3706,86 +3604,12 @@ class EntertainmentsController extends Controller
                     $movieArray = setContentAccess($movieArray, $user_id, $userPlanLevel, $purchasedIds);
                     $movie->has_content_access = $movieArray['has_content_access'];
                     $movie->required_plan_level = $movieArray['required_plan_level'];
-                    
-                    if(isset($movieArray['access']) && $movieArray['access']  == 'pay-per-view'){
-                       $rental = [
-                            'price' => (float)($movie->price ?? 0),
-                            'discount' => (int)($movie->discount ?? 0),
-                            'access_duration' => $movie->access_duration ?? null,
-                            'availability_days' => $movie->available_for ?? null,
-                            'access' => $movie->purchase_type ?? null,
-                       ];
-                       if ($rental['price'] > 0 && $rental['discount'] > 0) {
-                            $rental['discounted_price'] = round(
-                                $rental['price'] - ($rental['price'] * $rental['discount'] / 100),
-                                2
-                            );
-                        } else {
-                            $rental['discounted_price'] = $rental['price'];
-                        }
-                       $movie['rental'] = $rental;
-                    }else{
-                        $movie['rental'] = [];
-                    };
+                    $movie['rental'] = $mediaMetadata->buildRentalData($movie, $movieArray);
+                    $movie['trailer_data'] = $mediaMetadata->buildTrailerData($movie, (string) $request->type, $device_type);
 
-                    // Initialize trailer_data array
-                    $trailer_data = [];
-
-                    if(isset($movie['trailer_url_type']) && isset($movie['trailer_url'])) {
-                        $trailer_data[] =  [
-                            'id'=> $movie['id'],
-                            'title'    => 'default trailer',
-                            'url_type' => trim($movie['trailer_url_type']),
-                            'url' =>  $movie['trailer_url_type'] == 'Local' ? setBaseUrlWithFileName(trim($movie['trailer_url']),'video', $request->type) : trim($movie['trailer_url']),
-                            'poster_image' =>isset($movie['poster_url']) ? setBaseUrlWithFileName($movie['poster_url'],'image', $request->type) : null,
-                        ];
-                    }
-
-                    if (isset($movie->clips) && $movie->relationLoaded('clips') && $movie->clips->count() > 0) {
-                        foreach ($movie->clips as $clip) {
-                            $clipData = [
-                                'id'           => $clip->id,
-                                'title'        => $clip->title,
-                                'url_type'     => $clip->type,
-                                'url'          => $clip->type == 'Local' ? setBaseUrlWithFileName(trim($clip->url),'video',$request->type) : trim($clip->url),
-                                'poster_image' =>  $device_type == 'tv' ? setBaseUrlWithFileName($clip->tv_poster_url ?? null ,'image',$request->type) : setBaseUrlWithFileName($clip->poster_url ?? null,'image',$request->type),
-                            ];
-                            $trailer_data[] = $clipData;
-                        }
-                    };
-                    $movie['trailer_data'] = $trailer_data;
-                    // Optimized: Batch load ads queries and use better date filtering
-                    [$customAds, $vastAds] = [
-                        CustomAdsSetting::where('status', 1)
-                            ->whereIn('placement', $placement)
-                            ->where('start_date', '<=', $today)
-                            ->where('end_date', '>=', $today)
-                            ->whereJsonContains('target_categories', (int) $id)
-                            ->select('type','media','redirect_url','placement')
-                            ->get()
-                            ->map(function($ad) {
-                                return [
-                                    'type' => $ad->type,
-                                    'placement' => $ad->placement,
-                                    'url' => $ad->media ? setBaseUrlWithFileName(trim($ad->media) ,$ad->type,'ads') : null,
-                                    'redirect_url' => $ad->redirect_url,
-                                ];
-                            }),
-                        VastAdsSetting::where('status', 1)
-                            ->where('start_date', '<=', $today)
-                            ->where('end_date', '>=', $today)
-                            ->whereJsonContains('target_selection', (int) $id)
-                            ->where('target_type', $request->type =='episode' ? 'tvshow' : $request->type)
-                            ->select('type', 'url')
-                            ->get()
-                    ];
-                    // Prepare vast_ads array
-                    $vastAdsData = [
-                        'pre_role_ad_url' => $vastAds->where('type', 'pre-roll')->pluck('url')->toArray(),
-                        'mid_role_ad_url' => $vastAds->where('type', 'mid-roll')->pluck('url')->toArray(),
-                        'post_role_ad_url' => $vastAds->where('type', 'post-roll')->pluck('url')->toArray(),
-                        'overlay_ad_url' => $vastAds->where('type', 'overlay')->pluck('url')->toArray(),
-                    ];
+                    $ads = $mediaMetadata->loadAds((int) $id, (string) $request->type, $placement);
+                    $customAds = $ads['customAds'];
+                    $vastAdsData = $ads['vastAds'];
 
                 if($request->type != 'video'){
                     $movie['reviews'] = isset($movie->entertainmentReviews) ? $movie->entertainmentReviews : null;
@@ -3794,56 +3618,17 @@ class EntertainmentsController extends Controller
                 $movie['subtitles'] = isset($movie->subtitles) ? $movie->subtitles : null;
 
                 if(isset($videoQualities)) {
-                    $videoQualities = $videoQualities->map(function($quality) use ($request) {
-                        return [
-                            'id' => $quality->id,
-                            'quality' => trim($quality->quality),
-                            'url_type' =>trim($quality->url_type),
-                            'url' => $quality->url_type == 'Local' ? setBaseUrlWithFileName(trim($quality->url), 'video', $request->type) : trim($quality->url),
-                        ];
-                    });
-
-                    $movie['video_qualities'] = array_merge([$videoDefaultQuality],$videoQualities->toArray() );
+                    $movie['video_qualities'] = $mediaMetadata->formatPlaybackQualities($movie, (string) $request->type, $videoQualities);
                 }
 
-                $defaultDownload = [];
+                $movie['download_data'] = $mediaMetadata->buildDownloadData(
+                    $movie,
+                    (string) $request->type,
+                    isset($downloadMappings) ? $downloadMappings : collect()
+                );
 
-                if (!empty($movie->download_type) || !empty($movie->download_url)) {
-                    $defaultDownload[] = [
-                        'id'        => $movie->id,
-                        'url_type'  => $movie->download_type ?? null,
-                        'url'       => ($movie->download_type === 'Local')
-                                        ? setBaseUrlWithFileName($movie->download_url ?? null, 'video', $request->type)
-                                        : ($movie->download_url ?? null),
-                        'quality'   => 'default_quality',
-                    ];
-                }
-
-                $mappingDownloads = [];
-
-                if (!empty($downloadMappings)) {
-                    foreach ($downloadMappings as $mapping) {
-                        $mappingDownloads[] = [
-                            'id'        => $mapping->id,
-                            'url_type'  => $mapping->type,
-                            'url'       => ($mapping->type === 'Local')
-                                            ? setBaseUrlWithFileName($mapping->url, 'video', $request->type)
-                                            : $mapping->url,
-                            'quality'   => $mapping->quality,
-                        ];
-                    }
-                }
-
-                $mergedDownloads = array_merge($defaultDownload, $mappingDownloads);
-
-                $movie['download_data'] = [
-                    'download_enable' => $movie->download_status ?? 0,
-                    'download_quality' => $mergedDownloads
-                ];
-
-
-                $movie['customAds'] = isset($customAds) ? $customAds : [];
-                $movie['vast_ads'] = isset($vastAdsData) ? $vastAdsData : [];
+                $movie['customAds'] = $customAds;
+                $movie['vast_ads'] = $vastAdsData;
                 $movie['watched_time'] = isset($watched_time) ? $watched_time : null;
                 } else {
                     // For actor/director, set minimal required properties
