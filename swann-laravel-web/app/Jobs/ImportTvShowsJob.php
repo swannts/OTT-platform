@@ -22,7 +22,7 @@ use Modules\Constant\Models\Constant;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
-class ImportTVshowsJob implements ShouldQueue
+class ImportTvShowsJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, CsvImportHelper;
 
