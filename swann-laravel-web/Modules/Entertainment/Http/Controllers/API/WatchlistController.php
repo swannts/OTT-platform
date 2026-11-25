@@ -7,6 +7,7 @@ use App\Http\Responses\ApiResponse;
 use Artisan;
 use Illuminate\Http\Request;
 use Modules\Entertainment\Models\Watchlist;
+use Modules\Entertainment\Services\WatchlistAndContinueWatchService;
 use Modules\Entertainment\Transformers\WatchlistResource;
 use Modules\Entertainment\Transformers\WatchlistResourceV3;
 use Modules\Entertainment\Models\ContinueWatch;
@@ -21,6 +22,10 @@ use Modules\Frontend\Models\PayPerView;
 
 class WatchlistController extends Controller
 {
+    public function __construct(
+        private readonly WatchlistAndContinueWatchService $watchlistService,
+    ) {}
+
     public function watchList(Request $request)
     {
         $user_id = auth()->user()->id;
@@ -339,151 +344,65 @@ class WatchlistController extends Controller
 
     public function saveWatchList(Request $request)
     {
-
         $user = auth()->user();
-        
-        $entertainmentId = $request->input('entertainment_id');
-
-        $profile_id = $this->resolveActiveProfile($user->id, $request);
-        if (!$profile_id) return ApiResponse::error('Select an active viewing profile.', 403);
-
-        $watchlistData = $request->except('user_id');
-
-        $watchlistData['profile_id'] = $profile_id;
-
-        $type = null;
-        if($request->has('type') && $request->type == 'video'){
-            $type = 'video';
-            $entertainment = Video::find($entertainmentId);
-        }
-        else{
-            $entertainment = Entertainment::find($entertainmentId);
-            $type = $request->input('entertainment_type');
-            if (!$type && $entertainment) {
-                $type = $entertainment->type ?? 'movie';
-            }
-        }
-        Log::info($entertainment);
-
-        if (!$entertainment) {
-            return ApiResponse::error(__('movie.entertainment_not_found'), 404);
+        $profileId = $this->resolveActiveProfile($user->id, $request);
+        if (! $profileId) {
+            return ApiResponse::error('Select an active viewing profile.', 403);
         }
 
-        $watchlistData['user_id'] = $user->id;
-        $watchlistData['type'] = $type;
+        $result = $this->watchlistService->saveWatchlist($user->id, $profileId, $request);
+        if (! $result['ok']) {
+            return ApiResponse::error($result['message'], $result['status']);
+        }
 
-        Watchlist::updateOrCreate(
-            ['entertainment_id' => $entertainmentId, 'user_id' => $user->id, 'profile_id'=>$profile_id , 'type'=>$type],
-            $watchlistData
-        );
-        
-        // CONSISTENT CACHE CLEARING
-        \Artisan::call('cache:clear');
-        \Cache::flush();
-        clearWatchlistCache();
-
-        return ApiResponse::success(null, __('movie.watchlist_add'), 200);
+        return ApiResponse::success(null, $result['message'], 200);
     }
-
 
     public function deleteWatchList(Request $request)
     {
         try {
             $user = auth()->user();
-
-            $profile_id = $this->resolveActiveProfile($user->id, $request);
-            if (!$profile_id) return ApiResponse::error('Select an active viewing profile.', 403);
-
-            $id_param = $request->id;
-            $ids = is_array($id_param) ? $id_param : explode(',', (string)$id_param);
-            $ids = array_filter(array_map('trim', $ids));
-
-            if (empty($ids)) {
-                return ApiResponse::error(__('movie.id_required'), 400);
+            $profileId = $this->resolveActiveProfile($user->id, $request);
+            if (! $profileId) {
+                return ApiResponse::error('Select an active viewing profile.', 403);
             }
 
-            // Attempt to find by primary IDs first
-            $watchlists = Watchlist::whereIn('id', $ids)
-                ->where('user_id', $user->id)
-                ->where('profile_id', $profile_id)
-                ->get();
-
-            // If not found by primary IDs, or if is_ajax=1 is explicitly passed (common for entertainment_id use)
-            if ($watchlists->isEmpty() || $request->is_ajax == 1) {
-                $query = Watchlist::whereIn('entertainment_id', $ids)
-                    ->where('user_id', $user->id)
-                    ->where('profile_id', $profile_id);
-                
-                // Only filter by type if explicitly provided
-                if ($request->filled('type')) {
-                    $query->where('type', $request->type);
-                }
-                
-                $fallbackWatchlists = $query->get();
-                
-                // Merge if some were found by primary IDs and some by entertainment_ids
-                if ($fallbackWatchlists->isNotEmpty()) {
-                    $watchlists = $watchlists->merge($fallbackWatchlists);
-                }
+            $result = $this->watchlistService->deleteWatchlist($user->id, $profileId, $request);
+            if (! $result['ok']) {
+                return ApiResponse::error($result['message'], $result['status']);
             }
 
-            if ($watchlists->isEmpty()) {
-                return ApiResponse::error(__('movie.watchlist_notfound'), 404);
-            }
-
-            // Perform permanent deletion
-            Watchlist::whereIn('id', $watchlists->pluck('id'))->forceDelete();
-
-            // CONSISTENT CACHE CLEARING
-            \Artisan::call('cache:clear');
-            \Cache::flush();
-            clearWatchlistCache();
-
-            return ApiResponse::success(null, "Removed from watchlist", 200);
-
+            return ApiResponse::success(null, $result['message'], 200);
         } catch (\Exception $e) {
-            \Log::error('Watchlist Delete Error: ' . $e->getMessage());
+            Log::error('Watchlist Delete Error: '.$e->getMessage());
+
             return ApiResponse::error('Error removing from watchlist', 500);
         }
     }
 
-    /**
-     * Remove a single item from watchlist by entertainment id.
-     *
-     * DELETE /api/watch-list/{entertainment_id}
-     * Query/body:
-     *  - type: movie|tvshow|video (optional)
-     *  - profile_id: profile id (optional, defaults to current profile)
-     */
     public function removeWatchList(Request $request, int $entertainment_id)
     {
         try {
             $user = auth()->user();
-            $profile_id = $this->resolveActiveProfile($user->id, $request);
-            if (!$profile_id) return ApiResponse::error('Select an active viewing profile.', 403);
-
-            $type = $request->input('type');
-
-            $query = Watchlist::query()
-                ->where('entertainment_id', $entertainment_id)
-                ->where('user_id', $user->id)
-                ->where('profile_id', $profile_id);
-
-            if (!empty($type)) {
-                $query->where('type', $type);
+            $profileId = $this->resolveActiveProfile($user->id, $request);
+            if (! $profileId) {
+                return ApiResponse::error('Select an active viewing profile.', 403);
             }
 
-            $watchlists = $query->get();
-
-            if ($watchlists->isEmpty()) {
-                return ApiResponse::error(__('movie.watchlist_notfound'), 404);
+            $result = $this->watchlistService->removeWatchlist(
+                $user->id,
+                $profileId,
+                $entertainment_id,
+                $request->input('type')
+            );
+            if (! $result['ok']) {
+                return ApiResponse::error($result['message'], $result['status']);
             }
 
-            Watchlist::whereIn('id', $watchlists->pluck('id'))->forceDelete();
-
-            return ApiResponse::success(null, __('movie.watchlist_delete'), 200);
+            return ApiResponse::success(null, $result['message'], 200);
         } catch (\Exception $e) {
-            \Log::error('Watchlist Remove Error: ' . $e->getMessage());
+            Log::error('Watchlist Remove Error: '.$e->getMessage());
+
             return ApiResponse::error('Error removing from watchlist', 500);
         }
     }
@@ -576,112 +495,31 @@ class WatchlistController extends Controller
 
     public function saveContinueWatch(Request $request)
     {
-        if($request->watched_time == null || $request->watched_time == '00:00:00'){
-            return ;
+        if ($request->watched_time == null || $request->watched_time == '00:00:00') {
+            return;
         }
         $user = auth()->user();
-        $watch_data = $request->all();
-        $type = $request->entertainment_type == 'episode' ? 'tvshow' : $request->entertainment_type;
-        \Log::info($watch_data);
-        $watch_data['total_watched_time'] = $watch_data['total_watched_time'] ?? '00:00:01';
-        $watch_data['watched_time'] = $watch_data['watched_time'] ?? '00:00:01';
-        $watch_data['user_id'] = $user->id;
-        $watch_data['entertainment_type'] = $type;
-
-        $profile_id = $this->resolveActiveProfile($user->id, $request);
-        if (!$profile_id) return ApiResponse::error('Select an active viewing profile.', 403);
-
-        $watch_data['profile_id'] =  $profile_id;
-
-        $result = ContinueWatch::updateOrCreate(['entertainment_id' => $request->entertainment_id, 'user_id' => $user->id, 'entertainment_type' => $type,'profile_id'=>$profile_id,'episode_id'=>$request->episode_id], $watch_data);
-
-        // Instant notification trigger when setting is 0 days
-        if ($result && intval(setting('continue_watch')) === 0) {
-            // Only notify if not fully watched
-            if ($result->watched_time < $result->total_watched_time) {
-                // Throttle: one per day per item per user to avoid spam
-                $cacheKey = "instant_continue_watch_{$user->id}_{$result->entertainment_id}_{$result->episode_id}_" . date('Y-m-d');
-                if (!Cache::has($cacheKey)) {
-                    Cache::put($cacheKey, true, now()->endOfDay());
-                    
-                    $content = null;
-                    $contentType = 'movie';
-                    if ($type == 'movie') {
-                        $content = Entertainment::find($result->entertainment_id);
-                        $contentType = 'movie';
-                    } elseif ($type == 'tvshow' && $result->episode_id) {
-                        $content = \Modules\Episode\Models\Episode::find($result->episode_id);
-                        $contentType = 'episode';
-                    } elseif ($type == 'video') {
-                        $content = Video::find($result->entertainment_id);
-                        $contentType = 'video';
-                    }
-
-                    if ($content) {
-                        sendNotification([
-                            'notification_type' => 'continue_watch',
-                            'id' => $content->id,
-                            'name' => $content->name,
-                            'content_type' => $contentType,
-                            'posterimage' => $content->poster_url,
-                            'user_id' => $user->id,
-                            'user_name' => $user->full_name,
-                        ]);
-                    }
-                }
-            }
+        $profileId = $this->resolveActiveProfile($user->id, $request);
+        if (! $profileId) {
+            return ApiResponse::error('Select an active viewing profile.', 403);
         }
 
-        clearDashboardCache();
-        
+        $this->watchlistService->saveContinueWatch($user, $profileId, $request);
+
         return ApiResponse::success(null, __('movie.save_msg'), 200);
     }
+
     public function deleteContinueWatch(Request $request)
     {
         $userId = auth()->id();
         $profileId = $this->resolveActiveProfile($userId, $request);
-        if (!$profileId) return ApiResponse::error('Select an active viewing profile.', 403);
-
-        $id_param = $request->id;
-        if (!empty($id_param)) {
-            // Support both single ID and array of IDs
-            $ids = is_array($id_param) ? $id_param : explode(',', $id_param);
-            
-            // 1. Try deleting by ContinueWatch primary keys
-            $watchlists = ContinueWatch::whereIn('id', $ids)
-                ->where('user_id', $userId)
-                ->where('profile_id', $profileId)
-                ->get();
-
-            if ($watchlists->isNotEmpty()) {
-                ContinueWatch::whereIn('id', $watchlists->pluck('id'))->forceDelete();
-            } else {
-                // 2. Fallback: Try deleting by entertainment_id (common in web UI)
-                $type = $request->input('entertainment_type');
-                if ($type === 'episode') { $type = 'tvshow'; }
-
-                $fallbackQuery = ContinueWatch::whereIn('entertainment_id', $ids)
-                    ->where('user_id', $userId)
-                    ->where('profile_id', $profileId);
-
-                if ($request->filled('episode_id')) {
-                    $fallbackQuery->where('episode_id', $request->episode_id);
-                }
-                if (!empty($type)) {
-                    $fallbackQuery->where('entertainment_type', $type);
-                }
-
-                $fallbackRecords = $fallbackQuery->get();
-                if ($fallbackRecords->isNotEmpty()) {
-                    ContinueWatch::whereIn('id', $fallbackRecords->pluck('id'))->forceDelete();
-                }
-            }
+        if (! $profileId) {
+            return ApiResponse::error('Select an active viewing profile.', 403);
         }
 
-        // Always clear dashboard cache to ensure the removed item disappears immediately
-        clearDashboardCache();
+        $this->watchlistService->deleteContinueWatch($userId, $profileId, $request);
 
-        return ApiResponse::success(null, "Continue watching item removed", 200);
+        return ApiResponse::success(null, 'Continue watching item removed', 200);
     }
 
     public function continuewatchListV3(Request $request){
@@ -795,11 +633,6 @@ class WatchlistController extends Controller
 
     private function resolveActiveProfile(int $userId, Request $request): ?int
     {
-        $activeProfileId = getCurrentProfile($userId, $request);
-        if (!$activeProfileId || ($request->filled('profile_id') && (string) $request->profile_id !== (string) $activeProfileId)) {
-            return null;
-        }
-
-        return (int) $activeProfileId;
+        return $this->watchlistService->resolveActiveProfile($userId, $request);
     }
 }

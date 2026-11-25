@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use App\Models\MobileSetting;
 use Modules\Entertainment\Http\Requests\API\PlaybackDetailsRequest;
 use Modules\Entertainment\Models\Entertainment;
+use Modules\Entertainment\Services\ContentEngagementService;
 use Modules\Entertainment\Services\ContentMediaMetadataService;
 use Modules\Entertainment\Services\PlaybackAuthorizationAction;
 use Modules\Entertainment\Transformers\SeasonResourceV3;
@@ -528,30 +529,11 @@ class EntertainmentsController extends Controller
         return ApiResponse::success($responseData, __('movie.tvshow_details'), 200);
     }
 
-    public function saveDownload(Request $request)
+    public function saveDownload(Request $request, ContentEngagementService $engagement)
     {
-        $user = auth()->user();
-        $download_data = $request->all();
-        $download_data['user_id'] = $user->id;
+        $message = $engagement->saveDownload((int) auth()->id(), $request);
 
-        $download = EntertainmentDownload::where('entertainment_id', $request->entertainment_id)->where('user_id', $user->id)->where('entertainment_type', $request->entertainment_type)->first();
-
-        if (!$download) {
-            $result = EntertainmentDownload::create($download_data);
-
-            if ($request->entertainment_type == 'movie') {
-
-                clearRelatedCache(['movie_'.$request->entertainment_id], 'entertainment');
-
-            } else if ($request->entertainment_type == 'episode') {
-                clearRelatedCache('episode_'.$request->entertainment_id, 'episode');
-
-            }
-
-            return ApiResponse::success(null, __('movie.movie_download'), 200);
-        } else {
-            return ApiResponse::success(null, __('movie.already_download'), 200);
-        }
+        return ApiResponse::success(null, $message, 200);
     }
 
     public function episodeList(Request $request)
@@ -2182,103 +2164,36 @@ class EntertainmentsController extends Controller
         return ApiResponse::success($data, __('movie.coming_soon_list'), 200);
     }
 
-    public function saveReminder(Request $request)
+    public function saveReminder(Request $request, ContentEngagementService $engagement)
     {
-        $user = auth()->user();
-        $reminderData = $request->all();
-        $reminderData['user_id'] = $user->id;
-
-        $profile_id=$request->has('profile_id') && $request->profile_id
-        ? $request->profile_id
-        : getCurrentProfile($user->id, $request);
-
-        $reminderData['profile_id'] = $profile_id;
-
-
-
-        $entertainment = $request->entertainment_id ? Entertainment::where('id', $request->entertainment_id)->first() : null;
-
-        if($entertainment != null){
-            $reminderData['release_date'] = $request->release_date ?? $entertainment->release_date;
-        }
-
-
-        $reminders = UserReminder::updateOrCreate(
-            ['entertainment_id' => $request->entertainment_id, 'user_id' => $user->id, 'profile_id'=>$profile_id],
-            $reminderData
-        );
-
-        // Reminders are user-specific, no cache clearing needed
-
-        $message = $reminders->wasRecentlyCreated ? __('movie.reminder_add') : __('movie.reminder_update');
-        $result = $reminders;
+        $message = $engagement->saveReminder((int) auth()->id(), $request);
 
         return ApiResponse::success(null, $message, 200);
     }
 
-    public function saveEntertainmentViews(Request $request)
+    public function saveEntertainmentViews(Request $request, ContentEngagementService $engagement)
     {
-        $user = auth()->user();
-        $data = $request->all();
-        $data['user_id'] = $user->id;
-        $viewData = EntertainmentView::where('entertainment_id', $request->entertainment_id)->where('user_id', $user->id)->first();
-
-        // Views are user-specific, no cache clearing needed
-
-        if (!$viewData) {
-            $views = EntertainmentView::create($data);
-            $message = __('movie.view_add');
-        } else {
-            $message = __('movie.already_added');
-        }
+        $message = $engagement->saveView((int) auth()->id(), $request);
 
         return ApiResponse::success(null, $message, 200);
     }
-    public function deleteReminder(Request $request)
+
+    public function deleteReminder(Request $request, ContentEngagementService $engagement)
     {
-        $user = auth()->user();
-
-        $ids = $request->is_ajax == 1 ? $request->id : explode(',', $request->id);
-
-        $entertainment = Entertainment::whereIn('id',$ids)->get();
-
-        $reminders = UserReminder::whereIn('entertainment_id', $ids)->where('user_id', $user->id)->forceDelete();
-
-        // Reminders are user-specific, no cache clearing needed
-
-        if ($reminders == null) {
-
-            $message = __('movie.reminder_add');
-
-            return ApiResponse::error($message, 400);
+        if (! $engagement->deleteReminder((int) auth()->id(), $request->id, (int) $request->is_ajax === 1)) {
+            return ApiResponse::error(__('movie.reminder_add'), 400);
         }
 
-        $message = __('movie.reminder_remove');
-
-
-        return ApiResponse::success(null, $message, 200);
+        return ApiResponse::success(null, __('movie.reminder_remove'), 200);
     }
-    public function deleteDownload(Request $request)
+
+    public function deleteDownload(Request $request, ContentEngagementService $engagement)
     {
-        $user = auth()->user();
-
-        $ids = explode(',', $request->id);
-
-        $download = EntertainmentDownload::whereIn('id', $ids)->forceDelete();
-
-        // Downloads are user-specific, no cache clearing needed
-
-        if ($download == null) {
-
-            $message = __('movie.download');
-
-            return ApiResponse::error($message, 400);
+        if (! $engagement->deleteDownload((int) auth()->id(), (string) $request->id)) {
+            return ApiResponse::error(__('movie.download'), 400);
         }
 
-        $message = __('movie.download');
-
-
-        return ApiResponse::success(null, $message, 200);
+        return ApiResponse::success(null, __('movie.download'), 200);
     }
 
     public function episodeDetailsV2(Request $request)
