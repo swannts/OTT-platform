@@ -2,7 +2,10 @@
 
 namespace Modules\Episode\Services;
 
+use Modules\Entertainment\Models\Entertainment;
+use Modules\Episode\Models\Episode;
 use Modules\Episode\Repositories\EpisodeRepositoryInterface;
+use Modules\Season\Models\Season;
 use Yajra\DataTables\DataTables;
 
 class EpisodeService
@@ -396,5 +399,152 @@ class EpisodeService
        return $response;
     }
 
+    /**
+     * @return array{status: int, payload: array<string, mixed>}
+     */
+    public function importEpisodeFromTmdb(int $tvshowId, int $seasonId, int $episodeId): array
+    {
+        $existingEpisode = Episode::where('tmdb_id', $tvshowId)
+            ->where('tmdb_season', $seasonId)
+            ->where('episode_number', $episodeId)
+            ->first();
 
+        if (! empty($existingEpisode)) {
+            return [
+                'status' => 400,
+                'payload' => [
+                    'success' => false,
+                    'message' => __('episode.already_added_episode'),
+                ],
+            ];
+        }
+
+        $configurationData = $this->decodeWithRetry(fn () => $this->getConfiguration());
+        if ($configurationData === null) {
+            return [
+                'status' => 400,
+                'payload' => ['success' => false, 'message' => 'Failed to fetch TMDB configuration.'],
+            ];
+        }
+        if (isset($configurationData['success']) && $configurationData['success'] === false) {
+            return [
+                'status' => 400,
+                'payload' => [
+                    'success' => false,
+                    'message' => $configurationData['status_message'] ?? 'TMDB configuration error.',
+                ],
+            ];
+        }
+
+        $episodeDetail = $this->decodeWithRetry(fn () => $this->getEpisodeDetails($tvshowId, $seasonId, $episodeId));
+        if ($episodeDetail === null) {
+            return [
+                'status' => 400,
+                'payload' => ['success' => false, 'message' => 'Failed to fetch TMDB episode details.'],
+            ];
+        }
+        if (isset($episodeDetail['success']) && $episodeDetail['success'] === false) {
+            return [
+                'status' => 400,
+                'payload' => [
+                    'success' => false,
+                    'message' => $episodeDetail['status_message'] ?? 'TMDB episode error.',
+                ],
+            ];
+        }
+
+        $episodeVideoDetail = $this->decodeWithRetry(fn () => $this->getEpisodevideo($tvshowId, $seasonId, $episodeId));
+        if ($episodeVideoDetail === null) {
+            return [
+                'status' => 400,
+                'payload' => ['success' => false, 'message' => 'Failed to fetch TMDB episode videos.'],
+            ];
+        }
+        if (isset($episodeVideoDetail['success']) && $episodeVideoDetail['success'] === false) {
+            return [
+                'status' => 400,
+                'payload' => [
+                    'success' => false,
+                    'message' => $episodeVideoDetail['status_message'] ?? 'TMDB video error.',
+                ],
+            ];
+        }
+
+        $trailerUrlType = null;
+        $trailerUrl = null;
+        $episodeVideoList = [];
+        $videoUrlType = null;
+        $videoUrl = null;
+
+        if (isset($episodeVideoDetail['results']) && is_array($episodeVideoDetail['results'])) {
+            foreach ($episodeVideoDetail['results'] as $video) {
+                if ($video['type'] == 'Trailer' || $video['type'] == 'Clip') {
+                    $trailerUrlType = $video['site'];
+                    $trailerUrl = 'https://www.youtube.com/watch?v='.$video['key'];
+                } else {
+                    $videoUrlType = $video['site'];
+                    $videoUrl = 'https://www.youtube.com/watch?v='.$video['key'];
+                    $episodeVideoList[] = [
+                        'video_quality_type' => $video['site'],
+                        'video_quality' => $video['size'],
+                        'quality_video' => 'https://www.youtube.com/watch?v='.$video['key'],
+                    ];
+                }
+            }
+        }
+
+        $tvshows = Entertainment::where('tmdb_id', $tvshowId)->first();
+        $season = Season::where('tmdb_id', $tvshowId)->where('season_index', $seasonId)->first();
+
+        return [
+            'status' => 200,
+            'payload' => [
+                'success' => true,
+                'data' => [
+                    'poster_url' => $configurationData['images']['secure_base_url'].'original'.$episodeDetail['still_path'],
+                    'poster_tv_url' => $configurationData['images']['secure_base_url'].'original'.$episodeDetail['still_path'],
+                    'trailer_url_type' => $trailerUrlType,
+                    'trailer_url' => $trailerUrl,
+                    'name' => $episodeDetail['name'],
+                    'description' => $episodeDetail['overview'],
+                    'duration' => $this->formatDurationMinutes((int) ($episodeDetail['runtime'] ?? 0)),
+                    'is_restricted' => 0,
+                    'release_date' => $episodeDetail['air_date'],
+                    'access' => 'free',
+                    'enable_quality' => ! empty($episodeVideoList),
+                    'entertainment_id' => $tvshows->id ?? null,
+                    'season_id' => $season->id ?? null,
+                    'episode_number' => $episodeId,
+                    'tmdb_id' => $tvshowId,
+                    'tmdb_season' => $seasonId,
+                    'video_url_type' => $videoUrlType,
+                    'video_url' => $videoUrl,
+                    'episodeStreamContentMappings' => $episodeVideoList,
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function decodeWithRetry(callable $fetcher, int $maxAttempts = 3): ?array
+    {
+        for ($attempt = 0; $attempt < $maxAttempts; $attempt++) {
+            $decoded = json_decode((string) $fetcher(), true);
+            if (is_array($decoded)) {
+                return $decoded;
+            }
+        }
+
+        return null;
+    }
+
+    private function formatDurationMinutes(int $minutes): string
+    {
+        $hours = floor($minutes / 60);
+        $remainingMinutes = $minutes % 60;
+
+        return sprintf('%02d:%02d', $hours, $remainingMinutes);
+    }
 }

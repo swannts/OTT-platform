@@ -3,6 +3,7 @@
 namespace Modules\Setting\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
+use App\Services\Settings\SettingsAccountService;
 use Modules\Setting\Models\Setting;
 use Illuminate\Http\Request;
 use Modules\Setting\Http\Requests\SettingRequest;
@@ -26,7 +27,7 @@ class SettingsController extends Controller
         initializeModuleTrait as private traitInitializeModuleTrait;
     }
 
-    public function __construct()
+    public function __construct(private readonly SettingsAccountService $settingsAccountService)
     {
         $this->traitInitializeModuleTrait(
             'settings.title', // module title
@@ -254,97 +255,22 @@ class SettingsController extends Controller
     }
 
 
-    public function dataload(){
-
-        $this->setEnvValue('IS_DUMMY_DATA', 'true');
-
-        $artisanPath = base_path('artisan');
-
-        $output = [];
-        $resultCode = 0;
-        exec("php {$artisanPath} migrate:fresh --seed --force 2>&1", $output, $resultCode);
-
-        // Log the full output of the command
-        \Log::info('Migration Output: ' . implode("\n", $output));
-        \Log::info('Migration Result Code: ' . $resultCode);
-
-        if ($resultCode !== 0) {
-            \Log::error('Migration failed with result code: ' . $resultCode);
-            \Log::error('Migration error output: ' . implode("\n", $output));
+    public function dataload()
+    {
+        if (! $this->settingsAccountService->resetDatabase(true)) {
             return redirect()->back()->with('error', __('settings.data_reset_failed'));
         }
 
-        // Log the value of IS_DUMMY_DATA
-        \Log::info('IS_DUMMY_DATA value: ' . env('IS_DUMMY_DATA'));
-
-        \Log::info('Database reset completed.');
-
-        $message = __('settings.data_reset');
-
-        // Redirect back with success message
-        return response()->json(['message' => $message, 'status' => true], 200);
-
+        return response()->json(['message' => __('settings.data_reset'), 'status' => true], 200);
     }
 
     public function datareset()
     {
-        \Artisan::call('config:clear');
-
-        $this->setEnvValue('IS_DUMMY_DATA', 'false');
-
-        $artisanPath = base_path('artisan');
-
-        $output = [];
-        $resultCode = 0;
-        exec("php {$artisanPath} migrate:fresh --seed --force 2>&1", $output, $resultCode);
-
-        // Log the full output of the command
-        \Log::info('Migration Output: ' . implode("\n", $output));
-        \Log::info('Migration Result Code: ' . $resultCode);
-
-        if ($resultCode !== 0) {
-            \Log::error('Migration failed with result code: ' . $resultCode);
-            \Log::error('Migration error output: ' . implode("\n", $output));
+        if (! $this->settingsAccountService->resetDatabase(false)) {
             return redirect()->back()->with('error', __('settings.data_reset_failed'));
         }
 
-        // Log the value of IS_DUMMY_DATA
-        \Log::info('IS_DUMMY_DATA value: ' . env('IS_DUMMY_DATA'));
-
-        \Log::info('Database reset completed.');
-
-        $message = __('settings.data_reset');
-
-        return redirect()->back()->with('success', $message);
-    }
-    /**
-     * Update a specific value in the .env file
-     */
-    private function setEnvValue(string $key, string $value)  
-    {
-        $envPath = base_path('.env');
-
-        if (file_exists($envPath)) {
-            // Read .env file
-            $envContent = file_get_contents($envPath);
-
-            // Update or add the key
-            $pattern = "/^{$key}=.*/m";
-            if (preg_match($pattern, $envContent)) {
-                $envContent = preg_replace($pattern, "{$key}={$value}", $envContent);
-            } else {
-                $envContent .= "\n{$key}={$value}";
-            }
-
-            // Save changes
-            file_put_contents($envPath, $envContent);
-
-            // Clear cache to apply changes
-            \Artisan::call('config:clear');
-            \Artisan::call('cache:clear');
-        }
-
-        return;
+        return redirect()->back()->with('success', __('settings.data_reset'));
     }
 
 
@@ -859,81 +785,32 @@ class SettingsController extends Controller
 
     public function userProfileUpdate(Request $request)
     {
-        // dd($request->all());
         $request->validate([
-            'first_name'     => ['required'],
-            'last_name'      => ['required'],
-            'email'          => ['required', 'email', 'max:255', 'unique:users,email,' . Auth::id()],
-            'mobile'         => ['required', 'unique:users,mobile,' . Auth::id()],
-            'gender'         => ['required'],
+            'first_name' => ['required'],
+            'last_name' => ['required'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email,'.Auth::id()],
+            'mobile' => ['required', 'unique:users,mobile,'.Auth::id()],
+            'gender' => ['required'],
         ]);
-        $user = Auth::user();
-        $data = User::findOrFail($user->id);
-        $request_data = $request->except('profile_image');
-        $data->update($request_data);
 
-        if ($request->custom_fields_data) {
-            $data->updateCustomFieldData(json_decode($request->custom_fields_data));
-        }
+        $this->settingsAccountService->updateProfile(Auth::user(), $request);
 
-        if ($request->file('profile_image')) {
-            storeMediaFile($data, $request->file('profile_image'), 'profile_image', 'avatar');
-        }
-
-        $message = __('messages.profile_update');
-
-        return redirect()->back()->with('success', $message);
+        return redirect()->back()->with('success', __('messages.profile_update'));
     }
 
     public function changePassword(Request $request)
     {
-        $user = Auth::user(); // Get the currently authenticated user
+        $result = $this->settingsAccountService->changePassword(
+            Auth::user(),
+            (string) $request->old_password,
+            (string) $request->new_password,
+        );
 
-        // Prevent demo admin from changing password when demo login is enabled
-        $isDemoAdmin = $user && ($user->hasRole('demo_admin') || $user->user_type === 'demo_admin');
-        if (setting('demo_login', 0) == 1 && $isDemoAdmin) {
-            $message = __('messages.user_does_not_have_permission_to_change_password');
-
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json(['status' => false, 'message' => $message], 403);
-            }
-
-            return redirect()->back()->with('error', $message);
+        if (! $result['ok'] && ($request->ajax() || $request->wantsJson()) && ($result['status'] ?? 0) === 403) {
+            return response()->json(['status' => false, 'message' => $result['message']], 403);
         }
 
-        if (setting('demo_login')) {
-            return redirect()->back()->with('error', __('messages.permission_denied'));
-        }
-
-        $user_id = $user->id; // Retrieve the user's ID
-        $data = User::findOrFail($user_id);
-
-        if ($data == "") {
-            $message = __('messages.user_not_found');
-            return redirect()->back()->with('error', $message);
-        }
-
-        $hashedPassword = $data->password;
-
-        $match = Hash::check($request->old_password, $hashedPassword);
-
-        $same_exits = Hash::check($request->new_password, $hashedPassword);
-
-        if ($match) {
-            if ($same_exits) {
-                $message = __('messages.same_pass');
-                return redirect()->back()->with('error', $message);
-            }
-
-            $data->fill([
-                'password' => Hash::make($request->new_password)
-            ])->save();
-            $message = __('messages.pass_successfull');
-            return redirect()->back()->with('success', $message);
-        } else {
-            $message = __('messages.check_old_password');
-            return redirect()->back()->with('error', $message);
-        }
+        return redirect()->back()->with($result['type'], $result['message']);
     }
 
 
