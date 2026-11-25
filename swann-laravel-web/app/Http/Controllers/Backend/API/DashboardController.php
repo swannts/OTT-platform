@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Backend\API;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\User;
+use App\Services\Dashboard\DashboardSectionService;
 use Illuminate\Http\Request;
 use App\Models\MobileSetting;
 use Modules\Entertainment\Models\Entertainment;
@@ -52,8 +53,12 @@ use Modules\Frontend\Models\PayPerView;
 class DashboardController extends Controller
 {
     protected $recommendationService,$recommendationServiceV2,$recommendationServiceV3;
-    public function __construct(RecommendationService $recommendationService, RecommendationServiceV2 $recommendationServiceV2, RecommendationServiceV3 $recommendationServiceV3)
-    {
+    public function __construct(
+        RecommendationService $recommendationService,
+        RecommendationServiceV2 $recommendationServiceV2,
+        RecommendationServiceV3 $recommendationServiceV3,
+        private readonly DashboardSectionService $dashboardSections,
+    ) {
         $this->recommendationService = $recommendationService;
         $this->recommendationServiceV2 = $recommendationServiceV2;
         $this->recommendationServiceV3 = $recommendationServiceV3;
@@ -1750,90 +1755,7 @@ public function getTrandingData(Request $request){
     }
     public function getPayPerViewUnlockedContent(Request $request)
     {
-        $payPerViewContent = [];
-        $user_id = $request->query('user_id');
-
-
-        // Movies
-       $movies = MoviesResource::collection(
-          Entertainment::where('movie_access', 'pay-per-view')
-              ->where('type', 'movie')
-              ->where('status', 1)
-              ->where('deleted_at', null)
-              ->when(request()->has('is_restricted'), function ($query) {
-                  $query->where('is_restricted', request()->is_restricted);
-              })
-              ->when(getCurrentProfileSession('is_child_profile') && getCurrentProfileSession('is_child_profile') != 0, function ($query) {
-                  $query->where('is_restricted', 0);
-              })
-              ->get()
-      )->map(function ($item) use ($user_id) {
-          $item->user_id = $user_id;
-          return $item;
-      })->toArray(request());
-
-      $payPerViewContent = array_merge($payPerViewContent, $movies);
-
-        // TV Shows
-        $tvshows = TvshowResource::collection(
-            Entertainment::where('movie_access', 'pay-per-view')
-                ->where('type', 'tvshow')
-                ->where('status', 1)
-                ->where('deleted_at', null)
-                ->get()
-        )->map(function ($item) use ($user_id) {
-            $item->user_id = $user_id;
-            return $item;
-        })->toArray(request());
-        $payPerViewContent = array_merge($payPerViewContent, $tvshows);
-
-        // Videos
-        $videos = VideoResource::collection(
-            Video::where('access', 'pay-per-view')
-                ->where('status', 1)
-                ->where('deleted_at', null)
-                  ->when(request()->has('is_restricted'), function ($query) {
-                  $query->where('is_restricted', request()->is_restricted);
-              })
-              ->when(getCurrentProfileSession('is_child_profile') && getCurrentProfileSession('is_child_profile') != 0, function ($query) {
-                  $query->where('is_restricted', 0);
-              })
-                ->get()
-        )->map(function ($item) use ($user_id) {
-            $item->user_id = $user_id;
-            return $item;
-        })->toArray(request());
-        $payPerViewContent = array_merge($payPerViewContent, $videos);
-
-        // Seasons
-        $seasons = SeasonResource::collection(
-            Season::where('access', 'pay-per-view')
-                ->where('status', 1)
-                ->where('deleted_at', null)
-                ->get()
-        )->map(function ($item) use ($user_id) {
-            $item->user_id = $user_id;
-            return $item;
-        })->toArray(request());
-        $payPerViewContent = array_merge($payPerViewContent, $seasons);
-
-        // Episodes
-        $episodes = EpisodeResource::collection(
-            Episode::where('access', 'pay-per-view')
-                ->where('status', 1)
-                ->where('deleted_at', null)
-                  ->when(request()->has('is_restricted'), function ($query) {
-                  $query->where('is_restricted', request()->is_restricted);
-              })
-              ->when(getCurrentProfileSession('is_child_profile') && getCurrentProfileSession('is_child_profile') != 0, function ($query) {
-                  $query->where('is_restricted', 0);
-              })
-                ->get()
-        )->map(function ($item) use ($user_id) {
-            $item->user_id = $user_id;
-            return $item;
-        })->toArray(request());
-        $payPerViewContent = array_merge($payPerViewContent, $episodes);
+        $payPerViewContent = $this->dashboardSections->getPayPerViewUnlockedContent($request);
 
         if ($request->is('api/*')) {
             return ApiResponse::success($payPerViewContent, null, 200);
@@ -2093,87 +2015,11 @@ public function getTrandingData(Request $request){
      */
     public function getSliderData($type, $typeId, $userId = null, $request = null)
     {
-        $data = null;
-
-        switch ($type) {
-            case 'movie':
-            case 'tvshow':
-                $entertainment = Entertainment::with('plan')->select('*');
-
-                isset($request->is_restricted) && $entertainment = $entertainment->where('is_restricted', $request->is_restricted);
-                (!empty(getCurrentProfileSession('is_child_profile')) && getCurrentProfileSession('is_child_profile') != 0) &&
-                    $entertainment = $entertainment->where('is_restricted',0);
-
-                $entertainment = $entertainment->where('id',$typeId)->first();
-
-                if ($entertainment) {
-                    $entertainment['is_watch_list'] = \Modules\Entertainment\Models\Watchlist::where('entertainment_id', $typeId)
-                        ->where('user_id', $userId)
-                        ->where('profile_id',$request->profile_id ?? null)
-                        ->exists();
-
-                    $entertainment->user_id = $userId ?? null;
-                    $data = $type === 'movie' ? new MoviesResource($entertainment) : new TvshowResource($entertainment);
-                }
-                break;
-
-            case 'livetv':
-                $livetv = LiveTvChannel::find($typeId);
-                if ($livetv) {
-                    $data = new LiveTvChannelResource($livetv);
-                }
-                break;
-
-            case 'video':
-                $video = Video::select('*');
-
-                isset($request->is_restricted) && $video = $video->where('is_restricted', $request->is_restricted);
-                (!empty(getCurrentProfileSession('is_child_profile')) && getCurrentProfileSession('is_child_profile') != 0) &&
-                    $video = $video->where('is_restricted',0);
-
-                $video = $video->where('id',$typeId)->first();
-                if ($video) {
-                    $video->user_id = $userId ?? null;
-                    $data = new VideoResource($video);
-                }
-                break;
-        }
-
-        return $data;
+        return $this->dashboardSections->getSliderData((string) $type, $typeId, $userId, $request);
     }
 
     protected function getLocalizedSectionNames(array $slugsWithDefaults): array
     {
-        $isBn = app()->getLocale() === 'bn';
-        $bengaliDefaults = [
-            'latest-movies' => 'এখন ট্রেন্ডিং',
-            'top-10' => 'আজকের শীর্ষ ১০',
-            'enjoy-in-your-native-tongue' => 'আপনার মাতৃভাষায় উপভোগ করুন',
-            'popular-movies' => 'জনপ্রিয় সিনেমা',
-            'top-channels' => 'সরাসরি সম্প্রচার',
-            'your-favorite-personality' => 'সম্মানিত আলেম ও ব্যক্তিত্ব',
-            '500-free-movies' => 'ফ্রি সিনেমা',
-            'popular-tvshows' => 'জনপ্রিয় টিভি শো ও সিরিজ',
-            'genre' => 'ক্যাটাগরি ও ধরন',
-            'popular-videos' => 'জনপ্রিয় ভিডিও ও রিমাইন্ডার',
-            'continue-watching' => 'দেখা চালিয়ে যান',
-            'pay-per-view' => 'পে-পার-ভিউ এক্সক্লুসিভ',
-            'trending-now' => 'এখন ট্রেন্ডিং',
-        ];
-
-        if ($isBn) {
-            $sectionNames = [];
-            foreach ($slugsWithDefaults as $slug => $default) {
-                $sectionNames[$slug] = $bengaliDefaults[$slug] ?? $default;
-            }
-            return $sectionNames;
-        }
-
-        $settings = MobileSetting::whereIn('slug', array_keys($slugsWithDefaults))->pluck('name', 'slug');
-        $sectionNames = [];
-        foreach ($slugsWithDefaults as $slug => $default) {
-            $sectionNames[$slug] = $settings[$slug] ?? $default;
-        }
-        return $sectionNames;
+        return $this->dashboardSections->getLocalizedSectionNames($slugsWithDefaults);
     }
 }
