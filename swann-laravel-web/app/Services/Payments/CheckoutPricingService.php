@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Modules\Coupon\Models\Coupon;
 use Modules\Entertainment\Models\Entertainment;
 use Modules\Episode\Models\Episode;
+use Modules\Season\Models\Season;
 use Modules\Subscriptions\Models\Plan;
 use Modules\Subscriptions\Services\PlanPricingService;
 use Modules\Tax\Models\Tax;
@@ -167,6 +168,7 @@ class CheckoutPricingService
             'movie', 'tvshow' => Entertainment::find($id),
             'video' => Video::find($id),
             'episode' => Episode::find($id),
+            'season' => Season::find($id),
             default => null,
         };
     }

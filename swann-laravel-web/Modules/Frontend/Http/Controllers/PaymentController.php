@@ -3,6 +3,7 @@
 namespace Modules\Frontend\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Services\Payments\CheckoutPricingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -32,6 +33,10 @@ use Illuminate\Support\Facades\Cache;
 class PaymentController extends Controller
 {
     use SubscriptionTrait;
+
+    public function __construct(
+        private readonly CheckoutPricingService $checkoutPricing,
+    ) {}
     /**
      * Display a listing of the resource.
      */
@@ -79,41 +84,16 @@ class PaymentController extends Controller
             return response()->json(['error' => 'Invalid or inactive plan.'], 400);
         }
 
-        $basePrice = $plan->price;
-        if ($plan->discount_percentage > 0) {
-            $basePrice = $plan->price - ($plan->price * $plan->discount_percentage / 100);
+        $pricing = $this->checkoutPricing->calculateSubscription(
+            $plan,
+            new Request(['coupon_id' => $promotionId]),
+            Auth::id()
+        );
+        if (! $pricing['ok']) {
+            return response()->json(['error' => $pricing['message']], $pricing['status']);
         }
 
-        $finalPrice = $basePrice;
-        if ($promotionId) {
-            $coupon = Coupon::where('id', $promotionId)
-                ->where('status', 1)
-                ->where('start_date', '<=', now())
-                ->where('expire_date', '>=', now())
-                ->whereHas('CouponPlanMappings', function ($query) use ($plan_id) {
-                    $query->where('subscription_plan_id', $plan_id);
-                })
-                ->first();
-            if ($coupon) {
-                if ($coupon->discount_type == 'fixed') {
-                    $finalPrice = max(0, $basePrice - $coupon->discount);
-                } else {
-                    $finalPrice = $basePrice - ($basePrice * $coupon->discount / 100);
-                }
-            }
-        }
-
-        $taxes = Tax::active()->get();
-        $totalTax = 0;
-        foreach ($taxes as $tax) {
-            if (strtolower($tax->type) == 'fixed') {
-                $totalTax += $tax->value;
-            } else {
-                $totalTax += ($finalPrice * $tax->value) / 100;
-            }
-        }
-        
-        $price = round($finalPrice + $totalTax, 2);
+        $price = round((float) $pricing['data']['total_amount'], 2);
 
         $request->merge(['price' => $price]);
 

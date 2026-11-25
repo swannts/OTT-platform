@@ -3,8 +3,10 @@
 namespace Modules\Frontend\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Services\Payments\CheckoutPricingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Modules\Entertainment\Models\Entertainment;
 use Modules\Episode\Models\Episode;
 use Modules\Frontend\Models\PayPerView;
@@ -34,6 +36,9 @@ use Modules\Entertainment\Transformers\Backend\CommonContentResourceV3;
 
 class PerviewPaymentController extends Controller
 {
+    public function __construct(
+        private readonly CheckoutPricingService $checkoutPricing,
+    ) {}
     /**
      * Display a listing of the resource.
      */
@@ -420,41 +425,43 @@ class PerviewPaymentController extends Controller
     {
         $user = Auth::user();
 
-        if ($type == 'movie') {
-            $movie = Entertainment::find($movie_id);
-        } else if ($type == 'tvshow') {
-            $movie = Entertainment::find($movie_id);
-        } else if ($type == 'video') {
-            $movie = Video::find($movie_id);
-        } else if ($type == 'episode') {
-            $movie = Episode::find($movie_id);
-        } else if ($type == 'season') {
-            $movie = season::find($movie_id);
+        $movie = $this->checkoutPricing->resolveContentModel((string) $type, (int) $movie_id);
+        if (! $movie) {
+            return redirect('/')->with('error', 'Content not found.');
         }
 
+        if (PayperviewTransaction::where('transaction_id', $transaction_id)->where('user_id', $user->id)->exists()) {
+            return redirect('/')->with([
+                'purchase_success' => 'Payment completed successfully!',
+                'movie_name' => $movie->name ?? 'Video',
+            ]);
+        }
 
-        $viewExpiry = now()->addDays((int)$available_for ?? 48); // default to 48 hours if not provide
-        $payperview = PayPerView::create([
-            'user_id' => $user->id,
-            'movie_id' => $movie_id,
-            'type' => $type,
-            'content_price' => $movie->price,
-            'price' => $amount,
-            'discount_percentage' => $discount,
-            'view_expiry_date' => $viewExpiry,
-            'access_duration' => $access_duration,
-            'available_for' => $available_for,
-        ]);
+        $viewExpiry = now()->addDays((int) ($available_for ?: 48));
+        $payperview = DB::transaction(function () use ($user, $movie_id, $type, $movie, $amount, $discount, $viewExpiry, $access_duration, $available_for, $payment_type, $transaction_id) {
+            $payperview = PayPerView::create([
+                'user_id' => $user->id,
+                'movie_id' => $movie_id,
+                'type' => $type,
+                'content_price' => $movie->price,
+                'price' => $amount,
+                'discount_percentage' => $discount,
+                'view_expiry_date' => $viewExpiry,
+                'access_duration' => $access_duration,
+                'available_for' => $available_for,
+            ]);
 
+            PayperviewTransaction::create([
+                'user_id' => $user->id,
+                'amount' => $amount,
+                'payment_type' => $payment_type,
+                'payment_status' => 'paid',
+                'transaction_id' => $transaction_id,
+                'pay_per_view_id' => $payperview->id,
+            ]);
 
-        PayperviewTransaction::create([
-            'user_id' => auth()->id(),
-            'amount' => $amount,
-            'payment_type' => $payment_type,
-            'payment_status' => 'paid',
-            'transaction_id' => $transaction_id,
-            'pay_per_view_id' => $payperview->id,
-        ]);
+            return $payperview;
+        });
 
 
         // sendNotification([
