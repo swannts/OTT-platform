@@ -38,282 +38,22 @@ function mail_footer($type)
 
 function sendNotification($data)
 {
-    Log::info('Notification dispatch requested.', ['notification_type' => $data['notification_type'] ?? 'unknown']);
-    $mailable = \Modules\NotificationTemplate\Models\NotificationTemplate::where('type', $data['notification_type'])->with('defaultNotificationTemplateMap')->where('status', 1)->first();
-    if ($mailable != null && $mailable->to != null) {
-
-        $mails = json_decode($mailable->to);
-        foreach ($mails as $key => $mailTo) {
-            $data['type'] = $data['notification_type'];
-            $data['logged_in_user_fullname'] =  $data['logged_in_user_fullname'] ?? auth()->user()->full_name ?? '';
-            $data['logged_in_user_role'] =  $data['logged_in_user_role'] ?? auth()->user()->user_type ?? '';
-            $data['company_name'] =  $data['company_name'] ?? app_name() ?? '';
-            $data['company_contact_info'] =  $data['company_contact_info'] ?? setting('helpline_number') ?? '' . setting('inquriy_email') ?? '';
-            $data['user_id'] =  $data['user_id'] ?? '';
-            $data['user_name'] =  $data['user_name'] ?? '';
-            $data['movie_name'] =  $data['movie_name'] ??  '';
-            $data['tvshow_name'] =  $data['tvshow_name'] ?? '';
-            $data['season_name'] =  $data['season_name'] ?? '';
-            $data['episode_name'] =  $data['episode_name'] ?? '';
-            $data['end_date'] =  formatDateTimeWithTimezone($data['end_date'] ?? '', 'date');
-            $data['content_type'] =  $data['content_type'] ?? '';
-            $data['start_date'] =  formatDateTimeWithTimezone($data['start_date'] ?? '');
-            $data['app_name'] =  $data['app_name'] ?? env('APP_NAME') ?? '';
-
-            if (isset($data['amount']) && is_numeric($data['amount'])) {
-                $data['amount_formatted'] = Currency::format($data['amount']);
-            }
-
-            $subscription = isset($data['subscription']) ? $data['subscription'] : '';
-            if (isset($subscription) && $subscription != null) {
-                $data['id'] = $subscription['id'];
-                $data['user_id'] = $subscription['user_id'];
-                $data['plan_id'] = $subscription['plan_id'];
-                $data['subscription_plan'] = $subscription['name'];
-                $data['identifier'] = $subscription['identifier'];
-                $data['type'] = $subscription['type'];
-                $data['status'] = $subscription['status'];
-                $data['amount'] = ($subscription['total_amount'] ?? $subscription['amount']) - ($subscription['tax_amount'] ?? 0);
-                $data['amount_formatted'] = Currency::format($data['amount']);
-                $data['tax_amount'] = $subscription['tax_amount'] ?? 0;
-                $data['tax_amount_formatted'] = Currency::format($subscription['tax_amount'] ?? 0);
-                $data['total_amount'] = $subscription['total_amount'] ?? $subscription['amount'];
-                $data['total_amount_formatted'] = Currency::format($subscription['total_amount'] ?? $subscription['amount']);
-                $data['coupon_discount'] = $subscription['coupon_discount'] ?? 0;
-                $data['coupon_discount_formatted'] = Currency::format($subscription['coupon_discount'] ?? 0);
-                $data['duration'] = $subscription['duration'] ?? '';
-                $data['duration_formatted'] = $subscription['duration'] . ' ' . ucfirst($subscription['type']);
-                $data['plan_type'] = $subscription['plan_type'];
-                $data['user_name'] = $subscription['user']->full_name ?? '';
-                $data['user_email'] = $subscription['user']->email ?? '';
-                $data['user_mobile'] = $subscription['user']->mobile ?? '-';
-                $data['start_date'] =  formatDateTimeWithTimezone($subscription['start_date'] ?? '', 'date');
-                $data['end_date'] =  formatDateTimeWithTimezone($subscription['end_date'] ?? '', 'date');
-                // Ensure days and days_remaining are passed correctly for placeholder replacement
-                $data['days'] = $subscription['days'] ?? $subscription['days_remaining'] ?? 0;
-                $data['days_remaining'] = $subscription['days_remaining'] ?? $subscription['days'] ?? 0;
-                $data['notification_group'] = 'subscription';
-                $data['site_url'] = env('APP_URL');
-
-                // Placeholders used in notification templates: payment_method, price, discount, Tax
-                $data['price'] = $data['amount'];
-                $data['price_formatted'] = $data['amount_formatted'];
-                $data['discount'] = $data['coupon_discount'];
-                $data['discount_formatted'] = $data['coupon_discount_formatted'];
-                $data['Tax'] = $data['tax_amount_formatted'];
-
-                $subId = $subscription['id'] ?? null;
-                $paymentMethod = '-';
-                if ($subId) {
-                    $subModel = \Modules\Subscriptions\Models\Subscription::with('subscription_transaction')->find($subId);
-                    $paymentMethod = $subModel ? ucfirst(optional($subModel->subscription_transaction)->payment_type ?? '-') : '-';
-                }
-                $data['payment_method'] = $paymentMethod;
-
-                // Store the subscription user_id BEFORE unsetting
-                $subscriptionUserId = $subscription['user_id'] ?? null;
-                unset($data['subscription']);
-
-            } else {
-                $subscriptionUserId = null;
-            }
-
-            // Preserve original user data for later user notification
-            $originalUserId = $data['user_id'] ?? null;
-            $originalUserName = $data['user_name'] ?? null;
-            $originalSubscriptionUserId = $subscriptionUserId;
-            
-            switch ($mailTo) {
-                case 'admin':
-
-                    $admin = \App\Models\User::role('admin')->first();
-
-                    if (isset($admin->email)) {
-                        try {
-                            // Use admin data for this notification only
-                            $data['user_type'] = $mailTo;
-                            $data['user_id'] = $admin->id;
-                            $data['user_name'] = $admin->full_name;
-                            $admin->notify((new Modules\NotificationTemplate\Notifications\CommonNotification($data['notification_type'], $data))->onQueue('notifications'));
-                        } catch (\Exception $e) {
-                            Log::error('Admin notification dispatch failed.', ['exception' => $e::class]);
-                        }
-                    }
-                    // Restore original user data for subsequent iterations
-                    $data['user_id'] = $originalUserId;
-                    $data['user_name'] = $originalUserName;
-                    break;
-                case 'demo_admin':
-
-                    $demoadmin = \App\Models\User::role('demo_Admin')->first();
-
-                    if (isset($demoadmin->email)) {
-                        try {
-                            $data['user_type'] = $mailTo;
-                            $data['user_id'] = $demoadmin->id;
-                            $data['user_name'] = $demoadmin->full_name;
-                            $demoadmin->notify((new Modules\NotificationTemplate\Notifications\CommonNotification($data['notification_type'], $data))->onQueue('notifications'));
-                        } catch (\Exception $e) {
-                            Log::error('Demo admin notification dispatch failed.', ['exception' => $e::class]);
-                        }
-                        }
-                    // Restore original user data
-                    $data['user_id'] = $originalUserId;
-                    $data['user_name'] = $originalUserName;
-                    break;
-                case 'user':
-                    // If notification type is movie_add, tv_show_add, upcoming, or continue_watch, send to all users
-                    if (in_array($data['notification_type'], ['movie_add', 'tv_show_add','episode_add','season_add','video_add', 'upcoming'])) {
-                        \App\Models\User::where('user_type','user')->chunk(500, function ($users) use ($data) {
-                            $chunkCount = 0;
-                            foreach ($users as $user) {
-                                try {
-                                    $data['user_id']   = $user->id;
-                                    $data['user_name'] = $user->full_name;
-                                    $data['user_type'] = 'user';
-                                    $user->notify(
-                                        (new Modules\NotificationTemplate\Notifications\CommonNotification($data['notification_type'], $data))
-                                            ->onQueue('notifications')
-                                    );
-                                } catch (\Exception $e) {
-                                    Log::error('Campaign notification dispatch failed.', ['exception' => $e::class]);
-                                }
-                            }
-                        });
-                    } else {
-                        // Send to specific user
-                        // Use the preserved subscription user_id if available, otherwise fall back to data user_id
-                        $targetUserId = $originalSubscriptionUserId ?? $data['user_id'] ?? null;
-                        
-                        if ($targetUserId) {
-                            $user = \App\Models\User::find($targetUserId);
-                            if ($user) {
-                                try {
-                                    $data['user_type'] = $mailTo;
-                                    $user->notify((new Modules\NotificationTemplate\Notifications\CommonNotification($data['notification_type'], $data))->onQueue('notifications'));
-                                } catch (\Exception $e) {
-                                    Log::error('Customer notification dispatch failed.', ['exception' => $e::class]);
-                                }
-                            }
-                        }
-                    }
-                    break;
-            }
-        }
-    }
+    app(\App\Services\Notifications\PushNotificationHelperService::class)->sendNotification((array) $data);
 }
+
 function sendNotifications($data)
 {
-
-    $heading = '#' . $data['id'] . ' ' . str_replace("_", " ", $data['name']);
-    $content = strip_tags($data['description']);
-    $appName = env('APP_NAME');
-    $topic = str_replace(' ', '_', strtolower($appName));
-    $type = $data['type'];
-    $additionalData = json_encode($data);
-
-    $thumbnailImage = null;
-    if (!empty($data['poster_url'])) {
-        $thumbnailImage = getThumbnail($data['name'] ?? null, strtolower($data['type']));
-    }
-
-    // For push notifications we do NOT want to show a generic/logo image when no specific thumbnail
-    // Leave $thumbnailImage as null so the push payload will omit image fields when no poster exists
-    if (!$thumbnailImage || strpos($thumbnailImage, 'default-image/') !== false) {
-        $thumbnailImage = null;
-    }
-
-    $message = [
-        "topic" => $topic,
-        "notification" => [
-            "title" => $heading,
-            "body" => $content,
-        ],
-        "data" => [
-            "sound" => "default",
-            "story_id" => "story_12345",
-            "type" => $type,
-            "additional_data" => $additionalData,
-        ],
-        "android" => [
-            "priority" => "HIGH",
-        ],
-        "apns" => [
-            "payload" => [
-                "aps" => [
-                    "category" => $type,
-                    "mutable-content" => 1,
-                ],
-            ],
-        ],
-    ];
-
-    if (!empty($thumbnailImage)) {
-        $message['notification']['image'] = $thumbnailImage;
-        $message['data']['image'] = $thumbnailImage;
-        $message['data']['picture'] = $thumbnailImage;
-        $message['data']['large_icon'] = $thumbnailImage;
-        $message['android']['notification'] = ['image' => $thumbnailImage];
-        $message['apns']['fcm_options'] = ['image' => $thumbnailImage];
-    }
-
-    return fcm([
-        "message" => $message,
-    ]);
-
+    return app(\App\Services\Notifications\PushNotificationHelperService::class)->sendPushNotifications((array) $data);
 }
+
 function fcm($fields)
 {
-
-    $otherSetting = \App\Models\Setting::where('type', 'appconfig')->where('name', 'firebase_key')->first();
-
-
-    $projectID = $otherSetting->val ?? null;
-
-    $access_token = getAccessToken();
-
-    $headers = [
-        'Authorization: Bearer ' . $access_token,
-        'Content-Type: application/json',
-    ];
-    $ch = curl_init('https://fcm.googleapis.com/v1/projects/' . $projectID . '/messages:send');
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($fields));
-
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-    if ($response === false || $httpCode < 200 || $httpCode >= 300) {
-        Log::warning('FCM delivery request failed.', ['http_status' => $httpCode]);
-    }
-    
-    curl_close($ch);
+    app(\App\Services\Notifications\PushNotificationHelperService::class)->sendFcm((array) $fields);
 }
+
 function getAccessToken()
 {
-    $directory = storage_path('app/data');
-    $credentialsFiles = File::glob($directory . '/*.json');
-
-    if (empty($credentialsFiles)) {
-        return null; // No credentials found
-    }
-
-    $client = new Google_Client();
-    if(!isset($client) || empty($client)){
-        return null;
-    }
-    $client->setAuthConfig($credentialsFiles[0]);
-    $client->addScope('https://www.googleapis.com/auth/firebase.messaging');
-
-    try {
-        $token = $client->fetchAccessTokenWithAssertion();
-        return $token['access_token'];
-    } catch (Exception $e) {
-        // In case of any error, return null
-        return null;
-    }
+    return app(\App\Services\Notifications\PushNotificationHelperService::class)->getFirebaseAccessToken();
 }
 
 function formatOffset($offset)
@@ -2083,45 +1823,7 @@ function getDeviceType($request){
 
 function bunnyIngestAndGetM3u8(string $sourceUrl, string $title): ?string
 {
-    $apiKey = env('BUNNY_STREAM_API_KEY');
-    $libraryId = env('BUNNY_VIDEO_KEY');
-    $cdnHost = env('BUNNY_CDN_HOSTNAME');
-    if (!$apiKey || !$libraryId || !$cdnHost) return null;
-
-    $base = 'https://video.bunnycdn.com/library';
-
-    $list = Http::withHeaders([
-        'AccessKey' => $apiKey,
-    ])->get("{$base}/{$libraryId}/videos");
-
-    if ($list->successful()) {
-        $videos = $list->json()['items'] ?? [];
-        foreach ($videos as $video) {
-            if (isset($video['title']) && $video['title'] == $title) {
-                $guid = $video['guid'];
-                return "https://{$cdnHost}/{$guid}/playlist.m3u8";
-            }
-        }
-    }
-
-    $create = Http::withHeaders([
-        'AccessKey' => $apiKey,
-        'Content-Type' => 'application/json',
-    ])->post("{$base}/{$libraryId}/videos", ['title' => $title]);
-
-    if (!$create->successful()) return null;
-    $guid = data_get($create->json(), 'guid');
-    if (!$guid) return null;
-
-    $fetch = Http::withHeaders([
-        'AccessKey' => $apiKey,
-        'Content-Type' => 'application/json',
-    ])->post("{$base}/{$libraryId}/videos/{$guid}/fetch", [
-        'url' => $sourceUrl,
-    ]);
-    if (!$fetch->successful()) return null;
-
-    return "https://{$cdnHost}/{$guid}/playlist.m3u8";
+    return app(\App\Services\Media\BunnyStreamService::class)->ingestAndGetM3u8($sourceUrl, $title);
 }
 
 function formatDateTimeWithTimezone($value, $type = null)
@@ -2166,93 +1868,17 @@ function formatDateTimeWithTimezone($value, $type = null)
  */
 function bunnyDeleteVideo(string $identifier, bool $isGuid = false): bool
 {
-    $apiKey = env('BUNNY_STREAM_API_KEY');
-    $libraryId = env('BUNNY_VIDEO_KEY');
-    
-    if (!$apiKey || !$libraryId) {
-        \Log::warning('Bunny Stream credentials not configured');
-        return false;
-    }
-    
-    $base = 'https://video.bunnycdn.com/library';
-    $videoGuid = null;
-    
-    // If identifier is a title, find the GUID first
-    if (!$isGuid) {
-        $list = Http::withHeaders(['AccessKey' => $apiKey])
-            ->get("{$base}/{$libraryId}/videos");
-        
-        if ($list->successful()) {
-            $videos = $list->json()['items'] ?? [];
-            foreach ($videos as $video) {
-                if (isset($video['title']) && $video['title'] == $identifier) {
-                    $videoGuid = $video['guid'];
-                    break;
-                }
-            }
-        }
-        
-        if (!$videoGuid) {
-            \Log::info('Bunny Stream video was not found.');
-            return false;
-        }
-    } else {
-        $videoGuid = $identifier;
-    }
-    
-    // Delete the video
-    $response = Http::withHeaders(['AccessKey' => $apiKey])
-        ->delete("{$base}/{$libraryId}/videos/{$videoGuid}");
-    
-    if ($response->successful()) {
-        \Log::info('Bunny Stream video deletion succeeded.');
-        return true;
-    } else {
-        \Log::error('Bunny Stream video deletion failed.', ['http_status' => $response->status()]);
-        return false;
-    }
+    return app(\App\Services\Media\BunnyStreamService::class)->deleteVideo($identifier, $isGuid);
 }
 
-/**
- * Extract GUID from Bunny Stream M3U8 URL
- * 
- * @param string $m3u8Url M3U8 URL (e.g., https://cdn.example.com/abc123/playlist.m3u8)
- * @return string|null GUID or null
- */
 function extractBunnyGuid(string $m3u8Url): ?string
 {
-    // Extract GUID from URL pattern: https://{cdn}/{guid}/playlist.m3u8
-    if (preg_match('/\/([a-f0-9\-]{36})\/playlist\.m3u8/i', $m3u8Url, $matches)) {
-        return $matches[1];
-    }
-    return null;
+    return app(\App\Services\Media\BunnyStreamService::class)->extractGuid($m3u8Url);
 }
 
-/**
- * Delete video from Bunny Stream when file is deleted from media library
- * 
- * @param string $fileName The filename to delete
- * @return bool Success status
- */
 function deleteBunnyStreamVideoByFile(string $fileName): bool
 {
-    // Check if Bunny Stream is active
-    if (config('filesystems.active') != 'bunny') {
-        return false;
-    }
-    
-    // Check if file is a video
-    $videoExtensions = ['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'mkv', '3gp', 'm4v', 'mpg', 'mpeg'];
-    $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-    
-    if (!in_array($extension, $videoExtensions)) {
-        return false;
-    }
-    
-    \Log::info('Deleting video from Bunny Stream.');
-    
-    // Delete by filename from Bunny Stream
-    return bunnyDeleteVideo($fileName, false);
+    return app(\App\Services\Media\BunnyStreamService::class)->deleteVideoByFile($fileName);
 }
 
 /**
