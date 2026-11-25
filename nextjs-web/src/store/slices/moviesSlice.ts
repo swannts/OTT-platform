@@ -1,4 +1,5 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createAppAsyncThunk } from '../createAppAsyncThunk';
 import { api, normalizeMediaItem } from '@/lib/api';
 import { MediaItem } from '@/types';
 
@@ -18,11 +19,11 @@ const initialState: MoviesState = {
   error: null,
 };
 
-export const fetchMoviesList = createAsyncThunk<MediaItem[], { page?: number } | undefined>(
+export const fetchMoviesList = createAppAsyncThunk<MediaItem[], { page?: number } | undefined>(
   'movies/fetchMoviesList',
-  async (params = { page: 1 }, { rejectWithValue }) => {
+  async (params = { page: 1 }, { rejectWithValue, signal }) => {
     try {
-      const res = await api.getMovies(params);
+      const res = await api.getMovies(params, signal);
       const list = Array.isArray(res) ? res : res?.data || [];
       return Array.isArray(list) ? list.map(normalizeMediaItem) : [];
     } catch (err: unknown) {
@@ -32,11 +33,11 @@ export const fetchMoviesList = createAsyncThunk<MediaItem[], { page?: number } |
   }
 );
 
-export const fetchMovieDetails = createAsyncThunk<MediaItem, number | string>(
+export const fetchMovieDetails = createAppAsyncThunk<MediaItem, number | string>(
   'movies/fetchMovieDetails',
-  async (id, { rejectWithValue }) => {
+  async (id, { rejectWithValue, signal }) => {
     try {
-      const res = await api.getContentDetails(id, 'movie');
+      const res = await api.getContentDetails(id, 'movie', signal);
       return normalizeMediaItem(res);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to fetch movie details';
@@ -72,7 +73,7 @@ export const moviesSlice = createSlice({
       })
       .addCase(fetchMoviesList.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = (action.payload as string) || 'Failed to fetch movies';
+        state.error = action.payload || action.error.message || 'Failed to fetch movies';
       });
 
     // fetchMovieDetails
@@ -87,7 +88,7 @@ export const moviesSlice = createSlice({
       })
       .addCase(fetchMovieDetails.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = (action.payload as string) || 'Failed to fetch movie details';
+        state.error = action.payload || action.error.message || 'Failed to fetch movie details';
       });
   },
 });
@@ -103,4 +104,3 @@ export const selectCurrentMovie = (state: { movies: MoviesState }) => state.movi
 export const selectMoviesError = (state: { movies: MoviesState }) => state.movies.error;
 
 export default moviesSlice.reducer;
-

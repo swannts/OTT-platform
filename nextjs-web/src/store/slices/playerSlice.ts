@@ -1,4 +1,5 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createAppAsyncThunk } from '../createAppAsyncThunk';
 import { api, normalizeMediaItem } from '@/lib/api';
 import { MediaItem } from '@/types';
 
@@ -20,7 +21,7 @@ const initialState: PlayerState = {
   isLoading: false,
 };
 
-export const loadActiveTrack = createAsyncThunk<MediaItem | null, void>(
+export const loadActiveTrack = createAppAsyncThunk<MediaItem | null, void>(
   'player/loadActiveTrack',
   async (_, { rejectWithValue }) => {
     try {
@@ -42,15 +43,7 @@ export const loadActiveTrack = createAsyncThunk<MediaItem | null, void>(
         return normalizeMediaItem(topList[0]);
       }
 
-      // 3. Fallback default stream preview track when guest/unauthenticated
-      return {
-        id: '01940000-0004-7000-8000-000000000006',
-        name: 'The Message: Desert Journey',
-        type: 'movie',
-        poster_image: 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=400&auto=format&fit=crop&q=80',
-        genres: ['Historical', 'Documentary'],
-        duration: '2h 15m',
-      } as MediaItem;
+      return null;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to load active track';
       return rejectWithValue(message);
@@ -121,4 +114,3 @@ export const selectIsMuted = (state: { player: PlayerState }) => state.player.is
 export const selectPlayerLoading = (state: { player: PlayerState }) => state.player.isLoading;
 
 export default playerSlice.reducer;
-

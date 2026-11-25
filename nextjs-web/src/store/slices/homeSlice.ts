@@ -1,4 +1,5 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createAppAsyncThunk } from '../createAppAsyncThunk';
 import { api, normalizeMediaItem } from '@/lib/api';
 import { MediaItem, LiveChannel, LiveCategory } from '@/types';
 
@@ -29,11 +30,11 @@ const initialState: HomeState = {
 };
 
 // Async Thunks using Redux Thunk
-export const fetchHomeBanners = createAsyncThunk<MediaItem[], void>(
+export const fetchHomeBanners = createAppAsyncThunk<MediaItem[], void>(
   'home/fetchHomeBanners',
-  async (_, { rejectWithValue }) => {
+  async (_, { rejectWithValue, signal }) => {
     try {
-      const res = await api.getBannerData('home');
+      const res = await api.getBannerData('home', signal);
       if (Array.isArray(res) && res.length > 0) {
         return res;
       }
@@ -45,7 +46,7 @@ export const fetchHomeBanners = createAsyncThunk<MediaItem[], void>(
   }
 );
 
-export const fetchDashboardData = createAsyncThunk<
+export const fetchDashboardData = createAppAsyncThunk<
   {
     top10: MediaItem[];
     latestMovies: MediaItem[];
@@ -53,9 +54,9 @@ export const fetchDashboardData = createAsyncThunk<
     payPerView: MediaItem[];
   },
   void
->('home/fetchDashboardData', async (_, { rejectWithValue }) => {
+>('home/fetchDashboardData', async (_, { rejectWithValue, signal }) => {
   try {
-    const dashboard = await api.getDashboard();
+    const dashboard = await api.getDashboard(signal);
     const extractList = (section: unknown): unknown[] => {
       if (!section) return [];
       if (Array.isArray(section)) return section;
@@ -77,11 +78,11 @@ export const fetchDashboardData = createAsyncThunk<
   }
 });
 
-export const fetchLiveChannels = createAsyncThunk<LiveChannel[], void>(
+export const fetchLiveChannels = createAppAsyncThunk<LiveChannel[], void>(
   'home/fetchLiveChannels',
-  async (_, { rejectWithValue }) => {
+  async (_, { rejectWithValue, signal }) => {
     try {
-      const liveData = await api.getLiveTvDashboard();
+      const liveData = await api.getLiveTvDashboard(signal);
       if (liveData?.slider && Array.isArray(liveData.slider) && liveData.slider.length > 0) {
         return liveData.slider;
       }
@@ -96,11 +97,11 @@ export const fetchLiveChannels = createAsyncThunk<LiveChannel[], void>(
   }
 );
 
-export const fetchTvShows = createAsyncThunk<MediaItem[], void>(
+export const fetchTvShows = createAppAsyncThunk<MediaItem[], void>(
   'home/fetchTvShows',
-  async (_, { rejectWithValue }) => {
+  async (_, { rejectWithValue, signal }) => {
     try {
-      const tvData = await api.getTvShows({ page: 1 });
+      const tvData = await api.getTvShows({ page: 1 }, signal);
       const tvList = Array.isArray(tvData) ? tvData : tvData?.data || [];
       return Array.isArray(tvList) ? tvList.map(normalizeMediaItem) : [];
     } catch (err: unknown) {
@@ -110,11 +111,11 @@ export const fetchTvShows = createAsyncThunk<MediaItem[], void>(
   }
 );
 
-export const fetchContinueWatching = createAsyncThunk<MediaItem[], void>(
+export const fetchContinueWatching = createAppAsyncThunk<MediaItem[], void>(
   'home/fetchContinueWatching',
-  async () => {
+  async (_, { signal }) => {
     try {
-      const res = await api.getContinueWatching();
+      const res = await api.getContinueWatching(signal);
       return Array.isArray(res) ? res.map(normalizeMediaItem) : [];
     } catch {
       return [];
@@ -123,7 +124,7 @@ export const fetchContinueWatching = createAsyncThunk<MediaItem[], void>(
 );
 
 // Composite Thunk to load all Home Page content at once
-export const loadAllHomeContent = createAsyncThunk(
+export const loadAllHomeContent = createAppAsyncThunk<void, void>(
   'home/loadAllHomeContent',
   async (_, { dispatch }) => {
     await Promise.allSettled([
@@ -144,27 +145,13 @@ export const homeSlice = createSlice({
       state.error = null;
     },
     setInitialHomeData: (state, action: PayloadAction<Partial<HomeState>>) => {
-      if (action.payload.banners && action.payload.banners.length > 0) {
-        state.banners = action.payload.banners;
-      }
-      if (action.payload.top10 && action.payload.top10.length > 0) {
-        state.top10 = action.payload.top10;
-      }
-      if (action.payload.latestMovies && action.payload.latestMovies.length > 0) {
-        state.latestMovies = action.payload.latestMovies;
-      }
-      if (action.payload.popularMovies && action.payload.popularMovies.length > 0) {
-        state.popularMovies = action.payload.popularMovies;
-      }
-      if (action.payload.payPerView && action.payload.payPerView.length > 0) {
-        state.payPerView = action.payload.payPerView;
-      }
-      if (action.payload.tvShows && action.payload.tvShows.length > 0) {
-        state.tvShows = action.payload.tvShows;
-      }
-      if (action.payload.liveChannels && action.payload.liveChannels.length > 0) {
-        state.liveChannels = action.payload.liveChannels;
-      }
+      if (action.payload.banners !== undefined) state.banners = action.payload.banners;
+      if (action.payload.top10 !== undefined) state.top10 = action.payload.top10;
+      if (action.payload.latestMovies !== undefined) state.latestMovies = action.payload.latestMovies;
+      if (action.payload.popularMovies !== undefined) state.popularMovies = action.payload.popularMovies;
+      if (action.payload.payPerView !== undefined) state.payPerView = action.payload.payPerView;
+      if (action.payload.tvShows !== undefined) state.tvShows = action.payload.tvShows;
+      if (action.payload.liveChannels !== undefined) state.liveChannels = action.payload.liveChannels;
     },
   },
   extraReducers: (builder) => {
@@ -179,36 +166,30 @@ export const homeSlice = createSlice({
       })
       .addCase(loadAllHomeContent.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = (action.payload as string) || 'Failed to load home content';
+        state.error = action.payload || action.error.message || 'Failed to load home content';
       });
 
     // fetchHomeBanners
     builder.addCase(fetchHomeBanners.fulfilled, (state, action: PayloadAction<MediaItem[]>) => {
-      if (action.payload.length > 0) {
-        state.banners = action.payload;
-      }
+      state.banners = action.payload;
     });
 
     // fetchDashboardData
     builder.addCase(fetchDashboardData.fulfilled, (state, action) => {
-      if (action.payload.top10.length > 0) state.top10 = action.payload.top10;
-      if (action.payload.latestMovies.length > 0) state.latestMovies = action.payload.latestMovies;
-      if (action.payload.popularMovies.length > 0) state.popularMovies = action.payload.popularMovies;
-      if (action.payload.payPerView.length > 0) state.payPerView = action.payload.payPerView;
+      state.top10 = action.payload.top10;
+      state.latestMovies = action.payload.latestMovies;
+      state.popularMovies = action.payload.popularMovies;
+      state.payPerView = action.payload.payPerView;
     });
 
     // fetchLiveChannels
     builder.addCase(fetchLiveChannels.fulfilled, (state, action: PayloadAction<LiveChannel[]>) => {
-      if (action.payload.length > 0) {
-        state.liveChannels = action.payload;
-      }
+      state.liveChannels = action.payload;
     });
 
     // fetchTvShows
     builder.addCase(fetchTvShows.fulfilled, (state, action: PayloadAction<MediaItem[]>) => {
-      if (action.payload.length > 0) {
-        state.tvShows = action.payload;
-      }
+      state.tvShows = action.payload;
     });
 
     // fetchContinueWatching

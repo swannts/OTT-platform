@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Provider } from 'react-redux';
-import { store } from '@/store';
+import { makeStore } from '@/store';
 
 export default function StoreProvider({ children }: { children: React.ReactNode }) {
+  const [store] = useState(makeStore);
+
   useEffect(() => {
     // Intercept benign internal media provider lifecycle rejections (e.g. Vidstack/YouTube teardown)
     // so Next.js development overlay does not display false-positive Runtime Errors.

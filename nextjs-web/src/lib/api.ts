@@ -31,6 +31,15 @@ import {
   VideoQuality,
   PlaybackSession,
 } from '@/types';
+import axios from 'axios';
+import { apiHttpClient, ApiRequestError, sessionHttpClient } from '@/lib/http/api-client';
+
+interface ApiRequestOptions {
+  method?: string;
+  body?: string | FormData | null;
+  headers?: HeadersInit;
+  signal?: AbortSignal;
+}
 
 export function normalizeMediaItem(raw: unknown): MediaItem {
   if (!raw || typeof raw !== 'object') {
@@ -90,18 +99,6 @@ export function normalizeMediaItem(raw: unknown): MediaItem {
   };
 }
 
-const getApiBaseUrl = (): string => {
-  // Server-side: use INTERNAL_API_URL or fallback to localhost
-  if (typeof window === 'undefined') {
-    if (process.env.INTERNAL_API_URL) {
-      return process.env.INTERNAL_API_URL;
-    }
-    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
-  }
-  // Browser requests use the same-origin BFF; the bearer credential stays HttpOnly.
-  return '/api/backend';
-};
-
 class ApiClient {
   private currentLocale: string = 'bn';
 
@@ -150,56 +147,60 @@ class ApiClient {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         document.cookie = 'noor_token=; path=/; max-age=0; SameSite=Lax';
-        void fetch('/api/auth/session', { method: 'DELETE', credentials: 'same-origin' });
+        void sessionHttpClient.delete('/api/auth/session').catch(() => undefined);
       } catch {
         // ignore
       }
     }
   }
 
-  private async request<T>(endpoint: string, options: RequestInit & { next?: { revalidate?: number; tags?: string[] } } = {}): Promise<T> {
-    const baseUrl = getApiBaseUrl();
-    const url = `${baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+  private async request<T>(endpoint: string, options: ApiRequestOptions = {}): Promise<T> {
     const token = this.getToken();
     const locale = this.getLocale();
-
     const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+    const headers = Object.fromEntries(new Headers(options.headers).entries());
+    headers.Accept = 'application/json';
+    headers['app-locale'] = locale;
+    headers['Accept-Language'] = locale;
+    if (isFormData) delete headers['Content-Type'];
+    else headers['Content-Type'] ??= 'application/json';
+    if (token) headers.Authorization = `Bearer ${token}`;
 
-    const headers: Record<string, string> = {
-      'Accept': 'application/json',
-      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-      'app-locale': locale,
-      'Accept-Language': locale,
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      ...((options.headers as Record<string, string>) || {}),
-    };
-
-    const res = await fetch(url, {
-      ...options,
-      credentials: typeof window !== 'undefined' ? 'same-origin' : options.credentials,
-      headers,
-    });
-
-    const data = await res.json().catch(() => null);
-
-    if (!res.ok) {
-      if (res.status === 401) {
-        this.removeToken();
+    let data: unknown;
+    try {
+      const response = await apiHttpClient.request<unknown>({
+        url: endpoint,
+        method: options.method || 'GET',
+        data: options.body,
+        headers,
+        signal: options.signal,
+      });
+      data = response.data;
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        if (status === 401) this.removeToken();
+        const responseData = error.response?.data as { message?: unknown; error?: unknown } | undefined;
+        const message =
+          (typeof responseData?.message === 'string' && responseData.message) ||
+          (typeof responseData?.error === 'string' && responseData.error) ||
+          (status ? `Request failed with status ${status}` : error.message || 'Network request failed');
+        throw new ApiRequestError(message, status, error.code);
       }
-      const errorMsg = data?.message || data?.error || `Request failed with status ${res.status}`;
-      throw new Error(errorMsg);
+      throw error;
     }
 
     // If backend returns { status: false, message: '...' }
     if (data && typeof data === 'object' && 'status' in data && data.status === false) {
-      throw new Error(data.message || 'Operation failed');
+      const message = 'message' in data && typeof data.message === 'string' ? data.message : 'Operation failed';
+      throw new ApiRequestError(message);
     }
 
     // Check for standard API response format { status: true, data: ... }
     if (data && typeof data === 'object' && 'data' in data && 'status' in data) {
       const inner = data.data as Record<string, unknown> | null;
       if (inner && typeof inner === 'object' && 'status' in inner && inner.status === false) {
-        throw new Error((inner.message as string) || 'Resource not found');
+        throw new ApiRequestError(typeof inner.message === 'string' ? inner.message : 'Resource not found');
       }
       return data.data as T;
     }
@@ -387,15 +388,10 @@ class ApiClient {
   }
 
   // ── Discovery & Catalog ───────────────────────────────────────────────────
-  async getBannerData(bannerFor: string = 'home'): Promise<MediaItem[]> {
+  async getBannerData(bannerFor: string = 'home', signal?: AbortSignal): Promise<MediaItem[]> {
     const res = await this.request<{ slider?: unknown[]; [key: string]: unknown } | unknown[]>(
       `/v3/banner-data?banner_for=${encodeURIComponent(bannerFor)}`,
-      {
-        next: {
-          revalidate: 3600,
-          tags: [`banner-data-${bannerFor}`],
-        },
-      },
+      { signal }
     );
     const items = (res && !Array.isArray(res) && Array.isArray((res as { slider?: unknown[] }).slider))
       ? (res as { slider: unknown[] }).slider
@@ -403,25 +399,20 @@ class ApiClient {
     return items.map(normalizeMediaItem);
   }
 
-  async getDashboard(): Promise<{ data?: DashboardData } & DashboardData> {
-    return this.request<{ data?: DashboardData } & DashboardData>('/v3/dashboard-detail', {
-      next: {
-        revalidate: 3600,
-        tags: ['dashboard-detail'],
-      },
-    });
+  async getDashboard(signal?: AbortSignal): Promise<{ data?: DashboardData } & DashboardData> {
+    return this.request<{ data?: DashboardData } & DashboardData>('/v3/dashboard-detail', { signal });
   }
 
   async getDashboardDetailData(page: number = 1): Promise<DashboardData> {
     return this.request<DashboardData>(`/v3/dashboard-detail-data?page=${page}`);
   }
 
-  async getMovies(params: { page?: number; genre_id?: number; search?: string } = {}): Promise<{ data?: MediaItem[]; [key: string]: unknown } | MediaItem[]> {
+  async getMovies(params: { page?: number; genre_id?: number; search?: string } = {}, signal?: AbortSignal): Promise<{ data?: MediaItem[]; [key: string]: unknown } | MediaItem[]> {
     const q = new URLSearchParams();
     if (params.page) q.append('page', params.page.toString());
     if (params.genre_id) q.append('genre_id', params.genre_id.toString());
     if (params.search) q.append('search', params.search);
-    return this.request<{ data?: MediaItem[]; [key: string]: unknown } | MediaItem[]>(`/v3/movie-list?${q.toString()}`);
+    return this.request<{ data?: MediaItem[]; [key: string]: unknown } | MediaItem[]>(`/v3/movie-list?${q.toString()}`, { signal });
   }
 
   async getTvShows(params: {
@@ -430,7 +421,7 @@ class ApiClient {
     per_page?: number;
     genre_id?: number;
     search?: string;
-  } = {}): Promise<{
+  } = {}, signal?: AbortSignal): Promise<{
     data?: MediaItem[];
     has_more?: boolean;
     hasMore?: boolean;
@@ -450,11 +441,11 @@ class ApiClient {
       hasMore?: boolean;
       next_cursor?: string | null;
       [key: string]: unknown;
-    } | MediaItem[]>(`/v3/tvshow-list?${q.toString()}`);
+    } | MediaItem[]>(`/v3/tvshow-list?${q.toString()}`, { signal });
   }
 
-  async getContentDetails(id: number | string, type: 'movie' | 'tvshow' | 'episode' | 'video'): Promise<ContentDetails> {
-    const raw = await this.request<Record<string, unknown>>(`/v3/content-details?id=${id}&type=${type}`);
+  async getContentDetails(id: number | string, type: 'movie' | 'tvshow' | 'episode' | 'video', signal?: AbortSignal): Promise<ContentDetails> {
+    const raw = await this.request<Record<string, unknown>>(`/v3/content-details?id=${encodeURIComponent(String(id))}&type=${type}`, { signal });
     if (!raw || raw.status === false) {
       throw new Error('Content not found');
     }
@@ -636,23 +627,18 @@ class ApiClient {
     return this.request<SeoMetadata>('/v3/seo-settings');
   }
 
-  async getEpisodes(tvShowId: number | string, seasonId?: number | string, perPage?: number): Promise<{ data?: Episode[]; [key: string]: unknown } | Episode[]> {
+  async getEpisodes(tvShowId: number | string, seasonId?: number | string, perPage?: number, signal?: AbortSignal): Promise<{ data?: Episode[]; [key: string]: unknown } | Episode[]> {
     const q = new URLSearchParams({
       tv_show_id: tvShowId.toString(),
       tvshow_id: tvShowId.toString(),
     });
     if (seasonId) q.append('season_id', seasonId.toString());
     if (perPage) q.append('per_page', perPage.toString());
-    return this.request<{ data?: Episode[]; [key: string]: unknown } | Episode[]>(`/v3/episode-list?${q.toString()}`);
+    return this.request<{ data?: Episode[]; [key: string]: unknown } | Episode[]>(`/v3/episode-list?${q.toString()}`, { signal });
   }
 
-  async getLiveTvDashboard(): Promise<{ slider: LiveChannel[]; category_data: LiveCategory[] }> {
-    return this.request<{ slider: LiveChannel[]; category_data: LiveCategory[] }>('/v3/livetv-dashboard', {
-      next: {
-        revalidate: 3600,
-        tags: ['livetv-dashboard'],
-      },
-    });
+  async getLiveTvDashboard(signal?: AbortSignal): Promise<{ slider: LiveChannel[]; category_data: LiveCategory[] }> {
+    return this.request<{ slider: LiveChannel[]; category_data: LiveCategory[] }>('/v3/livetv-dashboard', { signal });
   }
 
   async getLiveTvDetails(channelId: number | string): Promise<LiveTvPlaybackDetails> {
@@ -682,8 +668,8 @@ class ApiClient {
     });
   }
 
-  async getContinueWatching(): Promise<MediaItem[]> {
-    return this.request<MediaItem[]>('/v3/continuewatch-list');
+  async getContinueWatching(signal?: AbortSignal): Promise<MediaItem[]> {
+    return this.request<MediaItem[]>('/v3/continuewatch-list', { signal });
   }
 
   async saveContinueWatching(contentId: string | number, type: string, watchedTime: number, totalTime?: number): Promise<{ status: boolean; message?: string }> {

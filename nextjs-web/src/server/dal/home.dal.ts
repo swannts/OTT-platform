@@ -1,3 +1,6 @@
+import 'server-only';
+
+import { unstable_cache } from 'next/cache';
 import { api, normalizeMediaItem } from '@/lib/api';
 import { MediaItem, LiveChannel, LiveCategory } from '@/types';
 
@@ -11,7 +14,7 @@ export interface HomeInitialData {
   liveChannels: LiveChannel[];
 }
 
-export async function getHomeInitialDataDal(): Promise<HomeInitialData> {
+async function loadHomeInitialData(): Promise<HomeInitialData> {
   const result: HomeInitialData = {
     banners: [],
     top10: [],
@@ -100,9 +103,27 @@ export async function getHomeInitialDataDal(): Promise<HomeInitialData> {
       }
       result.liveChannels = unique;
     }
-  } catch (error) {
-    console.error('[DAL] getHomeInitialDataDal error:', error);
+  } catch {
+    // Return the successfully loaded sections and allow the page to render its empty state.
   }
 
   return result;
+}
+
+const getCachedHomeInitialData = unstable_cache(async () => {
+  const data = await loadHomeInitialData();
+  const hasCatalogData = Object.values(data).some((section) => section.length > 0);
+  if (!hasCatalogData) throw new Error('Home catalog is unavailable; skip caching the empty response.');
+  return data;
+}, ['home-initial-data-v1'], {
+  revalidate: 3600,
+  tags: ['home-initial-data', 'dashboard-detail', 'banner-data-home', 'livetv-dashboard'],
+});
+
+export async function getHomeInitialDataDal(): Promise<HomeInitialData> {
+  try {
+    return await getCachedHomeInitialData();
+  } catch {
+    return loadHomeInitialData();
+  }
 }

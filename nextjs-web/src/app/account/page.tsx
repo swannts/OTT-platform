@@ -33,7 +33,7 @@ function AccountDashboardContent() {
   // Auth Guard
   useEffect(() => {
     if (!authLoading && !user) {
-      router.push('/login?redirect=/account');
+      router.replace('/login?redirect=/account');
     }
   }, [user, authLoading, router]);
 
@@ -62,6 +62,8 @@ function AccountDashboardContent() {
     deleteProfile,
     cancelPinVerification,
   } = useMultiProfiles();
+
+  if (!authLoading && !user) return null;
 
   if (authLoading || (accountLoading && !data)) {
     return (

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { MediaItem } from '@/types';
 import { MediaGrid } from '@/components/shared';
@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/ui';
 import { Search } from 'lucide-react';
 
 function SearchPageContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const q = searchParams?.get('q') || '';
 
@@ -45,9 +46,7 @@ function SearchPageContent() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim()) {
-      window.history.pushState({}, '', `/search?q=${encodeURIComponent(query.trim())}`);
-      const event = new PopStateEvent('popstate');
-      window.dispatchEvent(event);
+      router.push(`/search?q=${encodeURIComponent(query.trim())}`);
     }
   };
 
@@ -97,4 +96,3 @@ export default function SearchPage() {
     </Suspense>
   );
 }
-

@@ -1,4 +1,5 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createAppAsyncThunk } from '../createAppAsyncThunk';
 import { api } from '@/lib/api';
 import { User, SubscriptionStatus } from '@/types';
 
@@ -12,13 +13,13 @@ interface AuthState {
 
 const initialState: AuthState = {
   user: null,
-  token: typeof window !== 'undefined' ? localStorage.getItem('token') : null,
+  token: null,
   subscription: null,
   isLoading: false,
   error: null,
 };
 
-export const loginUser = createAsyncThunk<
+export const loginUser = createAppAsyncThunk<
   { user: User; token: string; subscription?: SubscriptionStatus | null },
   { email: string; password: string }
 >('auth/loginUser', async (credentials, { rejectWithValue }) => {
@@ -50,7 +51,7 @@ export const loginUser = createAsyncThunk<
   }
 });
 
-export const logoutUser = createAsyncThunk<void, void>(
+export const logoutUser = createAppAsyncThunk<void, void>(
   'auth/logoutUser',
   async () => {
     try {
@@ -66,7 +67,7 @@ export const logoutUser = createAsyncThunk<void, void>(
   }
 );
 
-export const fetchUserProfile = createAsyncThunk<
+export const fetchUserProfile = createAppAsyncThunk<
   { user: User; subscription?: SubscriptionStatus | null },
   void
 >('auth/fetchUserProfile', async (_, { rejectWithValue }) => {
@@ -111,7 +112,7 @@ export const authSlice = createSlice({
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = (action.payload as string) || 'Authentication failed';
+        state.error = action.payload || action.error.message || 'Authentication failed';
       });
 
     // logoutUser

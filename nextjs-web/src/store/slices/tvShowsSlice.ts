@@ -1,4 +1,5 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createAppAsyncThunk } from '../createAppAsyncThunk';
 import { api, normalizeMediaItem } from '@/lib/api';
 import { MediaItem, Episode } from '@/types';
 
@@ -32,11 +33,11 @@ const initialState: TvShowsState = {
   error: null,
 };
 
-export const fetchTvShowsList = createAsyncThunk<MediaItem[], { page?: number } | undefined>(
+export const fetchTvShowsList = createAppAsyncThunk<MediaItem[], { page?: number } | undefined>(
   'tvShows/fetchTvShowsList',
-  async (params = { page: 1 }, { rejectWithValue }) => {
+  async (params = { page: 1 }, { rejectWithValue, signal }) => {
     try {
-      const res = await api.getTvShows(params);
+      const res = await api.getTvShows(params, signal);
       const list = Array.isArray(res) ? res : res?.data || [];
       return Array.isArray(list) ? list.map(normalizeMediaItem) : [];
     } catch (err: unknown) {
@@ -46,17 +47,17 @@ export const fetchTvShowsList = createAsyncThunk<MediaItem[], { page?: number } 
   }
 );
 
-export const fetchNextTvShowsCursor = createAsyncThunk<
+export const fetchNextTvShowsCursor = createAppAsyncThunk<
   TvShowsCursorPayload,
   { cursor?: string | null; per_page?: number } | undefined
 >(
   'tvShows/fetchNextTvShowsCursor',
-  async (params = {}, { rejectWithValue }) => {
+  async (params = {}, { rejectWithValue, signal }) => {
     try {
       const res = await api.getTvShows({
         cursor: params.cursor,
         per_page: params.per_page || 12,
-      });
+      }, signal);
       const list = Array.isArray(res) ? res : res?.data || [];
       const items = Array.isArray(list) ? list.map(normalizeMediaItem) : [];
       const nextCursor = !Array.isArray(res) && typeof res?.next_cursor === 'string' ? res.next_cursor : null;
@@ -69,11 +70,11 @@ export const fetchNextTvShowsCursor = createAsyncThunk<
   }
 );
 
-export const fetchTvShowDetails = createAsyncThunk<MediaItem, number | string>(
+export const fetchTvShowDetails = createAppAsyncThunk<MediaItem, number | string>(
   'tvShows/fetchTvShowDetails',
-  async (id, { rejectWithValue }) => {
+  async (id, { rejectWithValue, signal }) => {
     try {
-      const res = await api.getContentDetails(id, 'tvshow');
+      const res = await api.getContentDetails(id, 'tvshow', signal);
       return normalizeMediaItem(res);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to fetch TV show details';
@@ -82,11 +83,11 @@ export const fetchTvShowDetails = createAsyncThunk<MediaItem, number | string>(
   }
 );
 
-export const fetchTvShowEpisodes = createAsyncThunk<Episode[], number | string>(
+export const fetchTvShowEpisodes = createAppAsyncThunk<Episode[], number | string>(
   'tvShows/fetchTvShowEpisodes',
-  async (id, { rejectWithValue }) => {
+  async (id, { rejectWithValue, signal }) => {
     try {
-      const res = await api.getEpisodes(id);
+      const res = await api.getEpisodes(id, undefined, undefined, signal);
       const list = Array.isArray(res) ? res : res?.data || [];
       return (list as Episode[]) || [];
     } catch (err: unknown) {
@@ -134,7 +135,7 @@ export const tvShowsSlice = createSlice({
       })
       .addCase(fetchTvShowsList.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = (action.payload as string) || 'Failed to fetch TV series';
+        state.error = action.payload || action.error.message || 'Failed to fetch TV series';
       });
 
     // fetchNextTvShowsCursor
@@ -153,7 +154,7 @@ export const tvShowsSlice = createSlice({
       })
       .addCase(fetchNextTvShowsCursor.rejected, (state, action) => {
         state.isLoadingMore = false;
-        state.error = (action.payload as string) || 'Failed to fetch more TV series';
+        state.error = action.payload || action.error.message || 'Failed to fetch more TV series';
       });
 
     // fetchTvShowDetails
@@ -168,7 +169,7 @@ export const tvShowsSlice = createSlice({
       })
       .addCase(fetchTvShowDetails.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = (action.payload as string) || 'Failed to fetch TV show details';
+        state.error = action.payload || action.error.message || 'Failed to fetch TV show details';
       });
 
     // fetchTvShowEpisodes

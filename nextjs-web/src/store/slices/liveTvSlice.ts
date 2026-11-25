@@ -1,4 +1,5 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createAppAsyncThunk } from '../createAppAsyncThunk';
 import { api } from '@/lib/api';
 import { LiveChannel, LiveCategory } from '@/types';
 
@@ -18,12 +19,12 @@ const initialState: LiveTvState = {
   error: null,
 };
 
-export const fetchLiveTvDashboard = createAsyncThunk<
+export const fetchLiveTvDashboard = createAppAsyncThunk<
   { channels: LiveChannel[]; categories: LiveCategory[] },
   void
->('liveTv/fetchLiveTvDashboard', async (_, { rejectWithValue }) => {
+>('liveTv/fetchLiveTvDashboard', async (_, { rejectWithValue, signal }) => {
   try {
-    const res = await api.getLiveTvDashboard();
+    const res = await api.getLiveTvDashboard(signal);
     const rawChannels: LiveChannel[] = [];
 
     if (res?.slider && Array.isArray(res.slider)) {
@@ -100,7 +101,7 @@ export const liveTvSlice = createSlice({
       })
       .addCase(fetchLiveTvDashboard.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = (action.payload as string) || 'Failed to fetch live channels';
+        state.error = action.payload || action.error.message || 'Failed to fetch live channels';
       });
   },
 });
@@ -116,4 +117,3 @@ export const selectLiveTvLoading = (state: { liveTv: LiveTvState }) => state.liv
 export const selectLiveTvError = (state: { liveTv: LiveTvState }) => state.liveTv.error;
 
 export default liveTvSlice.reducer;
-
