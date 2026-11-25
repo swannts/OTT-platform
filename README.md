@@ -36,7 +36,7 @@ Next.js is the only end-user web frontend. Laravel's public Blade page routes ar
 
 ## Quick Start with Docker (Development Mode)
 
-The root Compose file runs the local development stack: the admin UI, customer Next.js frontend, Laravel API, Go worker, MySQL, Redis, RabbitMQ, and Meilisearch. Flutter is not included.
+The root Compose file runs the local development stack: the admin UI, customer Next.js frontend, Laravel API, Go worker, MySQL (with phpMyAdmin), Redis, RabbitMQ, and Meilisearch. Flutter is not included.
 
 ### 1. Launch All Services
 ```bash
@@ -50,6 +50,7 @@ docker compose up --build -d
 | **Admin UI** | [http://localhost:3032](http://localhost:3032) | Fast Refresh |
 | **Laravel API & CMS** | [http://localhost:8000](http://localhost:8000) | REST API v3 + Admin CMS |
 | **MySQL Database** | `localhost:3306` | DB: `swann`, User: `root`, Password: `swann-local` |
+| **phpMyAdmin** | [http://localhost:8081](http://localhost:8081) | Connects to the Compose MySQL service; sign in with the configured MySQL credentials |
 | **Redis Cache** | `localhost:6379` | Cache & session storage |
 | **RabbitMQ Management** | [http://localhost:15672](http://localhost:15672) | User: `swann`, Password: `swann-local` |
 | **Meilisearch** | [http://localhost:7700](http://localhost:7700) | Full-text search engine |

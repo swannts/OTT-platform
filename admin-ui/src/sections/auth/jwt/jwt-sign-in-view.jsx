@@ -60,14 +60,26 @@ export function JwtSignInView() {
   } = methods;
 
   const onSubmit = handleSubmit(async (data) => {
+    setErrorMsg('');
+
     try {
       await signInWithPassword({ email: data.email, password: data.password });
       await checkUserSession?.();
 
       router.push(paths.dashboard.root);
     } catch (error) {
-      console.error(error);
-      setErrorMsg(error instanceof Error ? error.message : 'Sign in failed.');
+      const status = error?.response?.status;
+      const responseMessage = error?.response?.data?.message;
+      const message =
+        status === 401 || status === 422
+          ? 'Email or password is incorrect, or this account does not have administrator access.'
+          : status === 429
+            ? responseMessage || 'Too many sign-in attempts. Please wait and try again.'
+            : !error?.response
+              ? 'Unable to reach the sign-in service. Check your connection and try again.'
+              : 'We could not sign you in. Please try again.';
+
+      setErrorMsg(message);
     }
   });
 

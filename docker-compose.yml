@@ -141,6 +141,18 @@ services:
       retries: 10
       start_period: 30s
 
+  phpmyadmin:
+    image: phpmyadmin:latest
+    ports:
+      - "127.0.0.1:${PHPMYADMIN_PORT:-8081}:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_ARBITRARY: "0"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
   redis:
     image: redis:7-alpine
     ports:

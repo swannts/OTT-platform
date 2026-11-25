@@ -163,7 +163,23 @@ export function MarketingOperationsPage() {
           <Grid item xs={6} md={2}><Metric label="Email consent" value={dashboard?.email_consents} /></Grid>
           <Grid item xs={6} md={2}><Metric label="Push consent" value={dashboard?.push_consents} /></Grid>
         </Grid>
-        <Card><Tabs value={tab} onChange={(_, value) => setTab(value)} variant="scrollable"><Tab label="Campaign calendar" /><Tab label="Campaign builder" /><Tab label="Audience segments" />{canManageBanners && <Tab label="Homepage banners" />}</Tabs></Card>
+        <Card>
+          <Tabs
+            value={tab}
+            onChange={(_, value) => setTab(value)}
+            variant="standard"
+            sx={{
+              '& .MuiTabs-scroller': { overflowX: 'auto !important' },
+              '& .MuiTabs-flexContainer': { width: 'max-content' },
+              '& .MuiTab-root': { flexShrink: 0 },
+            }}
+          >
+            <Tab label="Campaign calendar" />
+            <Tab label="Campaign builder" />
+            <Tab label="Audience segments" />
+            {canManageBanners && <Tab label="Homepage banners" />}
+          </Tabs>
+        </Card>
 
         {tab === 0 && <Card><CardContent><Typography variant="h6" sx={{ mb: 2 }}>Campaign calendar and approvals</Typography>
           {campaigns.length === 0 ? <Typography color="text.secondary">No campaigns have been created.</Typography> : <Table size="small"><TableHead><TableRow><TableCell>Name</TableCell><TableCell>Type / channel</TableCell><TableCell>Segment</TableCell><TableCell>Status</TableCell><TableCell>Schedule</TableCell><TableCell>Delivery</TableCell><TableCell align="right">Actions</TableCell></TableRow></TableHead><TableBody>{campaigns.map((campaign) => <TableRow key={campaign.id}><TableCell>{campaign.name}</TableCell><TableCell>{campaign.kind}{campaign.channel ? ` · ${campaign.channel}` : ''}</TableCell><TableCell>{campaign.audience_segment}</TableCell><TableCell>{campaign.status}</TableCell><TableCell>{campaign.scheduled_at ? new Date(campaign.scheduled_at).toLocaleString() : '—'}{campaign.expires_at ? ` – ${new Date(campaign.expires_at).toLocaleString()}` : ''}</TableCell><TableCell>{campaign.sent_count ?? 0} / {campaign.recipients_count ?? 0} sent · {campaign.failed_count ?? 0} failed</TableCell><TableCell align="right"><Stack direction="row" justifyContent="flex-end">{['draft', 'rejected'].includes(campaign.status) && <Button size="small" disabled={busy} onClick={() => { setSelected(campaign); setChannel(campaign.channel || 'email'); setAudienceSegment(campaign.audience_segment); setTab(1); }}>Edit</Button>}{campaign.status === 'draft' && <Button size="small" disabled={busy} onClick={() => perform(() => marketingApi.submit(campaign.id), 'Submitted for independent approval.')}>Submit</Button>}{canApprove && campaign.status === 'pending_approval' && <><Button size="small" color="error" disabled={busy} onClick={() => rejectCampaign(campaign)}>Reject</Button><Button size="small" disabled={busy} onClick={() => perform(() => marketingApi.approve(campaign.id), 'Campaign approved.')}>Approve</Button></>}{campaign.status === 'approved' && <Button size="small" disabled={busy} onClick={() => scheduleCampaign(campaign)}>Schedule</Button>}{['scheduled', 'published'].includes(campaign.status) && <Button size="small" disabled={busy} onClick={() => perform(() => marketingApi.pause(campaign.id), 'Campaign deactivated.')}>Deactivate</Button>}{campaign.published_at && <Button size="small" onClick={async () => { try { setAnalytics(await marketingApi.analytics(campaign.id)); } catch (cause) { setError(message(cause)); } }}>Analytics</Button>}</Stack></TableCell></TableRow>)}</TableBody></Table>}

@@ -16,7 +16,7 @@ class AdminPermissionController extends Controller
     {
         abort_unless(ExplicitPermission::allows($request->user(), 'admin.permissions.view'), 403);
 
-        $request->validate(['search' => ['sometimes', 'string', 'max:125'], 'module' => ['sometimes', 'string', 'max:40']]);
+        $request->validate(['search' => ['sometimes', 'nullable', 'string', 'max:125'], 'module' => ['sometimes', 'string', 'max:40']]);
 
         $registered = RbacRegistry::permissions();
         $query = Permission::query()->where('guard_name', 'web')->whereIn('name', array_keys($registered));

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
@@ -38,9 +38,14 @@ export function AuditLogPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const activeFilters = useMemo(
+    () => Object.fromEntries(Object.entries(filters).filter(([, value]) => value.trim() !== '')),
+    [filters]
+  );
+
   const load = useCallback(async () => {
-    return rbacApi.listAuditLogs({ ...filters, page: page + 1, per_page: 25 });
-  }, [filters, page]);
+    return rbacApi.listAuditLogs({ ...activeFilters, page: page + 1, per_page: 25 });
+  }, [activeFilters, page]);
 
   useEffect(() => {
     let active = true;
@@ -68,9 +73,7 @@ export function AuditLogPage() {
     setFilters((current) => ({ ...current, [name]: value }));
     setPage(0);
   };
-  const exportUrl = rbacApi.auditExportUrl(
-    Object.fromEntries(Object.entries(filters).filter(([, value]) => value))
-  );
+  const exportUrl = rbacApi.auditExportUrl(activeFilters);
 
   return (
     <DashboardContent>

@@ -88,6 +88,13 @@ Route::prefix('admin')->group(function () {
         Route::post('logout', [\App\Http\Controllers\API\AdminApiController::class, 'logout']);
         Route::get('dashboard', [\App\Http\Controllers\API\AdminApiController::class, 'dashboard'])->middleware('explicit.permission:admin.dashboard.view');
 
+        Route::get('notifications/counts', [\App\Http\Controllers\API\AdminNotificationsController::class, 'counts']);
+        Route::get('notifications', [\App\Http\Controllers\API\AdminNotificationsController::class, 'index']);
+        Route::post('notifications/mark-all-read', [\App\Http\Controllers\API\AdminNotificationsController::class, 'markAllRead']);
+        Route::patch('notifications/{notification}/read', [\App\Http\Controllers\API\AdminNotificationsController::class, 'markRead']);
+        Route::post('notifications/{notification}/archive', [\App\Http\Controllers\API\AdminNotificationsController::class, 'archive']);
+        Route::post('notifications/{notification}/restore', [\App\Http\Controllers\API\AdminNotificationsController::class, 'restore']);
+
         Route::get('roles', [\App\Http\Controllers\API\AdminRoleManagementController::class, 'index']);
         Route::post('roles', [\App\Http\Controllers\API\AdminRoleManagementController::class, 'store']);
         Route::get('roles/{role}', [\App\Http\Controllers\API\AdminRoleManagementController::class, 'show']);
@@ -242,6 +249,8 @@ Route::middleware(['auth:sanctum', 'checkApiDevice', 'throttle:api'])->group(fun
 
     Route::get('notification-list', [NotificationsController::class, 'notificationList']);
     Route::get('notification-count', [NotificationsController::class, 'notificationCount']);
+    Route::post('notification-mark-all-read', [NotificationsController::class, 'markAllAsRead']);
+    Route::post('notification/{id}/mark-read', [NotificationsController::class, 'markAsRead']);
 
 
     Route::get('gallery-list', [DashboardController::class, 'globalGallery']);

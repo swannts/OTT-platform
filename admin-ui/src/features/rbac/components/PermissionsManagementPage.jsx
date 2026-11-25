@@ -30,8 +30,12 @@ export function PermissionsManagementPage() {
 
   useEffect(() => {
     let active = true;
+    const searchTerm = search.trim();
     rbacApi
-      .listPermissions({ search, module: module === 'all' ? undefined : module })
+      .listPermissions({
+        ...(searchTerm ? { search: searchTerm } : {}),
+        ...(module !== 'all' ? { module } : {}),
+      })
       .then((response) => {
         if (active) {
           setPermissions(response.data || []);

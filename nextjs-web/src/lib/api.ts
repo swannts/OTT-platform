@@ -334,6 +334,20 @@ class ApiClient {
     return this.request<{ data?: NotificationItem[]; notifications?: NotificationItem[]; notification_data?: NotificationItem[]; [key: string]: unknown }>(`/notification-list${markRead ? '?type=mark_as_read' : ''}`);
   }
 
+  async markNotificationRead(id: string | number): Promise<{ message?: string }> {
+    return this.request<{ message?: string }>(`/notification/${encodeURIComponent(String(id))}/mark-read`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  }
+
+  async markAllNotificationsRead(): Promise<{ message?: string }> {
+    return this.request<{ message?: string }>('/notification-mark-all-read', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  }
+
   async deleteNotification(id: string | number): Promise<{ message?: string }> {
     return this.request<{ message?: string }>('/v3/delete-notification', {
       method: 'POST',

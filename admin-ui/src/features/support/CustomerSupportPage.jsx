@@ -167,7 +167,7 @@ export function CustomerSupportPage() {
         <Grid item xs={6} md={3}><Metric label="Median first response (sec)" value={overview?.median_first_response_seconds} /></Grid>
         <Grid item xs={6} md={3}><Metric label="Median resolution (sec)" value={overview?.median_resolution_seconds} /></Grid>
       </Grid>}
-      <Tabs value={tab} onChange={(_, value) => setTab(value)} sx={{ mb: 2 }}>
+      <Tabs value={tab} variant="standard" onChange={(_, value) => setTab(value)} sx={{ mb: 2 }}>
         {canTickets && <Tab label="Ticket inbox" />}{canAccounts && <Tab label="Customer 360°" />}
       </Tabs>
 

@@ -9,6 +9,7 @@ use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\RbacFoundationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Notifications\Notification as BaseNotification;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
@@ -67,6 +68,99 @@ class AdminManagementApiTest extends TestCase
             ->assertOk()
             ->assertJsonStructure(['data', 'meta'])
             ->assertJsonFragment(['name' => 'super-admin']);
+    }
+
+    public function test_user_role_checks_read_the_spatie_role_relationship(): void
+    {
+        $admin = $this->admin->fresh();
+
+        $this->assertSame(['super-admin'], $admin->getRoleNames()->all());
+        $this->assertTrue($admin->hasRole('super-admin'));
+    }
+
+    public function test_admin_can_list_permission_catalog_with_an_empty_search_filter(): void
+    {
+        $this->getJson('/api/admin/permissions?search=')
+            ->assertOk()
+            ->assertJsonStructure(['data', 'groups'])
+            ->assertJsonFragment(['name' => 'admin.permissions.view']);
+    }
+
+    public function test_admin_can_list_audit_logs_with_empty_optional_filters(): void
+    {
+        $this->getJson('/api/admin/audit-logs?actor_id=&action=&resource_id=&from=&to=&page=1&per_page=25')
+            ->assertOk()
+            ->assertJsonStructure(['data', 'meta']);
+    }
+
+    public function test_admin_notifications_are_persisted_scoped_and_can_be_read_archived_and_restored(): void
+    {
+        $this->admin->notify(new class extends BaseNotification
+        {
+            public function via(object $notifiable): array
+            {
+                return ['database'];
+            }
+
+            public function toDatabase(object $notifiable): array
+            {
+                return ['subject' => 'Media processing complete', 'data' => [
+                    'notification_type' => 'transcode_completed',
+                    'message' => 'The source asset is ready.',
+                ]];
+            }
+        });
+
+        $notification = $this->admin->notifications()->firstOrFail();
+
+        $this->getJson('/api/admin/notifications?status=unread')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $notification->id)
+            ->assertJsonPath('data.0.title', 'Media processing complete')
+            ->assertJsonPath('data.0.message', 'The source asset is ready.')
+            ->assertJsonPath('counts.unread', 1);
+        $this->getJson('/api/admin/notifications/counts')
+            ->assertOk()
+            ->assertJsonPath('data.unread', 1);
+
+        $this->patchJson("/api/admin/notifications/{$notification->id}/read")
+            ->assertOk()
+            ->assertJsonStructure(['data' => ['read_at']]);
+        $this->assertNotNull($notification->fresh()->read_at);
+
+        $this->getJson('/api/admin/notifications?status=unread')
+            ->assertOk()
+            ->assertJsonCount(0, 'data')
+            ->assertJsonPath('counts.unread', 0);
+
+        $this->postJson("/api/admin/notifications/{$notification->id}/archive")->assertOk();
+        $this->getJson('/api/admin/notifications?status=archived')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $notification->id)
+            ->assertJsonPath('counts.archived', 1);
+
+        $this->postJson("/api/admin/notifications/{$notification->id}/restore")->assertOk();
+        $this->getJson('/api/admin/notifications?status=all')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $notification->id)
+            ->assertJsonPath('counts.archived', 0);
+
+        $anotherUser = User::factory()->create();
+        $anotherUser->notify(new class extends BaseNotification
+        {
+            public function via(object $notifiable): array
+            {
+                return ['database'];
+            }
+
+            public function toDatabase(object $notifiable): array
+            {
+                return ['subject' => 'Private notice'];
+            }
+        });
+        $otherNotification = $anotherUser->notifications()->firstOrFail();
+
+        $this->patchJson("/api/admin/notifications/{$otherNotification->id}/read")->assertNotFound();
     }
 
     public function test_role_details_cannot_expose_a_customer_role(): void

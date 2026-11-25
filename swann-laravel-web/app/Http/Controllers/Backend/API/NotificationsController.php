@@ -21,19 +21,17 @@ class NotificationsController extends Controller
                 $user->unreadNotifications->markAsRead();
             }
         }
-        $page = 1;
-        $limit = 100;
-        $notifications = $user->notifications->sortByDesc('created_at')->forPage($page, $limit);
-        $all_unread_count = isset($user->unreadNotifications) ? $user->unreadNotifications->count() : 0;
+        $notifications = $user->notifications()->latest()->limit(100)->get();
+        $all_unread_count = $user->unreadNotifications()->count();
         $items = NotificationResource::collection($notifications)->toArray(request());
         $finalData = collect($items)->map(function ($item) {
             $data = $item['data'] ?? [];
             $innerData = $data['data'] ?? [];
+            $type = data_get($innerData, 'notification_type');
 
-            $id = match ($innerData['notification_type']) {
-                'season_add'  => $innerData['tv_show_id'],
-                'episode_add' => $innerData['tv_show_id'], 
-                default       => $innerData['id'] ?? null,
+            $contentId = match ($type) {
+                'season_add', 'episode_add' => data_get($innerData, 'tv_show_id'),
+                default => data_get($innerData, 'id'),
             };
         
             $notifiable_id = $this->getThumbData(
@@ -42,12 +40,18 @@ class NotificationsController extends Controller
             );
         
             return [
-                'id'              => data_get($item, 'notifiable_id'),
                 'notification_id' => data_get($item, 'id'),
+                // Keep the legacy content id for existing API clients.
+                'id'              => data_get($item, 'notifiable_id'),
+                'content_id'      => $contentId,
+                'tv_show_id'      => data_get($innerData, 'tv_show_id'),
+                'title'           => data_get($data, 'subject'),
+                'message'         => data_get($data, 'message', data_get($innerData, 'message')),
+                'notification_type' => $type,
                 'is_already_read' => data_get($item, 'read_at') ? 1 : 0,
         
                 'data' => array_merge([
-                    'id'                => $id,
+                    'id'                => $contentId,
                     'notification_type' => data_get($innerData, 'notification_type'),
                     'subject'           => data_get($data, 'subject'),
                     'description'       => data_get($innerData, 'message'),
@@ -65,6 +69,30 @@ class NotificationsController extends Controller
         ];
 
         return $response;
+    }
+
+    public function markAllAsRead(Request $request)
+    {
+        $user = $request->user();
+        $user->unreadNotifications()->update(['read_at' => now()]);
+
+        return ApiResponse::success([
+            'unread_notification_count' => 0,
+        ], __('messages.mark_read'), 200);
+    }
+
+    public function markAsRead(Request $request, string $id)
+    {
+        $notification = $request->user()->notifications()->whereKey($id)->first();
+        if (!$notification) {
+            return ApiResponse::error(__('messages.notification_not_found'), 404);
+        }
+
+        if (!$notification->read_at) {
+            $notification->markAsRead();
+        }
+
+        return ApiResponse::success(null, __('messages.mark_read'), 200);
     }
 
     public function notificationCount(Request $request)

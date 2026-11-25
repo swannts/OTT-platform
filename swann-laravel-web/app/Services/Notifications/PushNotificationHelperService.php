@@ -4,9 +4,10 @@ namespace App\Services\Notifications;
 
 use App\Models\Setting;
 use App\Models\User;
-use Currency;
+use Modules\Currency\Models\Currency;
 use Exception;
 use Google_Client;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Modules\NotificationTemplate\Models\NotificationTemplate;
@@ -30,8 +31,9 @@ class PushNotificationHelperService
         $mails = json_decode($mailable->to);
         foreach ($mails as $mailTo) {
             $data['type'] = $data['notification_type'];
-            $data['logged_in_user_fullname'] = $data['logged_in_user_fullname'] ?? auth()->user()->full_name ?? '';
-            $data['logged_in_user_role'] = $data['logged_in_user_role'] ?? auth()->user()->user_type ?? '';
+            $user = Auth::user();
+            $data['logged_in_user_fullname'] = $data['logged_in_user_fullname'] ?? $user?->full_name ?? '';
+            $data['logged_in_user_role'] = $data['logged_in_user_role'] ?? $user?->user_type ?? '';
             $data['company_name'] = $data['company_name'] ?? app_name() ?? '';
             $data['company_contact_info'] = $data['company_contact_info'] ?? setting('helpline_number') ?? ''.setting('inquriy_email') ?? '';
             $data['user_id'] = $data['user_id'] ?? '';
@@ -173,7 +175,7 @@ class PushNotificationHelperService
         }
     }
 
-    public function sendPushNotifications(array $data): mixed
+    public function sendPushNotifications(array $data): void
     {
         $heading = '#'.$data['id'].' '.str_replace('_', ' ', $data['name']);
         $content = strip_tags($data['description']);
@@ -225,7 +227,7 @@ class PushNotificationHelperService
             $message['apns']['fcm_options'] = ['image' => $thumbnailImage];
         }
 
-        return $this->sendFcm([
+        $this->sendFcm([
             'message' => $message,
         ]);
     }

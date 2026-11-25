@@ -5,7 +5,6 @@ import { useState } from 'react';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
-import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
@@ -122,19 +121,24 @@ export function ContentLicensingPage() {
           <Typography variant="subtitle1">Find a catalog item</Typography>
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
             <TextField
-              select
               fullWidth
               label="Content type"
               value={contentType}
+              InputProps={{ inputComponent: 'select' }}
+              inputProps={{
+                children: CONTENT_TYPES.map((type) => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                )),
+              }}
               onChange={(event) => {
                 setContentType(event.target.value);
                 setLoadedContentKey('');
                 setStartsAt('');
                 setEndsAt('');
               }}
-            >
-              {CONTENT_TYPES.map((type) => <MenuItem key={type.value} value={type.value}>{type.label}</MenuItem>)}
-            </TextField>
+            />
             <TextField
               fullWidth
               label="Content ID"

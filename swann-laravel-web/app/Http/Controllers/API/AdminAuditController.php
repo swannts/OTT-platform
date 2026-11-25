@@ -64,14 +64,14 @@ class AdminAuditController extends Controller
     private function validateFilters(Request $request): void
     {
         $request->validate([
-            'actor_id' => ['sometimes', 'integer'],
-            'action' => ['sometimes', 'string', 'max:125'],
-            'resource_type' => ['sometimes', 'string', 'max:125'],
-            'resource_id' => ['sometimes', 'string', 'max:64'],
-            'outcome' => ['sometimes', 'in:success,failure'],
-            'from' => ['sometimes', 'date'],
-            'to' => ['sometimes', 'date', 'after_or_equal:from'],
-            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            'actor_id' => ['sometimes', 'nullable', 'integer'],
+            'action' => ['sometimes', 'nullable', 'string', 'max:125'],
+            'resource_type' => ['sometimes', 'nullable', 'string', 'max:125'],
+            'resource_id' => ['sometimes', 'nullable', 'string', 'max:64'],
+            'outcome' => ['sometimes', 'nullable', 'in:success,failure'],
+            'from' => ['sometimes', 'nullable', 'date'],
+            'to' => ['sometimes', 'nullable', 'date', 'after_or_equal:from'],
+            'per_page' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:100'],
         ]);
     }
 

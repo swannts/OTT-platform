@@ -53,7 +53,11 @@ class AccountManagementService
                 Device::where('user_id', $user->id)
                     ->where('sanctum_token_id', $currentToken->getKey())
                     ->delete();
-                $currentToken->delete();
+                if (method_exists($currentToken, 'delete')) {
+                    $currentToken->delete();
+                } elseif (method_exists($currentToken, 'revoke')) {
+                    $currentToken->revoke();
+                }
             }
 
             $user->fill([

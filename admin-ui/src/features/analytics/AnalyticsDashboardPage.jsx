@@ -1,11 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import dayjs from 'dayjs';
 import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
+import Divider from '@mui/material/Divider';
 import Grid from '@mui/material/Grid';
 import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
@@ -13,9 +16,12 @@ import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
+import TableContainer from '@mui/material/TableContainer';
 import TableRow from '@mui/material/TableRow';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { Iconify } from 'src/components/iconify';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { useAuthContext } from 'src/auth/hooks';
 import { hasAnyPermission, hasPermission } from 'src/features/rbac/permissions';
@@ -35,14 +41,35 @@ const errorText = (error) => error?.response?.data?.message || 'The analytics re
 const dateText = (value) => (value ? new Date(value).toLocaleString() : '—');
 
 function Metric({ title, value }) {
-  return <Card><CardContent><Typography variant="body2" color="text.secondary">{title}</Typography><Typography variant="h4">{value ?? '—'}</Typography></CardContent></Card>;
+  return <Card sx={{ height: '100%', border: 1, borderColor: 'divider', boxShadow: 'none' }}>
+    <CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{title}</Typography>
+      <Typography variant="h4" sx={{ fontWeight: 700, letterSpacing: '-0.03em' }}>{value ?? '—'}</Typography>
+    </CardContent>
+  </Card>;
 }
 
 function DataTable({ title, columns, rows, keyField }) {
-  return <Card sx={{ mt: 2 }}><CardContent><Typography variant="h6" sx={{ mb: 1 }}>{title}</Typography>
-    {!rows?.length ? <Typography color="text.secondary">No qualifying data for this period.</Typography> : <Table size="small"><TableHead><TableRow>{columns.map((column) => <TableCell key={column.key}>{column.label}</TableCell>)}</TableRow></TableHead>
-      <TableBody>{rows.map((row, index) => <TableRow key={row[keyField] || `${title}-${index}`}>{columns.map((column) => <TableCell key={column.key}>{row[column.key] ?? '—'}</TableCell>)}</TableRow>)}</TableBody></Table>}
-  </CardContent></Card>;
+  return <Card sx={{ mt: 2, border: 1, borderColor: 'divider', boxShadow: 'none' }}>
+    <CardContent sx={{ p: 0 }}>
+      <Typography variant="subtitle1" sx={{ px: 2.5, py: 2, fontWeight: 650 }}>{title}</Typography>
+      <Divider />
+      {!rows?.length ? <Typography color="text.secondary" sx={{ p: 2.5 }}>No qualifying data for this period.</Typography> :
+        <TableContainer>
+          <Table size="small" sx={{ minWidth: 480 }}>
+            <TableHead><TableRow>{columns.map((column) => <TableCell key={column.key} sx={{ fontWeight: 650, color: 'text.secondary' }}>{column.label}</TableCell>)}</TableRow></TableHead>
+            <TableBody>{rows.map((row, index) => <TableRow hover key={row[keyField] || `${title}-${index}`}>{columns.map((column) => <TableCell key={column.key}>{row[column.key] ?? '—'}</TableCell>)}</TableRow>)}</TableBody>
+          </Table>
+        </TableContainer>}
+    </CardContent>
+  </Card>;
+}
+
+function SectionHeading({ title }) {
+  return <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 3, mb: 1.5 }}>
+    <Box sx={{ width: 4, height: 22, borderRadius: 4, bgcolor: 'primary.main' }} />
+    <Typography variant="h6" sx={{ fontWeight: 700 }}>{title}</Typography>
+  </Stack>;
 }
 
 export function AnalyticsDashboardPage() {
@@ -57,6 +84,8 @@ export function AnalyticsDashboardPage() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const canAccess = hasAnyPermission(user, GROUPS.map((group) => group.permission));
+  const fromDate = from ? dayjs(from) : null;
+  const toDate = to ? dayjs(to) : null;
 
   const loadDashboard = useCallback(async () => {
     const result = await analyticsApi.dashboard({ from, to });
@@ -135,31 +164,66 @@ export function AnalyticsDashboardPage() {
   return <DashboardContent>
     <RbacPageHeader title="OTT analytics" description="Permission-scoped audience, content, subscription, revenue, and playback metrics from the selected date range." />
     {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}{notice && <Alert severity="success" sx={{ mb: 2 }}>{notice}</Alert>}
-    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 2 }}>
-      <TextField label="From" type="date" size="small" value={from} onChange={(e) => { setBusy(true); setFrom(e.target.value); }} InputLabelProps={{ shrink: true }} />
-      <TextField label="To" type="date" size="small" value={to} onChange={(e) => { setBusy(true); setTo(e.target.value); }} InputLabelProps={{ shrink: true }} />
-      <Button variant="contained" disabled={busy} onClick={refresh}>Apply period</Button>
-      <Chip label={data ? `${data.range.from} – ${data.range.to}` : 'Loading metrics'} variant="outlined" />
-    </Stack>
-    {permissions.map((group) => canExport && <Button key={group.key} size="small" onClick={() => download(group.key)} disabled={busy} sx={{ mr: 1, mb: 1 }}>Export {group.label} CSV</Button>)}
+    <Card sx={{ mb: 3, border: 1, borderColor: 'divider', boxShadow: 'none' }}>
+      <CardContent sx={{ p: { xs: 2, md: 2.5 }, '&:last-child': { pb: { xs: 2, md: 2.5 } } }}>
+        <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2.5} justifyContent="space-between" alignItems={{ lg: 'center' }}>
+          <Box>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Reporting period</Typography>
+            <Typography variant="body2" color="text.secondary">Choose a date range to refresh the metrics below.</Typography>
+          </Box>
+          <Stack component="form" onSubmit={(event) => { event.preventDefault(); refresh(); }} direction={{ xs: 'column', sm: 'row' }} spacing={1.25} alignItems={{ sm: 'center' }}>
+            <DatePicker
+              label="From"
+              value={fromDate}
+              maxDate={toDate || undefined}
+              onChange={(value) => { setBusy(true); setFrom(value?.isValid() ? value.format('YYYY-MM-DD') : ''); }}
+              slotProps={{ textField: { size: 'small', sx: { width: { xs: '100%', sm: 170 } } } }}
+            />
+            <DatePicker
+              label="To"
+              value={toDate}
+              minDate={fromDate || undefined}
+              onChange={(value) => { setBusy(true); setTo(value?.isValid() ? value.format('YYYY-MM-DD') : ''); }}
+              slotProps={{ textField: { size: 'small', sx: { width: { xs: '100%', sm: 170 } } } }}
+            />
+            <Button type="submit" variant="contained" disabled={busy} sx={{ minHeight: 40, whiteSpace: 'nowrap' }}>Apply period</Button>
+            <Chip size="small" label={data ? `${data.range.from} – ${data.range.to}` : 'Loading metrics'} variant="outlined" sx={{ alignSelf: { xs: 'flex-start', sm: 'center' } }} />
+          </Stack>
+        </Stack>
+        {canExport && permissions.length > 0 && <>
+          <Divider sx={{ my: 2 }} />
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }}>
+            <Box sx={{ minWidth: 105 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Export data</Typography>
+              <Typography variant="caption" color="text.secondary">CSV files for your access</Typography>
+            </Box>
+            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+              {permissions.map((group) => <Button key={group.key} size="small" variant="outlined" startIcon={<Iconify icon="solar:download-outline" />} onClick={() => download(group.key)} disabled={busy} sx={{ whiteSpace: 'nowrap' }}>
+                {group.label} CSV
+              </Button>)}
+            </Stack>
+          </Stack>
+        </>}
+      </CardContent>
+    </Card>
 
-    {audience && <><Typography variant="h6" sx={{ mt: 2 }}>Audience</Typography><Grid container spacing={2} sx={{ mt: 0.25 }}>
+    {audience && <><SectionHeading title="Audience" /><Grid container spacing={2}>
       <Grid item xs={6} md={3}><Metric title="New accounts" value={audience.new_accounts} /></Grid><Grid item xs={6} md={3}><Metric title="Active accounts" value={audience.active_accounts} /></Grid><Grid item xs={6} md={3}><Metric title="New subscribers" value={audience.new_subscribers} /></Grid>
     </Grid><DataTable title="Audience by country (groups under five are hidden)" columns={[{ key: 'country', label: 'Country code' }, { key: 'accounts', label: 'Active accounts' }]} rows={audience.geography} keyField="country" />
       <DataTable title="Popular search terms (minimum five searches)" columns={[{ key: 'term', label: 'Search term' }, { key: 'searches', label: 'Searches' }]} rows={audience.popular_search_terms} keyField="term" />
     </>}
 
-    {subscriptions && <><Typography variant="h6" sx={{ mt: 3 }}>Subscriptions</Typography><Grid container spacing={2} sx={{ mt: 0.25 }}>
+    {subscriptions && <><SectionHeading title="Subscriptions" /><Grid container spacing={2}>
       <Grid item xs={6} md={3}><Metric title="Active subscriptions" value={subscriptions.active_subscriptions} /></Grid><Grid item xs={6} md={3}><Metric title="Acquired in period" value={subscriptions.acquired_subscriptions} /></Grid><Grid item xs={6} md={3}><Metric title="Churned in period" value={subscriptions.churned_subscriptions} /></Grid><Grid item xs={6} md={3}><Metric title="Trial to paid" value={`${subscriptions.trial_to_paid_percent}%`} /></Grid>
     </Grid><DataTable title="Recurring revenue by currency" columns={[{ key: 'currency', label: 'Currency' }, { key: 'mrr', label: 'MRR' }, { key: 'arr', label: 'ARR' }]} rows={subscriptions.mrr_by_currency} keyField="currency" /></>}
 
-    {content && <><Typography variant="h6" sx={{ mt: 3 }}>Content performance</Typography><Grid container spacing={2} sx={{ mt: 0.25 }}>
+    {content && <><SectionHeading title="Content performance" /><Grid container spacing={2}>
       <Grid item xs={6} md={3}><Metric title="Watch hours" value={content.watch_hours} /></Grid><Grid item xs={6} md={3}><Metric title="Completion rate" value={`${content.completion_rate_percent}%`} /></Grid><Grid item xs={6} md={3}><Metric title="Audience retention proxy" value={`${content.audience_retention_percent}%`} /></Grid>
     </Grid><DataTable title="Popular content" columns={[{ key: 'title', label: 'Title' }, { key: 'type', label: 'Type' }, { key: 'views', label: 'Views' }]} rows={content.popular_content} keyField="content_id" /></>}
 
-    {revenue && <><Typography variant="h6" sx={{ mt: 3 }}>Revenue</Typography><DataTable title="Paid revenue by day and currency" columns={[{ key: 'day', label: 'Day' }, { key: 'currency', label: 'Currency' }, { key: 'payments', label: 'Payments' }, { key: 'gross_amount', label: 'Gross amount' }]} rows={revenue.payment_series} keyField="day" /></>}
+    {revenue && <><SectionHeading title="Revenue" /><DataTable title="Paid revenue by day and currency" columns={[{ key: 'day', label: 'Day' }, { key: 'currency', label: 'Currency' }, { key: 'payments', label: 'Payments' }, { key: 'gross_amount', label: 'Gross amount' }]} rows={revenue.payment_series} keyField="day" /></>}
 
-    {playback && <><Typography variant="h6" sx={{ mt: 3 }}>Playback quality</Typography><Grid container spacing={2} sx={{ mt: 0.25 }}>
+    {playback && <><SectionHeading title="Playback quality" /><Grid container spacing={2}>
       <Grid item xs={6} md={3}><Metric title="Startup failures" value={playback.startup_failures} /></Grid><Grid item xs={6} md={3}><Metric title="Rebuffer events" value={playback.rebuffer_events} /></Grid><Grid item xs={6} md={3}><Metric title="Average startup (ms)" value={playback.average_startup_ms === null ? 'Not collected' : Math.round(playback.average_startup_ms)} /></Grid>
     </Grid><DataTable title="Playback event counts" columns={[{ key: 'event_code', label: 'Event' }, { key: 'occurrences', label: 'Count' }]} rows={playback.event_counts} keyField="event_code" />
       <DataTable title="Selected quality distribution" columns={[{ key: 'quality', label: 'Quality' }, { key: 'occurrences', label: 'Events' }]} rows={playback.quality_distribution} keyField="quality" />

@@ -8,7 +8,7 @@ const MuiTabs = {
    *************************************** */
   defaultProps: {
     textColor: 'inherit',
-    variant: 'scrollable',
+    variant: 'standard',
     allowScrollButtonsMobile: true,
   },
 
