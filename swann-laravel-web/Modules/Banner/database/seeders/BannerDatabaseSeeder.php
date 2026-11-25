@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Storage;
 
 class BannerDatabaseSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\LocalOnlySeeder;
     /**
      * Run the database seeds.
      *
@@ -16,6 +17,8 @@ class BannerDatabaseSeeder extends Seeder
      */
     public function run()
     {
+        $this->ensureLocalOrTestingEnvironment();
+
         Schema::disableForeignKeyConstraints();
         DB::table('banners')->delete();
 

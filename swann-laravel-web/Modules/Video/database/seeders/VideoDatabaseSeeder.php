@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 
 class VideoDatabaseSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\LocalOnlySeeder;
     /**
      * Run the database seeds.
      *
@@ -18,6 +19,8 @@ class VideoDatabaseSeeder extends Seeder
      */
     public function run()
     {
+        $this->ensureLocalOrTestingEnvironment();
+
         Schema::disableForeignKeyConstraints();
 
 

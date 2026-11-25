@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 
 class CurrencyDatabaseSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\LocalOnlySeeder;
     /**
      * Run the database seeds.
      *
@@ -14,6 +15,8 @@ class CurrencyDatabaseSeeder extends Seeder
      */
     public function run()
     {
+        $this->ensureLocalOrTestingEnvironment();
+
 
         \DB::table('currencies')->delete();
 

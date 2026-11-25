@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 
 class ClipsTableSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\LocalOnlySeeder;
     /**
      * Run the database seeds.
      *
@@ -16,6 +17,8 @@ class ClipsTableSeeder extends Seeder
      */
     public function run()
     {
+        $this->ensureLocalOrTestingEnvironment();
+
         Schema::disableForeignKeyConstraints();
         DB::table('clips')->truncate();
 

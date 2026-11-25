@@ -6,6 +6,7 @@ use Illuminate\Database\Seeder;
 
 class LikesTableSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\LocalOnlySeeder;
     /**
      * Auto generated seed file
      *
@@ -13,6 +14,8 @@ class LikesTableSeeder extends Seeder
      */
     public function run()
     {
+        $this->ensureLocalOrTestingEnvironment();
+
         // Clear existing records
 
         \DB::table('likes')->delete();

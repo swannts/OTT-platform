@@ -13,8 +13,11 @@ use Illuminate\Support\Str;
  */
 class BangladeshIslamicContentSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\LocalOnlySeeder;
     public function run(): void
     {
+        $this->ensureLocalOrTestingEnvironment();
+
         Schema::disableForeignKeyConstraints();
 
         foreach ([

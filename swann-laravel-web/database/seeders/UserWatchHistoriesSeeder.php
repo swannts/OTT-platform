@@ -6,8 +6,11 @@ use Illuminate\Database\Seeder;
 
 class UserWatchHistoriesSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\LocalOnlySeeder;
     public function run()
     {
+        $this->ensureLocalOrTestingEnvironment();
+
         // Clear the user_watch_histories table
         \DB::table('user_watch_histories')->delete();
         

@@ -10,9 +10,12 @@ use Illuminate\Support\Facades\Storage;
 
 class GenresDatabaseSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\LocalOnlySeeder;
 
       public function run()
         {
+        $this->ensureLocalOrTestingEnvironment();
+
             Schema::disableForeignKeyConstraints();
 
 

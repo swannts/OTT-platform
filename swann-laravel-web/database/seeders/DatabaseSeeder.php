@@ -2,14 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\Setting;
 use Illuminate\Database\Seeder;
-use Modules\LiveTV\database\seeders\LiveTvCategoryTableSeeder;
-use Modules\LiveTV\database\seeders\LiveTvChannelTableSeeder;
-use Modules\Ad\database\seeders\VastAdsSettingTableSeeder;
-use Modules\Ad\database\seeders\CustomAdsSettingTableSeeder;
-use Database\Seeders\ClipsTableSeeder;
-use Modules\Coupon\database\seeders\CouponDatabaseSeeder;
 
 class DatabaseSeeder extends Seeder
 {
@@ -26,51 +19,10 @@ class DatabaseSeeder extends Seeder
             return;
         }
 
-
-        \Artisan::call('cache:clear');
-        if (env('IS_DUMMY_DATA') == false) {
-
-            $this->call(AuthTableSeeder::class);
-            $this->call(SettingSeeder::class);
-            $this->call(\Modules\World\database\seeders\WorldDatabaseSeeder::class);
-            $this->call(\Modules\Constant\database\seeders\ConstantDatabaseSeeder::class);
-            $this->call(\Modules\Page\database\seeders\PageDatabaseSeeder::class);
-            $this->call(\Modules\Subscriptions\database\seeders\PlanTableSeeder::class);
-            $this->call(\Modules\Subscriptions\database\seeders\PlanlimitationTableSeeder::class);
-            $this->call(\Modules\NotificationTemplate\database\seeders\NotificationTemplateSeeder::class);
-            $this->call(\Modules\Tax\database\seeders\TaxDatabaseSeeder::class);
-            $this->call(\Modules\Currency\database\seeders\CurrencyDatabaseSeeder::class);
-            $this->call(MobileSettingsTableSeeder::class);
-        } else {
-
-
-
-            $this->call(AuthTableSeeder::class);
-            $this->call(SettingSeeder::class);
-            $this->call(UserProfilesSeeder::class);
-            $this->call(\Modules\World\database\seeders\WorldDatabaseSeeder::class);
-            $this->call(\Modules\Constant\database\seeders\ConstantDatabaseSeeder::class);
-            $this->call(\Modules\Page\database\seeders\PageDatabaseSeeder::class);
-            $this->call(\Modules\Subscriptions\database\seeders\PlanTableSeeder::class);
-            $this->call(\Modules\Subscriptions\database\seeders\PlanlimitationTableSeeder::class);
-            $this->call(\Modules\Subscriptions\database\seeders\PlanlimitationMappingTableSeeder::class);
-            $this->call(\Modules\NotificationTemplate\database\seeders\NotificationTemplateSeeder::class);
-            $this->call(\Modules\FAQ\database\seeders\FAQDatabaseSeeder::class);
-            $this->call(\Modules\Tax\database\seeders\TaxDatabaseSeeder::class);
-            $this->call(\Modules\Currency\database\seeders\CurrencyDatabaseSeeder::class);
-            $this->call(MobileSettingsTableSeeder::class);
-            $this->call(\Modules\Onboarding\database\seeders\OnboardingDatabaseSeeder::class);
-            $this->call(\Modules\Coupon\database\seeders\CouponDatabaseSeeder::class);
-            $this->call(\Database\Seeders\BlogSeeder::class);
-            $this->call(\Database\Seeders\IslamicContentSeeder::class);
-
-            \Artisan::call('cache:clear');
-        }
-
-        \Artisan::call('cache:clear');
-        \Artisan::call('storage:link');
-
-        // chmod(storage_path('app/public/avatars'), 0775);
-        // chmod(storage_path('app/public/swann-laravel'), 0775);
+        // The default seeding command must never replace local user, catalog, or
+        // business data with sample fixtures. Run a specific development seeder
+        // explicitly when sample data is needed.
+        $this->call(RbacFoundationSeeder::class);
+        $this->call(LocalAdminBootstrapSeeder::class);
     }
 }

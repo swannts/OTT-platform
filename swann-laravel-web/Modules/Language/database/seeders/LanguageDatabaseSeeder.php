@@ -8,6 +8,8 @@ use Modules\Language\Models\Language;
 
 class LanguageDatabaseSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\LocalOnlySeeder;
+
     /**
      * Run the database seeds.
      *
@@ -15,6 +17,8 @@ class LanguageDatabaseSeeder extends Seeder
      */
     public function run()
     {
+        $this->ensureLocalOrTestingEnvironment();
+
         // Disable foreign key checks!
         DB::statement('SET FOREIGN_KEY_CHECKS=0;');
 

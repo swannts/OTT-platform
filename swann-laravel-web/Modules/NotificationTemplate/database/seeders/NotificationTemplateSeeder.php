@@ -9,6 +9,7 @@ use Modules\NotificationTemplate\Models\NotificationTemplate;
 
 class NotificationTemplateSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\LocalOnlySeeder;
     /**
      * Run the database seeds.
      *
@@ -16,6 +17,8 @@ class NotificationTemplateSeeder extends Seeder
      */
     public function run()
     {
+        $this->ensureLocalOrTestingEnvironment();
+
         // Disable foreign key checks!
         DB::statement('SET FOREIGN_KEY_CHECKS=0;');
         /*

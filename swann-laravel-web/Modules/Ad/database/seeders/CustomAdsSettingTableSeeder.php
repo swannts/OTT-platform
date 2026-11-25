@@ -12,11 +12,14 @@ use Carbon\Carbon;
 
 class CustomAdsSettingTableSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\LocalOnlySeeder;
     /**
      * Run the database seeds.
      */
     public function run(): void
     {
+        $this->ensureLocalOrTestingEnvironment();
+
         Schema::disableForeignKeyConstraints();
         $customads = [
             [

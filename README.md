@@ -68,7 +68,7 @@ docker compose logs -f backend
 # Run database migrations inside the backend container
 docker compose exec backend php artisan migrate
 
-# Seed the local development database
+# Safely seed local RBAC and the optional local administrator
 docker compose exec backend php artisan db:seed
 
 # Stop all services

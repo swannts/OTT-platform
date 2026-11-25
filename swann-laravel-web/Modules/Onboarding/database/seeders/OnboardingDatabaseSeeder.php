@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Storage;
 
 class OnboardingDatabaseSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\LocalOnlySeeder;
     /**
      * Run the database seeds.
      *
@@ -18,6 +19,8 @@ class OnboardingDatabaseSeeder extends Seeder
      */
     public function run()
     {
+        $this->ensureLocalOrTestingEnvironment();
+
         Schema::disableForeignKeyConstraints();
 
         $onboardings = [

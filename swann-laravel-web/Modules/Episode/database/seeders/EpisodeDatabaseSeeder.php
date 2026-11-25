@@ -12,9 +12,12 @@ use Illuminate\Support\Str;
 
 class EpisodeDatabaseSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\LocalOnlySeeder;
 
     public function run()
         {
+        $this->ensureLocalOrTestingEnvironment();
+
             Schema::disableForeignKeyConstraints();
 
             $episodes = [

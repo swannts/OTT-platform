@@ -7,6 +7,7 @@ use Carbon\Carbon;
 
 class StatesTableSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\LocalOnlySeeder;
 
     /**
      * Auto generated seed file
@@ -15,6 +16,8 @@ class StatesTableSeeder extends Seeder
      */
     public function run()
     {
+        $this->ensureLocalOrTestingEnvironment();
+
         
 
         \DB::table('states')->delete();

@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
 
 class LiveTvChannelTableSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\LocalOnlySeeder;
 
     /**
      * Auto generated seed file
@@ -20,6 +21,8 @@ class LiveTvChannelTableSeeder extends Seeder
      */
     public function run()
         {
+        $this->ensureLocalOrTestingEnvironment();
+
             Schema::disableForeignKeyConstraints();
 
 

@@ -8,6 +8,7 @@ use Modules\Constant\Models\Constant;
 
 class MobileSettingsTableSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\LocalOnlySeeder;
 
     /**
      * Auto generated seed file
@@ -16,6 +17,8 @@ class MobileSettingsTableSeeder extends Seeder
      */
     public function run()
     {
+        $this->ensureLocalOrTestingEnvironment();
+
         // Fetch all movie_language IDs from constants table
         $languageIds = Constant::where('type', 'movie_language')
             ->where('status', 1)

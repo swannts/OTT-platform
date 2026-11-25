@@ -10,6 +10,7 @@ use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\ProductionAdminBootstrapSeeder;
 use Database\Seeders\Auth\UserTableSeeder;
 use Database\Seeders\Auth\PermissionRoleTableSeeder;
+use Database\Seeders\LocalDemoCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -31,6 +32,96 @@ class ProductionSeederSafetyTest extends TestCase
         Storage::disk('public')->assertExists('uploads/keep.txt');
         $this->assertDatabaseCount('users', 0);
         $this->assertDatabaseHas('roles', ['name' => 'super-admin']);
+    }
+
+    public function test_local_database_seeder_only_reconciles_rbac_and_optional_admin(): void
+    {
+        config(['app.demo_seed_password' => null]);
+        $user = User::factory()->create(['email' => 'keep-existing@example.test']);
+        $genreId = (string) \Illuminate\Support\Str::uuid();
+        \Illuminate\Support\Facades\DB::table('genres')->insert([
+            'id' => $genreId,
+            'name' => 'Existing catalog row',
+            'slug' => 'existing-catalog-row',
+            'status' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        app(DatabaseSeeder::class)->setContainer(app())->run();
+
+        $this->assertDatabaseCount('users', 1);
+        $this->assertDatabaseHas('users', ['id' => $user->getKey(), 'email' => 'keep-existing@example.test']);
+        $this->assertDatabaseHas('genres', ['id' => $genreId, 'slug' => 'existing-catalog-row']);
+        $this->assertDatabaseMissing('users', ['email' => 'demo@swann.com']);
+        $this->assertDatabaseHas('roles', ['name' => 'super-admin', 'guard_name' => 'web']);
+    }
+
+    public function test_sample_and_reset_seeders_refuse_to_run_in_production(): void
+    {
+        app()->detectEnvironment(static fn (): string => 'production');
+
+        $seeders = [
+            \Database\Seeders\SettingSeeder::class,
+            \Database\Seeders\UserProfilesSeeder::class,
+            \Database\Seeders\UserWatchHistoriesSeeder::class,
+            \Database\Seeders\UserSearchHistoriesSeeder::class,
+            \Database\Seeders\ClipsTableSeeder::class,
+            \Database\Seeders\IslamicContentSeeder::class,
+            \Database\Seeders\BangladeshIslamicContentSeeder::class,
+            \Database\Seeders\BlogSeeder::class,
+            \Database\Seeders\MobileSettingsTableSeeder::class,
+            \Database\Seeders\StaffRolesSeeder::class,
+            \Modules\Ad\database\seeders\CustomAdsSettingTableSeeder::class,
+            \Modules\Ad\database\seeders\VastAdsSettingTableSeeder::class,
+            \Modules\Banner\database\seeders\BannerDatabaseSeeder::class,
+            \Modules\CastCrew\database\seeders\CastCrewDatabaseSeeder::class,
+            \Modules\Entertainment\database\seeders\EntertainmentDatabaseSeeder::class,
+            \Modules\Entertainment\database\seeders\ReviewDatabaseSeeder::class,
+            \Modules\Entertainment\database\seeders\ContinueWatchTableSeeder::class,
+            \Modules\Entertainment\database\seeders\EntertainmentViewsTableSeeder::class,
+            \Modules\Entertainment\database\seeders\LikesTableSeeder::class,
+            \Modules\Entertainment\database\seeders\WatchlistDatabaseSeeder::class,
+            \Modules\Episode\database\seeders\EpisodeDatabaseSeeder::class,
+            \Modules\Genres\database\seeders\GenresDatabaseSeeder::class,
+            \Modules\Onboarding\database\seeders\OnboardingDatabaseSeeder::class,
+            \Modules\Season\database\seeders\SeasonDatabaseSeeder::class,
+            \Modules\Video\database\seeders\VideoDatabaseSeeder::class,
+            \Modules\LiveTV\database\seeders\LiveTvCategoryTableSeeder::class,
+            \Modules\LiveTV\database\seeders\LiveTvChannelTableSeeder::class,
+            \Modules\Subscriptions\database\seeders\PayPerViewSeeder::class,
+            \Modules\Subscriptions\database\seeders\PlanTableSeeder::class,
+            \Modules\Subscriptions\database\seeders\PlanlimitationTableSeeder::class,
+            \Modules\Subscriptions\database\seeders\PlanlimitationMappingTableSeeder::class,
+            \Modules\Subscriptions\database\seeders\SubscriptionsTableSeeder::class,
+            \Modules\Subscriptions\database\seeders\SubscriptionsTransactionsTableSeeder::class,
+            \Modules\Tax\database\seeders\TaxDatabaseSeeder::class,
+            \Modules\Currency\database\seeders\CurrencyDatabaseSeeder::class,
+            \Modules\FAQ\database\seeders\FAQDatabaseSeeder::class,
+            \Modules\Page\database\seeders\PageDatabaseSeeder::class,
+            \Modules\NotificationTemplate\database\seeders\NotificationTemplateSeeder::class,
+            \Modules\World\database\seeders\CountriesTableSeeder::class,
+            \Modules\World\database\seeders\StatesTableSeeder::class,
+            \Modules\World\database\seeders\CitiesTableSeeder::class,
+            \Modules\Coupon\database\seeders\CouponDatabaseSeeder::class,
+            \Modules\Language\database\seeders\LanguageDatabaseSeeder::class,
+        ];
+
+        foreach ($seeders as $seederClass) {
+            try {
+                app($seederClass)->run();
+                $this->fail("{$seederClass} should reject production execution.");
+            } catch (LogicException) {
+                $this->assertTrue(true);
+            }
+        }
+
+        try {
+            app(LocalDemoCatalogSeeder::class)->run();
+            $this->fail('LocalDemoCatalogSeeder should reject production execution.');
+        } catch (\RuntimeException) {
+            $this->assertTrue(true);
+        }
     }
 
     public function test_production_refuses_legacy_permission_truncating_seeders(): void

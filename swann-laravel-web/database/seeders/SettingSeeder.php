@@ -11,11 +11,14 @@ use App\Models\Setting;
 
 class SettingSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\LocalOnlySeeder;
     /**
      * Run the database seeds.
      */
     public function run()
     {
+        $this->ensureLocalOrTestingEnvironment();
+
         // $modules = [];
         // foreach ($modules as $key => $value) {
 

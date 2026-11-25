@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 
 class LiveTvCategoryTableSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\LocalOnlySeeder;
 
     /**
      * Auto generated seed file
@@ -20,6 +21,8 @@ class LiveTvCategoryTableSeeder extends Seeder
 
      public function run()
      {
+        $this->ensureLocalOrTestingEnvironment();
+
          Schema::disableForeignKeyConstraints();
 
 

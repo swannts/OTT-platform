@@ -6,6 +6,7 @@ use Illuminate\Database\Seeder;
 
 class ContinueWatchTableSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\LocalOnlySeeder;
 
     /**
      * Auto generated seed file
@@ -14,6 +15,8 @@ class ContinueWatchTableSeeder extends Seeder
      */
     public function run()
     {
+        $this->ensureLocalOrTestingEnvironment();
+
 
 
         \DB::table('continue_watch')->delete();

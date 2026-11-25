@@ -7,6 +7,7 @@ use Illuminate\Database\Seeder;
 
 class SubscriptionsTableSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\LocalOnlySeeder;
 
     /**
      *
@@ -14,6 +15,8 @@ class SubscriptionsTableSeeder extends Seeder
      */
     public function run()
     {
+        $this->ensureLocalOrTestingEnvironment();
+
         \DB::table('subscriptions')->delete();
 
         $subscriptions = [

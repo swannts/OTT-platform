@@ -6,6 +6,7 @@ use Illuminate\Database\Seeder;
 
 class PlanlimitationMappingTableSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\LocalOnlySeeder;
     /**
      * Auto generated seed file
      *
@@ -13,6 +14,8 @@ class PlanlimitationMappingTableSeeder extends Seeder
      */
     public function run()
     {
+        $this->ensureLocalOrTestingEnvironment();
+
         \DB::table('planlimitation_mapping')->delete();
 
         \DB::table('planlimitation_mapping')->insert([

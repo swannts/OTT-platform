@@ -6,8 +6,11 @@ use Illuminate\Database\Seeder;
 
 class UserSearchHistoriesSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\LocalOnlySeeder;
     public function run()
     {
+        $this->ensureLocalOrTestingEnvironment();
+
         // Clear the user_search_histories table
         \DB::table('user_search_histories')->delete();
         

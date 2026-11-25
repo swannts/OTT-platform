@@ -11,9 +11,12 @@ use Illuminate\Support\Str;
 
 class SeasonDatabaseSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\LocalOnlySeeder;
 
     public function run()
     {
+        $this->ensureLocalOrTestingEnvironment();
+
         Schema::disableForeignKeyConstraints();
         $seasons = [
             [

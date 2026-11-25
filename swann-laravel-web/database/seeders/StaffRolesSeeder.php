@@ -10,11 +10,14 @@ use Illuminate\Support\Facades\Hash;
 
 class StaffRolesSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\LocalOnlySeeder;
     /**
      * Run the database seeds.
      */
     public function run(): void
     {
+        $this->ensureLocalOrTestingEnvironment();
+
         // Reset cached roles and permissions
         \Illuminate\Support\Facades\Cache::forget('roles_cache');
         \Illuminate\Support\Facades\Cache::forget('permissions_cache');

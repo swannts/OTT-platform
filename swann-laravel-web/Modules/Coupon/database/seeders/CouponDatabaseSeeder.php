@@ -8,11 +8,14 @@ use Carbon\Carbon;
 
 class CouponDatabaseSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\LocalOnlySeeder;
     /**
      * Run the database seeds.
      */
     public function run(): void
     {
+        $this->ensureLocalOrTestingEnvironment();
+
         $coupons = [
             [
                 'code' => 'WELCOME20',

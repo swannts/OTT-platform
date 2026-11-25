@@ -16,6 +16,7 @@ use Illuminate\Support\Str;
 
 class EntertainmentDatabaseSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\LocalOnlySeeder;
     /**
      * Run the database seeds.
      *
@@ -23,6 +24,8 @@ class EntertainmentDatabaseSeeder extends Seeder
      */
     public function run()
     {
+        $this->ensureLocalOrTestingEnvironment();
+
         Schema::disableForeignKeyConstraints();
 
         $entertainments = [

@@ -9,6 +9,7 @@ use App\Models\MobileSetting;
 
 class IslamicContentSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\LocalOnlySeeder;
     private function uuidv7(string $type, int $id): string
     {
         $typeCodes = [
@@ -30,6 +31,8 @@ class IslamicContentSeeder extends Seeder
 
     public function run()
     {
+        $this->ensureLocalOrTestingEnvironment();
+
         Schema::disableForeignKeyConstraints();
 
         // 1. Wipe existing dummy entertainment data

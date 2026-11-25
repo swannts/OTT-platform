@@ -8,11 +8,14 @@ use Illuminate\Support\Carbon;
 
 class BlogSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\LocalOnlySeeder;
     /**
      * Run the database seeds.
      */
     public function run(): void
     {
+        $this->ensureLocalOrTestingEnvironment();
+
         $posts = [
             [
                 'title' => 'The Renaissance of Halal Cinema: Storytelling in the Modern Era',

@@ -7,8 +7,11 @@ use Illuminate\Database\Seeder;
 class UserProfilesSeeder extends Seeder
 
 {
+    use \Database\Seeders\Concerns\LocalOnlySeeder;
     public function run()
     {
+        $this->ensureLocalOrTestingEnvironment();
+
         // Clear existing data
         \DB::table('user_profiles')->delete();
         
