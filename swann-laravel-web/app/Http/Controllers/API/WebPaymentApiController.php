@@ -3,11 +3,22 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\API\Payments\CalculatePayPerViewPriceRequest;
+use App\Http\Requests\API\Payments\CalculateSubscriptionPriceRequest;
+use App\Http\Requests\API\Payments\CreateMobilePaymentIntentRequest;
+use App\Http\Requests\API\Payments\ProcessPayPerViewPaymentRequest;
+use App\Http\Requests\API\Payments\ProcessSubscriptionPaymentRequest;
+use App\Http\Requests\API\Payments\ValidateCouponRequest;
+use App\Http\Requests\API\Payments\VerifyMobilePaymentIntentRequest;
+use App\Http\Requests\API\Payments\VerifyPayPerViewPaymentRequest;
+use App\Http\Requests\API\Payments\VerifySubscriptionPaymentRequest;
 use App\Http\Responses\ApiResponse;
 use App\Models\User;
-use App\Models\PaymentDispute;
-use App\Models\RefundRequest;
-use App\Models\VerifiedPayment;
+use App\Services\Payments\CheckoutPricingService;
+use App\Services\Payments\CouponReservationService;
+use App\Services\Payments\PaymentFulfillmentService;
+use App\Services\Payments\PaymentGatewayCheckoutService;
+use App\Services\Payments\ProviderWebhookService;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
@@ -38,6 +49,16 @@ class WebPaymentApiController extends Controller
 {
     use SubscriptionTrait;
 
+    public function __construct(
+        private readonly PlanPricingService $planPricing,
+        private readonly CheckoutPricingService $checkoutPricing,
+        private readonly CouponReservationService $couponReservations,
+        private readonly PaymentFulfillmentService $fulfillment,
+        private readonly PaymentGatewayCheckoutService $gatewayCheckout,
+        private readonly ProviderWebhookService $providerWebhooks,
+    ) {
+    }
+
     /**
      * Get all active subscription plans with full limitations and pricing
      */
@@ -48,9 +69,8 @@ class WebPaymentApiController extends Controller
             ->orderBy('level', 'asc')
             ->get();
 
-        $pricing = app(PlanPricingService::class);
-        $plans->each(function (Plan $plan) use ($pricing, $request): void {
-            $resolved = $pricing->resolve($plan, $request);
+        $plans->each(function (Plan $plan) use ($request): void {
+            $resolved = $this->planPricing->resolve($plan, $request);
             $plan->setAttribute('display_price', $resolved['amount']);
             $plan->setAttribute('display_total_price', $resolved['discounted_amount']);
             $plan->setAttribute('display_currency', $resolved['currency']);
@@ -63,276 +83,41 @@ class WebPaymentApiController extends Controller
     /**
      * Calculate subscription price, applying discount, coupon, and taxes
      */
-    public function calculateSubscriptionPrice(Request $request)
+    public function calculateSubscriptionPrice(CalculateSubscriptionPriceRequest $request)
     {
-        $request->validate([
-            'plan_id' => 'required|exists:plan,id',
-            'coupon_code' => 'nullable|string',
-            'coupon_id' => 'nullable|integer',
-        ]);
-
         $plan = Plan::with('planLimitation')->where('id', $request->plan_id)->where('status', 1)->first();
         if (! $plan) {
             return ApiResponse::error('Selected plan is invalid or inactive.', 404);
         }
 
-        $resolvedPrice = app(PlanPricingService::class)->resolve($plan, $request);
-        $basePrice = $resolvedPrice['amount'];
-        $planDiscountAmount = 0;
-        $decimalPlaces = $resolvedPrice['decimal_places'];
-        if ($plan->discount_percentage > 0) {
-            $planDiscountAmount = round(($basePrice * $plan->discount_percentage) / 100, $decimalPlaces);
-            $basePrice = round($basePrice - $planDiscountAmount, $decimalPlaces);
+        $result = $this->checkoutPricing->calculateSubscription($plan, $request, Auth::id());
+        if (! $result['ok']) {
+            return ApiResponse::error($result['message'], $result['status']);
         }
 
-        $couponDiscountAmount = 0;
-        $couponData = null;
-
-        // Check coupon if provided
-        $couponQuery = Coupon::where('status', 1)
-            ->where(fn ($query) => $query->whereNull('start_date')->orWhereDate('start_date', '<=', today()))
-            ->where(fn ($query) => $query->whereNull('expire_date')->orWhereDate('expire_date', '>=', today()))
-            ->whereHas('CouponPlanMappings', function ($q) use ($plan) {
-                $q->where('subscription_plan_id', $plan->id);
-            });
-
-        if ($request->filled('coupon_code')) {
-            $couponQuery->where('code', $request->coupon_code);
-        } elseif ($request->filled('coupon_id')) {
-            $couponQuery->where('id', $request->coupon_id);
-        }
-
-        $coupon = $couponQuery->first();
-        if ($coupon) {
-            if ($coupon->discount_type === 'fixed' && $resolvedPrice['regional']
-                && $resolvedPrice['currency'] !== strtoupper((string) (GetcurrentCurrency() ?: 'USD'))) {
-                return ApiResponse::error('Fixed-amount coupons are not configured for this regional currency.', 422);
-            }
-            if (!$this->couponUsageAvailable($coupon, Auth::id())) {
-                return ApiResponse::error('This coupon has reached its redemption limit.', 422);
-            }
-            if ($coupon->discount_type === 'fixed') {
-                $couponDiscountAmount = round(min($basePrice, (float) $coupon->discount), $decimalPlaces);
-            } else {
-                $couponDiscountAmount = round(($basePrice * (float) $coupon->discount) / 100, $decimalPlaces);
-            }
-            $couponData = [
-                'id' => $coupon->id,
-                'coupon_code' => $coupon->code,
-                'discount_type' => $coupon->discount_type,
-                'discount' => $coupon->discount,
-                'discount_amount' => round($couponDiscountAmount, $decimalPlaces),
-            ];
-        } elseif ($request->filled('coupon_code')) {
-            return ApiResponse::error('The provided coupon code is invalid or has expired.', 422);
-        }
-
-        $subtotalAfterDiscounts = max(0, round($basePrice - $couponDiscountAmount, $decimalPlaces));
-
-        // Calculate active taxes
-        $taxes = Tax::active()->get();
-        if ($resolvedPrice['regional']
-            && $resolvedPrice['currency'] !== strtoupper((string) (GetcurrentCurrency() ?: 'USD'))
-            && $taxes->contains(static fn ($tax): bool => strtolower((string) $tax->type) === 'fixed')) {
-            return ApiResponse::error('Fixed taxes are not configured for this regional currency.', 422);
-        }
-        $totalTax = 0;
-        $taxBreakdown = [];
-
-        foreach ($taxes as $tax) {
-            $taxAmount = 0;
-            if (strtolower($tax->type) === 'fixed') {
-                $taxAmount = round((float) $tax->value, $decimalPlaces);
-            } else {
-                $taxAmount = round(($subtotalAfterDiscounts * (float) $tax->value) / 100, $decimalPlaces);
-            }
-            $totalTax += $taxAmount;
-            $taxBreakdown[] = [
-                'title' => $tax->title,
-                'type' => $tax->type,
-                'value' => $tax->value,
-                'tax_amount' => round($taxAmount, $decimalPlaces),
-            ];
-        }
-
-        $finalTotal = round($subtotalAfterDiscounts + $totalTax, $decimalPlaces);
-
-        return ApiResponse::success([
-            'plan_id' => $plan->id,
-            'plan_name' => $plan->name,
-            'original_price' => (float) $resolvedPrice['amount'],
-            'pricing_country' => $resolvedPrice['country_code'],
-            'plan_discount_percentage' => (float) $plan->discount_percentage,
-            'plan_discount_amount' => round($planDiscountAmount, $decimalPlaces),
-            'price_after_plan_discount' => round($basePrice, $decimalPlaces),
-            'coupon' => $couponData,
-            'coupon_discount_amount' => round($couponDiscountAmount, $decimalPlaces),
-            'subtotal' => round($subtotalAfterDiscounts, $decimalPlaces),
-            'total_tax' => round($totalTax, $decimalPlaces),
-            'taxes' => $taxBreakdown,
-            'total_amount' => $finalTotal,
-            'currency' => $resolvedPrice['currency'],
-        ], 'Price calculated successfully', 200);
+        return ApiResponse::success($result['data'], 'Price calculated successfully', 200);
     }
 
     /** Create a Stripe PaymentIntent for the authenticated mobile checkout. */
-    public function createMobilePaymentIntent(Request $request)
+    public function createMobilePaymentIntent(CreateMobilePaymentIntentRequest $request)
     {
-        $request->validate([
-            'purchase_type' => 'required|string|in:subscription,pay_per_view',
-            'plan_id' => 'required_if:purchase_type,subscription|nullable|integer',
-            'movie_id' => 'required_if:purchase_type,pay_per_view|nullable|integer',
-            'type' => 'required_if:purchase_type,pay_per_view|nullable|string|in:movie,tvshow,video,episode,season',
-            'coupon_code' => 'nullable|string',
-            'coupon_id' => 'nullable|integer',
-        ]);
-
-        $user = Auth::user();
-        $purchaseType = $request->string('purchase_type')->toString();
-        if ($purchaseType === 'subscription') {
-            $trialPlan = Plan::query()->whereKey($request->integer('plan_id'))->where('status', 1)->first();
-            if ($trialPlan && (int) ($trialPlan->trial_days ?? 0) > 0) {
-                $trial = $this->startEligibleTrial($user, $trialPlan);
-                if (!$trial) {
-                    return ApiResponse::error('This free trial is available only to accounts with no prior subscription.', 409);
-                }
-                return ApiResponse::success([
-                    'purchase_type' => 'subscription',
-                    'is_trial' => true,
-                    'trial_days' => (int) $trialPlan->trial_days,
-                    'subscription' => new SubscriptionResource($trial),
-                ], 'Free trial activated successfully.', 200);
-            }
-        }
-        $pricingRequest = $purchaseType === 'subscription'
-            ? $request
-            : new Request(['movie_id' => $request->integer('movie_id'), 'type' => $request->input('type')]);
-        $pricingResponse = $purchaseType === 'subscription'
-            ? $this->calculateSubscriptionPrice($pricingRequest)
-            : $this->calculatePayPerViewPrice($pricingRequest);
-        $pricing = $pricingResponse->getData(true);
-
-        if (!($pricing['status'] ?? false)) {
-            return ApiResponse::error($pricing['message'] ?? 'Unable to calculate the current price.', 422);
+        $result = $this->gatewayCheckout->createMobilePaymentIntent(Auth::user(), $request);
+        if (! $result['ok']) {
+            return ApiResponse::error($result['message'], $result['status']);
         }
 
-        $pricingData = $pricing['data'];
-        $amount = (float) $pricingData['total_amount'];
-        $currency = strtoupper($pricingData['currency'] ?? GetcurrentCurrency() ?: 'USD');
-        $amountMinor = $this->toMinorUnits($amount, $currency);
-        if ($amountMinor <= 0) {
-            return ApiResponse::error('A payment intent is not required for a zero-cost purchase.', 422);
-        }
-
-        $purchaseId = $purchaseType === 'subscription'
-            ? (int) $request->plan_id
-            : (int) $request->movie_id;
-        $promotionId = $purchaseType === 'subscription' ? (int) ($pricingData['coupon']['id'] ?? 0) : 0;
-        $reservationToken = null;
-        if ($promotionId > 0) {
-            try {
-                $reservationToken = $this->reserveCouponForCheckout($promotionId, (int) $user->id);
-            } catch (\RuntimeException $exception) {
-                return ApiResponse::error($exception->getMessage(), 409);
-            }
-        }
-        $stripe = new StripeClient(GetpaymentMethod('stripe_secretkey'));
-
-        try {
-            $intent = $stripe->paymentIntents->create([
-                'amount' => $amountMinor,
-                'currency' => strtolower($currency),
-                'automatic_payment_methods' => ['enabled' => true],
-                'receipt_email' => $user->email,
-                'metadata' => [
-                    'user_id' => (string) $user->id,
-                    'purchase_type' => $purchaseType,
-                    'purchase_id' => (string) $purchaseId,
-                    'content_type' => (string) $request->input('type', ''),
-                    'promotion_id' => (string) ($promotionId ?: ''),
-                    'coupon_reservation' => (string) ($reservationToken ?? ''),
-                ],
-            ]);
-
-            $this->bindCouponReservation($reservationToken, 'stripe', $intent->id);
-
-            VerifiedPayment::query()->firstOrCreate(
-                ['gateway' => 'stripe', 'provider_reference' => $intent->id],
-                [
-                    'user_id' => $user->id,
-                    'purchase_type' => $purchaseType,
-                    'purchase_id' => $purchaseId,
-                    'amount_minor' => $amountMinor,
-                    'currency' => $currency,
-                ]
-            );
-
-            return ApiResponse::success([
-                'payment_intent_id' => $intent->id,
-                'client_secret' => $intent->client_secret,
-                'publishable_key' => GetpaymentMethod('stripe_publickey'),
-                'amount' => $amountMinor,
-                'currency' => $currency,
-            ], 'Payment intent created.', 200);
-        } catch (Exception $e) {
-            $this->releaseCouponReservation($reservationToken);
-            Log::error('Mobile Stripe payment intent creation failed.', ['exception' => $e::class]);
-            return ApiResponse::error('Unable to start payment. Please try again.', 502);
-        }
+        return ApiResponse::success($result['data'], $result['message'], 200);
     }
 
     /** Verify Stripe directly on the server and fulfill a mobile purchase once. */
-    public function verifyMobilePaymentIntent(Request $request)
+    public function verifyMobilePaymentIntent(VerifyMobilePaymentIntentRequest $request)
     {
-        $request->validate(['payment_intent_id' => 'required|string|max:191']);
-        $user = Auth::user();
-
-        try {
-            $stripe = new StripeClient(GetpaymentMethod('stripe_secretkey'));
-            $intent = $stripe->paymentIntents->retrieve($request->payment_intent_id);
-            $metadata = $intent->metadata;
-            $receipt = VerifiedPayment::query()
-                ->where('gateway', 'stripe')
-                ->where('provider_reference', $intent->id)
-                ->where('user_id', $user->id)
-                ->first();
-
-            if (!$receipt || (string) ($metadata->user_id ?? '') !== (string) $user->id
-                || (string) ($metadata->purchase_type ?? '') !== $receipt->purchase_type
-                || (int) ($metadata->purchase_id ?? 0) !== (int) $receipt->purchase_id
-                || (int) $intent->amount !== (int) $receipt->amount_minor
-                || strtoupper((string) $intent->currency) !== strtoupper($receipt->currency)
-                || $intent->status !== 'succeeded') {
-                return ApiResponse::error('Payment is incomplete or does not match this account and purchase.', 422);
-            }
-
-            $purchase = $this->fulfillVerifiedPayment(
-                'stripe',
-                $intent->id,
-                $user->id,
-                $receipt->purchase_type,
-                (int) $receipt->purchase_id,
-                (int) $receipt->amount_minor,
-                $receipt->currency,
-                !empty($metadata->promotion_id) ? (int) $metadata->promotion_id : null,
-                (string) ($metadata->content_type ?? ''),
-                !empty($metadata->coupon_reservation) ? (string) $metadata->coupon_reservation : null
-            );
-
-            $data = $receipt->purchase_type === 'subscription'
-                ? ['purchase_type' => 'subscription', 'subscription' => new SubscriptionResource($purchase)]
-                : ['purchase_type' => 'pay_per_view', 'ppv' => $purchase];
-
-            return ApiResponse::success($data, 'Payment verified and purchase fulfilled.', 200);
-        } catch (Exception $e) {
-            Log::error('Mobile Stripe payment verification failed.', ['exception' => $e::class]);
-            return ApiResponse::error('Payment verification failed. Please contact support if you were charged.', 400);
+        $result = $this->gatewayCheckout->verifyMobilePaymentIntent(Auth::user(), (string) $request->payment_intent_id);
+        if (! $result['ok']) {
+            return ApiResponse::error($result['message'], $result['status']);
         }
-    }
 
-    private function toMinorUnits(float $amount, string $currency, string $gateway = 'stripe'): int
-    {
-        return (int) round($amount * $this->currencyMultiplier($currency, $gateway));
+        return ApiResponse::success($result['data'], $result['message'], 200);
     }
 
     /** Receive provider-confirmed Stripe payments even if the client disconnects. */
@@ -357,7 +142,7 @@ class WebPaymentApiController extends Controller
         $stripeData = $stripeObject->toArray();
         $providerReference = (string) ($stripeData['payment_intent'] ?? $stripeData['id'] ?? '');
         $eventId = (string) $event->id;
-        if (!$this->beginProviderEvent('stripe', $eventId, (string) $event->type, $providerReference, $request->getContent())) {
+        if (! $this->providerWebhooks->beginEvent('stripe', $eventId, (string) $event->type, $providerReference, $request->getContent())) {
             return response()->json(['received' => true, 'duplicate' => true], 200);
         }
 
@@ -365,7 +150,7 @@ class WebPaymentApiController extends Controller
             $object = $event->data->object;
             if ($event->type === 'payment_intent.succeeded') {
                 $payment = $object->toArray();
-                $this->fulfillStripeWebhookPayment($payment, (string) $payment['id'], (int) ($payment['amount_received'] ?? $payment['amount'] ?? 0));
+                $this->providerWebhooks->fulfillStripeWebhookPayment($payment, (string) $payment['id'], (int) ($payment['amount_received'] ?? $payment['amount'] ?? 0));
             } elseif (in_array($event->type, ['checkout.session.expired', 'payment_intent.canceled'], true)) {
                 $this->releaseCouponReservation((string) ($object->metadata->coupon_reservation ?? '') ?: null);
             } elseif (in_array($event->type, ['checkout.session.completed', 'checkout.session.async_payment_succeeded'], true)) {
@@ -388,21 +173,21 @@ class WebPaymentApiController extends Controller
                         $metadata['purchase_type'] = 'subscription';
                         $metadata['purchase_id'] = $metadata['plan_id'] ?? 0;
                     }
-                    $this->fulfillStripeWebhookPayment([
+                    $this->providerWebhooks->fulfillStripeWebhookPayment([
                         'metadata' => $metadata,
                         'currency' => $session['currency'] ?? '',
                     ], $paymentReference, (int) ($session['amount_total'] ?? 0));
                 }
             } elseif (in_array($event->type, ['refund.created', 'refund.updated', 'refund.failed'], true)) {
-                $this->syncStripeRefundEvent($event->type, $object->toArray());
+                $this->providerWebhooks->syncStripeRefundEvent($event->type, $object->toArray());
             } elseif (in_array($event->type, ['charge.dispute.created', 'charge.dispute.updated', 'charge.dispute.closed'], true)) {
-                $this->syncStripeDisputeEvent($event->type, $object->toArray());
+                $this->providerWebhooks->syncStripeDisputeEvent($event->type, $object->toArray());
             }
 
-            $this->finishProviderEvent('stripe', $eventId, 'processed');
+            $this->providerWebhooks->finishEvent('stripe', $eventId, 'processed');
             return response()->json(['received' => true], 200);
         } catch (Exception $e) {
-            $this->finishProviderEvent('stripe', $eventId, 'failed', $e::class);
+            $this->providerWebhooks->finishEvent('stripe', $eventId, 'failed', $e::class);
             Log::error('Stripe webhook fulfillment failed.', [
                 'event_id' => $event->id,
                 'event_type' => $event->type,
@@ -429,7 +214,7 @@ class WebPaymentApiController extends Controller
                 ?? $event['payload']['refund']['entity']
                 ?? $event['payload']['dispute']['entity'] ?? [];
             $eventId = (string) $request->header('X-Razorpay-Event-Id', hash('sha256', $payload));
-            if (!$this->beginProviderEvent('razorpay', $eventId, $eventType, (string) ($entityForReference['id'] ?? ''), $payload)) {
+            if (! $this->providerWebhooks->beginEvent('razorpay', $eventId, $eventType, (string) ($entityForReference['id'] ?? ''), $payload)) {
                 return response()->json(['received' => true, 'duplicate' => true], 200);
             }
             if (($event['event'] ?? '') === 'payment.failed') {
@@ -441,12 +226,12 @@ class WebPaymentApiController extends Controller
                     $notes = $order['notes'] ?? [];
                     $this->releaseCouponReservation(!empty($notes['coupon_reservation']) ? (string) $notes['coupon_reservation'] : null);
                 }
-                $this->finishProviderEvent('razorpay', $eventId, 'processed');
+                $this->providerWebhooks->finishEvent('razorpay', $eventId, 'processed');
                 return response()->json(['received' => true], 200);
             }
             if (($event['event'] ?? '') !== 'payment.captured') {
-                $this->syncRazorpayFinanceEvent($eventType, $event);
-                $this->finishProviderEvent('razorpay', $eventId, 'processed');
+                $this->providerWebhooks->syncRazorpayFinanceEvent($eventType, $event);
+                $this->providerWebhooks->finishEvent('razorpay', $eventId, 'processed');
                 return response()->json(['received' => true], 200);
             }
 
@@ -495,10 +280,12 @@ class WebPaymentApiController extends Controller
                 !empty($notes['coupon_reservation']) ? (string) $notes['coupon_reservation'] : null
             );
 
-            $this->finishProviderEvent('razorpay', $eventId, 'processed');
+            $this->providerWebhooks->finishEvent('razorpay', $eventId, 'processed');
             return response()->json(['received' => true], 200);
         } catch (Exception $e) {
-            if (isset($eventId)) $this->finishProviderEvent('razorpay', $eventId, 'failed', $e::class);
+            if (isset($eventId)) {
+                $this->providerWebhooks->finishEvent('razorpay', $eventId, 'failed', $e::class);
+            }
             Log::error('Razorpay webhook fulfillment failed.', ['exception' => $e::class]);
             return ApiResponse::error('Razorpay webhook processing failed.', 500);
         }
@@ -521,22 +308,24 @@ class WebPaymentApiController extends Controller
             $data = $event['data'] ?? [];
             $reference = (string) ($data['reference'] ?? $data['transaction']['reference'] ?? '');
             $eventId = $type.':'.(string) (($data['id'] ?? '') ?: ($reference ?: hash('sha256', $payload)));
-            if (!$this->beginProviderEvent('paystack', $eventId, $type, $reference, $payload)) {
+            if (! $this->providerWebhooks->beginEvent('paystack', $eventId, $type, $reference, $payload)) {
                 return response()->json(['received' => true, 'duplicate' => true], 200);
             }
 
             if ($type === 'charge.success') {
-                $this->fulfillPaystackWebhookPayment($data);
+                $this->providerWebhooks->fulfillPaystackWebhookPayment($data);
             } elseif (in_array($type, ['refund.pending', 'refund.processing', 'refund.processed', 'refund.failed', 'refund.needs-attention'], true)) {
-                $this->syncPaystackRefundEvent($type, $data);
+                $this->providerWebhooks->syncPaystackRefundEvent($type, $data);
             } elseif (in_array($type, ['charge.dispute.create', 'charge.dispute.remind', 'charge.dispute.resolve'], true)) {
-                $this->syncPaystackDisputeEvent($type, $data);
+                $this->providerWebhooks->syncPaystackDisputeEvent($type, $data);
             }
 
-            $this->finishProviderEvent('paystack', $eventId, 'processed');
+            $this->providerWebhooks->finishEvent('paystack', $eventId, 'processed');
             return response()->json(['received' => true], 200);
         } catch (Exception $e) {
-            if ($eventId) $this->finishProviderEvent('paystack', $eventId, 'failed', $e::class);
+            if ($eventId) {
+                $this->providerWebhooks->finishEvent('paystack', $eventId, 'failed', $e::class);
+            }
             Log::error('Paystack webhook processing failed.', ['exception' => $e::class]);
             return ApiResponse::error('Paystack webhook processing failed.', 500);
         }
@@ -551,7 +340,7 @@ class WebPaymentApiController extends Controller
         }
 
         try {
-            $result = $this->syncRevenueCatSubscription($user);
+            $result = $this->providerWebhooks->syncRevenueCatSubscription($user);
             return ApiResponse::success($result, 'In-app subscription status synchronized.', 200);
         } catch (Exception $e) {
             Log::error('RevenueCat subscription synchronization failed.', ['exception' => $e::class, 'user_id' => $user->id]);
@@ -594,7 +383,7 @@ class WebPaymentApiController extends Controller
         }
 
         $providerReference = (string) ($event['transaction_id'] ?? $event['original_transaction_id'] ?? '');
-        if (!$this->beginProviderEvent('revenuecat', $eventId, $eventType ?: 'unknown', $providerReference, $request->getContent())) {
+        if (! $this->providerWebhooks->beginEvent('revenuecat', $eventId, $eventType ?: 'unknown', $providerReference, $request->getContent())) {
             return response()->json(['received' => true, 'duplicate' => true], 200);
         }
 
@@ -604,7 +393,7 @@ class WebPaymentApiController extends Controller
                 'CANCELLATION', 'EXPIRATION', 'REFUND', 'REFUND_REVERSED',
                 'SUBSCRIPTION_EXTENDED', 'TRANSFER',
             ], true)) {
-                $this->finishProviderEvent('revenuecat', $eventId, 'processed');
+                $this->providerWebhooks->finishEvent('revenuecat', $eventId, 'processed');
                 return response()->json(['received' => true], 200);
             }
 
@@ -622,151 +411,29 @@ class WebPaymentApiController extends Controller
                 ->unique('id');
 
             foreach ($users as $user) {
-                $this->syncRevenueCatSubscription($user);
+                $this->providerWebhooks->syncRevenueCatSubscription($user);
             }
 
-            $this->finishProviderEvent('revenuecat', $eventId, 'processed');
+            $this->providerWebhooks->finishEvent('revenuecat', $eventId, 'processed');
             return response()->json(['received' => true], 200);
         } catch (Exception $e) {
-            $this->finishProviderEvent('revenuecat', $eventId, 'failed', $e::class);
+            $this->providerWebhooks->finishEvent('revenuecat', $eventId, 'failed', $e::class);
             Log::error('RevenueCat webhook reconciliation failed.', ['event_id' => $eventId, 'exception' => $e::class]);
             return ApiResponse::error('RevenueCat webhook processing failed.', 500);
         }
     }
 
-    private function syncRevenueCatSubscription(User $user): array
-    {
-        $apiKey = (string) config('services.revenuecat.api_key', '');
-        $entitlementId = (string) GetpaymentMethod('iap_entitlement_id');
-        if ($apiKey === '' || $entitlementId === '') {
-            throw new \RuntimeException('RevenueCat API key or entitlement ID is not configured.');
-        }
-
-        $response = Http::withToken($apiKey)
-            ->acceptJson()
-            ->connectTimeout(3)
-            ->timeout(8)
-            ->get('https://api.revenuecat.com/v1/subscribers/' . rawurlencode((string) $user->id));
-
-        if ($response->status() === 404) {
-            return $this->deactivateRevenueCatSubscription($user);
-        }
-        if (!$response->successful()) {
-            throw new \RuntimeException('RevenueCat subscriber lookup failed with HTTP ' . $response->status() . '.');
-        }
-
-        $subscriber = $response->json('subscriber', []);
-        $entitlement = $subscriber['entitlements'][$entitlementId] ?? null;
-        $expiresAt = !empty($entitlement['expires_date']) ? Carbon::parse($entitlement['expires_date']) : null;
-        if (!$entitlement || ($expiresAt && !$expiresAt->isFuture())) {
-            return $this->deactivateRevenueCatSubscription($user);
-        }
-
-        $productIdentifier = (string) ($entitlement['product_identifier'] ?? '');
-        if ($productIdentifier === '') {
-            throw new \RuntimeException('RevenueCat entitlement has no product identifier.');
-        }
-
-        $productBaseId = explode(':', $productIdentifier, 2)[0];
-        $plan = Plan::where('status', 1)
-            ->where(function ($query) use ($productIdentifier, $productBaseId) {
-                $query->where('apple_identifier', $productIdentifier)
-                    ->orWhere('android_identifier', $productIdentifier)
-                    ->orWhere('android_identifier', $productBaseId);
-            })
-            ->first();
-        if (!$plan) {
-            throw new \RuntimeException('No active subscription plan maps to the RevenueCat product.');
-        }
-
-        $expiresKey = $expiresAt?->utc()->format('YmdHis') ?? 'lifetime';
-        $providerReference = 'rc_' . $user->id . '_' . substr(hash('sha256', $productIdentifier . '|' . $expiresKey), 0, 32);
-        $subscription = $this->fulfillVerifiedPayment(
-            'revenuecat', $providerReference, $user->id, 'subscription', (int) $plan->id,
-            0, 'USD'
-        );
-
-        if (!empty($entitlement['purchase_date'])) {
-            $subscription->start_date = Carbon::parse($entitlement['purchase_date']);
-        }
-        $subscription->end_date = $expiresAt;
-        $subscription->save();
-
-        return [
-            'has_active_subscription' => true,
-            'subscription' => new SubscriptionResource($subscription->fresh()),
-        ];
-    }
-
-    private function deactivateRevenueCatSubscription(User $user): array
-    {
-        Subscription::query()
-            ->where('user_id', $user->id)
-            ->where('status', 'active')
-            ->whereHas('subscription_transaction', fn ($query) => $query->whereIn('payment_type', ['in_app_purchase', 'revenuecat']))
-            ->update(['status' => 'inactive']);
-
-        $hasActiveSubscription = Subscription::where('user_id', $user->id)->where('status', 'active')->exists();
-        User::whereKey($user->id)->update(['is_subscribe' => $hasActiveSubscription ? 1 : 0]);
-        Cache::flush();
-
-        $activeSubscription = $hasActiveSubscription
-            ? Subscription::where('user_id', $user->id)->where('status', 'active')->latest('id')->first()
-            : null;
-
-        return [
-            'has_active_subscription' => $activeSubscription !== null,
-            'subscription' => $activeSubscription ? new SubscriptionResource($activeSubscription) : null,
-        ];
-    }
-
-    private function fulfillStripeWebhookPayment(array $payment, string $providerReference, int $amountMinor): void
-    {
-        $metadata = $payment['metadata'] ?? [];
-        $userId = (int) ($metadata['user_id'] ?? 0);
-        $purchaseType = (string) ($metadata['purchase_type'] ?? '');
-        $purchaseId = (int) ($metadata['purchase_id'] ?? 0);
-        $currency = strtoupper((string) ($payment['currency'] ?? ''));
-
-        if ($userId <= 0 || $purchaseId <= 0 || $amountMinor <= 0 || $currency === ''
-            || !in_array($purchaseType, ['subscription', 'pay_per_view'], true)
-            || (isset($metadata['currency']) && strtoupper((string) $metadata['currency']) !== $currency)
-            || (isset($metadata['amount_minor']) && (int) $metadata['amount_minor'] !== $amountMinor)) {
-            throw new \RuntimeException('Stripe payment metadata is incomplete.');
-        }
-
-        $this->fulfillVerifiedPayment(
-            'stripe', $providerReference, $userId, $purchaseType, $purchaseId, $amountMinor,
-            $currency, !empty($metadata['promotion_id']) ? (int) $metadata['promotion_id'] : null,
-            (string) ($metadata['content_type'] ?? ''),
-            !empty($metadata['coupon_reservation']) ? (string) $metadata['coupon_reservation'] : null
-        );
-    }
-
     /**
      * Validate a coupon code for subscription plan or content
      */
-    public function validateCoupon(Request $request)
+    public function validateCoupon(ValidateCouponRequest $request)
     {
-        $request->validate([
-            'coupon_code' => 'required|string',
-            'plan_id' => 'nullable|integer',
-            'content_id' => 'nullable|integer',
-            'content_type' => 'nullable|string',
-        ]);
-
-        $code = trim($request->coupon_code);
-
-        $coupon = Coupon::where('code', $code)
-            ->where('status', 1)
-            ->where(fn ($query) => $query->whereNull('start_date')->orWhereDate('start_date', '<=', today()))
-            ->where(fn ($query) => $query->whereNull('expire_date')->orWhereDate('expire_date', '>=', today()))
-            ->first();
+        $coupon = $this->couponReservations->findActiveCouponByCode($request->coupon_code);
 
         if (! $coupon) {
             return ApiResponse::error('Invalid or expired coupon code.', 404);
         }
-        if (!$this->couponUsageAvailable($coupon, Auth::id())) {
+        if (! $this->couponReservations->isUsageAvailable($coupon, Auth::id())) {
             return ApiResponse::error('This coupon has reached its redemption limit.', 422);
         }
 
@@ -793,15 +460,8 @@ class WebPaymentApiController extends Controller
     /**
      * Process subscription payment and initiate gateway checkout session
      */
-    public function processSubscriptionPayment(Request $request)
+    public function processSubscriptionPayment(ProcessSubscriptionPaymentRequest $request)
     {
-        $request->validate([
-            'plan_id' => 'required|exists:plan,id',
-            'payment_method' => 'required|string|in:stripe,razorpay,paystack,free',
-            'coupon_code' => 'nullable|string',
-            'coupon_id' => 'nullable|integer',
-        ]);
-
         $user = Auth::user();
         $plan = Plan::where('id', $request->plan_id)->where('status', 1)->first();
         if (! $plan) {
@@ -810,9 +470,10 @@ class WebPaymentApiController extends Controller
 
         if ((int) ($plan->trial_days ?? 0) > 0) {
             $trial = $this->startEligibleTrial($user, $plan);
-            if (!$trial) {
+            if (! $trial) {
                 return ApiResponse::error('This free trial is available only to accounts with no prior subscription.', 409);
             }
+
             return ApiResponse::success([
                 'success' => true,
                 'is_trial' => true,
@@ -821,15 +482,12 @@ class WebPaymentApiController extends Controller
             ], 'Free trial activated successfully.', 200);
         }
 
-        // Calculate pricing
-        $calcRequest = $request;
-        $priceCalculation = $this->calculateSubscriptionPrice($calcRequest)->getData(true);
-
-        if (! ($priceCalculation['status'] ?? false)) {
-            return ApiResponse::error($priceCalculation['message'] ?? 'Unable to calculate price.', 400);
+        $pricing = $this->checkoutPricing->calculateSubscription($plan, $request, (int) $user->id);
+        if (! $pricing['ok']) {
+            return ApiResponse::error($pricing['message'], 400);
         }
 
-        $calcData = $priceCalculation['data'];
+        $calcData = $pricing['data'];
         $finalPrice = (float) $calcData['total_amount'];
         $promotionId = $calcData['coupon']['id'] ?? null;
         $paymentMethod = strtolower($request->payment_method);
@@ -869,155 +527,35 @@ class WebPaymentApiController extends Controller
         $frontendUrl = rtrim((string) env('FRONTEND_URL', env('APP_URL')), '/');
         $currency = strtoupper((string) $calcData['currency']);
 
-        switch ($paymentMethod) {
-            case 'stripe':
-                return $this->createStripeSubscriptionSession($plan, $finalPrice, $currency, $user, $promotionId, $frontendUrl, $couponReservationToken);
+        $result = $this->gatewayCheckout->createSubscriptionSession(
+            $paymentMethod,
+            $plan,
+            $finalPrice,
+            $currency,
+            $user,
+            $promotionId,
+            $frontendUrl,
+            $couponReservationToken
+        );
 
-            case 'razorpay':
-                return $this->createRazorpaySubscriptionOrder($plan, $finalPrice, $currency, $user, $promotionId, $frontendUrl, $couponReservationToken);
-
-            case 'paystack':
-                return $this->createPaystackSubscriptionTransaction($plan, $finalPrice, $currency, $user, $promotionId, $frontendUrl, $couponReservationToken);
-
-            case 'paypal':
-                return $this->createPayPalSubscriptionPayment($plan, $finalPrice, $currency, $user, $promotionId, $frontendUrl, $couponReservationToken);
-
-            default:
-                return ApiResponse::error("Payment method [{$paymentMethod}] is not supported for web checkout.", 400);
+        if (! $result['ok']) {
+            return ApiResponse::error($result['message'], $result['status']);
         }
+
+        return ApiResponse::success($result['data'], $result['message'], 200);
     }
 
     /**
      * Verify completed gateway payment and activate subscription
      */
-    public function verifySubscriptionPayment(Request $request)
+    public function verifySubscriptionPayment(VerifySubscriptionPaymentRequest $request)
     {
-        $request->validate([
-            'gateway' => 'required|string|in:stripe,razorpay,paystack',
-            'session_id' => 'required_if:gateway,stripe|nullable|string|max:191',
-            'payment_id' => 'required_if:gateway,razorpay|nullable|string|max:191',
-            'order_id' => 'required_if:gateway,razorpay|nullable|string|max:191',
-            'signature' => 'required_if:gateway,razorpay|nullable|string|max:512',
-            'reference' => 'required_if:gateway,paystack|nullable|string|max:191',
-        ]);
-
-        $user = Auth::user();
-        $gateway = strtolower($request->gateway);
-
-        try {
-            if ($gateway === 'stripe') {
-                $stripe = new StripeClient(GetpaymentMethod('stripe_secretkey'));
-                $session = $stripe->checkout->sessions->retrieve($request->session_id);
-                $metadata = $session->metadata;
-                $expectedCurrency = strtoupper((string) ($metadata->currency ?? (GetcurrentCurrency() ?: 'USD')));
-                $expectedAmount = isset($metadata->amount_minor) ? (int) $metadata->amount_minor : null;
-                if ($session->payment_status !== 'paid'
-                    || (string) ($metadata->user_id ?? '') !== (string) $user->id
-                    || strtoupper((string) $session->currency) !== $expectedCurrency
-                    || ($expectedAmount !== null && (int) $session->amount_total !== $expectedAmount)) {
-                    return ApiResponse::error('Stripe payment is incomplete or does not match this account.', 400);
-                }
-
-                $planId = (int) ($metadata->plan_id ?? 0);
-                $plan = Plan::where('id', $planId)->where('status', 1)->first();
-                if (!$plan) {
-                    return ApiResponse::error('The plan associated with this payment is unavailable.', 404);
-                }
-
-                $transactionId = (string) ($session->payment_intent ?: $session->id);
-                $subscription = $this->fulfillVerifiedPayment(
-                    'stripe', $transactionId, $user->id, 'subscription', $plan->id,
-                    (int) $session->amount_total, strtoupper((string) $session->currency),
-                    !empty($metadata->promotion_id) ? (int) $metadata->promotion_id : null,
-                    null,
-                    !empty($metadata->coupon_reservation) ? (string) $metadata->coupon_reservation : null
-                );
-
-                return ApiResponse::success(['subscription' => new SubscriptionResource($subscription)], 'Subscription activated successfully.', 200);
-            }
-
-            if ($gateway === 'razorpay') {
-                $api = new \Razorpay\Api\Api(GetpaymentMethod('razorpay_publickey'), GetpaymentMethod('razorpay_secretkey'));
-                $api->utility->verifyPaymentSignature([
-                    'razorpay_order_id' => $request->order_id,
-                    'razorpay_payment_id' => $request->payment_id,
-                    'razorpay_signature' => $request->signature,
-                ]);
-
-                $order = $api->order->fetch($request->order_id);
-                $notes = $order['notes'] ?? [];
-                $expectedCurrency = strtoupper((string) ($notes['currency'] ?? (GetcurrentCurrency() ?: 'USD')));
-                $expectedAmount = isset($notes['amount_minor']) ? (int) $notes['amount_minor'] : null;
-                if ((string) ($notes['user_id'] ?? '') !== (string) $user->id
-                    || ($notes['purchase_type'] ?? '') !== 'subscription'
-                    || strtoupper((string) ($order['currency'] ?? '')) !== $expectedCurrency
-                    || ($expectedAmount !== null && (int) ($order['amount'] ?? 0) !== $expectedAmount)) {
-                    return ApiResponse::error('Razorpay order does not belong to this account.', 403);
-                }
-
-                $payment = $api->payment->fetch($request->payment_id);
-                if ($payment->status !== 'captured'
-                    || (string) ($payment->order_id ?? '') !== (string) $request->order_id
-                    || (int) $payment->amount !== (int) ($order['amount'] ?? 0)
-                    || strtoupper((string) $payment->currency) !== strtoupper((string) ($order['currency'] ?? ''))) {
-                    return ApiResponse::error('Razorpay payment is not captured for this order.', 400);
-                }
-
-                $planId = (int) ($notes['plan_id'] ?? 0);
-                if ($request->filled('plan_id') && (int) $request->plan_id !== $planId) {
-                    return ApiResponse::error('Requested plan does not match the paid order.', 422);
-                }
-                $plan = Plan::where('id', $planId)->where('status', 1)->first();
-                if (!$plan) {
-                    return ApiResponse::error('The plan associated with this order is unavailable.', 404);
-                }
-
-                $subscription = $this->fulfillVerifiedPayment(
-                    'razorpay', (string) $payment->id, $user->id, 'subscription', $plan->id,
-                    (int) $payment->amount, strtoupper((string) $payment->currency),
-                    !empty($notes['promotion_id']) ? (int) $notes['promotion_id'] : null,
-                    null,
-                    !empty($notes['coupon_reservation']) ? (string) $notes['coupon_reservation'] : null
-                );
-
-                return ApiResponse::success(['subscription' => new SubscriptionResource($subscription)], 'Subscription activated successfully.', 200);
-            }
-
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . GetpaymentMethod('paystack_secretkey'),
-            ])->get('https://api.paystack.co/transaction/verify/' . urlencode($request->reference));
-            $body = $response->json();
-            $data = $body['data'] ?? [];
-            $metadata = $data['metadata'] ?? [];
-            $expectedCurrency = strtoupper((string) ($metadata['currency'] ?? (GetcurrentCurrency() ?: 'USD')));
-            $expectedAmount = isset($metadata['amount_minor']) ? (int) $metadata['amount_minor'] : null;
-            if (!$response->successful() || !($body['status'] ?? false) || ($data['status'] ?? '') !== 'success'
-                || (string) ($metadata['user_id'] ?? '') !== (string) $user->id
-                || strtolower((string) ($data['customer']['email'] ?? '')) !== strtolower((string) $user->email)
-                || strtoupper((string) ($data['currency'] ?? '')) !== $expectedCurrency
-                || ($expectedAmount !== null && (int) ($data['amount'] ?? 0) !== $expectedAmount)) {
-                return ApiResponse::error('Paystack payment could not be verified for this account.', 400);
-            }
-
-            $planId = (int) ($metadata['plan_id'] ?? 0);
-            $plan = Plan::where('id', $planId)->where('status', 1)->first();
-            if (!$plan) {
-                return ApiResponse::error('The plan associated with this payment is unavailable.', 404);
-            }
-
-            $subscription = $this->fulfillVerifiedPayment(
-                'paystack', (string) $request->reference, $user->id, 'subscription', $plan->id,
-                (int) $data['amount'], strtoupper((string) $data['currency']),
-                !empty($metadata['promotion_id']) ? (int) $metadata['promotion_id'] : null,
-                null,
-                !empty($metadata['coupon_reservation']) ? (string) $metadata['coupon_reservation'] : null
-            );
-
-            return ApiResponse::success(['subscription' => new SubscriptionResource($subscription)], 'Subscription activated successfully.', 200);
-        } catch (Exception $e) {
-            Log::error('Subscription payment verification failed.', ['gateway' => $gateway, 'exception' => $e::class]);
-            return ApiResponse::error('Payment verification failed. Please contact support if you were charged.', 500);
+        $result = $this->gatewayCheckout->verifySubscriptionPayment(Auth::user(), $request->validated());
+        if (! $result['ok']) {
+            return ApiResponse::error($result['message'], $result['status']);
         }
+
+        return ApiResponse::success($result['data'], $result['message'], 200);
     }
 
     /**
@@ -1124,93 +662,32 @@ class WebPaymentApiController extends Controller
     /**
      * Calculate Pay-Per-View rental price for content
      */
-    public function calculatePayPerViewPrice(Request $request)
+    public function calculatePayPerViewPrice(CalculatePayPerViewPriceRequest $request)
     {
-        $request->validate([
-            'movie_id' => 'required|integer',
-            'type' => 'required|string|in:movie,tvshow,video,episode,season',
-            'coupon_code' => 'nullable|string',
-        ]);
-
-        $content = $this->resolveContentModel($request->type, $request->movie_id);
+        $content = $this->checkoutPricing->resolveContentModel($request->type, (int) $request->movie_id);
         if (! $content) {
             return ApiResponse::error('Content not found.', 404);
         }
 
-        $basePrice = (float) ($content->price ?? 0);
-        $discountAmount = 0;
-
-        if (! empty($content->discount_percentage) && $content->discount_percentage > 0) {
-            $discountAmount = ($basePrice * (float) $content->discount_percentage) / 100;
-        }
-
-        $subtotal = max(0, $basePrice - $discountAmount);
-
-        // Taxes
-        $taxes = Tax::active()->get();
-        $totalTax = 0;
-        $taxBreakdown = [];
-
-        foreach ($taxes as $tax) {
-            $taxAmount = 0;
-            if (strtolower($tax->type) === 'fixed') {
-                $taxAmount = (float) $tax->value;
-            } else {
-                $taxAmount = ($subtotal * (float) $tax->value) / 100;
-            }
-            $totalTax += $taxAmount;
-            $taxBreakdown[] = [
-                'title' => $tax->title,
-                'type' => $tax->type,
-                'value' => $tax->value,
-                'tax_amount' => round($taxAmount, 2),
-            ];
-        }
-
-        $finalTotal = round($subtotal + $totalTax, 2);
-
-        return ApiResponse::success([
-            'content_id' => $content->id,
-            'content_title' => $content->name ?? $content->title ?? 'Video',
-            'content_type' => $request->type,
-            'available_for_days' => (int) ($content->available_for ?? 2),
-            'access_duration_days' => (int) ($content->access_duration ?? 2),
-            'original_price' => $basePrice,
-            'discount_amount' => round($discountAmount, 2),
-            'subtotal' => round($subtotal, 2),
-            'total_tax' => round($totalTax, 2),
-            'taxes' => $taxBreakdown,
-            'total_amount' => $finalTotal,
-            'currency' => GetcurrentCurrency() ?: 'USD',
-        ], 'Pay-per-view price calculated successfully.', 200);
+        return ApiResponse::success(
+            $this->checkoutPricing->calculatePayPerView($content, $request->type),
+            'Pay-per-view price calculated successfully.',
+            200
+        );
     }
 
     /**
      * Process Pay-Per-View checkout session
      */
-    public function processPayPerViewPayment(Request $request)
+    public function processPayPerViewPayment(ProcessPayPerViewPaymentRequest $request)
     {
-        $request->validate([
-            'movie_id' => 'required|integer',
-            'type' => 'required|string|in:movie,tvshow,video,episode',
-            'payment_method' => 'required|string|in:stripe,razorpay,free',
-        ]);
-
         $user = Auth::user();
-        $content = $this->resolveContentModel($request->type, $request->movie_id);
-        if (!$content) {
+        $content = $this->checkoutPricing->resolveContentModel($request->type, (int) $request->movie_id);
+        if (! $content) {
             return ApiResponse::error('Content not found.', 404);
         }
 
-        $pricing = $this->calculatePayPerViewPrice(new Request([
-            'movie_id' => $content->id,
-            'type' => $request->type,
-        ]))->getData(true);
-        if (!($pricing['status'] ?? false)) {
-            return ApiResponse::error($pricing['message'] ?? 'Unable to calculate the current price.', 422);
-        }
-
-        $priceData = $pricing['data'];
+        $priceData = $this->checkoutPricing->calculatePayPerView($content, $request->type);
         $finalPrice = (float) $priceData['total_amount'];
         $currency = strtoupper($priceData['currency'] ?? GetcurrentCurrency() ?: 'USD');
         $paymentMethod = strtolower($request->payment_method);
@@ -1224,148 +701,32 @@ class WebPaymentApiController extends Controller
         }
 
         $frontendUrl = rtrim((string) env('FRONTEND_URL', env('APP_URL')), '/');
-        $amountMinor = $this->toMinorUnits($finalPrice, $currency, $paymentMethod);
+        $result = $this->gatewayCheckout->createPayPerViewSession(
+            $paymentMethod,
+            $content,
+            $request->type,
+            $finalPrice,
+            $currency,
+            $user,
+            $frontendUrl
+        );
 
-        if ($paymentMethod === 'stripe') {
-            try {
-                $stripe = new StripeClient(GetpaymentMethod('stripe_secretkey'));
-                $checkoutSession = $stripe->checkout->sessions->create([
-                    'payment_method_types' => ['card'],
-                    'customer_email' => $user->email,
-                    'line_items' => [[
-                        'price_data' => [
-                            'currency' => strtolower($currency),
-                            'product_data' => ['name' => 'Pay-Per-View: ' . ($content->name ?? 'Content')],
-                            'unit_amount' => $amountMinor,
-                        ],
-                        'quantity' => 1,
-                    ]],
-                    'mode' => 'payment',
-                    'metadata' => [
-                        'movie_id' => (string) $content->id,
-                        'type' => $request->type,
-                        'is_ppv' => '1',
-                        'user_id' => (string) $user->id,
-                    ],
-                    'success_url' => "{$frontendUrl}/payment-success?gateway=stripe&session_id={CHECKOUT_SESSION_ID}&is_ppv=1",
-                    'cancel_url' => "{$frontendUrl}/movies",
-                ]);
-
-                return ApiResponse::success([
-                    'redirect_url' => $checkoutSession->url,
-                    'session_id' => $checkoutSession->id,
-                ], 'Stripe checkout initiated.', 200);
-            } catch (Exception $e) {
-                Log::error('Stripe PPV checkout creation failed.', ['exception' => $e::class]);
-                return ApiResponse::error('Unable to start payment. Please try again.', 502);
-            }
+        if (! $result['ok']) {
+            return ApiResponse::error($result['message'], $result['status']);
         }
 
-        try {
-            $razorpayKey = GetpaymentMethod('razorpay_publickey');
-            $api = new \Razorpay\Api\Api($razorpayKey, GetpaymentMethod('razorpay_secretkey'));
-            $order = $api->order->create([
-                'receipt' => 'ppv_' . bin2hex(random_bytes(12)),
-                'amount' => $amountMinor,
-                'currency' => $currency,
-                'payment_capture' => 1,
-                'notes' => [
-                    'purchase_type' => 'pay_per_view',
-                    'user_id' => (string) $user->id,
-                    'content_id' => (string) $content->id,
-                    'content_type' => $request->type,
-                ],
-            ]);
-
-            return ApiResponse::success([
-                'key' => $razorpayKey,
-                'amount' => $amountMinor,
-                'currency' => $currency,
-                'name' => config('app.name'),
-                'description' => 'Rental: ' . ($content->name ?? 'Content'),
-                'order_id' => $order['id'],
-                'prefill' => ['name' => $user->name, 'email' => $user->email, 'contact' => $user->phone ?? ''],
-            ], 'Razorpay order created successfully.', 200);
-        } catch (Exception $e) {
-            Log::error('Razorpay PPV order creation failed.', ['exception' => $e::class]);
-            return ApiResponse::error('Unable to start payment. Please try again.', 502);
-        }
+        return ApiResponse::success($result['data'], $result['message'], 200);
     }
 
     /** Verify and fulfill a PPV purchase from the provider record. */
-    public function verifyPayPerViewPayment(Request $request)
+    public function verifyPayPerViewPayment(VerifyPayPerViewPaymentRequest $request)
     {
-        $request->validate([
-            'gateway' => 'required|string|in:stripe,razorpay',
-            'session_id' => 'required_if:gateway,stripe|nullable|string|max:191',
-            'payment_id' => 'required_if:gateway,razorpay|nullable|string|max:191',
-            'order_id' => 'required_if:gateway,razorpay|nullable|string|max:191',
-            'signature' => 'required_if:gateway,razorpay|nullable|string|max:512',
-        ]);
-
-        $user = Auth::user();
-        try {
-            if ($request->gateway === 'stripe') {
-                $stripe = new StripeClient(GetpaymentMethod('stripe_secretkey'));
-                $session = $stripe->checkout->sessions->retrieve($request->session_id);
-                $metadata = $session->metadata;
-                if ($session->payment_status !== 'paid' || (string) ($metadata->is_ppv ?? '') !== '1'
-                    || (string) ($metadata->user_id ?? '') !== (string) $user->id
-                    || strtoupper((string) $session->currency) !== strtoupper(GetcurrentCurrency() ?: 'USD')) {
-                    return ApiResponse::error('Payment is incomplete or does not match this account.', 400);
-                }
-
-                $contentId = (int) ($metadata->movie_id ?? 0);
-                $contentType = (string) ($metadata->type ?? '');
-                $content = $this->resolveContentModel($contentType, $contentId);
-                if (!$content) {
-                    return ApiResponse::error('Content associated with this payment was not found.', 404);
-                }
-
-                $transactionId = (string) ($session->payment_intent ?: $session->id);
-                $ppv = $this->fulfillVerifiedPayment(
-                    'stripe', $transactionId, $user->id, 'pay_per_view', $content->id,
-                    (int) $session->amount_total, strtoupper((string) $session->currency), null, $contentType
-                );
-                return ApiResponse::success(['ppv' => $ppv], 'Pay-per-view rental unlocked successfully.', 200);
-            }
-
-            $api = new \Razorpay\Api\Api(GetpaymentMethod('razorpay_publickey'), GetpaymentMethod('razorpay_secretkey'));
-            $api->utility->verifyPaymentSignature([
-                'razorpay_order_id' => $request->order_id,
-                'razorpay_payment_id' => $request->payment_id,
-                'razorpay_signature' => $request->signature,
-            ]);
-            $order = $api->order->fetch($request->order_id);
-            $notes = $order['notes'] ?? [];
-            if ((string) ($notes['user_id'] ?? '') !== (string) $user->id || ($notes['purchase_type'] ?? '') !== 'pay_per_view') {
-                return ApiResponse::error('Razorpay order does not belong to this account.', 403);
-            }
-
-            $contentId = (int) ($notes['content_id'] ?? 0);
-            $contentType = (string) ($notes['content_type'] ?? '');
-            $content = $this->resolveContentModel($contentType, $contentId);
-            if (!$content) {
-                return ApiResponse::error('Content associated with this order was not found.', 404);
-            }
-
-            $payment = $api->payment->fetch($request->payment_id);
-            if ($payment->status !== 'captured'
-                || (string) ($payment->order_id ?? '') !== (string) $request->order_id
-                || (int) $payment->amount !== (int) ($order['amount'] ?? 0)
-                || strtoupper((string) $payment->currency) !== strtoupper((string) ($order['currency'] ?? ''))) {
-                return ApiResponse::error('Razorpay payment is not captured for this order.', 400);
-            }
-
-            $ppv = $this->fulfillVerifiedPayment(
-                'razorpay', (string) $payment->id, $user->id, 'pay_per_view', $content->id,
-                (int) $payment->amount, strtoupper((string) $payment->currency), null, $contentType
-            );
-            return ApiResponse::success(['ppv' => $ppv], 'Pay-per-view rental unlocked successfully.', 200);
-        } catch (Exception $e) {
-            Log::error('PPV payment verification failed.', ['gateway' => $request->gateway, 'exception' => $e::class]);
-            return ApiResponse::error('Payment verification failed. Please contact support if you were charged.', 500);
+        $result = $this->gatewayCheckout->verifyPayPerViewPayment(Auth::user(), $request->validated());
+        if (! $result['ok']) {
+            return ApiResponse::error($result['message'], $result['status']);
         }
+
+        return ApiResponse::success($result['data'], $result['message'], 200);
     }
 
     /**
@@ -1389,622 +750,33 @@ class WebPaymentApiController extends Controller
     // Internal Helper Methods
     // ─────────────────────────────────────────────────────────────────────────
 
-    private function fulfillVerifiedPayment(
-        string $gateway,
-        string $providerReference,
-        int $userId,
-        string $purchaseType,
-        int $purchaseId,
-        int $amountMinor,
-        string $currency,
-        ?int $promotionId = null,
-        ?string $contentType = null,
-        ?string $couponReservationToken = null
-    ) {
-        return DB::transaction(function () use ($gateway, $providerReference, $userId, $purchaseType, $purchaseId, $amountMinor, $currency, $promotionId, $contentType, $couponReservationToken) {
-            $receipt = VerifiedPayment::query()->firstOrCreate(
-                ['gateway' => $gateway, 'provider_reference' => $providerReference],
-                [
-                    'user_id' => $userId,
-                    'purchase_type' => $purchaseType,
-                    'purchase_id' => $purchaseId,
-                    'amount_minor' => $amountMinor,
-                    'currency' => strtoupper($currency),
-                ]
-            );
-            $receipt = VerifiedPayment::query()->whereKey($receipt->id)->lockForUpdate()->firstOrFail();
-
-            if ((int) $receipt->user_id !== $userId
-                || $receipt->purchase_type !== $purchaseType
-                || (int) $receipt->purchase_id !== $purchaseId
-                || (int) $receipt->amount_minor !== $amountMinor
-                || strtoupper($receipt->currency) !== strtoupper($currency)) {
-                throw new \RuntimeException('Provider transaction was already associated with a different purchase.');
-            }
-
-            if ($receipt->fulfilled_at) {
-                return $receipt->fulfillment_type === 'subscription'
-                    ? Subscription::findOrFail($receipt->fulfillment_id)
-                    : PayPerView::findOrFail($receipt->fulfillment_id);
-            }
-
-            $amount = $amountMinor / $this->currencyMultiplier($currency, $gateway);
-            if ($purchaseType === 'subscription') {
-                $plan = Plan::where('id', $purchaseId)->where('status', 1)->firstOrFail();
-                $fulfillment = $this->activateUserSubscription($userId, $plan, $amount, $gateway, $providerReference, $promotionId, strtoupper($currency));
-                if ($promotionId || $couponReservationToken) {
-                    $this->consumeCouponReservation($couponReservationToken, (int) $promotionId, $userId, (int) $fulfillment->id);
-                }
-                $receipt->fulfillment_type = 'subscription';
-            } elseif ($purchaseType === 'pay_per_view') {
-                $content = $this->resolveContentModel((string) $contentType, $purchaseId);
-                if (!$content) {
-                    throw new \RuntimeException('The content associated with the verified payment no longer exists.');
-                }
-                $fulfillment = $this->activatePayPerViewAccess($userId, $content, (string) $contentType, $amount, $gateway, $providerReference);
-                $receipt->fulfillment_type = 'pay_per_view';
-            } else {
-                throw new \RuntimeException('Unsupported verified payment purchase type.');
-            }
-
-            $receipt->fulfillment_id = $fulfillment->id;
-            $receipt->fulfilled_at = now();
-            $receipt->save();
-
-            return $fulfillment;
-        });
-    }
-
-    private function beginProviderEvent(string $gateway, string $eventId, string $eventType, string $providerReference, string $payload): bool
-    {
-        DB::table('payment_provider_events')->insertOrIgnore([
-            'gateway' => $gateway, 'event_id' => $eventId, 'event_type' => $eventType,
-            'provider_reference' => $providerReference !== '' ? $providerReference : null,
-            'payload_sha256' => hash('sha256', $payload), 'status' => 'received',
-            'attempts' => 0, 'created_at' => now(), 'updated_at' => now(),
-        ]);
-
-        return DB::transaction(function () use ($gateway, $eventId): bool {
-            $event = DB::table('payment_provider_events')->where('gateway', $gateway)->where('event_id', $eventId)->lockForUpdate()->first();
-            if ($event->status === 'processed') return false;
-            if ($event->status === 'processing' && Carbon::parse($event->updated_at)->gt(now()->subMinutes(5))) {
-                abort(409, 'This provider event is already being processed.');
-            }
-            DB::table('payment_provider_events')->where('id', $event->id)->update([
-                'status' => 'processing', 'attempts' => (int) $event->attempts + 1,
-                'failure_code' => null, 'updated_at' => now(),
-            ]);
-            return true;
-        }, 3);
-    }
-
-    private function finishProviderEvent(string $gateway, string $eventId, string $status, ?string $failureCode = null): void
-    {
-        DB::table('payment_provider_events')->where('gateway', $gateway)->where('event_id', $eventId)->update([
-            'status' => $status, 'failure_code' => $failureCode ? substr($failureCode, 0, 100) : null,
-            'processed_at' => $status === 'processed' ? now() : null, 'updated_at' => now(),
-        ]);
-    }
-
-    private function syncStripeRefundEvent(string $eventType, array $refund): void
-    {
-        $local = null;
-        if (!empty($refund['metadata']['refund_request_id'])) {
-            $local = RefundRequest::query()->find((int) $refund['metadata']['refund_request_id']);
-        }
-        $local ??= RefundRequest::query()->where('provider_refund_id', $refund['id'] ?? '')->first();
-        if (!$local) return;
-        $status = $this->mapRefundStatus((string) ($refund['status'] ?? $eventType));
-        $local->forceFill([
-            'status' => $status, 'provider_refund_id' => $refund['id'] ?? $local->provider_refund_id,
-            'executed_at' => $local->executed_at ?? now(),
-            'failure_code' => $refund['failure_reason'] ?? null,
-        ])->save();
-    }
-
-    private function syncStripeDisputeEvent(string $eventType, array $dispute): void
-    {
-        $paymentIntent = $dispute['payment_intent'] ?? null;
-        if (is_array($paymentIntent)) $paymentIntent = $paymentIntent['id'] ?? null;
-        $payment = is_string($paymentIntent) ? VerifiedPayment::query()->where('gateway', 'stripe')->where('provider_reference', $paymentIntent)->first() : null;
-        $status = (string) ($dispute['status'] ?? str_replace('charge.dispute.', '', $eventType));
-        PaymentDispute::query()->updateOrCreate(
-            ['gateway' => 'stripe', 'provider_dispute_id' => (string) $dispute['id']],
-            [
-                'provider_reference' => is_string($paymentIntent) ? $paymentIntent : null,
-                'verified_payment_id' => $payment?->id,
-                'amount_minor' => isset($dispute['amount']) ? (int) $dispute['amount'] : null,
-                'currency' => isset($dispute['currency']) ? strtoupper((string) $dispute['currency']) : null,
-                'status' => $status, 'reason' => $dispute['reason'] ?? null,
-                'evidence_due_at' => isset($dispute['evidence_details']['due_by']) ? Carbon::createFromTimestamp((int) $dispute['evidence_details']['due_by']) : null,
-                'resolved_at' => in_array($status, ['won', 'lost'], true) ? now() : null,
-            ]
-        );
-    }
-
-    private function syncRazorpayFinanceEvent(string $eventType, array $event): void
-    {
-        if (str_starts_with($eventType, 'refund.')) {
-            $refund = $event['payload']['refund']['entity'] ?? [];
-            $notes = $refund['notes'] ?? [];
-            $local = !empty($notes['refund_request_id']) ? RefundRequest::query()->find((int) $notes['refund_request_id']) : null;
-            $local ??= RefundRequest::query()->where('provider_refund_id', $refund['id'] ?? '')->first();
-            if (!$local) return;
-            $local->forceFill([
-                'status' => $this->mapRefundStatus((string) ($refund['status'] ?? $eventType)),
-                'provider_refund_id' => $refund['id'] ?? $local->provider_refund_id,
-                'executed_at' => $local->executed_at ?? now(),
-            ])->save();
-            return;
-        }
-
-        if (!str_starts_with($eventType, 'payment.dispute.')) return;
-        $dispute = $event['payload']['dispute']['entity'] ?? [];
-        $reference = (string) ($dispute['payment_id'] ?? '');
-        $payment = $reference !== '' ? VerifiedPayment::query()->where('gateway', 'razorpay')->where('provider_reference', $reference)->first() : null;
-        $status = (string) ($dispute['status'] ?? str_replace('payment.dispute.', '', $eventType));
-        PaymentDispute::query()->updateOrCreate(
-            ['gateway' => 'razorpay', 'provider_dispute_id' => (string) ($dispute['id'] ?? '')],
-            [
-                'provider_reference' => $reference ?: null, 'verified_payment_id' => $payment?->id,
-                'amount_minor' => isset($dispute['amount']) ? (int) $dispute['amount'] : null,
-                'currency' => isset($dispute['currency']) ? strtoupper((string) $dispute['currency']) : null,
-                'status' => $status, 'reason' => $dispute['reason_code'] ?? null,
-                'resolved_at' => in_array($status, ['won', 'lost', 'closed'], true) ? now() : null,
-            ]
-        );
-    }
-
-    private function fulfillPaystackWebhookPayment(array $webhookData): void
-    {
-        $reference = (string) ($webhookData['reference'] ?? '');
-        $metadata = $webhookData['metadata'] ?? [];
-        $userId = (int) ($metadata['user_id'] ?? 0);
-        $planId = (int) ($metadata['plan_id'] ?? 0);
-        if ($reference === '' || $userId <= 0 || $planId <= 0 || ($metadata['purchase_type'] ?? 'subscription') !== 'subscription') {
-            throw new \RuntimeException('Paystack subscription metadata is incomplete.');
-        }
-        $response = Http::withToken((string) GetpaymentMethod('paystack_secretkey'))
-            ->get('https://api.paystack.co/transaction/verify/'.rawurlencode($reference));
-        $verified = $response->json('data', []);
-        $user = User::query()->find($userId);
-        if (!$response->successful() || !($response->json('status') ?? false) || ($verified['status'] ?? '') !== 'success'
-            || (string) ($verified['reference'] ?? '') !== $reference
-            || (string) ($verified['metadata']['user_id'] ?? '') !== (string) $userId
-            || (int) ($verified['amount'] ?? 0) !== (int) ($webhookData['amount'] ?? -1)
-            || strtoupper((string) ($verified['currency'] ?? '')) !== strtoupper((string) ($webhookData['currency'] ?? ''))
-            || (isset($metadata['amount_minor']) && (int) $metadata['amount_minor'] !== (int) ($verified['amount'] ?? 0))
-            || (isset($metadata['currency']) && strtoupper((string) $metadata['currency']) !== strtoupper((string) ($verified['currency'] ?? '')))
-            || !$user || strtolower((string) ($verified['customer']['email'] ?? '')) !== strtolower((string) $user->email)) {
-            throw new \RuntimeException('Paystack transaction could not be independently verified.');
-        }
-        $plan = Plan::query()->whereKey($planId)->where('status', 1)->firstOrFail();
-        $this->fulfillVerifiedPayment(
-            'paystack', $reference, $userId, 'subscription', $planId, (int) $verified['amount'],
-            strtoupper((string) $verified['currency']), !empty($metadata['promotion_id']) ? (int) $metadata['promotion_id'] : null,
-            null, !empty($metadata['coupon_reservation']) ? (string) $metadata['coupon_reservation'] : null
-        );
-    }
-
-    private function syncPaystackRefundEvent(string $eventType, array $data): void
-    {
-        $reference = (string) ($data['reference'] ?? '');
-        $token = str_starts_with($reference, 'refund-') ? substr($reference, 7) : '';
-        $local = $token !== '' ? RefundRequest::query()->where('idempotency_key', $token)->first() : null;
-        $local ??= isset($data['id']) ? RefundRequest::query()->where('provider_refund_id', (string) $data['id'])->first() : null;
-        if (!$local) return;
-        $status = $this->mapRefundStatus((string) ($data['status'] ?? $eventType));
-        $local->forceFill([
-            'status' => $status, 'provider_refund_id' => isset($data['id']) ? (string) $data['id'] : $local->provider_refund_id,
-            'executed_at' => $local->executed_at ?? now(),
-        ])->save();
-    }
-
-    private function syncPaystackDisputeEvent(string $eventType, array $data): void
-    {
-        $transaction = $data['transaction'] ?? [];
-        if (is_numeric($transaction)) $reference = (string) $transaction;
-        elseif (is_array($transaction)) $reference = (string) ($transaction['reference'] ?? '');
-        else $reference = '';
-        $payment = $reference !== '' ? VerifiedPayment::query()->where('gateway', 'paystack')->where('provider_reference', $reference)->first() : null;
-        $disputeId = (string) ($data['id'] ?? $data['dispute_id'] ?? '');
-        if ($disputeId === '') return;
-        $status = (string) ($data['status'] ?? str_replace('charge.dispute.', '', $eventType));
-        PaymentDispute::query()->updateOrCreate(
-            ['gateway' => 'paystack', 'provider_dispute_id' => $disputeId],
-            [
-                'provider_reference' => $reference ?: null, 'verified_payment_id' => $payment?->id,
-                'amount_minor' => isset($data['amount']) ? (int) $data['amount'] : null,
-                'currency' => isset($data['currency']) ? strtoupper((string) $data['currency']) : null,
-                'status' => $status, 'reason' => $data['reason'] ?? null,
-                'resolved_at' => in_array($status, ['resolved', 'won', 'lost'], true) ? now() : null,
-            ]
-        );
-    }
-
-    private function mapRefundStatus(string $status): string
-    {
-        return match (strtolower($status)) {
-            'succeeded', 'processed', 'success' => 'succeeded',
-            'failed', 'canceled', 'cancelled', 'rejected', 'needs-attention' => 'failed',
-            default => 'processing',
-        };
-    }
-
-    private function couponUsageAvailable(Coupon $coupon, ?int $userId, ?string $exceptReservation = null): bool
-    {
-        $redeemed = DB::table('user_coupon_redeem')->where('coupon_id', $coupon->id);
-        $pending = DB::table('subscription_coupon_reservations')->where('coupon_id', $coupon->id)
-            ->where('status', 'pending')->where('expires_at', '>', now());
-        if ($exceptReservation) $pending->where('token', '<>', $exceptReservation);
-
-        $redeemedCount = (clone $redeemed)->count();
-        $pendingCount = (clone $pending)->count();
-        if ($coupon->max_redemptions !== null && $redeemedCount + $pendingCount >= (int) $coupon->max_redemptions) return false;
-
-        if ($userId !== null && $coupon->per_user_limit !== null) {
-            $userRedeemed = (clone $redeemed)->where('user_id', $userId)->count();
-            $userPending = (clone $pending)->where('user_id', $userId)->count();
-            if ($userRedeemed + $userPending >= (int) $coupon->per_user_limit) return false;
-        }
-
-        return true;
-    }
-
     private function reserveCouponForCheckout(int $couponId, int $userId): string
     {
-        return DB::transaction(function () use ($couponId, $userId): string {
-            $coupon = Coupon::query()->lockForUpdate()->find($couponId);
-            if (!$coupon || !$coupon->status
-                || ($coupon->start_date && Carbon::parse($coupon->start_date)->startOfDay()->isFuture())
-                || ($coupon->expire_date && Carbon::parse($coupon->expire_date)->endOfDay()->isPast())
-                || !$this->couponUsageAvailable($coupon, $userId)) {
-                throw new \RuntimeException('This coupon is no longer available or has reached its usage limit.');
-            }
-
-            $token = (string) \Illuminate\Support\Str::uuid();
-            DB::table('subscription_coupon_reservations')->insert([
-                'token' => $token, 'coupon_id' => $coupon->id, 'user_id' => $userId,
-                'status' => 'pending', 'expires_at' => now()->addHours(24),
-                'created_at' => now(), 'updated_at' => now(),
-            ]);
-            return $token;
-        });
-    }
-
-    private function bindCouponReservation(?string $token, string $provider, string $providerReference): void
-    {
-        if (!$token) return;
-        DB::table('subscription_coupon_reservations')->where('token', $token)->where('status', 'pending')->update([
-            'provider' => $provider, 'provider_reference' => $providerReference, 'updated_at' => now(),
-        ]);
+        return $this->couponReservations->reserve($couponId, $userId);
     }
 
     private function releaseCouponReservation(?string $token): void
     {
-        if (!$token) return;
-        DB::table('subscription_coupon_reservations')->where('token', $token)->where('status', 'pending')->update([
-            'status' => 'released', 'updated_at' => now(),
-        ]);
+        $this->couponReservations->release($token);
     }
 
     private function consumeCouponReservation(?string $token, int $couponId, int $userId, int $subscriptionId): void
     {
-        $reservation = null;
-        if ($token) {
-            $reservation = DB::table('subscription_coupon_reservations')->where('token', $token)->lockForUpdate()->first();
-            if (!$reservation || (int) $reservation->user_id !== $userId
-                || ($couponId > 0 && (int) $reservation->coupon_id !== $couponId)) {
-                throw new \RuntimeException('Coupon checkout reservation does not match the verified subscription payment.');
-            }
-            if ($reservation->status === 'redeemed') {
-                if ((int) $reservation->subscription_id === $subscriptionId) return;
-                throw new \RuntimeException('Coupon reservation was already used for another subscription.');
-            }
-            if ($reservation->status !== 'pending') {
-                throw new \RuntimeException('Coupon checkout reservation is no longer available.');
-            }
-            $couponId = (int) $reservation->coupon_id;
-        }
-
-        if ($couponId <= 0) return;
-        $coupon = Coupon::query()->lockForUpdate()->find($couponId);
-        if (!$coupon) throw new \RuntimeException('The coupon associated with this payment no longer exists.');
-
-        DB::table('user_coupon_redeem')->insert([
-            'coupon_code' => $coupon->code, 'discount' => $coupon->discount,
-            'user_id' => $userId, 'coupon_id' => $coupon->id, 'booking_id' => $subscriptionId,
-            'created_at' => now(), 'updated_at' => now(),
-        ]);
-
-        if ($reservation) {
-            DB::table('subscription_coupon_reservations')->where('id', $reservation->id)->update([
-                'status' => 'redeemed', 'redeemed_at' => now(), 'subscription_id' => $subscriptionId, 'updated_at' => now(),
-            ]);
-        }
-    }
-
-    private function currencyMultiplier(string $currency, string $gateway = 'stripe'): int
-    {
-        // Paystack requires a 100x subunit amount for every currently supported currency,
-        // including XOF, which otherwise has no ISO subunit.
-        if (strtolower($gateway) === 'paystack') return 100;
-
-        // Stripe's charge minor-unit rules. UGX stays at 100x for backward compatibility.
-        // Razorpay follows the ISO zero-decimal set, including UGX. Its 3-decimal currencies are not enabled here.
-        $zeroDecimalCurrencies = ['BIF', 'CLP', 'DJF', 'GNF', 'JPY', 'KMF', 'KRW', 'MGA', 'PYG', 'RWF', 'VND', 'VUV', 'XAF', 'XOF', 'XPF'];
-        if (strtolower($gateway) === 'razorpay') $zeroDecimalCurrencies[] = 'UGX';
-
-        return in_array(strtoupper($currency), $zeroDecimalCurrencies, true) ? 1 : 100;
+        $this->couponReservations->consume($token, $couponId, $userId, $subscriptionId);
     }
 
     private function activateUserSubscription(int $userId, Plan $plan, float $amount, string $paymentType, string $transactionId, ?int $promotionId = null, string $currency = 'USD'): Subscription
     {
-        // Deactivate previous active subscriptions
-        Subscription::where('user_id', $userId)
-            ->where('status', 'active')
-            ->update(['status' => 'inactive']);
-
-        $startDate = now()->toDateTimeString();
-        $endDate = $this->get_plan_expiration_date($startDate, $plan->duration, $plan->duration_value);
-
-        $limitationData = PlanResource::collection([$plan]);
-
-        $subscription = Subscription::create([
-            'plan_id' => $plan->id,
-            'user_id' => $userId,
-            'start_date' => $startDate,
-            'end_date' => $endDate,
-            'status' => 'active',
-            'amount' => $plan->price,
-            'discount_percentage' => $plan->discount_percentage,
-            'total_amount' => $amount,
-            'name' => $plan->name,
-            'identifier' => $plan->identifier,
-            'type' => $plan->duration,
-            'duration' => $plan->duration_value,
-            'level' => $plan->level,
-            'plan_type' => json_encode($limitationData),
-            'coupon_id' => $promotionId,
-        ]);
-
-        SubscriptionTransactions::create([
-            'subscriptions_id' => $subscription->id,
-            'user_id' => $userId,
-            'amount' => $amount,
-            'currency_code' => strtoupper($currency),
-            'payment_type' => $paymentType,
-            'payment_status' => 'paid',
-            'transaction_id' => $transactionId,
-        ]);
-
-        User::where('id', $userId)->update(['is_subscribe' => 1]);
-        Cache::flush();
-
-        return $subscription;
+        return $this->fulfillment->activateUserSubscription($userId, $plan, $amount, $paymentType, $transactionId, $promotionId, $currency);
     }
 
     private function startEligibleTrial(User $user, Plan $plan): ?Subscription
     {
-        return DB::transaction(function () use ($user, $plan): ?Subscription {
-            DB::table('users')->where('id', $user->id)->lockForUpdate()->first();
-            $existingTrial = Subscription::query()->where('user_id', $user->id)
-                ->where('plan_id', $plan->id)->where('is_trial', true)->where('status', 'active')->first();
-            if ($existingTrial) return $existingTrial;
-
-            if (Subscription::withTrashed()->where('user_id', $user->id)->exists()) return null;
-
-            $start = now();
-            $snapshot = PlanResource::collection([$plan]);
-            $subscription = Subscription::query()->create([
-                'plan_id' => $plan->id,
-                'user_id' => $user->id,
-                'start_date' => $start,
-                'end_date' => $start->copy()->addDays((int) $plan->trial_days),
-                'status' => 'active',
-                'is_trial' => true,
-                'amount' => $plan->price,
-                'total_amount' => 0,
-                'name' => $plan->name,
-                'identifier' => $plan->identifier,
-                'type' => 'trial',
-                'duration' => (int) $plan->trial_days,
-                'level' => $plan->level,
-                'plan_type' => json_encode($snapshot),
-            ]);
-            User::query()->whereKey($user->id)->update(['is_subscribe' => 1]);
-            Cache::flush();
-            return $subscription;
-        }, 3);
+        return $this->fulfillment->startEligibleTrial($user, $plan);
     }
 
     private function activatePayPerViewAccess(int $userId, $content, string $type, float $amount, string $paymentType, string $transactionId): PayPerView
     {
-        $accessDuration = (int) ($content->available_for ?? $content->access_duration ?? 2);
-        $viewExpiry = now()->addDays($accessDuration);
-
-        $ppv = PayPerView::create([
-            'user_id' => $userId,
-            'movie_id' => $content->id,
-            'type' => $type,
-            'content_price' => $content->price ?? 0,
-            'price' => $amount,
-            'discount_percentage' => $content->discount_percentage ?? 0,
-            'view_expiry_date' => $viewExpiry,
-            'access_duration' => $accessDuration,
-            'available_for' => $accessDuration,
-        ]);
-
-        PayperviewTransaction::create([
-            'user_id' => $userId,
-            'amount' => $amount,
-            'payment_type' => $paymentType,
-            'payment_status' => 'paid',
-            'transaction_id' => $transactionId,
-            'pay_per_view_id' => $ppv->id,
-        ]);
-
-        return $ppv;
-    }
-
-    private function resolveContentModel(string $type, int $id)
-    {
-        switch ($type) {
-            case 'movie':
-            case 'tvshow':
-                return Entertainment::find($id);
-            case 'video':
-                return Video::find($id);
-            case 'episode':
-                return Episode::find($id);
-            default:
-                return null;
-        }
-    }
-
-    private function createStripeSubscriptionSession(Plan $plan, float $price, string $currency, User $user, ?int $promotionId, string $frontendUrl, ?string $reservationToken = null)
-    {
-        $stripeSecret = GetpaymentMethod('stripe_secretkey');
-        $stripe = new StripeClient($stripeSecret);
-
-        $unitAmount = $this->toMinorUnits($price, $currency);
-
-        try {
-            $session = $stripe->checkout->sessions->create([
-                'payment_method_types' => ['card'],
-                'customer_email' => $user->email,
-                'line_items' => [[
-                    'price_data' => [
-                        'currency' => strtolower($currency),
-                        'product_data' => [
-                            'name' => 'Subscription Plan: ' . $plan->name,
-                        ],
-                        'unit_amount' => $unitAmount,
-                    ],
-                    'quantity' => 1,
-                ]],
-                'mode' => 'payment',
-                'metadata' => [
-                    'plan_id' => (string) $plan->id,
-                    'promotion_id' => (string) ($promotionId ?? ''),
-                    'coupon_reservation' => (string) ($reservationToken ?? ''),
-                    'user_id' => (string) $user->id,
-                    'amount_minor' => (string) $unitAmount,
-                    'currency' => strtoupper($currency),
-                ],
-                'payment_intent_data' => ['metadata' => [
-                    'purchase_type' => 'subscription',
-                    'purchase_id' => (string) $plan->id,
-                    'plan_id' => (string) $plan->id,
-                    'promotion_id' => (string) ($promotionId ?? ''),
-                    'coupon_reservation' => (string) ($reservationToken ?? ''),
-                    'user_id' => (string) $user->id,
-                    'amount_minor' => (string) $unitAmount,
-                    'currency' => strtoupper($currency),
-                ]],
-                'success_url' => "{$frontendUrl}/payment-success?gateway=stripe&session_id={CHECKOUT_SESSION_ID}",
-                'cancel_url' => "{$frontendUrl}/pricing",
-            ]);
-
-            $this->bindCouponReservation($reservationToken, 'stripe', $session->id);
-
-            return ApiResponse::success([
-                'redirect_url' => $session->url,
-                'session_id' => $session->id,
-            ], 'Stripe checkout session created successfully.', 200);
-        } catch (Exception $e) {
-            $this->releaseCouponReservation($reservationToken);
-            Log::error('Sensitive or user-provided values omitted from logs');
-            return ApiResponse::error('Unable to start payment. Please try again.', 502);
-        }
-    }
-
-    private function createRazorpaySubscriptionOrder(Plan $plan, float $price, string $currency, User $user, ?int $promotionId, string $frontendUrl, ?string $reservationToken = null)
-    {
-        $razorpayKey = GetpaymentMethod('razorpay_publickey');
-        $razorpaySecret = GetpaymentMethod('razorpay_secretkey');
-        $api = new \Razorpay\Api\Api($razorpayKey, $razorpaySecret);
-
-        try {
-            $order = $api->order->create([
-                'receipt' => 'sub_' . bin2hex(random_bytes(12)),
-                'amount' => $this->toMinorUnits($price, $currency, 'razorpay'),
-                'currency' => strtoupper($currency),
-                'payment_capture' => 1,
-                'notes' => [
-                    'purchase_type' => 'subscription',
-                    'user_id' => (string) $user->id,
-                    'plan_id' => (string) $plan->id,
-                    'promotion_id' => (string) ($promotionId ?? ''),
-                    'coupon_reservation' => (string) ($reservationToken ?? ''),
-                    'amount_minor' => (string) $this->toMinorUnits($price, $currency, 'razorpay'),
-                    'currency' => strtoupper($currency),
-                ],
-            ]);
-
-            $this->bindCouponReservation($reservationToken, 'razorpay', (string) $order['id']);
-
-            return ApiResponse::success([
-                'key' => $razorpayKey,
-                'amount' => $this->toMinorUnits($price, $currency, 'razorpay'),
-                'currency' => strtoupper($currency),
-                'name' => config('app.name'),
-                'description' => "Subscription Plan: {$plan->name}",
-                'order_id' => $order['id'],
-                'plan_id' => $plan->id,
-                'promotion_id' => $promotionId,
-                'prefill' => [
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'contact' => $user->phone ?? '',
-                ],
-            ], 'Razorpay order created successfully.', 200);
-        } catch (Exception $e) {
-            $this->releaseCouponReservation($reservationToken);
-            Log::error('Razorpay subscription order creation failed.', ['exception' => $e::class]);
-            return ApiResponse::error('Unable to start payment. Please try again.', 502);
-        }
-    }
-
-    private function createPaystackSubscriptionTransaction(Plan $plan, float $price, string $currency, User $user, ?int $promotionId, string $frontendUrl, ?string $reservationToken = null)
-    {
-        $secretKey = GetpaymentMethod('paystack_secretkey');
-        $callbackUrl = "{$frontendUrl}/payment-success?gateway=paystack&plan_id={$plan->id}";
-
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $secretKey,
-        ])->post('https://api.paystack.co/transaction/initialize', [
-            'email' => $user->email,
-            'amount' => $this->toMinorUnits($price, $currency, 'paystack'),
-            'currency' => strtoupper($currency),
-            'callback_url' => $callbackUrl,
-            'metadata' => [
-                'purchase_type' => 'subscription',
-                'plan_id' => $plan->id,
-                'promotion_id' => $promotionId,
-                'coupon_reservation' => $reservationToken,
-                'user_id' => $user->id,
-                'amount_minor' => $this->toMinorUnits($price, $currency, 'paystack'),
-                'currency' => strtoupper($currency),
-            ],
-        ]);
-
-        $body = $response->json();
-        if ($body['status'] ?? false) {
-            $this->bindCouponReservation($reservationToken, 'paystack', (string) $body['data']['reference']);
-            return ApiResponse::success([
-                'redirect_url' => $body['data']['authorization_url'],
-                'reference' => $body['data']['reference'],
-            ], 'Paystack checkout initiated.', 200);
-        }
-
-        $this->releaseCouponReservation($reservationToken);
-        return ApiResponse::error($body['message'] ?? 'Paystack initiation failed.', 400);
-    }
-
-    private function createPayPalSubscriptionPayment(Plan $plan, float $price, string $currency, User $user, ?int $promotionId, string $frontendUrl, ?string $reservationToken = null)
-    {
-        $this->releaseCouponReservation($reservationToken);
-        return ApiResponse::error('PayPal direct approval redirect requires standard client-side PayPal SDK order ID integration.', 400);
+        return $this->fulfillment->activatePayPerViewAccess($userId, $content, $type, $amount, $paymentType, $transactionId);
     }
 }
