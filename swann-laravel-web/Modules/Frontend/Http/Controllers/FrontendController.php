@@ -3,6 +3,7 @@
 namespace Modules\Frontend\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Services\Frontend\FrontendAccountService;
 use Illuminate\Http\Request;
 use App\Models\MobileSetting;
 use Modules\Entertainment\Models\Entertainment;
@@ -53,10 +54,12 @@ class FrontendController extends Controller
      * Display a listing of the resource.
      */
     protected $recommendationService;
-    public function __construct(RecommendationServiceV3 $recommendationService)
-    {
-        $this->recommendationService = $recommendationService;
 
+    public function __construct(
+        RecommendationServiceV3 $recommendationService,
+        private readonly FrontendAccountService $frontendAccountService,
+    ) {
+        $this->recommendationService = $recommendationService;
     }
 
     /**
@@ -1153,46 +1156,14 @@ class FrontendController extends Controller
 
     public function deviceLogout(Request $request)
     {
-        $userId = auth()->user()->id;
+        $loggedOut = $this->frontendAccountService->deviceLogout(
+            auth()->user()->id,
+            $request->has('device_id') ? (string) $request->device_id : null,
+            $request->has('id') ? $request->id : null,
+        );
 
-        $deviceQuery = Device::where('user_id', $userId);
-
-        if ($request->has('device_id')) {
-            $deviceQuery->where('device_id', $request->device_id);
-        }
-
-        if ($request->has('id')) {
-            $deviceQuery->orWhere('id', $request->id);
-        }
-
-        $device = $deviceQuery->first();
-        if (!$device) {
+        if (! $loggedOut) {
             return redirect()->back()->with('error', __('users.device_not_found'));
-        }
-
-        $deviceIdToLogout = $device->device_id;
-
-        // Revoke sanctum tokens for this specific device (token name = device_id)
-        try {
-            $user = User::find($userId);
-            if ($user && class_exists('Laravel\\Sanctum\\PersonalAccessToken')) {
-                \Laravel\Sanctum\PersonalAccessToken::where('tokenable_id', $userId)
-                    ->where('name', $deviceIdToLogout)
-                    ->delete();
-            }
-        } catch (\Throwable $e) {
-            // best-effort; ignore errors revoking tokens
-        }
-
-        $device->delete();
-
-        try {
-            DB::table('sessions')
-                ->where('user_id', $userId)
-                ->where('ip_address', $deviceIdToLogout)
-                ->delete();
-        } catch (\Throwable $e) {
-            // ignore if sessions table not present
         }
 
         return redirect()->back();
@@ -1316,30 +1287,9 @@ class FrontendController extends Controller
     public function cancelSubscription(Request $request)
     {
         try {
-            $planId = $request->input('plan_id');
-            $subscription = Subscription::where('user_id', auth()->id())
-                ->where('id', $request->id)
-                ->where('status', 'active')
-                ->first();
+            $result = $this->frontendAccountService->cancelSubscription(auth()->id(), $request->id);
 
-            if (!$subscription) {
-                return response()->json(['success' => false, 'message' => 'Subscription not found'], 404);
-            }
-
-            $subscription->update(['status' => 'cancel']);
-
-            $otherSubscription = Subscription::where('user_id', auth()->id())
-                ->where('status', 'active')->get();
-
-            if($otherSubscription->isEmpty()){
-                $user = User::where('id', auth()->id())->first();
-                $user->update(['is_subscribe' => 0]);
-            }
-
-            // Send notification for subscription cancellation
-            $this->sendNotificationOnsubscription('cancle_subscription', $subscription);
-
-            return response()->json(['success' => true]);
+            return response()->json($result['payload'], $result['status']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
@@ -1358,116 +1308,20 @@ class FrontendController extends Controller
   }
 public function getPaymentDetails(Request $request)
 {
-    $planId = $request->input('plan_id');
-    $promotionId = $request->input('promotion_id'); // Optional promotion
-    $plan = Plan::find($planId);
-    $discount_percentage = $plan->discount_percentage;
+    $result = $this->frontendAccountService->getPaymentDetails(
+        $request->input('plan_id'),
+        $request->input('promotion_id'),
+    );
 
-    $discount_amount = ($discount_percentage * $plan->price) / 100;
-
-    $taxes = Tax::where('status', 1)->get();
-    $baseAmount = $plan->total_price;
-    $totalTaxamount = 0;
-    $taxesArray = [];
-
-    $subtotalBeforePromotion = $baseAmount;
-    $promotionDiscountAmount = 0;
-
-    // Apply promotion if provided
-    if ($promotionId) {
-        $promotion = Coupon::where('id', $promotionId)
-            ->where('status', 1)
-            ->whereHas('subscriptionPlans', function ($query) use ($planId) {
-                $query->where('subscription_plan_id', $planId);
-            })
-            ->first();
-
-        if ($promotion) {
-            if ($promotion->discount_type === 'percentage') {
-                $promotionDiscountAmount = ($promotion->discount * $baseAmount) / 100;
-            } elseif ($promotion->discount_type === 'fixed') {
-                $promotionDiscountAmount = $promotion->discount;
-            }
-        } else {
-            return response()->json(['error' => 'Invalid or expired promotion.'], 400);
-        }
-    }
-
-    // Calculate the subtotal after applying the promotion discount
-    $subtotalAfterPromotion = max(0, $subtotalBeforePromotion - $promotionDiscountAmount);
-
-    // Recalculate taxes based on the updated subtotal
-    foreach ($taxes as $tax) {
-        $taxAmount = 0;
-
-        if (strtolower($tax->type) == 'fixed') {
-            $taxAmount = $tax->value;
-        } elseif (strtolower($tax->type) == 'percentage') {
-            $taxAmount = ($subtotalAfterPromotion * $tax->value) / 100;
-        }
-
-        $taxesArray[] = [
-            'name' => $tax->title,
-            'type' => $tax->type,
-            'value' => $tax->value,
-            'tax_amount' => $taxAmount
-        ];
-
-        $totalTaxamount += $taxAmount;
-    }
-
-    // Calculate the total amount
-    $totalAfterPromotion = $subtotalAfterPromotion + $totalTaxamount;
-
-    return response()->json([
-        'price' => $plan->price,
-        'total_price' => $plan->total_price,
-        'subtotal' => $subtotalAfterPromotion,
-        'discount_percentage' => $discount_percentage,
-        'plan_discount_amount' => $discount_amount,
-        'tax' => $totalTaxamount,
-        'tax_array' => $taxesArray,
-        'promotion_id' => $promotionId,
-        'promotion_discount_amount' => $promotionDiscountAmount,
-        'total' => $totalAfterPromotion,
-    ]);
+    return response()->json($result['payload'], $result['status']);
 }
 
     public function checkSubscription($planId)
-   {
-    $user = auth()->user();
-    
-    // Check for subscriptions that are either active OR have a valid end date in the future
-    $currentSubscription = Subscription::where('user_id', $user->id)
-        ->where(function ($query) {
-            $query->where('status', 'active')
-                  ->orWhere('end_date', '>', now());
-        })
-        ->get();
-
-    $planData = Plan::find($planId);
-
-    if(!$planData) {
-        return response()->json(['isActive' => false]);
-    }
-
-    $level = $planData->level;
-
-    foreach($currentSubscription as $plan)
     {
-        $currentLevel = $plan->level;
-        
-        if (is_null($currentLevel)) {
-             $p = Plan::find($plan->plan_id);
-             if($p) $currentLevel = $p->level;
-        }
+        $isActive = $this->frontendAccountService->checkSubscription(auth()->id(), $planId);
 
-        if ($currentLevel >= $level) {
-            return response()->json(['isActive' => true]);
-        }
+        return response()->json(['isActive' => $isActive]);
     }
-    return response()->json(['isActive' => false]);
-   }
 
 
    public function checkDeviceType() {
