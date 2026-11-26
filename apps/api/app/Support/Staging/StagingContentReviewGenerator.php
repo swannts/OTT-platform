@@ -4,6 +4,7 @@ namespace App\Support\Staging;
 
 use App\Models\AdminContentReviewSubmission;
 use App\Models\User;
+use App\Support\Content\AdminContentSnapshot;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Modules\Entertainment\Models\Entertainment;
@@ -11,16 +12,11 @@ use RuntimeException;
 
 final class StagingContentReviewGenerator
 {
-    private const SNAPSHOT_FIELDS = [
-        'name', 'name_bn', 'description', 'description_bn', 'type', 'content_rating',
-        'release_date', 'plan_id', 'movie_access', 'video_upload_type', 'status', 'media_asset_id',
-    ];
-
-    /** @return array{content_review_submissions:int,in_review:int,approved:int,rejected:int} */
+    /** @return array{content_review_submissions:int,in_review:int,approved:int,rejected:int,published:int} */
     public function generate(StagingGenerationContext $context): array
     {
         $target = $context->profile->counts['content_review_submissions'];
-        $empty = ['content_review_submissions' => 0, 'in_review' => 0, 'approved' => 0, 'rejected' => 0];
+        $empty = ['content_review_submissions' => 0, 'in_review' => 0, 'approved' => 0, 'rejected' => 0, 'published' => 0];
         if ($target === 0) return $empty;
 
         $contentIds = DB::table('staging_dataset_records')->where('dataset_id', $context->datasetId)
@@ -55,7 +51,7 @@ final class StagingContentReviewGenerator
             if ($revisions === 0) continue;
             $item = Entertainment::query()->find($contentId);
             if (! $item) throw new RuntimeException("Owned staging content {$contentId} is missing.");
-            $snapshot = $this->snapshot($item);
+            $snapshot = AdminContentSnapshot::forEntertainment($item);
             $snapshotJson = json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
             $hash = hash('sha256', $snapshotJson);
             $keys = [];
@@ -67,6 +63,7 @@ final class StagingContentReviewGenerator
             $existing = AdminContentReviewSubmission::query()->where('content_type', 'entertainment')
                 ->where('content_id', (string) $contentId)->whereBetween('revision', [1, $revisions])
                 ->get()->keyBy('revision');
+            $isPublishedFixture = (int) $item->status === 1 && $existing->get($revisions)?->status === 'published';
 
             foreach ($keys as $offset => $key) {
                 $revision = $offset + 1;
@@ -76,6 +73,7 @@ final class StagingContentReviewGenerator
                     if (! $record || (string) $owner->record_id !== (string) $record->getKey()) {
                         throw new RuntimeException("Owned content review {$key} is missing or no longer matches its ownership record.");
                     }
+                    if ($isPublishedFixture) continue;
                     if (! hash_equals($hash, $record->snapshot_hash)) throw new RuntimeException("Staging content {$contentId} changed after review generation.");
                     continue;
                 }
@@ -114,8 +112,8 @@ final class StagingContentReviewGenerator
             ->where('owners.dataset_id', $context->datasetId)->where('owners.entity_type', 'content_review_submission')
             ->groupBy('submissions.status')->select('submissions.status', DB::raw('count(*) as records'))
             ->pluck('records', 'status');
-        foreach (['in_review', 'approved', 'rejected'] as $status) $totals[$status] = (int) ($statusCounts[$status] ?? 0);
-        $totals['content_review_submissions'] = array_sum(array_intersect_key($totals, array_flip(['in_review', 'approved', 'rejected'])));
+        foreach (['in_review', 'approved', 'rejected', 'published'] as $status) $totals[$status] = (int) ($statusCounts[$status] ?? 0);
+        $totals['content_review_submissions'] = array_sum(array_intersect_key($totals, array_flip(['in_review', 'approved', 'rejected', 'published'])));
         if ($totals['content_review_submissions'] !== $target) {
             throw new RuntimeException("Staging content review generation produced {$totals['content_review_submissions']} of {$target} configured submissions.");
         }
@@ -150,17 +148,4 @@ final class StagingContentReviewGenerator
         });
     }
 
-    /** @return array<string,mixed> */
-    private function snapshot(Entertainment $item): array
-    {
-        $attributes = $item->getAttributes();
-        $snapshot = [];
-        foreach (self::SNAPSHOT_FIELDS as $field) $snapshot[$field] = $attributes[$field] ?? null;
-        foreach (['poster_url', 'thumbnail_url', 'video_url_input'] as $field) {
-            $value = $attributes[$field] ?? null;
-            $snapshot[$field.'_sha256'] = $value ? hash('sha256', (string) $value) : null;
-        }
-        ksort($snapshot);
-        return $snapshot;
-    }
 }

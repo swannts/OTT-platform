@@ -45,6 +45,8 @@ final class StagingDataIntegrityValidator
                 'customers' => $groupedCounts['customer'] ?? 0,
                 'profiles' => $groupedCounts['user_multi_profile'] ?? 0,
                 'devices' => $groupedCounts['device'] ?? 0,
+                'playback_sessions' => $groupedCounts['playback_session'] ?? 0,
+                'playback_tokens' => $groupedCounts['playback_token'] ?? 0,
                 'plans' => $groupedCounts['plan'] ?? 0,
                 'subscriptions' => $groupedCounts['subscription'] ?? 0,
                 'payments' => $groupedCounts['subscription_transaction'] ?? 0,
@@ -72,7 +74,7 @@ final class StagingDataIntegrityValidator
                 'live_tv_channels' => $groupedCounts['live_tv_channel'] ?? 0,
                 'videos' => $groupedCounts['video'] ?? 0,
             ];
-            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'cast_crew', 'entertainment_talent_mapping', 'content_license_window', 'content_license_territory', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction', 'media_asset', 'media_processing_job', 'media_asset_track', 'entertainment_media_link', 'blog', 'coupon', 'coupon_plan_mapping', 'user_search_history', 'support_ticket', 'support_ticket_note', 'marketing_consent', 'marketing_campaign', 'notification', 'operations_incident', 'admin_audit_log', 'analytics_report_run', 'content_review_submission', 'live_tv_category', 'live_tv_channel', 'video'];
+            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'playback_token', 'playback_session', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'cast_crew', 'entertainment_talent_mapping', 'content_license_window', 'content_license_territory', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction', 'media_asset', 'media_processing_job', 'media_asset_track', 'entertainment_media_link', 'blog', 'coupon', 'coupon_plan_mapping', 'user_search_history', 'support_ticket', 'support_ticket_note', 'marketing_consent', 'marketing_campaign', 'notification', 'operations_incident', 'admin_audit_log', 'analytics_report_run', 'content_review_submission', 'live_tv_category', 'live_tv_channel', 'video'];
             $unknownTypes = array_diff(array_keys($groupedCounts), $supportedTypes);
             foreach ($unknownTypes as $type) {
                 $violations[] = "Dataset {$manifest->dataset_id} has an unsupported ownership type {$type}.";
@@ -137,15 +139,112 @@ final class StagingDataIntegrityValidator
             if ($invalidDevices > 0) {
                 $violations[] = "Dataset {$manifest->dataset_id} has {$invalidDevices} missing or incorrectly owned devices.";
             }
+            $referenceStart = $manifest->reference_date->copy()->startOfDay()->toDateTimeString();
+            $referenceEnd = $manifest->reference_date->copy()->endOfDay()->toDateTimeString();
+            $historyStart = $manifest->reference_date->copy()
+                ->subMonthsNoOverflow((int) ($manifest->configuration['history_months'] ?? 12))
+                ->startOfDay()->toDateTimeString();
+            $invalidPlaybackTokens = DB::table('staging_dataset_records as owners')
+                ->leftJoin('devices', 'devices.device_id', '=', 'owners.entity_key')
+                ->leftJoin('personal_access_tokens as tokens', 'tokens.id', '=', 'owners.record_id')
+                ->leftJoin('user_multi_profiles as profiles', 'profiles.id', '=', 'devices.active_profile')
+                ->where('owners.dataset_id', $manifest->dataset_id)->where('owners.entity_type', 'playback_token')
+                ->where(function ($query) use ($manifest): void {
+                    $query->whereNull('devices.id')->orWhereNull('tokens.id')
+                        ->orWhereColumn('devices.sanctum_token_id', '!=', 'tokens.id')
+                        ->orWhereColumn('tokens.tokenable_id', '!=', 'devices.user_id')
+                        ->orWhere('tokens.tokenable_type', '!=', User::class)
+                        ->orWhere('tokens.name', '!=', 'staging-playback-fixture')
+                        ->orWhere('tokens.abilities', '!=', '[]')
+                        ->orWhereNull('tokens.expires_at')->orWhere('tokens.expires_at', '<', $manifest->reference_date->copy()->endOfDay()->toDateTimeString())
+                        ->orWhereNull('profiles.id')->orWhereColumn('profiles.user_id', '!=', 'devices.user_id')
+                        ->orWhereRaw("LENGTH(tokens.token) != 64 OR tokens.token NOT REGEXP '^[0-9a-f]{64}$'");
+                })->count();
+            $invalidPlaybackSessions = DB::table('staging_dataset_records as owners')
+                ->leftJoin('playback_sessions as sessions', 'sessions.session_id', '=', 'owners.record_id')
+                ->leftJoin('users as session_users', 'session_users.id', '=', 'sessions.user_id')
+                ->leftJoin('devices', 'devices.sanctum_token_id', '=', 'sessions.device_token_id')
+                ->leftJoin('user_multi_profiles as profiles', 'profiles.id', '=', 'sessions.profile_id')
+                ->leftJoin('staging_dataset_records as customer_owner', function ($join) use ($manifest): void {
+                    $join->on('customer_owner.entity_key', '=', 'session_users.email')
+                        ->where('customer_owner.dataset_id', '=', $manifest->dataset_id)->where('customer_owner.entity_type', '=', 'customer');
+                })
+                ->leftJoin('staging_dataset_records as content_owner', function ($join) use ($manifest): void {
+                    $join->on('content_owner.record_id', '=', 'sessions.content_id')
+                        ->where('content_owner.dataset_id', '=', $manifest->dataset_id)->where('content_owner.entity_type', '=', 'entertainment');
+                })
+                ->leftJoin('entertainments', 'entertainments.id', '=', 'sessions.content_id')
+                ->where('owners.dataset_id', $manifest->dataset_id)->where('owners.entity_type', 'playback_session')
+                ->where(function ($query) use ($historyStart, $referenceEnd): void {
+                    $query->whereNull('sessions.session_id')->orWhereColumn('owners.entity_key', '!=', 'sessions.session_id')
+                        ->orWhereNull('customer_owner.id')->orWhereNull('content_owner.id')
+                        ->orWhereNull('session_users.id')->orWhereNull('devices.id')->orWhereNull('profiles.id')
+                        ->orWhereColumn('sessions.user_id', '!=', 'devices.user_id')
+                        ->orWhereColumn('profiles.user_id', '!=', 'sessions.user_id')
+                        ->orWhere('profiles.is_child_profile', '!=', 0)
+                        ->orWhereColumn('devices.active_profile', '!=', 'sessions.profile_id')
+                        ->orWhereColumn('devices.sanctum_token_id', '!=', 'sessions.device_token_id')
+                        ->orWhere('sessions.content_type', '!=', 'movie')->orWhere('entertainments.type', '!=', 'movie')
+                        ->orWhere('entertainments.status', '!=', 1)->orWhere('entertainments.movie_access', '!=', 'free')
+                        ->orWhereColumn('entertainments.release_date', '>', 'sessions.created_at')
+                        ->orWhereNull('sessions.ended_at')->orWhereColumn('sessions.last_heartbeat_at', '>', 'sessions.ended_at')
+                        ->orWhereColumn('sessions.created_at', '>', 'sessions.ended_at')
+                        ->orWhere('sessions.created_at', '<', $historyStart)->orWhere('sessions.ended_at', '>', $referenceEnd)
+                        ->orWhereNotExists(function ($license): void {
+                            $license->selectRaw('1')->from('content_license_windows as windows')
+                                ->whereColumn('windows.content_id', 'sessions.content_id')->where('windows.content_type', 'entertainment')
+                                ->where(function ($starts): void { $starts->whereNull('windows.starts_at')->orWhereColumn('windows.starts_at', '<=', 'sessions.created_at'); })
+                                ->where(function ($ends): void { $ends->whereNull('windows.ends_at')->orWhereColumn('windows.ends_at', '>=', 'sessions.ended_at'); });
+                        })
+                        ->orWhereNotExists(function ($territory): void {
+                            $territory->selectRaw('1')->from('content_license_territories as territories')
+                                ->whereColumn('territories.content_id', 'sessions.content_id')
+                                ->where('territories.content_type', 'entertainment')->where('territories.country_code', 'BD');
+                        });
+                })->count();
+            if ($invalidPlaybackTokens > 0 || $invalidPlaybackSessions > 0) {
+                $violations[] = "Dataset {$manifest->dataset_id} has {$invalidPlaybackTokens} usable or incorrectly owned playback tokens and {$invalidPlaybackSessions} invalid historical playback sessions.";
+            }
             $invalidCatalogQuery = DB::table('staging_dataset_records as records')
                 ->leftJoin('entertainments', 'entertainments.id', '=', 'records.record_id')
                 ->where('records.dataset_id', $manifest->dataset_id)
                 ->where('records.entity_type', 'entertainment')
                 ->where(function ($query): void {
                     $query->whereNull('entertainments.id')->orWhereNotNull('entertainments.deleted_at')
-                        ->orWhere('entertainments.status', '!=', 0);
+                        ->orWhereNotIn('entertainments.status', [0, 1]);
                 });
             $invalidCatalog = $invalidCatalogQuery->count();
+            $invalidPublishedContent = DB::table('staging_dataset_records as owners')
+                ->join('entertainments', 'entertainments.id', '=', 'owners.record_id')
+                ->leftJoin('media_assets as assets', 'assets.id', '=', 'entertainments.media_asset_id')
+                ->where('owners.dataset_id', $manifest->dataset_id)->where('owners.entity_type', 'entertainment')
+                ->where('entertainments.status', 1)
+                ->where(function ($query) use ($referenceStart, $referenceEnd): void {
+                    $query->whereNull('entertainments.poster_url')->orWhere('entertainments.poster_url', '')
+                        ->orWhereNull('entertainments.thumbnail_url')->orWhere('entertainments.thumbnail_url', '')
+                        ->orWhereNull('entertainments.media_asset_id')->orWhereNull('assets.id')
+                        ->orWhere('assets.status', '!=', 'ready')->orWhere('assets.disk', '!=', 'private')
+                        ->orWhere('entertainments.movie_access', '!=', 'free')
+                        ->orWhereNotExists(function ($review) {
+                            $review->selectRaw('1')->from('admin_content_review_submissions as submissions')
+                                ->whereColumn('submissions.content_id', 'entertainments.id')
+                                ->where('submissions.content_type', 'entertainment')->where('submissions.status', 'published');
+                        })
+                        ->orWhereNotExists(function ($license) use ($referenceStart, $referenceEnd): void {
+                            $license->selectRaw('1')->from('content_license_windows as windows')
+                                ->whereColumn('windows.content_id', 'entertainments.id')->where('windows.content_type', 'entertainment')
+                                ->where(function ($starts) use ($referenceEnd): void { $starts->whereNull('windows.starts_at')->orWhere('windows.starts_at', '<=', $referenceEnd); })
+                                ->where(function ($ends) use ($referenceStart): void { $ends->whereNull('windows.ends_at')->orWhere('windows.ends_at', '>=', $referenceStart); });
+                        })
+                        ->orWhereNotExists(function ($territory): void {
+                            $territory->selectRaw('1')->from('content_license_territories as territories')
+                                ->whereColumn('territories.content_id', 'entertainments.id')
+                                ->where('territories.content_type', 'entertainment')->where('territories.country_code', 'BD');
+                        });
+                })->count();
+            if ($invalidCatalog > 0 || $invalidPublishedContent > 0) {
+                $violations[] = "Dataset {$manifest->dataset_id} has {$invalidCatalog} invalid catalog records and {$invalidPublishedContent} published titles without current owned media, artwork, review, or license requirements.";
+            }
             $invalidBlogs = DB::table('staging_dataset_records as owners')
                 ->leftJoin('blogs', 'blogs.id', '=', 'owners.record_id')
                 ->where('owners.dataset_id', $manifest->dataset_id)
@@ -183,8 +282,7 @@ final class StagingDataIntegrityValidator
                     $query->whereNull('submissions.id')->orWhereNull('content_owner.id')->orWhereNull('entertainments.id')
                         ->orWhereColumn('owners.record_id', '!=', 'submissions.id')
                         ->orWhere('submissions.content_type', '!=', 'entertainment')
-                        ->orWhereNotIn('submissions.status', ['in_review', 'approved', 'rejected'])
-                        ->orWhere('entertainments.status', '!=', 0)
+                        ->orWhereNotIn('submissions.status', ['in_review', 'approved', 'rejected', 'published'])
                         ->orWhereColumn('submissions.submitted_by', '=', 'submissions.reviewed_by')
                         ->orWhere(function ($pending): void {
                             $pending->where('submissions.status', 'in_review')->where(function ($fields): void {
@@ -192,9 +290,12 @@ final class StagingDataIntegrityValidator
                             });
                         })
                         ->orWhere(function ($decided): void {
-                            $decided->whereIn('submissions.status', ['approved', 'rejected'])->where(function ($fields): void {
+                            $decided->whereIn('submissions.status', ['approved', 'rejected', 'published'])->where(function ($fields): void {
                                 $fields->whereNull('submissions.reviewed_by')->orWhereNull('submissions.reviewed_at');
                             });
+                        })
+                        ->orWhere(function ($published): void {
+                            $published->where('submissions.status', 'published')->where('entertainments.status', '!=', 1);
                         })
                         ->orWhereColumn('submissions.reviewed_at', '<', 'submissions.submitted_at')
                         ->orWhereNull('submissions.snapshot')->orWhereNull('submissions.snapshot_hash');
@@ -235,7 +336,7 @@ final class StagingDataIntegrityValidator
                                 $join->on('staff_owner.entity_key', '=', 'submitters.email')->where('staff_owner.entity_type', '=', 'staff_user');
                             })->whereColumn('submitters.id', 'submissions.submitted_by')->where('roles.name', 'content_editor');
                     })->orWhere(function ($decided): void {
-                        $decided->whereIn('submissions.status', ['approved', 'rejected'])->whereNotExists(function ($reviewer): void {
+                        $decided->whereIn('submissions.status', ['approved', 'rejected', 'published'])->whereNotExists(function ($reviewer): void {
                             $reviewer->selectRaw('1')->from('users as reviewers')
                                 ->join('model_has_roles as role_assignments', function ($join): void {
                                     $join->on('role_assignments.model_id', '=', 'reviewers.id')->where('role_assignments.model_type', '=', User::class);
@@ -863,9 +964,15 @@ final class StagingDataIntegrityValidator
                 }
             }
             $configuredCounts = (array) ($manifest->configuration['counts'] ?? []);
-            foreach (['staff' => 'staff', 'customers' => 'customers', 'devices' => 'devices', 'cast_crew' => 'cast_crew', 'plans' => 'plans', 'subscriptions' => 'subscriptions', 'payments' => 'payments', 'media_assets' => 'media_assets', 'coupons' => 'coupons', 'search_history' => 'search_history', 'support_tickets' => 'support_tickets', 'marketing_campaigns' => 'campaigns', 'notifications' => 'notifications', 'incidents' => 'incidents', 'audit_logs' => 'audit_logs', 'analytics_reports' => 'analytics_reports', 'content_review_submissions' => 'content_review_submissions', 'live_tv_channels' => 'live_channels', 'videos' => 'videos'] as $entity => $targetKey) {
+            foreach (['staff' => 'staff', 'customers' => 'customers', 'devices' => 'devices', 'playback_sessions' => 'playback_sessions', 'cast_crew' => 'cast_crew', 'plans' => 'plans', 'subscriptions' => 'subscriptions', 'payments' => 'payments', 'media_assets' => 'media_assets', 'coupons' => 'coupons', 'search_history' => 'search_history', 'support_tickets' => 'support_tickets', 'marketing_campaigns' => 'campaigns', 'notifications' => 'notifications', 'incidents' => 'incidents', 'audit_logs' => 'audit_logs', 'analytics_reports' => 'analytics_reports', 'content_review_submissions' => 'content_review_submissions', 'live_tv_channels' => 'live_channels', 'videos' => 'videos'] as $entity => $targetKey) {
                 if (isset($configuredCounts[$targetKey]) && $counts[$entity] !== (int) $configuredCounts[$targetKey]) {
                     $violations[] = "Dataset {$manifest->dataset_id} has {$counts[$entity]} {$entity}; configured target is {$configuredCounts[$targetKey]}.";
+                }
+            }
+            if (isset($configuredCounts['playback_sessions'])) {
+                $hasPlaybackTarget = (int) $configuredCounts['playback_sessions'] > 0;
+                if ((! $hasPlaybackTarget && $counts['playback_tokens'] !== 0) || ($hasPlaybackTarget && $counts['playback_tokens'] === 0)) {
+                    $violations[] = "Dataset {$manifest->dataset_id} has {$counts['playback_tokens']} playback tokens for a configured target of {$configuredCounts['playback_sessions']} sessions.";
                 }
             }
             if (isset($configuredCounts['profiles'])) {
@@ -918,7 +1025,7 @@ final class StagingDataIntegrityValidator
         return [
             'valid' => $violations === [],
             'complete' => $complete,
-            'coverage' => 'manifest, staff role, customer identity, profile and device ownership, unpublished bilingual catalog, genre mappings, fictional cast/crew credits, bilingual editorial articles, coupon and plan mappings, customer search-history ownership, support ticket and staff-note lifecycle ownership, marketing consent and maker-checker campaign ownership, customer-owned in-app notification payloads and timestamps, synthetic operations incident lifecycles and explicitly labeled staging audit events, analytics reports derived from generated source data, licensing windows and territories, actual media fixture readiness and ownership, series hierarchy, plans, subscription lifecycle, and synthetic payment attempts; remaining business-domain checks are pending',
+            'coverage' => 'manifest, staff role, customer identity, profile and device ownership, ended historical playback and unusable token ownership, bilingual catalog and publication prerequisites, genre mappings, fictional cast/crew credits, bilingual editorial articles, coupon and plan mappings, customer search-history ownership, support ticket and staff-note lifecycle ownership, marketing consent and maker-checker campaign ownership, customer-owned in-app notification payloads and timestamps, synthetic operations incident lifecycles and explicitly labeled staging audit events, analytics reports derived from generated source data, licensing windows and territories, actual media fixture readiness and ownership, series hierarchy, plans, subscription lifecycle, and synthetic payment attempts; remaining business-domain checks are pending',
             'checked_at' => now()->toIso8601String(),
             'datasets' => $datasets,
             'violations' => array_values(array_unique($violations)),

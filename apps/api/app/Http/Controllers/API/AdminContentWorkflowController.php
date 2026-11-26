@@ -5,8 +5,8 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\AdminAuditLog;
 use App\Models\AdminContentReviewSubmission;
-use App\Models\MediaAsset;
-use App\Services\Media\MediaReadinessService;
+use App\Services\Content\AdminContentPublicationService;
+use App\Support\Content\AdminContentSnapshot;
 use App\Support\Rbac\ExplicitPermission;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,11 +15,6 @@ use Modules\Entertainment\Models\Entertainment;
 
 class AdminContentWorkflowController extends Controller
 {
-    private const SNAPSHOT_FIELDS = [
-        'name', 'name_bn', 'description', 'description_bn', 'type', 'content_rating',
-        'release_date', 'plan_id', 'movie_access', 'video_upload_type', 'status', 'media_asset_id',
-    ];
-
     public function queue(Request $request): JsonResponse
     {
         $filters = $request->validate(['status' => ['sometimes', 'in:in_review,approved']]);
@@ -67,7 +62,7 @@ class AdminContentWorkflowController extends Controller
                 ->lockForUpdate()->latest('revision')->first();
             abort_if($latest?->status === 'in_review', 409, 'This content already has a pending review.');
 
-            $snapshot = $this->snapshot($item);
+            $snapshot = AdminContentSnapshot::forEntertainment($item);
             $submission = AdminContentReviewSubmission::query()->create([
                 'content_type' => 'entertainment',
                 'content_id' => (string) $item->getKey(),
@@ -75,7 +70,7 @@ class AdminContentWorkflowController extends Controller
                 'status' => 'in_review',
                 'submitted_by' => $request->user()->getKey(),
                 'snapshot' => $snapshot,
-                'snapshot_hash' => hash('sha256', json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)),
+                'snapshot_hash' => hash('sha256', json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)),
                 'submitted_at' => now('UTC'),
             ]);
             $this->audit($request, 'content.submitted', $submission, null, ['revision' => $submission->revision, 'status' => $submission->status]);
@@ -95,7 +90,8 @@ class AdminContentWorkflowController extends Controller
             abort_if($record->status !== 'in_review', 409, 'Only pending submissions can be approved.');
             abort_if((string) $record->submitted_by === (string) $request->user()->getKey(), 403, 'Reviewers cannot approve their own submission.');
             $item = Entertainment::query()->lockForUpdate()->findOrFail($record->content_id);
-            abort_unless(hash_equals($record->snapshot_hash, hash('sha256', json_encode($this->snapshot($item), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES))), 409, 'Content changed after submission; submit a new revision for review.');
+            $snapshot = json_encode(AdminContentSnapshot::forEntertainment($item), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+            abort_unless(hash_equals($record->snapshot_hash, hash('sha256', $snapshot)), 409, 'Content changed after submission; submit a new revision for review.');
 
             $record->forceFill([
                 'status' => 'approved', 'reviewed_by' => $request->user()->getKey(),
@@ -129,42 +125,15 @@ class AdminContentWorkflowController extends Controller
         return response()->json(['data' => $this->submissionPayload($record, $item)]);
     }
 
-    public function publish(Request $request, int $submission, MediaReadinessService $mediaReadiness): JsonResponse
+    public function publish(Request $request, int $submission, AdminContentPublicationService $publication): JsonResponse
     {
-        abort_unless(ExplicitPermission::allows($request->user(), 'content.publish'), 403);
-
-        [$record, $item] = DB::transaction(function () use ($request, $submission, $mediaReadiness): array {
-            $record = AdminContentReviewSubmission::query()->lockForUpdate()->findOrFail($submission);
-            abort_if($record->status !== 'approved', 409, 'Only approved submissions can be published.');
-            $item = Entertainment::query()->lockForUpdate()->findOrFail($record->content_id);
-            abort_unless(hash_equals($record->snapshot_hash, hash('sha256', json_encode($this->snapshot($item), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES))), 409, 'Content changed after approval; submit a new revision for review.');
-            abort_unless($item->name && $item->type && ($item->poster_url || $item->thumbnail_url), 422, 'Content requires a title, type, and artwork before publication.');
-            if ($item->media_asset_id) {
-                $asset = MediaAsset::query()->find($item->media_asset_id);
-                abort_unless($asset && $mediaReadiness->inspect($asset)['ready'], 409, 'The attached media asset is not fully processed and ready for publication.');
-            }
-            $item->forceFill(['status' => true])->save();
-            $record->forceFill(['status' => 'published'])->save();
-            $this->audit($request, 'content.published', $record, ['status' => 'approved'], ['status' => 'published', 'revision' => $record->revision]);
-            return [$record, $item];
-        });
+        [$record, $item] = $publication->publish(
+            $request->user(),
+            $submission,
+            substr((string) $request->header('X-Request-ID', ''), 0, 64) ?: null,
+        );
 
         return response()->json(['data' => $this->submissionPayload($record, $item)]);
-    }
-
-    private function snapshot(Entertainment $item): array
-    {
-        $attributes = $item->getAttributes();
-        $snapshot = [];
-        foreach (self::SNAPSHOT_FIELDS as $field) {
-            $snapshot[$field] = $attributes[$field] ?? null;
-        }
-        foreach (['poster_url', 'thumbnail_url', 'video_url_input'] as $field) {
-            $value = $attributes[$field] ?? null;
-            $snapshot[$field.'_sha256'] = $value ? hash('sha256', (string) $value) : null;
-        }
-        ksort($snapshot);
-        return $snapshot;
     }
 
     private function contentPayload(Entertainment $item): array

@@ -37,6 +37,12 @@ class StagingDataFoundationTest extends TestCase
         StagingProfile::fromConfig('small', 12, 100, ['movies' => 0, 'series' => 0]);
     }
 
+    public function test_playback_target_requires_customers_devices_movies_and_media_assets(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        StagingProfile::fromConfig('small', 12, 100, ['media_assets' => 0]);
+    }
+
     public function test_generation_context_has_repeatable_randomness_and_fixed_history_start(): void
     {
         $profile = StagingProfile::fromConfig('small', 12, 100);

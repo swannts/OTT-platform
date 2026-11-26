@@ -76,6 +76,7 @@ class RelationalStagingGenerationTest extends TestCase
                 'audit_logs' => 12,
                 'analytics_reports' => 5,
                 'content_review_submissions' => 6,
+                'playback_sessions' => 0,
                 'live_channels' => 4,
                 'videos' => 5,
             ], JSON_THROW_ON_ERROR),
@@ -87,6 +88,8 @@ class RelationalStagingGenerationTest extends TestCase
         $this->assertSame(20, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'customer')->count());
         $this->assertSame(24, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'user_multi_profile')->count());
         $this->assertSame(25, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'device')->count());
+        $this->assertSame(0, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'playback_session')->count());
+        $this->assertSame(0, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'playback_token')->count());
         $this->assertSame(12, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'genre')->count());
         $this->assertSame(12, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'entertainment')->count());
         $this->assertSame(12, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'entertainment_genre_mapping')->count());

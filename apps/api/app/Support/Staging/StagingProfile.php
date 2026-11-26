@@ -68,6 +68,9 @@ final readonly class StagingProfile
         if ($counts['content_review_submissions'] > 0 && $counts['movies'] + $counts['series'] === 0) {
             throw new InvalidArgumentException('Content review submissions require staging movies or series.');
         }
+        if ($counts['playback_sessions'] > 0 && ($counts['customers'] === 0 || $counts['profiles'] === 0 || $counts['devices'] === 0 || $counts['movies'] === 0 || $counts['media_assets'] === 0)) {
+            throw new InvalidArgumentException('Playback sessions require staging customers, profiles, devices, movies, and media assets.');
+        }
         if ($counts['support_tickets'] > 0 && ($counts['customers'] === 0 || $counts['staff'] === 0)) {
             throw new InvalidArgumentException('Support tickets require staging customers and staff accounts.');
         }

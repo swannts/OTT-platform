@@ -196,7 +196,7 @@ final class StagingCatalogGenerator
                     $owner = $ownedRecords->get($slug);
                     $existing = $owner?->record_id ? $existingRows->get($owner->record_id) : null;
                     if ($existing) {
-                        if ($existing->type !== $type || (int) $existing->status !== 0) {
+                        if ($existing->type !== $type || ! in_array((int) $existing->status, [0, 1], true)) {
                             throw new RuntimeException("Refusing to adopt or alter existing catalog fixture {$slug}.");
                         }
                         $ids[] = (string) $existing->id;

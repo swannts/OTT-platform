@@ -83,12 +83,17 @@ final class StagingMediaFixtureGenerator
             if ($size === false || $size < 1 || ! is_file($renditions.'/master.m3u8') || ! is_file($renditions.'/manifest.mpd') || ! is_file($renditions.'/poster.jpg')) {
                 throw new RuntimeException('Generated media fixture failed its output-file checks.');
             }
+            $publicPosterPath = 'staging/'.$context->datasetId.'/fixture-'.$number.'/poster.jpg';
+            $posterContents = file_get_contents($renditions.'/poster.jpg');
+            if (! is_string($posterContents) || ! Storage::disk('public')->put($publicPosterPath, $posterContents)) {
+                throw new RuntimeException('Could not create the public catalog poster for a staging media fixture.');
+            }
             $sha256 = hash_file('sha256', $source);
             if (! is_string($sha256)) {
                 throw new RuntimeException('Could not calculate a media fixture checksum.');
             }
             $now = now();
-            DB::transaction(function () use ($context, $title, $number, $base, $sourcePath, $renditionPath, $size, $sha256, $metadata, $now): void {
+            DB::transaction(function () use ($context, $title, $number, $base, $sourcePath, $renditionPath, $publicPosterPath, $size, $sha256, $metadata, $now): void {
                 $assetId = DB::table('media_assets')->insertGetId([
                     'uploaded_by' => null,
                     'original_name' => 'staging-fixture-'.$number.'.mp4',
@@ -135,7 +140,11 @@ final class StagingMediaFixtureGenerator
                     ]);
                     $trackOwnerRows[] = ['dataset_id' => $context->datasetId, 'entity_type' => 'media_asset_track', 'entity_key' => 'fixture-'.$number.'-'.$file, 'record_id' => (string) $trackId, 'created_at' => $now, 'updated_at' => $now];
                 }
-                DB::table('entertainments')->where('id', $title->id)->update(['media_asset_id' => $assetId, 'updated_at' => $now]);
+                $posterUrl = Storage::disk('public')->url($publicPosterPath);
+                DB::table('entertainments')->where('id', $title->id)->update([
+                    'media_asset_id' => $assetId, 'poster_url' => $posterUrl,
+                    'thumbnail_url' => $posterUrl, 'poster_tv_url' => $posterUrl, 'updated_at' => $now,
+                ]);
                 DB::table('staging_dataset_records')->insert([
                     ['dataset_id' => $context->datasetId, 'entity_type' => 'media_asset', 'entity_key' => 'fixture-'.$number, 'record_id' => (string) $assetId, 'created_at' => $now, 'updated_at' => $now],
                     ['dataset_id' => $context->datasetId, 'entity_type' => 'media_processing_job', 'entity_key' => 'fixture-'.$number, 'record_id' => (string) $jobId, 'created_at' => $now, 'updated_at' => $now],
