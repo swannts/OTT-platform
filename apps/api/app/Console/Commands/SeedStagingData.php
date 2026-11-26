@@ -14,6 +14,7 @@ use App\Support\Staging\StagingCouponGenerator;
 use App\Support\Staging\StagingSearchHistoryGenerator;
 use App\Support\Staging\StagingSupportTicketGenerator;
 use App\Support\Staging\StagingMarketingGenerator;
+use App\Support\Staging\StagingNotificationGenerator;
 use App\Support\Staging\StagingGenerationContext;
 use App\Support\Staging\StagingProfile;
 use App\Support\Staging\StagingStaffGenerator;
@@ -57,6 +58,7 @@ class SeedStagingData extends Command
         StagingSearchHistoryGenerator $searchHistoryGenerator,
         StagingSupportTicketGenerator $supportTicketGenerator,
         StagingMarketingGenerator $marketingGenerator,
+        StagingNotificationGenerator $notificationGenerator,
     ): int {
         try {
             $profileName = (string) ($this->option('profile') ?: config('staging-data.profile'));
@@ -188,6 +190,7 @@ class SeedStagingData extends Command
                 $searchHistoryResults = $searchHistoryGenerator->generate($context);
                 $supportResults = $supportTicketGenerator->generate($context);
                 $marketingResults = $marketingGenerator->generate($context);
+                $notificationResults = $notificationGenerator->generate($context);
                 $recordCounts = DB::table('staging_dataset_records')
                     ->where('dataset_id', $datasetId)
                     ->select('entity_type', DB::raw('count(*) as records'))
@@ -225,6 +228,7 @@ class SeedStagingData extends Command
                     'support_ticket_notes' => $recordCounts['support_ticket_note'] ?? 0,
                     'marketing_campaigns' => $recordCounts['marketing_campaign'] ?? 0,
                     'marketing_consents' => $recordCounts['marketing_consent'] ?? 0,
+                    'notifications' => $recordCounts['notification'] ?? 0,
                 ];
                 $recordCounts['movies'] = $catalogResults['movies'];
                 $recordCounts['series'] = $catalogResults['series'];
@@ -272,7 +276,8 @@ class SeedStagingData extends Command
                 $this->info(sprintf('Dataset search activity: %d historical searches linked to owned customer profiles.', $searchHistoryResults['search_history']));
                 $this->info(sprintf('Dataset customer support: %d synthetic tickets and %d internal staff notes; no external message is sent.', $supportResults['tickets'], $supportResults['notes']));
                 $this->info(sprintf('Dataset marketing: %d consent choices and %d campaigns (%d drafts, %d awaiting review, %d approved, %d rejected); no campaign is published or delivered.', $marketingResults['consents'], $marketingResults['campaigns'], $marketingResults['draft'], $marketingResults['pending_approval'], $marketingResults['approved'], $marketingResults['rejected']));
-                $this->warn('This milestone remains partial: refunds/reconciliation, playback, watchlists/reviews, notifications, operations, analytics, and search indexing are not yet generated. Catalog entries remain unpublished; synthetic transactions never contact payment providers.');
+                $this->info(sprintf('Dataset in-app notifications: %d historical records (%d unread, %d archived); no mail or push is dispatched.', $notificationResults['notifications'], $notificationResults['unread'], $notificationResults['archived']));
+                $this->warn('This milestone remains partial: refunds/reconciliation, playback, watchlists/reviews, campaign deliveries/banners, operations, analytics, and search indexing are not yet generated. Catalog entries remain unpublished; synthetic transactions never contact payment providers.');
 
                 return self::SUCCESS;
             } catch (Throwable $exception) {

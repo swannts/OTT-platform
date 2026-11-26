@@ -70,6 +70,7 @@ class RelationalStagingGenerationTest extends TestCase
                 'search_history' => 5,
                 'support_tickets' => 10,
                 'campaigns' => 10,
+                'notifications' => 15,
             ], JSON_THROW_ON_ERROR),
         ];
 
@@ -112,6 +113,9 @@ class RelationalStagingGenerationTest extends TestCase
         $this->assertSame(10, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'marketing_campaign')->count());
         $this->assertSame(0, DB::table('marketing_campaigns')->where('status', 'published')->count());
         $this->assertSame(0, DB::table('marketing_campaign_deliveries')->count());
+        $this->assertSame(15, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'notification')->count());
+        $this->assertSame(3, DB::table('notifications')->whereNull('read_at')->whereNull('archived_at')->count());
+        $this->assertSame(1, DB::table('notifications')->whereNotNull('archived_at')->count());
         $this->assertSame(0, DB::table('verified_payments')->count());
         $this->assertSame(0, DB::table('subscriptions')->where('status', 'active')->where('is_trial', 0)->whereNull('payment_id')->count());
 
@@ -135,5 +139,6 @@ class RelationalStagingGenerationTest extends TestCase
         $this->assertSame(7, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'support_ticket_note')->count());
         $this->assertSame(40, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'marketing_consent')->count());
         $this->assertSame(10, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'marketing_campaign')->count());
+        $this->assertSame(15, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'notification')->count());
     }
 }
