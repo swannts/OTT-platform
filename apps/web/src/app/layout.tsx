@@ -89,11 +89,26 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="bn" suppressHydrationWarning className={`dark ${playfair.variable} ${inter.variable}`}>
-      <Script
-        id="ignore-harmless-media-aborts"
-        strategy="beforeInteractive"
-        dangerouslySetInnerHTML={{
-          __html: `
+      <body suppressHydrationWarning className="bg-[#070a0e] text-[#f8fafc] font-sans min-h-screen flex flex-col antialiased selection:bg-[#e5b869]/30 selection:text-[#e5b869]">
+        <RuntimeErrorGuard>
+          <StoreProvider>
+            <AuthProvider>
+              <LanguageProvider>
+                <NavigationProgress />
+                <Navbar />
+                <main className="flex-1 pb-12">
+                  {children}
+                </main>
+                <Footer />
+              </LanguageProvider>
+            </AuthProvider>
+          </StoreProvider>
+        </RuntimeErrorGuard>
+        <Script
+          id="ignore-harmless-media-aborts"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
               (function() {
                 if (typeof window === 'undefined') return;
                 function isHarmless(r) {
@@ -141,24 +156,9 @@ export default function RootLayout({
                   }
                 }, true);
               })();
-          `,
-        }}
-      />
-      <body suppressHydrationWarning className="bg-[#070a0e] text-[#f8fafc] font-sans min-h-screen flex flex-col antialiased selection:bg-[#e5b869]/30 selection:text-[#e5b869]">
-        <RuntimeErrorGuard>
-          <StoreProvider>
-            <AuthProvider>
-              <LanguageProvider>
-                <NavigationProgress />
-                <Navbar />
-                <main className="flex-1 pb-12">
-                  {children}
-                </main>
-                <Footer />
-              </LanguageProvider>
-            </AuthProvider>
-          </StoreProvider>
-        </RuntimeErrorGuard>
+            `,
+          }}
+        />
       </body>
     </html>
   );
