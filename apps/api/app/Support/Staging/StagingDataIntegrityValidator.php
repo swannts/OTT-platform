@@ -56,8 +56,10 @@ final class StagingDataIntegrityValidator
                 'media_asset_tracks' => $groupedCounts['media_asset_track'] ?? 0,
                 'entertainment_media_links' => $groupedCounts['entertainment_media_link'] ?? 0,
                 'blogs' => $groupedCounts['blog'] ?? 0,
+                'coupons' => $groupedCounts['coupon'] ?? 0,
+                'coupon_plan_mappings' => $groupedCounts['coupon_plan_mapping'] ?? 0,
             ];
-            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'cast_crew', 'entertainment_talent_mapping', 'content_license_window', 'content_license_territory', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction', 'media_asset', 'media_processing_job', 'media_asset_track', 'entertainment_media_link', 'blog'];
+            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'cast_crew', 'entertainment_talent_mapping', 'content_license_window', 'content_license_territory', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction', 'media_asset', 'media_processing_job', 'media_asset_track', 'entertainment_media_link', 'blog', 'coupon', 'coupon_plan_mapping'];
             $unknownTypes = array_diff(array_keys($groupedCounts), $supportedTypes);
             foreach ($unknownTypes as $type) {
                 $violations[] = "Dataset {$manifest->dataset_id} has an unsupported ownership type {$type}.";
@@ -155,6 +157,45 @@ final class StagingDataIntegrityValidator
                 })->count();
             if ($invalidBlogs > 0) {
                 $violations[] = "Dataset {$manifest->dataset_id} has {$invalidBlogs} invalid or incompletely localized editorial articles.";
+            }
+            $invalidCoupons = DB::table('staging_dataset_records as owners')
+                ->leftJoin('coupons', 'coupons.id', '=', 'owners.record_id')
+                ->where('owners.dataset_id', $manifest->dataset_id)
+                ->where('owners.entity_type', 'coupon')
+                ->where(function ($query): void {
+                    $query->whereNull('coupons.id')->orWhereNotNull('coupons.deleted_at')
+                        ->orWhereColumn('coupons.code', '!=', 'owners.entity_key')
+                        ->orWhereNull('coupons.status')->orWhere('coupons.discount', '<=', 0)
+                        ->orWhereNotIn('coupons.discount_type', ['fixed', 'percentage'])
+                        ->orWhere(function ($query): void {
+                            $query->where('coupons.discount_type', 'percentage')->where('coupons.discount', '>', 100);
+                        })
+                        ->orWhere(function ($query): void {
+                            $query->whereNotNull('coupons.start_date')->whereNotNull('coupons.expire_date')->whereColumn('coupons.expire_date', '<', 'coupons.start_date');
+                        })
+                        ->orWhereNull('coupons.max_redemptions')->orWhere('coupons.max_redemptions', '<', 1)
+                        ->orWhereNull('coupons.per_user_limit')->orWhere('coupons.per_user_limit', '<', 1);
+                })->count();
+            $invalidCouponMappings = DB::table('staging_dataset_records as owners')
+                ->leftJoin('coupon_subscription_plan as mappings', 'mappings.id', '=', 'owners.record_id')
+                ->leftJoin('staging_dataset_records as coupon_owner', function ($join) use ($manifest): void {
+                    $join->on('coupon_owner.record_id', '=', 'mappings.coupon_id')
+                        ->where('coupon_owner.dataset_id', '=', $manifest->dataset_id)
+                        ->where('coupon_owner.entity_type', '=', 'coupon');
+                })
+                ->leftJoin('staging_dataset_records as plan_owner', function ($join) use ($manifest): void {
+                    $join->on('plan_owner.record_id', '=', 'mappings.subscription_plan_id')
+                        ->where('plan_owner.dataset_id', '=', $manifest->dataset_id)
+                        ->where('plan_owner.entity_type', '=', 'plan');
+                })
+                ->where('owners.dataset_id', $manifest->dataset_id)
+                ->where('owners.entity_type', 'coupon_plan_mapping')
+                ->where(function ($query): void {
+                    $query->whereNull('mappings.id')->orWhereNull('coupon_owner.id')->orWhereNull('plan_owner.id')
+                        ->orWhereColumn('owners.entity_key', '!=', DB::raw("CONCAT(coupon_owner.entity_key, ':', mappings.subscription_plan_id)"));
+                })->count();
+            if ($invalidCoupons > 0 || $invalidCouponMappings > 0) {
+                $violations[] = "Dataset {$manifest->dataset_id} has {$invalidCoupons} invalid staging coupons and {$invalidCouponMappings} invalid coupon-to-plan mappings.";
             }
             $ownedMedia = DB::table('staging_dataset_records')
                 ->where('dataset_id', $manifest->dataset_id)
@@ -441,7 +482,7 @@ final class StagingDataIntegrityValidator
                 }
             }
             $configuredCounts = (array) ($manifest->configuration['counts'] ?? []);
-            foreach (['staff' => 'staff', 'customers' => 'customers', 'devices' => 'devices', 'cast_crew' => 'cast_crew', 'plans' => 'plans', 'subscriptions' => 'subscriptions', 'payments' => 'payments', 'media_assets' => 'media_assets'] as $entity => $targetKey) {
+            foreach (['staff' => 'staff', 'customers' => 'customers', 'devices' => 'devices', 'cast_crew' => 'cast_crew', 'plans' => 'plans', 'subscriptions' => 'subscriptions', 'payments' => 'payments', 'media_assets' => 'media_assets', 'coupons' => 'coupons'] as $entity => $targetKey) {
                 if (isset($configuredCounts[$targetKey]) && $counts[$entity] !== (int) $configuredCounts[$targetKey]) {
                     $violations[] = "Dataset {$manifest->dataset_id} has {$counts[$entity]} {$entity}; configured target is {$configuredCounts[$targetKey]}.";
                 }
@@ -496,7 +537,7 @@ final class StagingDataIntegrityValidator
         return [
             'valid' => $violations === [],
             'complete' => $complete,
-            'coverage' => 'manifest, staff role, customer identity, profile and device ownership, unpublished bilingual catalog, genre mappings, fictional cast/crew credits, bilingual editorial articles, licensing windows and territories, actual media fixture readiness and ownership, series hierarchy, plans, subscription lifecycle, and synthetic payment attempts; remaining business-domain checks are pending',
+            'coverage' => 'manifest, staff role, customer identity, profile and device ownership, unpublished bilingual catalog, genre mappings, fictional cast/crew credits, bilingual editorial articles, coupon and plan mappings, licensing windows and territories, actual media fixture readiness and ownership, series hierarchy, plans, subscription lifecycle, and synthetic payment attempts; remaining business-domain checks are pending',
             'checked_at' => now()->toIso8601String(),
             'datasets' => $datasets,
             'violations' => array_values(array_unique($violations)),

@@ -98,6 +98,9 @@ class RelationalStagingGenerationTest extends TestCase
         $this->assertSame(20, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'blog')->count());
         $this->assertSame(18, DB::table('blogs')->where('status', 1)->whereNotNull('published_at')->count());
         $this->assertSame(2, DB::table('blogs')->where('status', 0)->whereNull('published_at')->count());
+        $this->assertSame(15, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'coupon')->count());
+        $this->assertSame(30, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'coupon_plan_mapping')->count());
+        $this->assertSame(30, DB::table('coupon_subscription_plan')->count());
         $this->assertSame(0, DB::table('verified_payments')->count());
         $this->assertSame(0, DB::table('subscriptions')->where('status', 'active')->where('is_trial', 0)->whereNull('payment_id')->count());
 
@@ -114,5 +117,7 @@ class RelationalStagingGenerationTest extends TestCase
         $this->assertSame(11, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'content_license_window')->count());
         $this->assertSame(19, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'content_license_territory')->count());
         $this->assertSame(20, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'blog')->count());
+        $this->assertSame(15, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'coupon')->count());
+        $this->assertSame(30, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'coupon_plan_mapping')->count());
     }
 }
