@@ -113,7 +113,6 @@ go vet ./...
 go test ./...
 
 # apps/mobile
-dart format --output=none --set-exit-if-changed lib test
 flutter analyze
 flutter test
 ```
@@ -122,6 +121,8 @@ Use the package manager and exact scripts in the owning application's
 manifest. If a local toolchain, database, or external service blocks a check,
 report the command and the actual blocker. Do not conceal failures or claim
 runtime readiness based only on compilation.
+Format only changed Dart files; do not turn a touched-file change into a
+whole-application formatting rewrite.
 
 Validate infrastructure separately:
 

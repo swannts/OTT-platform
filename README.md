@@ -93,7 +93,8 @@ schemas, the 12 canonical admin roles, playback entitlements, payment
 integrations, RabbitMQ contracts, and mobile application identifiers are
 compatibility boundaries. Start with the [architecture overview](docs/architecture/overview.md)
 and [migration plan](docs/architecture/repository-migration-plan.md) before
-cross-application changes.
+cross-application changes. The [migration report](docs/architecture/migration-report.md)
+records final verification and remaining work.
 
 Key references:
 

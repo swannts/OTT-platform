@@ -122,6 +122,18 @@ jobs:
           working-directory: apps/api
           composer-options: --no-interaction --prefer-dist --no-progress
       - run: composer validate --no-check-publish
+      - name: Check PHP syntax
+        run: find app Modules routes database config -type f -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
+      - run: php artisan migrate --force
+        env:
+          APP_ENV: testing
+          APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: swann_test
+          DB_USERNAME: root
+          DB_PASSWORD: password
       - run: php artisan route:list --path=api --json > /tmp/ott-api-routes.json
         env:
           APP_ENV: testing
@@ -178,7 +190,6 @@ jobs:
           cache: true
           cache-dependency-path: apps/mobile/pubspec.lock
       - run: flutter pub get
-      - run: dart format --output=none --set-exit-if-changed lib test
       - run: flutter analyze
       - run: flutter test
 

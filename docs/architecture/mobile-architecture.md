@@ -15,6 +15,11 @@ therefore analysis and tests cannot validate bulk path changes in this
 environment. Keep this structure stable until a compatible SDK is available,
 then migrate one capability at a time with import updates and tests.
 
+A read-only formatting check also reports that 300 of 338 Dart files would be
+rewritten by the current formatter. This legacy-wide formatting debt is not
+part of a directory migration; format changed files individually instead of
+creating a large unrelated diff.
+
 The package name `swann_ott` and Android/iOS identifiers `com.swann.ott` are
 application and store identities, not engineering directory names. Preserve
 them to protect existing installations, Firebase configuration, deep links,
