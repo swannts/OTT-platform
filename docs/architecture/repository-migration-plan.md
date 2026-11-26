@@ -149,7 +149,7 @@ and validate a separate rollback procedure before execution.
 | --- | --- | --- |
 | M1 — Repository analysis and baseline | Implemented and verified | This plan and baseline table; route/autoload/Compose checks pass, with platform limitations recorded. |
 | M2 — Generated artifact cleanup | Implemented and verified | 99 generated Playwright outputs removed from Git tracking, preserved locally, and covered by root ignore rules. A path-only heuristic scan found no common token/password patterns in the tracked artifacts. |
-| M3 — Application directory migration | Not implemented | Five Git-aware moves and all path references remain. |
+| M3 — Application directory migration | Implemented and verified | All five applications moved under `apps/`; root README, API docs, test help text, Compose build contexts/mounts, and customer/admin package names updated. Compose validation, web lint/typecheck, admin lint/BFF test passed. |
 | M4 — Docker, scripts and configuration | Not implemented | Compose and script migration remains; persistent identifiers must be preserved. |
 | M5 — Laravel internal naming | Not implemented | Requires dependency-by-dependency assessment; avoid mass class renames. |
 | M6 — Web/admin organization | Not implemented | Preserve client/server boundaries, API clients, BFF, UI and tests. |

@@ -55,7 +55,7 @@ function responseJson(response) {
 }
 
 test('admin BFF keeps the Sanctum token server-side across login, session, and logout', async (t) => {
-  assert.ok(existsSync(nextBinary), 'install admin-ui dependencies before running this test');
+  assert.ok(existsSync(nextBinary), 'install apps/admin dependencies before running this test');
 
   const backendRequests = [];
   const backend = createServer(async (request, response) => {

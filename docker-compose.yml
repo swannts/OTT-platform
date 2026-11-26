@@ -3,7 +3,7 @@ name: swann-ott-local
 services:
   admin-ui:
     build:
-      context: ./admin-ui
+      context: ./apps/admin
       dockerfile: docker/Dockerfile.dev
     image: swann-admin-ui:dev
     init: true
@@ -14,7 +14,7 @@ services:
       LARAVEL_API_URL: http://backend:8000
       WATCHPACK_POLLING: "true"
     volumes:
-      - ./admin-ui:/app
+      - ./apps/admin:/app
       - admin-node-modules:/app/node_modules
       - admin-next-cache:/app/.next
     depends_on:
@@ -23,7 +23,7 @@ services:
 
   frontend:
     build:
-      context: ./nextjs-web
+      context: ./apps/web
       dockerfile: docker/Dockerfile.dev
       target: development
     image: swann-frontend:dev
@@ -37,7 +37,7 @@ services:
       NEXT_TELEMETRY_DISABLED: "1"
       WATCHPACK_POLLING: "true"
     volumes:
-      - ./nextjs-web:/app
+      - ./apps/web:/app
       - frontend-node-modules:/app/node_modules
       - frontend-next-cache:/app/.next
     depends_on:
@@ -46,7 +46,7 @@ services:
 
   backend:
     build:
-      context: ./swann-laravel-web
+      context: ./apps/api
       dockerfile: docker/Dockerfile.dev
     image: swann-backend:dev
     init: true
@@ -80,10 +80,10 @@ services:
       SANCTUM_STATEFUL_DOMAINS: localhost:3000,localhost:3032,127.0.0.1:3000,127.0.0.1:3032
       CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:3032
     volumes:
-      - ./swann-laravel-web:/var/www/html
+      - ./apps/api:/var/www/html
       - backend-vendor:/var/www/html/vendor
-      - ./swann-laravel-web/storage/app/public:/var/www/html/storage/app/public
-      - ./swann-laravel-web/storage/app/private:/var/www/html/storage/app/private
+      - ./apps/api/storage/app/public:/var/www/html/storage/app/public
+      - ./apps/api/storage/app/private:/var/www/html/storage/app/private
       - backend-bootstrap-cache:/var/www/html/bootstrap/cache
     depends_on:
       mysql:
@@ -97,7 +97,7 @@ services:
 
   worker:
     build:
-      context: ./go-worker
+      context: ./apps/worker
       dockerfile: docker/Dockerfile.dev
     image: swann-worker:dev
     init: true
@@ -112,10 +112,10 @@ services:
       STORAGE_LOCAL_PATH: /var/www/html/public/storage
       PRIVATE_STORAGE_PATH: /var/www/html/storage/app/private
     volumes:
-      - ./go-worker:/app
+      - ./apps/worker:/app
       - go-worker-modules:/go/pkg/mod
-      - ./swann-laravel-web/storage/app/public:/var/www/html/public/storage
-      - ./swann-laravel-web/storage/app/private:/var/www/html/storage/app/private
+      - ./apps/api/storage/app/public:/var/www/html/public/storage
+      - ./apps/api/storage/app/private:/var/www/html/storage/app/private
     depends_on:
       mysql:
         condition: service_healthy

@@ -1,17 +1,21 @@
 # Swann OTT Platform
 
 An over-the-top (OTT) video streaming platform featuring a decoupled architecture:
-1. **Next.js Web Client** (`nextjs-web/`) — High-performance, modern React streaming website with Server-Side Rendering (SSR/ISR), Turbopack, Tailwind CSS, and HLS playback.
-2. **Laravel Headless Backend & Admin** (`swann-laravel-web/`) — REST API v3, media management, subscription engine, payment webhooks, and administrative CMS.
-3. **Flutter Client** (`flutter-app/`) — Cross-platform client for iOS, Android, and Smart TVs.
+1. **Customer website** (`apps/web/`) — Next.js streaming website with server rendering and HLS playback.
+2. **API and platform backend** (`apps/api/`) — Laravel modular monolith, REST APIs, media, subscriptions, payments, and administrative APIs.
+3. **Admin portal** (`apps/admin/`) — Next.js administrative portal with API BFF and role-based access controls.
+4. **Mobile and TV client** (`apps/mobile/`) — Flutter applications for iOS, Android, and Smart TVs.
+5. **Background worker** (`apps/worker/`) — Go worker for media and asynchronous jobs.
 
 ---
 
 ## Projects Structure
 
-- [`nextjs-web/`](nextjs-web/README.md) — Next.js 16+ frontend (App Router, Tailwind CSS, TypeScript, HLS.js, Sanctum auth).
-- [`swann-laravel-web/`](swann-laravel-web/README.md) — Headless Laravel backend API, payment gateways, and admin CMS.
-- [`flutter-app/`](flutter-app/README.md) — Flutter mobile & TV application.
+- [`apps/web/`](apps/web/README.md) — Next.js customer website.
+- [`apps/api/`](apps/api/README.md) — Laravel backend API and modular monolith.
+- [`apps/admin/`](apps/admin/README.md) — Next.js admin portal.
+- [`apps/mobile/`](apps/mobile/README.md) — Flutter mobile and TV application.
+- [`apps/worker/go.mod`](apps/worker/go.mod) — Go background worker module.
 
 ---
 
@@ -84,13 +88,13 @@ This repository uses only the root `docker-compose.yml` for local development.
 
 ### 1. Start Laravel Backend (Port 8000)
 ```bash
-cd swann-laravel-web
+cd apps/api
 php artisan serve --port=8000
 ```
 
 ### 2. Start Next.js Web App (Port 3000)
 ```bash
-cd nextjs-web
+cd apps/web
 npm run dev
 ```
 Open [http://localhost:3000](http://localhost:3000) in your browser.

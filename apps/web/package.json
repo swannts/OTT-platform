@@ -1,5 +1,5 @@
 {
-  "name": "nextjs-web",
+  "name": "@ott-platform/customer-web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
