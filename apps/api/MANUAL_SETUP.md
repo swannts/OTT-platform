@@ -18,11 +18,11 @@ sed -i \
   .env
 
 docker compose up --build -d
-docker compose exec laravel.test php artisan key:generate
-docker compose exec laravel.test php artisan migrate --force --no-interaction
-docker compose exec laravel.test php artisan db:seed --force --no-interaction
-docker compose exec laravel.test php artisan storage:link
-docker compose exec laravel.test sh -lc 'touch storage/installed'
+docker compose exec api php artisan key:generate
+docker compose exec api php artisan migrate --force --no-interaction
+docker compose exec api php artisan db:seed --force --no-interaction
+docker compose exec api php artisan storage:link
+docker compose exec api sh -lc 'touch storage/installed'
 ```
 
 Keep `.env` local. The Compose network hostname for MySQL is `mysql`.
@@ -31,6 +31,6 @@ In local development, `php artisan db:seed` only reconciles RBAC and creates the
 
 ## Existing installation
 
-Use `docker compose exec laravel.test php artisan migrate --force --no-interaction` to apply pending migrations. Do not use `migrate:fresh` on a database with data; it drops all tables.
+Use `docker compose exec api php artisan migrate --force --no-interaction` to apply pending migrations. Do not use `migrate:fresh` on a database with data; it drops all tables.
 
 The application is available at <http://localhost:8000>.

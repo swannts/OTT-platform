@@ -70,7 +70,7 @@ readiness.
 - Removed hard-coded demo account credentials from the Next.js and Laravel
   login screens and replaced seeded sample passwords with the private local
   seed setting.
-- `docker-compose.production.yml` sets `APP_DEBUG=false`, requires an HTTPS API,
+- `compose.production.yaml` sets `APP_DEBUG=false`, requires an HTTPS API,
   admin, and customer origin, requires immutable image references for all
   application and infrastructure containers, binds web ports to loopback for a TLS reverse proxy, and
   leaves MySQL, Redis, RabbitMQ, and Meilisearch ports unpublished. It adds
@@ -197,16 +197,16 @@ readiness.
 4. Validate configuration and deploy in this order:
 
    ```bash
-   docker compose --env-file /run/secrets/ott-production.env \
-     -f docker-compose.yml -f docker-compose.production.yml config --quiet
-   docker compose --env-file /run/secrets/ott-production.env \
-     -f docker-compose.yml -f docker-compose.production.yml pull
-   docker compose --env-file /run/secrets/ott-production.env \
-     -f docker-compose.yml -f docker-compose.production.yml up -d mysql redis rabbitmq meilisearch
-   docker compose --env-file /run/secrets/ott-production.env \
-     -f docker-compose.yml -f docker-compose.production.yml run --rm backend php artisan migrate --force
-   docker compose --env-file /run/secrets/ott-production.env \
-     -f docker-compose.yml -f docker-compose.production.yml up -d
+   docker compose --project-name ott-prod --env-file /run/secrets/ott-production.env \
+     -f compose.yaml -f compose.production.yaml config --quiet
+   docker compose --project-name ott-prod --env-file /run/secrets/ott-production.env \
+     -f compose.yaml -f compose.production.yaml pull
+   docker compose --project-name ott-prod --env-file /run/secrets/ott-production.env \
+     -f compose.yaml -f compose.production.yaml up -d mysql redis rabbitmq meilisearch
+   docker compose --project-name ott-prod --env-file /run/secrets/ott-production.env \
+     -f compose.yaml -f compose.production.yaml run --rm api php artisan migrate --force
+   docker compose --project-name ott-prod --env-file /run/secrets/ott-production.env \
+     -f compose.yaml -f compose.production.yaml up -d
    ```
 
    Verify `/up`, queue/worker health, admin sign-in and permissions, customer

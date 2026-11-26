@@ -1,0 +1,158 @@
+name: ott-prod
+
+x-api-environment: &api-environment
+  APP_ENV: production
+  APP_DEBUG: "false"
+  APP_RELEASE_ID: ${APP_RELEASE_ID:-}
+  APP_RELEASED_AT: ${APP_RELEASED_AT:-}
+  APP_KEY: ${APP_KEY:?Inject a unique production APP_KEY from the secret manager}
+  APP_URL: ${APP_URL:?Set the HTTPS Laravel API URL}
+  ADMIN_UI_URL: ${ADMIN_UI_URL:?Set the HTTPS admin portal origin}
+  FRONTEND_URL: ${FRONTEND_URL:?Set the HTTPS customer website origin}
+  MAIL_MAILER: ${MAIL_MAILER:-smtp}
+  MAIL_HOST: ${MAIL_HOST:?Set the production SMTP host}
+  MAIL_PORT: ${MAIL_PORT:-587}
+  MAIL_USERNAME: ${MAIL_USERNAME:-}
+  MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+  MAIL_ENCRYPTION: ${MAIL_ENCRYPTION:-tls}
+  MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:?Set the verified sender address}
+  MAIL_FROM_NAME: ${MAIL_FROM_NAME:-OTT Platform}
+  SESSION_SECURE_COOKIE: "true"
+  CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?Set exact HTTPS browser origins}
+  PLAYBACK_GEO_COUNTRY_HEADER: ${PLAYBACK_GEO_COUNTRY_HEADER:-CF-IPCountry}
+  PLAYBACK_GEO_TRUSTED_PROXY_CIDRS: ${PLAYBACK_GEO_TRUSTED_PROXY_CIDRS:-}
+  DB_HOST: mysql
+  DB_PORT: 3306
+  DB_DATABASE: ${DB_DATABASE:?Set DB_DATABASE}
+  DB_USERNAME: ${DB_USERNAME:?Set a least-privilege database user}
+  DB_PASSWORD: ${DB_PASSWORD:?Inject the application database password}
+  RABBITMQ_HOST: rabbitmq
+  RABBITMQ_PORT: 5672
+  RABBITMQ_USER: ${RABBITMQ_USER:?Set a non-default RabbitMQ user}
+  RABBITMQ_PASSWORD: ${RABBITMQ_PASS:?Inject the RabbitMQ password}
+  MEILISEARCH_HOST: http://meilisearch:7700
+  MEILISEARCH_KEY: ${MEILI_MASTER_KEY:?Inject the Meilisearch master key}
+  BACKUP_DISKS: ${BACKUP_DISKS:-backup-s3}
+  BACKUP_ARCHIVE_PASSWORD: ${BACKUP_ARCHIVE_PASSWORD:?Inject a dedicated archive encryption password}
+  BACKUP_MAX_STORAGE_MB: ${BACKUP_MAX_STORAGE_MB:-500000}
+  BACKUP_NOTIFICATION_EMAIL: ${BACKUP_NOTIFICATION_EMAIL:-}
+  AWS_BACKUP_BUCKET: ${AWS_BACKUP_BUCKET:?Set the private backup bucket}
+  AWS_BACKUP_REGION: ${AWS_BACKUP_REGION:?Set the backup bucket region}
+  AWS_BACKUP_ACCESS_KEY_ID: ${AWS_BACKUP_ACCESS_KEY_ID:-}
+  AWS_BACKUP_SECRET_ACCESS_KEY: ${AWS_BACKUP_SECRET_ACCESS_KEY:-}
+  AWS_BACKUP_ENDPOINT: ${AWS_BACKUP_ENDPOINT:-}
+  AWS_BACKUP_PREFIX: ${AWS_BACKUP_PREFIX:-ott-prod-backups}
+  OPERATIONS_ALERT_EMAIL: ${OPERATIONS_ALERT_EMAIL:-}
+  OPERATIONS_ALERT_MINIMUM_SEVERITY: ${OPERATIONS_ALERT_MINIMUM_SEVERITY:-high}
+
+services:
+  admin:
+    build: !reset null
+    image: ${ADMIN_IMAGE:-${ADMIN_UI_IMAGE:?Pin the admin portal release image by immutable digest}}
+    volumes: !override []
+    environment:
+      NODE_ENV: production
+    ports: !override
+      - "127.0.0.1:${ADMIN_PORT:?Set ADMIN_PORT for the local TLS proxy}:3032"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3032').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  web:
+    build: !reset null
+    image: ${WEB_IMAGE:-${FRONTEND_IMAGE:?Pin the customer website release image by immutable digest}}
+    volumes: !override []
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?Set the HTTPS Laravel API base URL for the customer frontend}
+      INTERNAL_API_URL: http://api:8000/api
+    ports: !override
+      - "127.0.0.1:${FRONTEND_PORT:?Set FRONTEND_PORT for the local TLS proxy}:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  api:
+    build: !reset null
+    image: ${API_IMAGE:-${BACKEND_IMAGE:?Pin the Laravel API release image by immutable digest}}
+    command: !reset null
+    extra_hosts: !reset []
+    environment: *api-environment
+    volumes: !override
+      - ./apps/api/storage/app/public:/var/www/html/storage/app/public
+      - ./apps/api/storage/app/private:/var/www/html/storage/app/private
+    ports: !override
+      - "127.0.0.1:${BACKEND_PORT:?Set BACKEND_PORT for the local TLS proxy}:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "php -r 'exit(str_contains((get_headers(\"http://127.0.0.1:8000/up\")[0] ?? \"\"), \" 200 \") ? 0 : 1);'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  scheduler:
+    build: !reset null
+    image: ${API_IMAGE:-${BACKEND_IMAGE:?Pin the Laravel API release image by immutable digest}}
+    command: ["php", "artisan", "schedule:work"]
+    restart: unless-stopped
+    environment: *api-environment
+    volumes:
+      - ./apps/api/storage/app/public:/var/www/html/storage/app/public
+      - ./apps/api/storage/app/private:/var/www/html/storage/app/private
+    depends_on:
+      api:
+        condition: service_healthy
+
+  mysql:
+    image: ${MYSQL_IMAGE:?Pin MYSQL_IMAGE to a tested immutable tag or digest}
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:?Set DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME:?Set a least-privilege database user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Inject the application database password}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Inject a separate MySQL root password}
+      MYSQL_ROOT_HOST: localhost
+      MYSQL_ALLOW_EMPTY_PASSWORD: "no"
+    ports: !reset []
+
+  redis:
+    image: ${REDIS_IMAGE:?Pin REDIS_IMAGE to a tested immutable tag or digest}
+    ports: !reset []
+
+  worker:
+    build: !reset null
+    image: ${WORKER_IMAGE:?Pin the worker release image by immutable digest}
+    environment:
+      APP_ENV: production
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set the URL-encoded RabbitMQ worker URL}
+      DB_DSN: ${DB_DSN:?Set the MySQL worker DSN with URL-safe credentials}
+      REDIS_ADDR: redis:6379
+      STORAGE_DRIVER: local
+      STORAGE_LOCAL_PATH: /var/www/html/public/storage
+      PRIVATE_STORAGE_PATH: /var/www/html/storage/app/private
+    volumes: !override
+      - ./apps/api/storage/app/public:/var/www/html/public/storage
+      - ./apps/api/storage/app/private:/var/www/html/storage/app/private
+
+  rabbitmq:
+    image: ${RABBITMQ_IMAGE:?Pin RABBITMQ_IMAGE to a tested immutable tag or digest}
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?Set a non-default RabbitMQ user}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:?Inject the RabbitMQ password}
+    ports: !reset []
+
+  meilisearch:
+    image: ${MEILISEARCH_IMAGE:?Pin MEILISEARCH_IMAGE to a tested immutable tag or digest}
+    environment:
+      MEILI_ENV: production
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?Inject the Meilisearch master key}
+    ports: !reset []
+
+networks:
+  default:
+    name: ott-prod

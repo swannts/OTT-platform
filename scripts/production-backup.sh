@@ -5,6 +5,7 @@ umask 077
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 COMPOSE_ENV_FILE="${COMPOSE_ENV_FILE:-$ROOT_DIR/.env.production}"
+PRODUCTION_COMPOSE_FILE="${PRODUCTION_COMPOSE_FILE:-$ROOT_DIR/compose.production.yaml}"
 BACKUP_DIR="${BACKUP_DIR:-}"
 BACKUP_AGE_RECIPIENT="${BACKUP_AGE_RECIPIENT:-}"
 
@@ -14,6 +15,7 @@ fail() {
 }
 
 [[ -f "$COMPOSE_ENV_FILE" ]] || fail "COMPOSE_ENV_FILE does not exist: $COMPOSE_ENV_FILE"
+[[ -f "$PRODUCTION_COMPOSE_FILE" ]] || fail "PRODUCTION_COMPOSE_FILE does not exist: $PRODUCTION_COMPOSE_FILE"
 [[ -n "$BACKUP_DIR" && "$BACKUP_DIR" = /* ]] || fail 'set BACKUP_DIR to an absolute off-host backup destination'
 [[ "$BACKUP_AGE_RECIPIENT" =~ ^age1[[:alnum:]]+$ ]] || fail 'set BACKUP_AGE_RECIPIENT to an age public recipient'
 command -v docker >/dev/null || fail 'docker is required'
@@ -27,7 +29,7 @@ case "$BACKUP_DIR/" in
   "$ROOT_DIR/"|"$ROOT_DIR"/*) fail 'BACKUP_DIR must resolve outside the repository' ;;
 esac
 
-COMPOSE=(docker compose --env-file "$COMPOSE_ENV_FILE" -f "$ROOT_DIR/docker-compose.yml" -f "$ROOT_DIR/docker-compose.production.yml")
+COMPOSE=(docker compose --project-name ott-prod --env-file "$COMPOSE_ENV_FILE" -f "$ROOT_DIR/compose.yaml" -f "$PRODUCTION_COMPOSE_FILE")
 TIMESTAMP="$(date -u +'%Y%m%dT%H%M%SZ')"
 STAGE_DIR="$(mktemp -d "$BACKUP_DIR/.ott-backup-${TIMESTAMP}.XXXXXX")"
 FINAL_ARCHIVE="$BACKUP_DIR/ott-backup-${TIMESTAMP}.tar"
@@ -46,7 +48,7 @@ trap cleanup EXIT
   | gzip -1 \
   | age --recipient "$BACKUP_AGE_RECIPIENT" --output "$STAGE_DIR/database.sql.gz.age"
 
-"${COMPOSE[@]}" exec -T backend sh -ec \
+"${COMPOSE[@]}" exec -T api sh -ec \
   'cd /var/www/html/storage/app && tar --numeric-owner -czf - public private' \
   | age --recipient "$BACKUP_AGE_RECIPIENT" --output "$STAGE_DIR/media.tar.gz.age"
 

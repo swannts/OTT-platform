@@ -40,7 +40,7 @@ Next.js is the only end-user web frontend. Laravel's public Blade page routes ar
 
 ## Quick Start with Docker (Development Mode)
 
-The root Compose file runs the local development stack: the admin UI, customer Next.js frontend, Laravel API, Go worker, MySQL (with phpMyAdmin), Redis, RabbitMQ, and Meilisearch. Flutter is not included.
+The root Compose file runs the local development stack: the admin portal, customer website, Laravel API, Go worker, MySQL with phpMyAdmin, Redis, RabbitMQ, and Meilisearch. Flutter is not included.
 
 ### 1. Launch All Services
 ```bash
@@ -50,8 +50,8 @@ docker compose up --build -d
 ### 2. Service Access & Endpoints
 | Service | URL | Notes |
 | :--- | :--- | :--- |
-| **Next.js Web Client** | [http://localhost:3000](http://localhost:3000) | Fast Refresh / Turbopack |
-| **Admin UI** | [http://localhost:3032](http://localhost:3032) | Fast Refresh |
+| **Customer website** | [http://localhost:3000](http://localhost:3000) | Fast Refresh / Turbopack |
+| **Admin portal** | [http://localhost:3032](http://localhost:3032) | Fast Refresh |
 | **Laravel API & CMS** | [http://localhost:8000](http://localhost:8000) | REST API v3 + Admin CMS |
 | **MySQL Database** | `localhost:3306` | DB: `swann`, User: `root`, Password: `swann-local` |
 | **phpMyAdmin** | [http://localhost:8081](http://localhost:8081) | Connects to the Compose MySQL service; sign in with the configured MySQL credentials |
@@ -65,22 +65,22 @@ docker compose up --build -d
 docker compose logs -f
 
 # View frontend logs only
-docker compose logs -f frontend
+docker compose logs -f web
 
 # View backend logs only
-docker compose logs -f backend
+docker compose logs -f api
 
 # Run database migrations inside the backend container
-docker compose exec backend php artisan migrate
+docker compose exec api php artisan migrate
 
 # Safely seed local RBAC and the optional local administrator
-docker compose exec backend php artisan db:seed
+docker compose exec api php artisan db:seed
 
 # Stop all services
 docker compose down
 ```
 
-This repository uses only the root `docker-compose.yml` for local development.
+This repository uses the root `compose.yaml` for local development.
 
 ---
 

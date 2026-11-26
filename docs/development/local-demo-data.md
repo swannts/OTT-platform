@@ -3,7 +3,7 @@
 The default `php artisan db:seed` remains safe and only initializes RBAC and an optional local administrator. To populate the customer catalog and the main admin workflows, run the explicit additive demo seeder from the Laravel container:
 
 ```sh
-docker compose exec backend php artisan db:seed --class='Database\Seeders\LocalDemoDataSeeder'
+docker compose exec api php artisan db:seed --class='Database\Seeders\LocalDemoDataSeeder'
 ```
 
 The PHPUnit bootstrap forces test mode and targets a separate `swann_test` database; it creates that database if needed. Never point feature tests using `RefreshDatabase` at the local `swann` database.
