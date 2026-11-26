@@ -12,6 +12,7 @@ use Modules\Frontend\Http\Controllers\QueryOptimizeController;
 
 use Modules\User\Http\Controllers\API\UserController;
 use Modules\Entertainment\Http\Controllers\API\EntertainmentsController;
+use Modules\Entertainment\Http\Controllers\API\PlaybackSessionController;
 use Modules\LiveTV\Http\Controllers\API\LiveTVsController;
 use App\Http\Controllers\TvAuthController;
 use App\Http\Controllers\Backend\SettingController;
@@ -325,10 +326,10 @@ Route::prefix('v3')->middleware(['auth:sanctum', 'throttle:api'])->group(functio
     Route::post('pay-per-view/verify-payment', [WebPaymentApiController::class, 'verifyPayPerViewPayment']);
 
     // Playback URLs are returned only after Laravel verifies profile ownership and entitlement.
-    Route::post('playback/details', [EntertainmentsController::class, 'playbackDetails'])->middleware('throttle:30,1');
+    Route::post('playback/details', [PlaybackSessionController::class, 'playbackDetails'])->middleware('throttle:30,1');
     Route::post('playback/diagnostics', [\App\Http\Controllers\API\PlaybackDiagnosticsController::class, 'store'])->middleware('throttle:30,1');
-    Route::post('playback/sessions/{sessionId}/heartbeat', [EntertainmentsController::class, 'heartbeatPlayback'])->whereUuid('sessionId')->middleware('throttle:120,1');
-    Route::post('playback/sessions/{sessionId}/end', [EntertainmentsController::class, 'endPlayback'])->whereUuid('sessionId')->middleware('throttle:30,1');
+    Route::post('playback/sessions/{sessionId}/heartbeat', [PlaybackSessionController::class, 'heartbeatPlayback'])->whereUuid('sessionId')->middleware('throttle:120,1');
+    Route::post('playback/sessions/{sessionId}/end', [PlaybackSessionController::class, 'endPlayback'])->whereUuid('sessionId')->middleware('throttle:30,1');
 });
 
 
