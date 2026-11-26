@@ -68,6 +68,9 @@ final readonly class StagingProfile
         if ($counts['support_tickets'] > 0 && ($counts['customers'] === 0 || $counts['staff'] === 0)) {
             throw new InvalidArgumentException('Support tickets require staging customers and staff accounts.');
         }
+        if ($counts['campaigns'] > 0 && ($counts['customers'] === 0 || $counts['coupons'] === 0)) {
+            throw new InvalidArgumentException('Staging campaigns require customers for consent records and coupons for promotion campaigns.');
+        }
         if ($counts['movies'] + $counts['series'] > 0 && $counts['cast_crew'] < 4) {
             throw new InvalidArgumentException('Catalog content requires at least three cast members and one director.');
         }

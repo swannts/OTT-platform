@@ -61,8 +61,10 @@ final class StagingDataIntegrityValidator
                 'search_history' => $groupedCounts['user_search_history'] ?? 0,
                 'support_tickets' => $groupedCounts['support_ticket'] ?? 0,
                 'support_ticket_notes' => $groupedCounts['support_ticket_note'] ?? 0,
+                'marketing_campaigns' => $groupedCounts['marketing_campaign'] ?? 0,
+                'marketing_consents' => $groupedCounts['marketing_consent'] ?? 0,
             ];
-            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'cast_crew', 'entertainment_talent_mapping', 'content_license_window', 'content_license_territory', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction', 'media_asset', 'media_processing_job', 'media_asset_track', 'entertainment_media_link', 'blog', 'coupon', 'coupon_plan_mapping', 'user_search_history', 'support_ticket', 'support_ticket_note'];
+            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'cast_crew', 'entertainment_talent_mapping', 'content_license_window', 'content_license_territory', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction', 'media_asset', 'media_processing_job', 'media_asset_track', 'entertainment_media_link', 'blog', 'coupon', 'coupon_plan_mapping', 'user_search_history', 'support_ticket', 'support_ticket_note', 'marketing_consent', 'marketing_campaign'];
             $unknownTypes = array_diff(array_keys($groupedCounts), $supportedTypes);
             foreach ($unknownTypes as $type) {
                 $violations[] = "Dataset {$manifest->dataset_id} has an unsupported ownership type {$type}.";
@@ -278,6 +280,64 @@ final class StagingDataIntegrityValidator
                 })->count();
             if ($invalidSupportNotes > 0) {
                 $violations[] = "Dataset {$manifest->dataset_id} has {$invalidSupportNotes} support notes without owned tickets and staff authors.";
+            }
+            $invalidMarketingConsents = DB::table('staging_dataset_records as owners')
+                ->leftJoin('marketing_consents as consents', 'consents.id', '=', 'owners.record_id')
+                ->leftJoin('users', 'users.id', '=', 'consents.user_id')
+                ->leftJoin('staging_dataset_records as customer_owner', function ($join) use ($manifest): void {
+                    $join->on('customer_owner.entity_key', '=', 'users.email')->where('customer_owner.dataset_id', '=', $manifest->dataset_id)
+                        ->where('customer_owner.entity_type', '=', 'customer');
+                })
+                ->where('owners.dataset_id', $manifest->dataset_id)->where('owners.entity_type', 'marketing_consent')
+                ->where(function ($query): void {
+                    $query->whereNull('consents.id')->orWhereNull('customer_owner.id')
+                        ->orWhereNotIn('consents.channel', ['email', 'push'])
+                        ->orWhere(function ($unconfirmed): void { $unconfirmed->where('consents.consented', true)->whereNull('consents.consented_at'); })
+                        ->orWhere(function ($falseConsent): void { $falseConsent->where('consents.consented', false)->whereNotNull('consents.consented_at'); })
+                        ->orWhereColumn('owners.record_id', '!=', 'consents.id');
+                })->count();
+            if ($invalidMarketingConsents > 0) {
+                $violations[] = "Dataset {$manifest->dataset_id} has {$invalidMarketingConsents} marketing consent rows with invalid customer ownership or consent timestamps.";
+            }
+            $invalidCampaigns = DB::table('staging_dataset_records as owners')
+                ->leftJoin('marketing_campaigns as campaigns', 'campaigns.id', '=', 'owners.record_id')
+                ->leftJoin('users as creators', 'creators.id', '=', 'campaigns.created_by')
+                ->leftJoin('users as approvers', 'approvers.id', '=', 'campaigns.approved_by')
+                ->leftJoin('staging_dataset_records as creator_owner', function ($join) use ($manifest): void {
+                    $join->on('creator_owner.entity_key', '=', 'creators.email')->where('creator_owner.dataset_id', '=', $manifest->dataset_id)
+                        ->where('creator_owner.entity_type', '=', 'staff_user');
+                })
+                ->leftJoin('staging_dataset_records as approver_owner', function ($join) use ($manifest): void {
+                    $join->on('approver_owner.entity_key', '=', 'approvers.email')->where('approver_owner.dataset_id', '=', $manifest->dataset_id)
+                        ->where('approver_owner.entity_type', '=', 'staff_user');
+                })
+                ->where('owners.dataset_id', $manifest->dataset_id)->where('owners.entity_type', 'marketing_campaign')
+                ->where(function ($query): void {
+                    $query->whereNull('campaigns.id')->orWhereNull('creator_owner.id')
+                        ->orWhereNotIn('campaigns.kind', ['campaign', 'promotion', 'landing_page', 'notification'])
+                        ->orWhereNotIn('campaigns.status', ['draft', 'pending_approval', 'approved', 'rejected'])
+                        ->orWhere(function ($approved): void {
+                            $approved->where('campaigns.status', 'approved')->where(function ($incomplete): void {
+                                $incomplete->whereNull('campaigns.approved_by')->orWhereNull('campaigns.approved_at')
+                                    ->orWhereNull('approver_owner.id')->orWhereColumn('campaigns.created_by', '=', 'campaigns.approved_by')
+                                    ->orWhereColumn('campaigns.approved_at', '<', 'campaigns.created_at');
+                            });
+                        })
+                        ->orWhere(function ($notApproved): void {
+                            $notApproved->where('campaigns.status', '!=', 'approved')->where(function ($fields): void {
+                                $fields->whereNotNull('campaigns.approved_by')->orWhereNotNull('campaigns.approved_at');
+                            });
+                        })
+                        ->orWhere(function ($invalidPromotion): void {
+                            $invalidPromotion->where('campaigns.kind', 'promotion')->whereNull('campaigns.coupon_id');
+                        })
+                        ->orWhere(function ($invalidNotification): void {
+                            $invalidNotification->where('campaigns.kind', 'notification')->whereNotIn('campaigns.channel', ['email', 'push']);
+                        })
+                        ->orWhereColumn('owners.record_id', '!=', 'campaigns.id');
+                })->count();
+            if ($invalidCampaigns > 0) {
+                $violations[] = "Dataset {$manifest->dataset_id} has {$invalidCampaigns} marketing campaigns with invalid ownership, status, or maker-checker approval relationships.";
             }
             $ownedMedia = DB::table('staging_dataset_records')
                 ->where('dataset_id', $manifest->dataset_id)
@@ -564,7 +624,7 @@ final class StagingDataIntegrityValidator
                 }
             }
             $configuredCounts = (array) ($manifest->configuration['counts'] ?? []);
-            foreach (['staff' => 'staff', 'customers' => 'customers', 'devices' => 'devices', 'cast_crew' => 'cast_crew', 'plans' => 'plans', 'subscriptions' => 'subscriptions', 'payments' => 'payments', 'media_assets' => 'media_assets', 'coupons' => 'coupons', 'search_history' => 'search_history', 'support_tickets' => 'support_tickets'] as $entity => $targetKey) {
+            foreach (['staff' => 'staff', 'customers' => 'customers', 'devices' => 'devices', 'cast_crew' => 'cast_crew', 'plans' => 'plans', 'subscriptions' => 'subscriptions', 'payments' => 'payments', 'media_assets' => 'media_assets', 'coupons' => 'coupons', 'search_history' => 'search_history', 'support_tickets' => 'support_tickets', 'marketing_campaigns' => 'campaigns'] as $entity => $targetKey) {
                 if (isset($configuredCounts[$targetKey]) && $counts[$entity] !== (int) $configuredCounts[$targetKey]) {
                     $violations[] = "Dataset {$manifest->dataset_id} has {$counts[$entity]} {$entity}; configured target is {$configuredCounts[$targetKey]}.";
                 }
@@ -619,7 +679,7 @@ final class StagingDataIntegrityValidator
         return [
             'valid' => $violations === [],
             'complete' => $complete,
-            'coverage' => 'manifest, staff role, customer identity, profile and device ownership, unpublished bilingual catalog, genre mappings, fictional cast/crew credits, bilingual editorial articles, coupon and plan mappings, customer search-history ownership, support ticket and staff-note lifecycle ownership, licensing windows and territories, actual media fixture readiness and ownership, series hierarchy, plans, subscription lifecycle, and synthetic payment attempts; remaining business-domain checks are pending',
+            'coverage' => 'manifest, staff role, customer identity, profile and device ownership, unpublished bilingual catalog, genre mappings, fictional cast/crew credits, bilingual editorial articles, coupon and plan mappings, customer search-history ownership, support ticket and staff-note lifecycle ownership, marketing consent and maker-checker campaign ownership, licensing windows and territories, actual media fixture readiness and ownership, series hierarchy, plans, subscription lifecycle, and synthetic payment attempts; remaining business-domain checks are pending',
             'checked_at' => now()->toIso8601String(),
             'datasets' => $datasets,
             'violations' => array_values(array_unique($violations)),
