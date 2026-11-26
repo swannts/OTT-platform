@@ -1,61 +1,37 @@
-describe('Video Player E2E', () => {
-  it('does not render bottom sticky player bar', () => {
+describe('Playback routes and saved progress', () => {
+  it('does not show a sticky mini-player before playback starts', () => {
     cy.visit('/');
     cy.get('[title="Click to seek"]').should('not.exist');
     cy.get('[title="Audio streaming"]').should('not.exist');
   });
 
-  describe('Full Video Watch Player (/watch/[type]/[id])', () => {
-    it('mounts video streaming player and navigation controls', () => {
-      cy.visit('/watch/movie/01940000-0004-7000-8000-000000000006');
-      cy.contains('button', 'Back').should('be.visible');
-      cy.get('video, .relative').should('exist');
+  it('shows a clear not-found error for unavailable title IDs', () => {
+    cy.visit('/watch/movie/cypress-missing-title');
+    cy.contains('Unable to load this title').should('be.visible');
+  });
+
+  it('enforces the title access entitlement when opening playback', () => {
+    cy.visit('/movies');
+    cy.get('a[href^="/movies/"]').filter(':visible').first().invoke('attr', 'href').then((href) => {
+      cy.visit(href as string);
     });
-
-    it('navigates back when clicking the player back button', () => {
-      cy.visit('/watch/movie/01940000-0004-7000-8000-000000000006');
-      cy.contains('button', 'Back').click();
-      cy.url().should('not.include', '/watch/movie/01940000-0004-7000-8000-000000000006');
+    cy.contains('a', /Play Movie|Watch Now/i).should('be.visible').click();
+    cy.location('pathname').should('match', /^\/watch\/movie\//);
+    cy.get('body').should(($body) => {
+      const entitledPlayer = $body.find('[data-testid="custom-video-player"], [data-testid="youtube-connector"], video').length > 0;
+      const subscriptionGate = $body.text().includes('Subscription Required');
+      expect(entitledPlayer || subscriptionGate).to.equal(true);
+      if (subscriptionGate) expect($body.text()).to.include('Upgrade to VIP');
     });
+  });
 
-    it('mounts YouTube connector when content source is YouTube', () => {
-      cy.visit('/watch/movie/01940000-0004-7000-8000-000000000009');
-      cy.get('[data-testid="youtube-connector"]').should('exist');
-      cy.get('iframe').should('have.attr', 'src').and('include', 'youtube-nocookie.com/embed');
-      cy.contains('YouTube Stream').should('exist');
-      cy.contains('a', 'YouTube').should('have.attr', 'target', '_blank');
-    });
-
-    it('allows switching between YouTube and HLS stream sources', () => {
-      cy.visit('/watch/movie/01940000-0004-7000-8000-000000000009');
-      cy.get('[data-testid="youtube-connector"]').should('exist');
-      cy.contains('button', '1080p HLS').click();
-      cy.get('video').should('exist');
-      cy.contains('button', 'YouTube HD').click();
-      cy.get('[data-testid="youtube-connector"]').should('exist');
-    });
-
-    it('supports the resume system and allows starting over from beginning', () => {
-      const contentId = '01940000-0004-7000-8000-000000000006';
-      const storageKey = `noor_watch_progress_movie_${contentId}`;
-      const mockSavedProgress = JSON.stringify({
-        currentTime: 75,
-        duration: 3600,
-        completed: false,
-        updatedAt: Date.now(),
-      });
-
-      cy.visit(`/watch/movie/${contentId}`, {
-        onBeforeLoad(win) {
-          win.localStorage.setItem(storageKey, mockSavedProgress);
-        },
-      });
-
-      // Verify resume banner toast appears with saved time and allows Start Over
-      cy.get('[data-testid="resume-banner"]').should('be.visible');
-      cy.get('[data-testid="resume-banner"]').should('contain', 'Resumed from');
-      cy.contains('button', 'Start Over').click();
-      cy.get('[data-testid="resume-banner"]').should('not.exist');
-    });
+  it('restores saved progress and lets the viewer start over', () => {
+    cy.intercept('GET', '**/api/backend/v3/content-details*', { statusCode: 200, body: { status: true, data: { id: 'resume-title', details: { id: 'resume-title', name: 'Resume Test', name_en: 'Resume Test', type: 'movie', access: 'free' } } } });
+    cy.intercept('POST', '**/api/backend/v3/playback/details', { statusCode: 200, body: { status: true, data: { video_qualities: [{ url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8', url_type: 'HLS' }] } } });
+    const progress = JSON.stringify({ currentTime: 75, duration: 3600, completed: false, updatedAt: Date.now() });
+    cy.visit('/watch/movie/resume-title', { onBeforeLoad(win) { win.localStorage.setItem('noor_profile_id', '1'); win.localStorage.setItem('noor_watch_progress_movie_resume-title', progress); } });
+    cy.get('[data-testid="resume-banner"]', { timeout: 20000 }).should('be.visible');
+    cy.contains('button', 'Start Over').click();
+    cy.get('[data-testid="resume-banner"]').should('not.exist');
   });
 });

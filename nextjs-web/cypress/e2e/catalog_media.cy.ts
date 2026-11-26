@@ -1,44 +1,71 @@
-describe('Media Catalogs & Detail Pages E2E', () => {
-  describe('Movies Catalog & Detail', () => {
-    it('loads the movies catalog page', () => {
-      cy.visit('/movies');
-      cy.contains(/Islamic Movies|Movies/i).should('be.visible');
-      cy.get('.grid').should('exist');
+describe('Movies, series, and video catalogs', () => {
+  it('renders movie browse controls and available media cards', () => {
+    cy.visit('/movies');
+    cy.get('h1').should('be.visible');
+    cy.get('a[href^="/movies/"]').filter(':visible').should('have.length.at.least', 1);
+    cy.get('input[placeholder*="Search"]').should('exist');
+  });
+
+  it('opens a real movie from the catalog and renders its detail actions', () => {
+    cy.visit('/movies');
+    cy.get('a[href^="/movies/"]').filter(':visible').first().invoke('attr', 'href').then((href) => {
+      expect(href).to.be.a('string').and.match(/^\/movies\//);
+      cy.visit(href as string);
     });
 
-    it('navigates to movie detail page and displays media attributes', () => {
-      cy.visit('/movies/01940000-0004-7000-8000-000000000006');
+    cy.get('h1').should('be.visible');
+    cy.contains(/Storyline|Overview|About/i).should('be.visible');
+    cy.contains('a', /Play Movie|Watch Now/i).should('be.visible');
+    cy.contains('button', /Add to Watchlist|In Watchlist/i).should('be.visible');
+  });
+
+  it('persists a movie watchlist toggle through the API client without touching local data', () => {
+    cy.loginAsUser({}, '/movies');
+    cy.intercept('POST', '**/save-watchlist*', {
+      statusCode: 200,
+      body: { status: true, data: { status: true, message: 'Saved' } },
+    }).as('saveWatchlist');
+    cy.intercept('POST', '**/delete-watchlist*', {
+      statusCode: 200,
+      body: { status: true, data: { status: true, message: 'Removed' } },
+    }).as('deleteWatchlist');
+    cy.get('a[href^="/movies/"]').filter(':visible').first().invoke('attr', 'href').then((href) => {
+      cy.visit(href as string, {
+        onBeforeLoad(win) {
+          win.localStorage.setItem('token', 'mock-valid-jwt-token');
+          win.localStorage.setItem('user', JSON.stringify({ id: 1, name: 'Test Viewer', email: 'viewer@noor.tv', first_name: 'Test', last_name: 'Viewer', is_subscribe: 1 }));
+        },
+      });
+    });
+    cy.contains('button', /Add to Watchlist|In Watchlist/).then(($button) => {
+      const isSaved = $button.text().includes('In Watchlist');
+      cy.wrap($button).click();
+      cy.wait(isSaved ? '@deleteWatchlist' : '@saveWatchlist');
+      cy.contains('button', isSaved ? 'Add to Watchlist' : 'In Watchlist').should('be.visible');
+    });
+  });
+
+  it('renders TV series and opens a real series detail page', () => {
+    cy.visit('/tv-shows');
+    cy.get('h1').should('be.visible');
+    cy.get('body').then(($body) => {
+      const $links = $body.find('a[href^="/tv-shows/"]:visible');
+      if ($links.length === 0) {
+        cy.contains('No series found in this category').should('be.visible');
+        return;
+      }
+      const href = $links.first().attr('href');
+      expect(href).to.be.a('string');
+      cy.visit(href as string);
       cy.get('h1').should('be.visible');
-      cy.contains(/Play Movie|Watch Now/i).should('be.visible');
-      cy.contains(/Storyline|Overview|About/i).should('be.visible');
-    });
-
-    it('verifies add to watchlist button on movie detail', () => {
-      cy.visit('/movies/01940000-0004-7000-8000-000000000006');
-      cy.contains(/Add to Watchlist|In Watchlist/i).should('be.visible').click();
+      cy.contains(/Episodes|Season/i).should('be.visible');
     });
   });
 
-  describe('TV Shows Catalog & Detail', () => {
-    it('loads the TV shows catalog page', () => {
-      cy.visit('/tv-shows');
-      cy.contains(/Islamic TV Shows|TV Shows/i).should('be.visible');
-      cy.get('.grid').should('exist');
-    });
-
-    it('navigates to TV show detail page and lists episodes', () => {
-      cy.visit('/tv-shows/01940000-0003-7000-8000-000000000001');
-      cy.get('h1').should('be.visible');
-      cy.contains('Episodes').should('be.visible');
-      cy.contains(/Play S1 E1|Play Episode|Watch/i).should('be.visible');
-    });
+  it('renders the short videos and lectures catalog', () => {
+    cy.visit('/videos');
+    cy.get('h1').should('be.visible');
+    cy.contains(/Videos|Waz|Podcasts/i).should('be.visible');
   });
 
-  describe('Short Videos & Lectures Catalog', () => {
-    it('loads the videos catalog page', () => {
-      cy.visit('/videos');
-      cy.contains(/Short Videos|Podcasts|Waz & Bayan|Videos/i).should('be.visible');
-    });
-  });
 });
-

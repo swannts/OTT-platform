@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Script from 'next/script';
 import { Playfair_Display, Inter } from 'next/font/google';
 import './globals.css';
 import { AuthProvider, StoreProvider, LanguageProvider, RuntimeErrorGuard } from '@/providers';
@@ -88,10 +89,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="bn" suppressHydrationWarning className={`dark ${playfair.variable} ${inter.variable}`}>
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
+      <Script
+        id="ignore-harmless-media-aborts"
+        strategy="beforeInteractive"
+        dangerouslySetInnerHTML={{
+          __html: `
               (function() {
                 if (typeof window === 'undefined') return;
                 function isHarmless(r) {
@@ -139,10 +141,9 @@ export default function RootLayout({
                   }
                 }, true);
               })();
-            `,
-          }}
-        />
-      </head>
+          `,
+        }}
+      />
       <body suppressHydrationWarning className="bg-[#070a0e] text-[#f8fafc] font-sans min-h-screen flex flex-col antialiased selection:bg-[#e5b869]/30 selection:text-[#e5b869]">
         <RuntimeErrorGuard>
           <StoreProvider>
