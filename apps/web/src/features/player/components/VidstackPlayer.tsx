@@ -24,6 +24,7 @@ import {
 } from '../utils/playbackProgress';
 import { VideoQuality } from '@/types';
 import { extractYouTubeId, isYouTubeVideo } from '@/lib/youtube';
+import { useLocaleText } from '@/providers';
 
 export interface VidstackPlayerProps {
   contentId: string | number;
@@ -74,6 +75,7 @@ function VidstackCinematicOverlay({
   onTimeUpdate?: (time: number) => void;
   poster?: string;
 }) {
+  const tr = useLocaleText();
   const remote = useMediaRemote();
 
   // Vidstack reactive media state
@@ -448,8 +450,7 @@ function VidstackCinematicOverlay({
           <div className="relative z-30 flex flex-col items-center space-y-4">
             <div className="w-14 h-14 rounded-full border-4 border-[#E5B869] border-t-transparent animate-spin shadow-[0_0_20px_rgba(229,184,105,0.5)]" />
             <p className="text-xs font-bold tracking-widest text-[#E5B869] uppercase animate-pulse drop-shadow">
-              Buffering Cinema Stream...
-            </p>
+              {tr("Buffering Cinema Stream...")}</p>
           </div>
         </div>
       )}
@@ -466,7 +467,7 @@ function VidstackCinematicOverlay({
       <div
         onClick={togglePlay}
         className="absolute inset-x-0 top-16 bottom-24 z-10 cursor-pointer pointer-events-auto"
-        aria-label="Click to play or pause"
+        aria-label={tr("Click to play or pause")}
       />
 
       {/* 5. Luxury Floating Resume Playback Toast */}
@@ -477,7 +478,7 @@ function VidstackCinematicOverlay({
         >
           <div className="w-2 h-2 rounded-full bg-[#E5B869] animate-pulse flex-shrink-0" />
           <span className="text-xs text-white font-medium">
-            Resumed from{' '}
+            {tr("Resumed from")}{' '}
             <strong className="text-[#E5B869] font-mono font-bold">
               {formatTime(effectiveInitialTime)}
             </strong>
@@ -486,15 +487,14 @@ function VidstackCinematicOverlay({
             type="button"
             onClick={handleRestartFromBeginning}
             className="px-2.5 py-1 rounded-lg bg-[#E5B869] hover:bg-[#ffe4a0] text-black text-xs font-bold transition-all shadow-md hover:scale-105 active:scale-95 cursor-pointer ml-1"
-            title="Restart playback from 00:00"
+            title={tr("Restart playback from 00:00")}
           >
-            Start Over
-          </button>
+            {tr("Start Over")}</button>
           <button
             type="button"
             onClick={() => setDismissedResumeKey(resumeKey)}
             className="text-gray-400 hover:text-white p-1 transition-colors cursor-pointer"
-            aria-label="Dismiss resume banner"
+            aria-label={tr("Dismiss resume banner")}
           >
             <X className="w-3.5 h-3.5" />
           </button>

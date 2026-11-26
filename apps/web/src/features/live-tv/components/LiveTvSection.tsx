@@ -12,13 +12,14 @@ import { VideoPlayer } from '@/features/player';
 import { Radio, Tv } from 'lucide-react';
 import { LiveChannel } from '@/types';
 import { api } from '@/lib/api';
-import { useLanguage } from '@/providers';
+import { useLanguage , useLocaleText} from '@/providers';
 
 interface LiveTvSectionProps {
   initialChannels: LiveChannel[];
 }
 
 export default function LiveTvSection({ initialChannels }: LiveTvSectionProps) {
+  const tr = useLocaleText();
   const dispatch = useAppDispatch();
   const { t, locale } = useLanguage();
   const { channels: reduxChannels, selectedChannel } = useAppSelector(selectLiveTvState);
@@ -169,8 +170,7 @@ export default function LiveTvSection({ initialChannels }: LiveTvSectionProps) {
                     <div className="flex items-center space-x-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
                       <span className="text-[10px] text-red-400 font-bold uppercase tracking-wider">
-                        Live
-                      </span>
+                        {tr("Live")}</span>
                     </div>
                     <h4 className="text-sm font-semibold text-white truncate mt-0.5">
                       {channelTitle}

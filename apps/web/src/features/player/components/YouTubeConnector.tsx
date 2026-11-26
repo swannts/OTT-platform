@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { getYouTubeEmbedUrl, extractYouTubeId } from '@/lib/youtube';
 import { api } from '@/lib/api';
 import { ExternalLink, RefreshCw, Play, AlertCircle } from 'lucide-react';
+import { useLocaleText } from '@/providers';
 
 interface YouTubeConnectorProps {
   contentId: string | number;
@@ -25,6 +26,7 @@ export default function YouTubeConnector({
   initialTime = 0,
   poster,
 }: YouTubeConnectorProps) {
+  const tr = useLocaleText();
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [key, setKey] = useState(0); // For reload
@@ -58,10 +60,9 @@ export default function YouTubeConnector({
     return (
       <div className="relative aspect-video w-full max-h-[85vh] bg-black rounded-2xl overflow-hidden flex flex-col items-center justify-center p-6 text-center border border-white/10 shadow-2xl">
         <AlertCircle className="w-12 h-12 text-amber-500 mb-3" />
-        <h3 className="text-lg font-bold text-white mb-1">Invalid YouTube URL</h3>
+        <h3 className="text-lg font-bold text-white mb-1">{tr("Invalid YouTube URL")}</h3>
         <p className="text-xs text-gray-400 max-w-sm mb-4">
-          The video stream could not be loaded because the YouTube link or video ID is invalid.
-        </p>
+          {tr("The video stream could not be loaded because the YouTube link or video ID is invalid.")}</p>
         <span className="text-[11px] font-mono text-gray-500 bg-white/5 px-3 py-1 rounded">
           {videoUrl || 'No URL specified'}
         </span>
@@ -81,7 +82,7 @@ export default function YouTubeConnector({
         <div className="flex items-center space-x-2.5 min-w-0">
           <div className="flex items-center space-x-1.5 bg-red-600/90 text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full shadow-md flex-shrink-0">
             <Play className="w-3 h-3 fill-white" />
-            <span>YouTube Stream</span>
+            <span>{tr("YouTube Stream")}</span>
           </div>
           <h2 className="text-white text-xs sm:text-sm font-bold truncate drop-shadow">
             {title}
@@ -96,8 +97,8 @@ export default function YouTubeConnector({
               setKey((prev) => prev + 1);
             }}
             className="p-1.5 rounded-lg bg-black/60 hover:bg-[#E5B869] text-gray-300 hover:text-black border border-white/10 transition-colors cursor-pointer"
-            title="Reload Video Stream"
-            aria-label="Reload video"
+            title={tr("Reload Video Stream")}
+            aria-label={tr("Reload video")}
           >
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
@@ -108,9 +109,9 @@ export default function YouTubeConnector({
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-black/60 hover:bg-white/20 text-gray-200 hover:text-white border border-white/10 text-xs font-medium transition-colors cursor-pointer"
-            title="Watch on YouTube"
+            title={tr("Watch on YouTube")}
           >
-            <span>YouTube</span>
+            <span>{tr("YouTube")}</span>
             <ExternalLink className="w-3 h-3 ml-0.5" />
           </a>
         </div>
@@ -131,8 +132,7 @@ export default function YouTubeConnector({
           <div className="relative z-20 flex flex-col items-center space-y-3">
             <div className="w-12 h-12 rounded-full border-4 border-[#E5B869] border-t-transparent animate-spin" />
             <p className="text-xs font-semibold text-gray-300 tracking-wide">
-              Connecting to YouTube Stream...
-            </p>
+              {tr("Connecting to YouTube Stream...")}</p>
           </div>
         </div>
       )}

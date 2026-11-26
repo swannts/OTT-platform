@@ -19,7 +19,10 @@ class BlogApiController extends Controller
 
         // Filter by category
         if ($request->filled('category') && strtolower($request->category) !== 'all') {
-            $query->where('category', $request->category);
+            $category = trim($request->category);
+            $query->where(function ($query) use ($category): void {
+                $query->where('category', $category)->orWhere('category_bn', $category);
+            });
         }
 
         // Filter by featured
@@ -32,8 +35,10 @@ class BlogApiController extends Controller
             $search = trim($request->search);
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'LIKE', "%{$search}%")
-                  ->orWhere('summary', 'LIKE', "%{$search}%")
-                  ->orWhere('author_name', 'LIKE', "%{$search}%");
+                    ->orWhere('summary', 'LIKE', "%{$search}%")
+                    ->orWhere('title_bn', 'LIKE', "%{$search}%")
+                    ->orWhere('summary_bn', 'LIKE', "%{$search}%")
+                    ->orWhere('author_name', 'LIKE', "%{$search}%");
             });
         }
 
@@ -42,12 +47,13 @@ class BlogApiController extends Controller
             $tag = trim($request->tag);
             $query->where(function ($q) use ($tag) {
                 $q->whereJsonContains('tags', $tag)
-                  ->orWhere('tags', 'LIKE', "%{$tag}%");
+                    ->orWhere('tags', 'LIKE', "%{$tag}%");
             });
         }
 
         $perPage = max(1, min(50, (int) $request->input('per_page', 9)));
         $blogs = $query->orderByDesc('published_at')->orderByDesc('id')->paginate($perPage);
+        $blogs->getCollection()->transform(fn (Blog $blog): Blog => $this->localizeBlog($blog));
 
         return ApiResponse::success($blogs, 'Blog articles retrieved successfully');
     }
@@ -60,18 +66,19 @@ class BlogApiController extends Controller
         $blog = Blog::published()
             ->where(function ($q) use ($slugOrId) {
                 $q->where('slug', $slugOrId)
-                  ->orWhere('id', $slugOrId);
+                    ->orWhere('id', $slugOrId);
             })
             ->first();
 
-        if (!$blog) {
+        if (! $blog) {
             return ApiResponse::error('Blog article not found', 404);
         }
 
         // Increment view count quietly
         try {
             $blog->increment('views_count');
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+        }
 
         // Fetch related articles in the same category or latest
         $related = Blog::published()
@@ -91,6 +98,9 @@ class BlogApiController extends Controller
                 ->get();
         }
 
+        $this->localizeBlog($blog);
+        $related->transform(fn (Blog $relatedBlog): Blog => $this->localizeBlog($relatedBlog));
+
         return ApiResponse::success([
             'post' => $blog,
             'related' => $related,
@@ -102,13 +112,34 @@ class BlogApiController extends Controller
      */
     public function categories()
     {
+        $categoryExpression = app()->getLocale() === 'bn'
+            ? "COALESCE(NULLIF(category_bn, ''), category)"
+            : 'category';
+
         $categories = Blog::published()
-            ->select('category', DB::raw('count(*) as count'))
-            ->groupBy('category')
+            ->select(DB::raw("{$categoryExpression} as category"), DB::raw('count(*) as count'))
+            ->groupBy(DB::raw($categoryExpression))
             ->orderByDesc('count')
             ->get();
 
         return ApiResponse::success($categories, 'Blog categories retrieved successfully');
     }
-}
 
+    private function localizeBlog(Blog $blog): Blog
+    {
+        if (app()->getLocale() !== 'bn') {
+            return $blog;
+        }
+
+        foreach (['title', 'summary', 'content', 'category', 'tags'] as $field) {
+            $localizedField = "{$field}_bn";
+            $localizedValue = $blog->getAttribute($localizedField);
+
+            if ($localizedValue !== null && $localizedValue !== '' && $localizedValue !== []) {
+                $blog->setAttribute($field, $localizedValue);
+            }
+        }
+
+        return $blog;
+    }
+}

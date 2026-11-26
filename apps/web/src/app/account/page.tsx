@@ -17,8 +17,10 @@ import {
   useMultiProfiles,
   type AccountTab,
 } from '@/features/account';
+import { useLocaleText } from '@/providers';
 
 function AccountDashboardContent() {
+  const tr = useLocaleText();
   const { user, subscription, logout, isLoading: authLoading, refreshUser } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -82,10 +84,9 @@ function AccountDashboardContent() {
       {/* Page Header */}
       <div className="border-b border-white/10 pb-6 mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight">Account & Settings</h1>
+          <h1 className="text-3xl font-extrabold text-white tracking-tight">{tr("Account & Settings")}</h1>
           <p className="text-gray-400 text-sm mt-1">
-            Manage your personal profile, viewer spaces, security controls, and active devices.
-          </p>
+            {tr("Manage your personal profile, viewer spaces, security controls, and active devices.")}</p>
         </div>
 
         <button
@@ -97,7 +98,7 @@ function AccountDashboardContent() {
           className="self-start sm:self-auto flex items-center space-x-2 text-sm text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 px-4 py-2.5 rounded-xl transition-colors border border-red-500/20 font-semibold"
         >
           <LogOut className="w-4 h-4" />
-          <span>Sign Out</span>
+          <span>{tr("Sign Out")}</span>
         </button>
       </div>
 

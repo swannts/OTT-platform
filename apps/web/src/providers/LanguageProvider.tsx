@@ -1,13 +1,15 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useCallback, useMemo, useSyncExternalStore } from 'react';
-import { locales, type Locale, type TranslationKey, availableLocales } from '@/locales';
+import { en, locales, type Locale, type TranslationKey, availableLocales } from '@/locales';
+import { bnPhrases } from '@/locales/phrases';
 import { api } from '@/lib/api';
 
 interface LanguageContextType {
   locale: Locale;
   setLocale: (newLocale: Locale) => void;
   t: (key: TranslationKey, defaultText?: string) => string;
+  tr: (englishText: string) => string;
   availableLocales: typeof availableLocales;
   isBangla: boolean;
 }
@@ -16,6 +18,9 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 const STORAGE_KEY = 'noor_locale';
 const LOCALE_CHANGE_EVENT = 'noor-locale-change';
+const englishTextKeys = new Map(
+  Object.entries(en).map(([key, value]) => [value, key as TranslationKey]),
+);
 
 function subscribeToLocaleChanges(onChange: () => void) {
   window.addEventListener('storage', onChange);
@@ -70,15 +75,25 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     [locale]
   );
 
+  const tr = useCallback(
+    (englishText: string): string => {
+      if (locale === 'en') return englishText;
+      const key = englishTextKeys.get(englishText);
+      return (key ? locales[locale][key] : undefined) || bnPhrases[englishText] || englishText;
+    },
+    [locale],
+  );
+
   const value = useMemo(
     () => ({
       locale,
       setLocale,
       t,
+      tr,
       availableLocales,
       isBangla: locale === 'bn',
     }),
-    [locale, setLocale, t]
+    [locale, setLocale, t, tr]
   );
 
   return (
@@ -96,3 +111,6 @@ export function useLanguage(): LanguageContextType {
   return context;
 }
 
+export function useLocaleText(): (englishText: string) => string {
+  return useLanguage().tr;
+}

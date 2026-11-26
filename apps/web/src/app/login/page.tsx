@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Lock, Mail, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import Logo from '@/components/layout/Logo';
+import { useLocaleText } from '@/providers';
 
 function safeInternalRedirect(candidate: string, origin: string): string {
   try {
@@ -18,6 +19,7 @@ function safeInternalRedirect(candidate: string, origin: string): string {
 }
 
 function LoginFormContent() {
+  const tr = useLocaleText();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams?.get('redirect') || '/';
@@ -71,11 +73,9 @@ function LoginFormContent() {
             <Logo />
           </Link>
           <h2 className="text-2xl font-bold font-serif-title text-white tracking-tight mt-2">
-            Welcome Back
-          </h2>
+            {tr("Welcome Back")}</h2>
           <p className="text-xs text-gray-400">
-            Sign in to continue watching your sacred collections
-          </p>
+            {tr("Sign in to continue watching your sacred collections")}</p>
         </div>
 
         {error && (
@@ -88,15 +88,14 @@ function LoginFormContent() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="text-xs font-semibold text-gray-300 block mb-1.5">
-              Email Address
-            </label>
+              {tr("Email Address")}</label>
             <div className="relative group">
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@example.com"
+                placeholder={tr("name@example.com")}
                 className="w-full bg-white/[0.04] hover:bg-white/[0.06] focus:bg-[#080d14] border border-white/10 focus:border-[#E5B869]/70 focus:ring-1 focus:ring-[#E5B869]/40 rounded-xl px-4 py-3 pl-10 text-white text-sm placeholder-gray-500 transition-all duration-200 outline-none"
               />
               <Mail className="w-4 h-4 text-gray-400 group-focus-within:text-[#E5B869] absolute left-3.5 top-3.5 pointer-events-none transition-colors" />
@@ -105,7 +104,7 @@ function LoginFormContent() {
 
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold text-gray-300 block">Password</label>
+              <label className="text-xs font-semibold text-gray-300 block">{tr("Password")}</label>
             </div>
             <div className="relative group">
               <input
@@ -139,10 +138,9 @@ function LoginFormContent() {
         </form>
 
         <div className="text-center text-xs text-gray-400 pt-1">
-          Don&apos;t have an account?{' '}
+          {tr("Don't have an account?")}{' '}
           <Link href="/register" className="text-[#E5B869] hover:text-[#f3cf8a] font-semibold transition-colors hover:underline">
-            Sign up now
-          </Link>
+            {tr("Sign up now")}</Link>
         </div>
       </div>
     </div>
@@ -150,8 +148,9 @@ function LoginFormContent() {
 }
 
 export default function LoginPage() {
+  const tr = useLocaleText();
   return (
-    <Suspense fallback={<div className="min-h-screen pt-32 text-center text-white">Loading...</div>}>
+    <Suspense fallback={<div className="min-h-screen pt-32 text-center text-white">{tr("Loading...")}</div>}>
       <LoginFormContent />
     </Suspense>
   );

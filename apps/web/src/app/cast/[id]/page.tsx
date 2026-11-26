@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { api, normalizeMediaItem } from '@/lib/api';
 import { MediaGrid } from '@/components/shared';
+import { LocalizedText } from '@/components/ui/LocalizedText';
 import { Award, ArrowLeft, BookOpen } from 'lucide-react';
 import { notFound } from 'next/navigation';
 
@@ -111,7 +112,7 @@ export default async function CastDetailPage({ params }: PageProps) {
           className="inline-flex items-center space-x-2 text-xs uppercase tracking-wider font-semibold text-gray-400 hover:text-[#E5B869] transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Catalog</span>
+          <span><LocalizedText text="Back to Catalog" /></span>
         </Link>
       </div>
 
@@ -157,14 +158,14 @@ export default async function CastDetailPage({ params }: PageProps) {
       <div className="border-t border-white/10 pt-8">
         <h2 className="text-xl sm:text-2xl font-bold text-white mb-6 flex items-center space-x-2">
           <BookOpen className="w-5 h-5 text-[#E5B869]" />
-          <span>Featured Works & Series</span>
+          <span><LocalizedText text="Featured Works & Series" /></span>
         </h2>
 
         <MediaGrid
           items={filmography}
           aspectRatio="backdrop"
           emptyState={
-            <p className="text-sm text-gray-500">More titles featuring this scholar are currently in production.</p>
+            <p className="text-sm text-gray-500"><LocalizedText text="More titles featuring this scholar are currently in production." /></p>
           }
         />
       </div>

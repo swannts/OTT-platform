@@ -4,9 +4,10 @@ import React from 'react';
 import Link from 'next/link';
 import Logo from './Logo';
 import LanguageSwitcher from './LanguageSwitcher';
-import { useLanguage } from '@/providers';
+import { useLanguage , useLocaleText} from '@/providers';
 
 export default function Footer() {
+  const tr = useLocaleText();
   const { t } = useLanguage();
 
   return (
@@ -25,12 +26,12 @@ export default function Footer() {
               <LanguageSwitcher variant="pill" />
             </div>
             <p className="text-gray-500">
-              © {new Date().getFullYear()} NOOR Media Network. {t('rights_reserved', 'All rights reserved.')}
+              © {new Date().getFullYear()} {' '}{tr("NOOR Media Network.")}{' '}{t('rights_reserved', 'All rights reserved.')}
             </p>
           </div>
 
           <div>
-            <h4 className="text-white font-bold mb-3.5 text-sm tracking-wide">Sacred Streams</h4>
+            <h4 className="text-white font-bold mb-3.5 text-sm tracking-wide">{tr("Sacred Streams")}</h4>
             <ul className="space-y-2.5">
               <li><Link href="/" className="hover:text-[#E5B869] transition-colors">{t('nav_home', 'Home')}</Link></li>
               <li><Link href="/live-tv" className="hover:text-[#E5B869] transition-colors">{t('makkah_live', 'Makkah & Madinah Live')}</Link></li>
@@ -42,22 +43,22 @@ export default function Footer() {
           </div>
 
           <div>
-            <h4 className="text-white font-bold mb-3.5 text-sm tracking-wide">Membership</h4>
+            <h4 className="text-white font-bold mb-3.5 text-sm tracking-wide">{tr("Membership")}</h4>
             <ul className="space-y-2.5">
               <li><Link href="/pricing" className="hover:text-[#E5B869] transition-colors">{t('upgrade_to_vip', 'Go Premium (VIP)')}</Link></li>
-              <li><Link href="/pricing" className="hover:text-[#E5B869] transition-colors">Family Plan</Link></li>
+              <li><Link href="/pricing" className="hover:text-[#E5B869] transition-colors">{tr("Family Plan")}</Link></li>
               <li><Link href="/account/billing" className="hover:text-[#E5B869] transition-colors">{t('billing_invoices', 'Billing & Invoices')}</Link></li>
               <li><Link href="/profiles" className="hover:text-[#E5B869] transition-colors">{t('nav_kids', 'Kids Safe Profiles')}</Link></li>
             </ul>
           </div>
 
           <div>
-            <h4 className="text-white font-bold mb-3.5 text-sm tracking-wide">Legal & Policies</h4>
+            <h4 className="text-white font-bold mb-3.5 text-sm tracking-wide">{tr("Legal & Policies")}</h4>
             <ul className="space-y-2.5">
-              <li><Link href="/pages/privacy-policy" className="hover:text-[#E5B869] transition-colors">Privacy Policy</Link></li>
-              <li><Link href="/pages/terms-and-conditions" className="hover:text-[#E5B869] transition-colors">Terms of Service</Link></li>
-              <li><Link href="/pages/refund-policy" className="hover:text-[#E5B869] transition-colors">Refund Policy</Link></li>
-              <li><Link href="/pages/faq" className="hover:text-[#E5B869] transition-colors">FAQ & Support</Link></li>
+              <li><Link href="/pages/privacy-policy" className="hover:text-[#E5B869] transition-colors">{tr("Privacy Policy")}</Link></li>
+              <li><Link href="/pages/terms-and-conditions" className="hover:text-[#E5B869] transition-colors">{tr("Terms of Service")}</Link></li>
+              <li><Link href="/pages/refund-policy" className="hover:text-[#E5B869] transition-colors">{tr("Refund Policy")}</Link></li>
+              <li><Link href="/pages/faq" className="hover:text-[#E5B869] transition-colors">{tr("FAQ & Support")}</Link></li>
             </ul>
           </div>
         </div>

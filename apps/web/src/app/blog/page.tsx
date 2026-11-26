@@ -4,7 +4,7 @@ import { getBlogsDal, getBlogCategoriesDal } from '@/server/dal';
 import { BlogSection } from '@/features/blog';
 import { api } from '@/lib/api';
 
-export const revalidate = 60; // ISR revalidation every 60 seconds
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata(): Promise<Metadata> {
   const seo = await api.getSeoSettings().catch(() => null);
@@ -79,4 +79,3 @@ export default async function BlogIndexPage() {
     </>
   );
 }
-

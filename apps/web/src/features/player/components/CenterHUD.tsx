@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Play, Pause, RotateCcw, RotateCw, Volume2, VolumeX, Layers } from 'lucide-react';
+import { useLocaleText } from '@/providers';
 
 export type HudActionType =
   | 'play'
@@ -23,6 +24,7 @@ interface CenterHUDProps {
 }
 
 export default function CenterHUD({ action, volumeLevel = 100, qualityLabel = '', animationId }: CenterHUDProps) {
+  const tr = useLocaleText();
   if (!action) return null;
 
   return (
@@ -36,13 +38,13 @@ export default function CenterHUD({ action, volumeLevel = 100, qualityLabel = ''
         {action === 'rewind' && (
           <div className="flex flex-col items-center">
             <RotateCcw className="w-8 h-8" />
-            <span className="text-[10px] font-extrabold tracking-wider mt-0.5">-10s</span>
+            <span className="text-[10px] font-extrabold tracking-wider mt-0.5">{tr("-10s")}</span>
           </div>
         )}
         {action === 'forward' && (
           <div className="flex flex-col items-center">
             <RotateCw className="w-8 h-8" />
-            <span className="text-[10px] font-extrabold tracking-wider mt-0.5">+10s</span>
+            <span className="text-[10px] font-extrabold tracking-wider mt-0.5">{tr("+10s")}</span>
           </div>
         )}
         {action === 'mute' && <VolumeX className="w-9 h-9 sm:w-10 sm:h-10 text-red-400" />}
@@ -65,8 +67,7 @@ export default function CenterHUD({ action, volumeLevel = 100, qualityLabel = ''
           <div className="flex flex-col items-center">
             <RotateCcw className="w-7 h-7 text-[#E5B869]" />
             <span className="text-[10px] font-extrabold tracking-wider mt-1 text-[#E5B869] uppercase">
-              RESUMED
-            </span>
+              {tr("RESUMED")}</span>
             <span className="text-[11px] font-mono font-bold mt-0.5">{qualityLabel}</span>
           </div>
         )}

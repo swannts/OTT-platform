@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
+import { LocalizedText } from './LocalizedText';
 
 export interface SpinnerProps extends React.HTMLAttributes<HTMLDivElement> {
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
@@ -49,7 +50,7 @@ export const Spinner: React.FC<SpinnerProps> = ({
       {label ? (
         <p className={cn('text-gray-300 font-medium tracking-wide', textSize)}>{label}</p>
       ) : (
-        <span className="sr-only">Loading...</span>
+        <span className="sr-only"><LocalizedText text="Loading..." /></span>
       )}
     </div>
   );
@@ -66,4 +67,3 @@ export const Spinner: React.FC<SpinnerProps> = ({
 };
 
 export default Spinner;
-

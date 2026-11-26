@@ -7,6 +7,7 @@ import { VideoQuality } from '@/types';
 import { isYouTubeVideo } from '@/lib/youtube';
 import { getSavedProgress } from '../utils/playbackProgress';
 import { api } from '@/lib/api';
+import { useLocaleText } from '@/providers';
 
 export interface VideoPlayerProps {
   contentId: string | number;
@@ -37,6 +38,7 @@ export default function VideoPlayer({
   isLive = false,
   onBack,
 }: VideoPlayerProps) {
+  const tr = useLocaleText();
   const [qualityOverride, setQualityOverride] = useState<{
     sourceVideoUrl: string;
     sourceUrlType: string;
@@ -192,13 +194,12 @@ export default function VideoPlayer({
         <div className="sr-only" data-testid="youtube-connector" aria-hidden="true">
           <iframe
             src="https://www.youtube-nocookie.com/embed/preview"
-            title="Hidden Video Provider"
+            title={tr("Hidden Video Provider")}
             tabIndex={-1}
           />
-          <span>YouTube Stream</span>
+          <span>{tr("YouTube Stream")}</span>
           <a href="https://www.youtube.com" target="_blank" rel="noreferrer" tabIndex={-1}>
-            YouTube
-          </a>
+            {tr("YouTube")}</a>
         </div>
       )}
 
@@ -206,8 +207,7 @@ export default function VideoPlayer({
       {qualities.length > 1 && (
         <div className="flex items-center justify-end space-x-2 text-xs pt-1">
           <span className="text-gray-400 font-medium text-[11px] tracking-wider uppercase">
-            Stream Quality:
-          </span>
+            {tr("Stream Quality:")}</span>
           {qualities.map((q, idx) => {
             const isSelected = selectedQualityUrl.trim() === q.url.trim();
             const isYt = isYouTubeVideo(q.url, q.url_type);
@@ -237,7 +237,7 @@ export default function VideoPlayer({
                 }`}
               >
                 {/* Screen-reader label preserves automated test compatibility */}
-                {isYt && <span className="sr-only">YouTube HD</span>}
+                {isYt && <span className="sr-only">{tr("YouTube HD")}</span>}
                 <span>{displayLabel}</span>
               </button>
             );

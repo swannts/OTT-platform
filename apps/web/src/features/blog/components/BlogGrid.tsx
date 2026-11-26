@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { BlogPost, BlogCategory } from '@/types';
 import BlogCard from './BlogCard';
 import { Search, X, BookOpen } from 'lucide-react';
+import { useLocaleText } from '@/providers';
 
 interface BlogGridProps {
   initialPosts: BlogPost[];
@@ -11,6 +12,7 @@ interface BlogGridProps {
 }
 
 export default function BlogGrid({ initialPosts, categories }: BlogGridProps) {
+  const tr = useLocaleText();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -72,7 +74,7 @@ export default function BlogGrid({ initialPosts, categories }: BlogGridProps) {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search articles, topics..."
+            placeholder={tr("Search articles, topics...")}
             className="w-full bg-white/[0.06] border border-white/10 focus:border-[#E5B869]/60 text-white placeholder-gray-400 text-xs rounded-full pl-9 pr-8 py-2.5 focus:outline-none transition-all"
           />
           <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -81,7 +83,7 @@ export default function BlogGrid({ initialPosts, categories }: BlogGridProps) {
               type="button"
               onClick={() => setSearchQuery('')}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white cursor-pointer"
-              aria-label="Clear search"
+              aria-label={tr("Clear search")}
             >
               <X className="w-3 h-3" />
             </button>
@@ -100,10 +102,9 @@ export default function BlogGrid({ initialPosts, categories }: BlogGridProps) {
         /* Empty State */
         <div className="text-center py-20 bg-white/[0.02] border border-white/5 rounded-3xl p-8 space-y-4">
           <BookOpen className="w-12 h-12 text-gray-600 mx-auto" />
-          <h3 className="text-lg font-bold text-white">No articles found</h3>
+          <h3 className="text-lg font-bold text-white">{tr("No articles found")}</h3>
           <p className="text-xs text-gray-400 max-w-sm mx-auto">
-            We couldn&apos;t find any stories matching your filters. Try selecting a different category or clearing your search.
-          </p>
+            {tr("We couldn't find any stories matching your filters. Try selecting a different category or clearing your search.")}</p>
           <button
             type="button"
             onClick={() => {
@@ -112,8 +113,7 @@ export default function BlogGrid({ initialPosts, categories }: BlogGridProps) {
             }}
             className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition-colors cursor-pointer"
           >
-            Reset All Filters
-          </button>
+            {tr("Reset All Filters")}</button>
         </div>
       )}
     </div>

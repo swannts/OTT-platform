@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Sliders, Bell, Volume2, Subtitles, CheckCircle2, Save, Film } from 'lucide-react';
+import { useLocaleText } from '@/providers';
 
 export interface PlaybackPreferences {
   audioLanguage: string;
@@ -48,6 +49,7 @@ const SUBTITLE_OPTIONS = [
 ];
 
 export function PreferencesSection() {
+  const tr = useLocaleText();
   const [playback, setPlayback] = useState<PlaybackPreferences>(() => {
     if (typeof window === 'undefined') return DEFAULT_PLAYBACK;
     try {
@@ -87,7 +89,7 @@ export function PreferencesSection() {
       {saveToast && (
         <div className="p-4 rounded-xl flex items-center space-x-3 text-sm border bg-emerald-500/10 border-emerald-500/20 text-emerald-400">
           <CheckCircle2 className="w-5 h-5 shrink-0" />
-          <span>Preferences saved successfully. Your default playback and alert settings are updated.</span>
+          <span>{tr("Preferences saved successfully. Your default playback and alert settings are updated.")}</span>
         </div>
       )}
 
@@ -95,18 +97,17 @@ export function PreferencesSection() {
       <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 sm:p-8 backdrop-blur-xl">
         <h3 className="text-lg font-bold text-white mb-2 flex items-center space-x-2">
           <Sliders className="w-5 h-5 text-[#E5B869]" />
-          <span>Playback & Streaming Controls</span>
+          <span>{tr("Playback & Streaming Controls")}</span>
         </h3>
         <p className="text-gray-400 text-xs mb-6">
-          Customize your default viewing experience across all web, tablet, and smart TV sessions.
-        </p>
+          {tr("Customize your default viewing experience across all web, tablet, and smart TV sessions.")}</p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {/* Default Audio Language */}
           <div>
             <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <Volume2 className="w-4 h-4 text-[#E5B869]" />
-              <span>Default Audio Language</span>
+              <span>{tr("Default Audio Language")}</span>
             </label>
             <select
               value={playback.audioLanguage}
@@ -125,7 +126,7 @@ export function PreferencesSection() {
           <div>
             <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <Subtitles className="w-4 h-4 text-[#E5B869]" />
-              <span>Default Subtitle Language</span>
+              <span>{tr("Default Subtitle Language")}</span>
             </label>
             <select
               value={playback.subtitleLanguage}
@@ -144,7 +145,7 @@ export function PreferencesSection() {
           <div className="sm:col-span-2">
             <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <Film className="w-4 h-4 text-[#E5B869]" />
-              <span>Default Streaming Quality</span>
+              <span>{tr("Default Streaming Quality")}</span>
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
@@ -175,8 +176,8 @@ export function PreferencesSection() {
         <div className="mt-6 pt-6 border-t border-white/10 space-y-4">
           <div className="flex items-center justify-between p-3.5 rounded-xl bg-black/30 border border-white/10">
             <div>
-              <p className="text-white font-semibold text-sm">Autoplay Next Episode</p>
-              <p className="text-gray-400 text-xs">Automatically play the next episode when watching TV shows</p>
+              <p className="text-white font-semibold text-sm">{tr("Autoplay Next Episode")}</p>
+              <p className="text-gray-400 text-xs">{tr("Automatically play the next episode when watching TV shows")}</p>
             </div>
             <input
               type="checkbox"
@@ -188,8 +189,8 @@ export function PreferencesSection() {
 
           <div className="flex items-center justify-between p-3.5 rounded-xl bg-black/30 border border-white/10">
             <div>
-              <p className="text-white font-semibold text-sm">Autoplay Video Previews</p>
-              <p className="text-gray-400 text-xs">Play video trailers automatically when browsing featured titles</p>
+              <p className="text-white font-semibold text-sm">{tr("Autoplay Video Previews")}</p>
+              <p className="text-gray-400 text-xs">{tr("Play video trailers automatically when browsing featured titles")}</p>
             </div>
             <input
               type="checkbox"
@@ -205,17 +206,16 @@ export function PreferencesSection() {
       <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 sm:p-8 backdrop-blur-xl">
         <h3 className="text-lg font-bold text-white mb-2 flex items-center space-x-2">
           <Bell className="w-5 h-5 text-[#E5B869]" />
-          <span>Notification & Communication Preferences</span>
+          <span>{tr("Notification & Communication Preferences")}</span>
         </h3>
         <p className="text-gray-400 text-xs mb-6">
-          Choose which notifications and updates you wish to receive from NOOR OTT.
-        </p>
+          {tr("Choose which notifications and updates you wish to receive from NOOR OTT.")}</p>
 
         <div className="space-y-4">
           <div className="flex items-center justify-between p-3.5 rounded-xl bg-black/30 border border-white/10">
             <div>
-              <p className="text-white font-semibold text-sm">New Releases & Recommendations</p>
-              <p className="text-gray-400 text-xs">Get notified when new movies, seasons, and trending lectures are released</p>
+              <p className="text-white font-semibold text-sm">{tr("New Releases & Recommendations")}</p>
+              <p className="text-gray-400 text-xs">{tr("Get notified when new movies, seasons, and trending lectures are released")}</p>
             </div>
             <input
               type="checkbox"
@@ -227,8 +227,8 @@ export function PreferencesSection() {
 
           <div className="flex items-center justify-between p-3.5 rounded-xl bg-black/30 border border-white/10">
             <div>
-              <p className="text-white font-semibold text-sm">Watchlist Activity</p>
-              <p className="text-gray-400 text-xs">Alerts when saved shows or movies in your watchlist become available</p>
+              <p className="text-white font-semibold text-sm">{tr("Watchlist Activity")}</p>
+              <p className="text-gray-400 text-xs">{tr("Alerts when saved shows or movies in your watchlist become available")}</p>
             </div>
             <input
               type="checkbox"
@@ -240,8 +240,8 @@ export function PreferencesSection() {
 
           <div className="flex items-center justify-between p-3.5 rounded-xl bg-black/30 border border-white/10">
             <div>
-              <p className="text-white font-semibold text-sm">Account & Security Alerts</p>
-              <p className="text-gray-400 text-xs">Security warnings, new device logins, and password modification receipts</p>
+              <p className="text-white font-semibold text-sm">{tr("Account & Security Alerts")}</p>
+              <p className="text-gray-400 text-xs">{tr("Security warnings, new device logins, and password modification receipts")}</p>
             </div>
             <input
               type="checkbox"
@@ -253,8 +253,8 @@ export function PreferencesSection() {
 
           <div className="flex items-center justify-between p-3.5 rounded-xl bg-black/30 border border-white/10">
             <div>
-              <p className="text-white font-semibold text-sm">Billing & Subscription Reminders</p>
-              <p className="text-gray-400 text-xs">Upcoming plan renewal alerts and payment receipts</p>
+              <p className="text-white font-semibold text-sm">{tr("Billing & Subscription Reminders")}</p>
+              <p className="text-gray-400 text-xs">{tr("Upcoming plan renewal alerts and payment receipts")}</p>
             </div>
             <input
               type="checkbox"
@@ -273,7 +273,7 @@ export function PreferencesSection() {
           className="flex items-center space-x-2 bg-[#E5B869] hover:bg-[#d9ab5c] text-black font-bold px-6 py-3 rounded-xl transition-all shadow-md shadow-[#E5B869]/20 hover:scale-[1.01]"
         >
           <Save className="w-4 h-4" />
-          <span>Save Preferences</span>
+          <span>{tr("Save Preferences")}</span>
         </button>
       </div>
     </form>

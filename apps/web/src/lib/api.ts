@@ -39,6 +39,7 @@ interface ApiRequestOptions {
   body?: string | FormData | null;
   headers?: HeadersInit;
   signal?: AbortSignal;
+  locale?: string;
 }
 
 export function normalizeMediaItem(raw: unknown): MediaItem {
@@ -156,7 +157,7 @@ class ApiClient {
 
   private async request<T>(endpoint: string, options: ApiRequestOptions = {}): Promise<T> {
     const token = this.getToken();
-    const locale = this.getLocale();
+    const locale = options.locale ?? this.getLocale();
     const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
     const headers = Object.fromEntries(new Headers(options.headers).entries());
     headers.Accept = 'application/json';
@@ -366,7 +367,7 @@ class ApiClient {
   }
 
   // ── Blog & Articles ────────────────────────────────────────────────────────
-  async getBlogs(params: BlogQueryParams = {}): Promise<BlogListResponse> {
+  async getBlogs(params: BlogQueryParams = {}, locale?: string): Promise<BlogListResponse> {
     const q = new URLSearchParams();
     if (params.page) q.append('page', params.page.toString());
     if (params.per_page) q.append('per_page', params.per_page.toString());
@@ -376,15 +377,15 @@ class ApiClient {
     if (params.tag) q.append('tag', params.tag);
 
     const query = q.toString() ? `?${q.toString()}` : '';
-    return this.request<BlogListResponse>(`/v3/blogs${query}`);
+    return this.request<BlogListResponse>(`/v3/blogs${query}`, { locale });
   }
 
-  async getBlogPost(slugOrId: string | number): Promise<BlogDetailResponse> {
-    return this.request<BlogDetailResponse>(`/v3/blogs/${slugOrId}`);
+  async getBlogPost(slugOrId: string | number, locale?: string): Promise<BlogDetailResponse> {
+    return this.request<BlogDetailResponse>(`/v3/blogs/${slugOrId}`, { locale });
   }
 
-  async getBlogCategories(): Promise<BlogCategory[]> {
-    return this.request<BlogCategory[]>('/v3/blog-categories');
+  async getBlogCategories(locale?: string): Promise<BlogCategory[]> {
+    return this.request<BlogCategory[]>('/v3/blog-categories', { locale });
   }
 
   // ── Discovery & Catalog ───────────────────────────────────────────────────

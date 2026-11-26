@@ -5,12 +5,14 @@ import { MediaGrid } from '@/components/shared';
 import { Sparkles, Flame } from 'lucide-react';
 import { MediaItem } from '@/types';
 import { SectionHeader, EmptyState } from '@/components/ui';
+import { useLocaleText } from '@/providers';
 
 interface VideosSectionProps {
   initialVideos: MediaItem[];
 }
 
 export default function VideosSection({ initialVideos }: VideosSectionProps) {
+  const tr = useLocaleText();
   const [videos] = useState<MediaItem[]>(() =>
     initialVideos.map((item) => ({ ...item, type: 'video' }))
   );
@@ -21,7 +23,7 @@ export default function VideosSection({ initialVideos }: VideosSectionProps) {
       <SectionHeader
         badgeText="Knowledge & Spiritual Reminders"
         badgeIcon={<Sparkles className="w-3.5 h-3.5 text-[#E5B869]" />}
-        title="Islamic Lectures, Waz & Bayan"
+        title={tr("Islamic Lectures, Waz & Bayan")}
         titleIcon={<Flame className="w-7 h-7 sm:w-8 sm:h-8" />}
         description="Watch insightful scholarly discourses, Friday Khutbah reflections, prophetic wisdom, and family guidance."
       />
@@ -32,7 +34,7 @@ export default function VideosSection({ initialVideos }: VideosSectionProps) {
         emptyState={
           <EmptyState
             icon={<Flame className="w-10 h-10 text-[#E5B869]/50" />}
-            title="New Lectures Coming Soon"
+            title={tr("New Lectures Coming Soon")}
             description="Our curators are preparing new verified scholarly discourses. Please check back shortly."
           />
         }

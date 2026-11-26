@@ -5,6 +5,7 @@ import { Users, Plus, Trash2, Check, Shield, X, AlertCircle } from 'lucide-react
 import { Spinner } from '@/components/ui';
 import type { ProfileItem } from '../types/account.types';
 import type { MultiProfileInput } from '../schemas/account.schema';
+import { useLocaleText } from '@/providers';
 
 interface ViewerProfilesSectionProps {
   profiles: ProfileItem[];
@@ -30,6 +31,7 @@ const PRESET_AVATARS = [
 ];
 
 function ProfileAvatarBox({ avatar, name, isKids }: { avatar?: string | null; name: string; isKids?: boolean }) {
+  const tr = useLocaleText();
   const [imgError, setImgError] = useState(false);
   const isImg = Boolean(
     avatar &&
@@ -64,8 +66,7 @@ function ProfileAvatarBox({ avatar, name, isKids }: { avatar?: string | null; na
       </div>
       {isKids && (
         <span className="absolute -bottom-2 inset-x-0 mx-auto w-max bg-emerald-500 text-black text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow-md">
-          Kids
-        </span>
+          {tr("Kids")}</span>
       )}
     </div>
   );
@@ -82,6 +83,7 @@ export function ViewerProfilesSection({
   isLoading,
   actionLoading,
 }: ViewerProfilesSectionProps) {
+  const tr = useLocaleText();
   const [showAddModal, setShowAddModal] = useState(false);
   const [name, setName] = useState('');
   const [isChild, setIsChild] = useState(false);
@@ -136,11 +138,10 @@ export function ViewerProfilesSection({
         <div>
           <h3 className="text-lg font-bold text-white flex items-center gap-2">
             <Users className="w-5 h-5 text-[#E5B869]" />
-            <span>Viewer Profiles</span>
+            <span>{tr("Viewer Profiles")}</span>
           </h3>
           <p className="text-gray-400 text-sm mt-1">
-            Create independent watchlists, recommendations, and viewing histories for everyone in your household.
-          </p>
+            {tr("Create independent watchlists, recommendations, and viewing histories for everyone in your household.")}</p>
         </div>
 
         <button
@@ -152,7 +153,7 @@ export function ViewerProfilesSection({
           className="flex items-center justify-center space-x-2 bg-[#E5B869] hover:bg-[#d9ab5c] text-black font-bold px-4 py-2.5 rounded-xl transition-all shadow-md shadow-[#E5B869]/20 self-start sm:self-auto shrink-0"
         >
           <Plus className="w-4 h-4" />
-          <span>Add Profile</span>
+          <span>{tr("Add Profile")}</span>
         </button>
       </div>
 
@@ -179,8 +180,7 @@ export function ViewerProfilesSection({
                 {/* Active Indicator Badge */}
                 {isActive && (
                   <span className="absolute top-2 right-2 flex items-center gap-1 bg-[#E5B869] text-black text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow-md">
-                    <Check className="w-3 h-3 stroke-[3]" /> Active
-                  </span>
+                    <Check className="w-3 h-3 stroke-[3]" /> {' '}{tr("Active")}</span>
                 )}
 
                 {/* Avatar Icon */}
@@ -210,13 +210,12 @@ export function ViewerProfilesSection({
                       onClick={() => onSelectProfile(profile)}
                       className="text-xs text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1 rounded-lg transition-colors border border-white/10"
                     >
-                      Switch
-                    </button>
+                      {tr("Switch")}</button>
                   )}
                   {profiles.length > 1 && !isActive && (
                     <button
                       type="button"
-                      title="Delete profile"
+                      title={tr("Delete profile")}
                       onClick={() => {
                         if (confirm(`Are you sure you want to delete profile "${profile.name}"?`)) {
                           onDeleteProfile(profile.id);
@@ -246,10 +245,9 @@ export function ViewerProfilesSection({
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="text-xl font-bold text-white mb-2">Create Viewer Profile</h3>
+            <h3 className="text-xl font-bold text-white mb-2">{tr("Create Viewer Profile")}</h3>
             <p className="text-gray-400 text-xs mb-6">
-              Add a personalized space with unique watchlists and content ratings.
-            </p>
+              {tr("Add a personalized space with unique watchlists and content ratings.")}</p>
 
             {formError && (
               <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-2">
@@ -261,23 +259,21 @@ export function ViewerProfilesSection({
             <form onSubmit={handleCreate} className="space-y-5">
               <div>
                 <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">
-                  Profile Name (max 12 chars)
-                </label>
+                  {tr("Profile Name (max 12 chars)")}</label>
                 <input
                   type="text"
                   maxLength={12}
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g., Sarah"
+                  placeholder={tr("e.g., Sarah")}
                   className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-[#E5B869]"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">
-                  Avatar Color
-                </label>
+                  {tr("Avatar Color")}</label>
                 <div className="flex gap-2">
                   {PRESET_AVATARS.map((color) => (
                     <button
@@ -294,8 +290,8 @@ export function ViewerProfilesSection({
 
               <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/10">
                 <div>
-                  <span className="text-sm font-semibold text-white block">Kid&apos;s Profile?</span>
-                  <span className="text-xs text-gray-400">Only family-friendly and children&apos;s content.</span>
+                  <span className="text-sm font-semibold text-white block">{tr("Kid's Profile?")}</span>
+                  <span className="text-xs text-gray-400">{tr("Only family-friendly and children's content.")}</span>
                 </div>
                 <input
                   type="checkbox"
@@ -311,8 +307,7 @@ export function ViewerProfilesSection({
                   onClick={() => setShowAddModal(false)}
                   className="px-4 py-2.5 text-sm text-gray-400 hover:text-white"
                 >
-                  Cancel
-                </button>
+                  {tr("Cancel")}</button>
                 <button
                   type="submit"
                   disabled={actionLoading}
@@ -334,10 +329,9 @@ export function ViewerProfilesSection({
               <Shield className="w-6 h-6" />
             </div>
 
-            <h3 className="text-lg font-bold text-white mb-1">Parental PIN Required</h3>
+            <h3 className="text-lg font-bold text-white mb-1">{tr("Parental PIN Required")}</h3>
             <p className="text-gray-400 text-xs mb-4">
-              Switching from Kids to &quot;{pinTargetProfile.name}&quot; requires your 4-digit parental lock PIN.
-            </p>
+              {tr("Switching from Kids to \"")}{pinTargetProfile.name}{tr("\" requires your 4-digit parental lock PIN.")}</p>
 
             {formError && (
               <div className="mb-4 p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
@@ -363,8 +357,7 @@ export function ViewerProfilesSection({
                   onClick={onCancelPin}
                   className="px-4 py-2 text-xs text-gray-400 hover:text-white"
                 >
-                  Cancel
-                </button>
+                  {tr("Cancel")}</button>
                 <button
                   type="submit"
                   disabled={actionLoading || pinInput.length !== 4}

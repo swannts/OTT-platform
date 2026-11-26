@@ -8,12 +8,14 @@ import { Film, Sparkles, Filter } from 'lucide-react';
 import { MediaItem } from '@/types';
 import { SectionHeader, EmptyState } from '@/components/ui';
 import { MOVIE_CATEGORIES } from '@/constants';
+import { useLocaleText } from '@/providers';
 
 interface MoviesSectionProps {
   initialMovies: MediaItem[];
 }
 
 export default function MoviesSection({ initialMovies }: MoviesSectionProps) {
+  const tr = useLocaleText();
   const dispatch = useAppDispatch();
   const { movies: reduxMovies, isLoading } = useAppSelector(selectMoviesState);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -42,7 +44,7 @@ export default function MoviesSection({ initialMovies }: MoviesSectionProps) {
           className="mb-0 border-b-0 pb-0"
           badgeText="Cinematic Features & Documentaries"
           badgeIcon={<Sparkles className="w-3.5 h-3.5 text-[#E5B869]" />}
-          title="Islamic Movies & Documentaries"
+          title={tr("Islamic Movies & Documentaries")}
           titleIcon={<Film className="w-7 h-7 sm:w-8 sm:h-8" />}
           description="Browse our curated collection of Islamic documentaries, faith-inspired cinema, and sacred history."
           counterText={`${filteredMovies.length} Titles Available`}
@@ -79,7 +81,7 @@ export default function MoviesSection({ initialMovies }: MoviesSectionProps) {
         emptyState={
           <EmptyState
             icon={<Film className="w-10 h-10 text-gray-500" />}
-            title="No titles found in this category"
+            title={tr("No titles found in this category")}
             description="Try selecting another category filter above."
           />
         }

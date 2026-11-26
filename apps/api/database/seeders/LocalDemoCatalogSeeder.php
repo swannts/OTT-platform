@@ -169,7 +169,10 @@ class LocalDemoCatalogSeeder extends Seeder
 
         $this->seedReferenceData($now);
         $this->seedSeriesAndEditorialData($now, $genreIds);
+        $this->call(LocalDemoTvShowsSeeder::class);
         $this->seedCatalogAvailability($now);
+        $this->call(LocalDemoLiveTvSeeder::class);
+        $this->call(LocalDemoBlogSeeder::class);
 
         $first = $catalog[0];
         $firstId = $contentIds[0];
@@ -424,27 +427,6 @@ class LocalDemoCatalogSeeder extends Seeder
                 'thumbnail_url' => 'https://images.unsplash.com/photo-1584551246679-0daf3d275d0f?w=900&auto=format&fit=crop&q=85',
                 'access' => 'free', 'status' => 0, 'is_restricted' => 0, 'created_by' => $adminId,
                 'updated_by' => $adminId, 'created_at' => $now, 'updated_at' => $now, 'deleted_at' => null,
-            ],
-        );
-
-        $categorySlug = 'demo-live-channels';
-        $category = DB::table('live_tv_category')->where('slug', $categorySlug)->first();
-        $categoryId = $category->id ?? (string) Str::uuid7();
-        if (! $category) {
-            DB::table('live_tv_category')->insert([
-                'id' => $categoryId, 'name' => 'Demo Live Channels', 'slug' => $categorySlug,
-                'description' => 'Draft channel category. No live stream is configured.', 'status' => 0,
-                'created_by' => $adminId, 'updated_by' => $adminId, 'created_at' => $now, 'updated_at' => $now,
-            ]);
-        }
-        DB::table('live_tv_channel')->updateOrInsert(
-            ['slug' => 'demo-live-channel'],
-            [
-                'name' => 'Demo: NOOR Live', 'name_bn' => 'ডেমো: নূর লাইভ', 'category_id' => $categoryId,
-                'description' => 'Draft channel metadata only. No broadcast stream is attached.',
-                'description_bn' => 'শুধু নমুনা চ্যানেলের তথ্য। কোনো সম্প্রচার স্ট্রিম যুক্ত নেই।',
-                'access' => 'free', 'status' => 0, 'created_by' => $adminId, 'updated_by' => $adminId,
-                'created_at' => $now, 'updated_at' => $now, 'deleted_at' => null,
             ],
         );
 

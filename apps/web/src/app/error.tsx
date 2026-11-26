@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, RotateCcw, Home } from 'lucide-react';
+import { useLocaleText } from '@/providers';
 
 interface ErrorProps {
   error: Error & { digest?: string };
@@ -10,6 +11,7 @@ interface ErrorProps {
 }
 
 export default function ErrorBoundary({ error, reset }: ErrorProps) {
+  const tr = useLocaleText();
   useEffect(() => {
     // Log error to monitoring service (e.g. Sentry) in production
     console.error('App Route Error caught by boundary:', error);
@@ -26,13 +28,12 @@ export default function ErrorBoundary({ error, reset }: ErrorProps) {
         </div>
 
         <div className="space-y-2">
-          <h1 className="text-2xl font-extrabold text-white">Something went wrong</h1>
+          <h1 className="text-2xl font-extrabold text-white">{tr("Something went wrong")}</h1>
           <p className="text-sm text-gray-400 leading-relaxed">
-            We encountered an unexpected streaming issue. Please try refreshing or return to the main catalog.
-          </p>
+            {tr("We encountered an unexpected streaming issue. Please try refreshing or return to the main catalog.")}</p>
           {error.digest && (
             <p className="text-[11px] font-mono text-gray-500 pt-1">
-              Error Digest: {error.digest}
+              {tr("Error Digest:")}{' '}{error.digest}
             </p>
           )}
         </div>
@@ -44,14 +45,14 @@ export default function ErrorBoundary({ error, reset }: ErrorProps) {
             className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-6 py-2.5 rounded-full bg-[#E5B869] hover:bg-[#f3cf8a] text-black text-xs sm:text-sm font-bold shadow-md transition-all cursor-pointer hover:scale-[1.02] active:scale-95"
           >
             <RotateCcw className="w-4 h-4" />
-            <span>Try Again</span>
+            <span>{tr("Try Again")}</span>
           </button>
           <Link
             href="/"
             className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-6 py-2.5 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-white text-xs sm:text-sm font-semibold transition-all cursor-pointer hover:border-white/20 active:scale-95"
           >
             <Home className="w-4 h-4 text-[#E5B869]" />
-            <span>Go to Home</span>
+            <span>{tr("Go to Home")}</span>
           </Link>
         </div>
       </div>

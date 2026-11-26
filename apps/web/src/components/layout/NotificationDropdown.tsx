@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/providers';
+import { useAuth , useLocaleText} from '@/providers';
 import { api } from '@/lib/api';
 import { getNotificationItems, formatNotificationTime, type AppNotification, type NotificationsResponse } from '@/features/notifications/notifications';
 import {
@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 
 export default function NotificationDropdown() {
+  const tr = useLocaleText();
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -165,23 +166,23 @@ export default function NotificationDropdown() {
         <div className="absolute right-0 mt-2.5 w-80 sm:w-96 bg-[#090e15]/98 backdrop-blur-2xl rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] border border-white/10 z-50 overflow-hidden animate-hero-title">
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-white">Notifications</span>
-              {unreadCount > 0 && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E5B869]/20 text-[#E5B869] border border-[#E5B869]/30">{unreadCount} new</span>}
+              <span className="text-sm font-bold text-white">{tr("Notifications")}</span>
+              {unreadCount > 0 && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E5B869]/20 text-[#E5B869] border border-[#E5B869]/30">{unreadCount} {' '}{tr("new")}</span>}
             </div>
             {user && unreadCount > 0 && (
               <button type="button" disabled={markingAll} onClick={handleMarkAllRead} className="flex items-center gap-1 text-[11px] font-medium text-gray-400 hover:text-[#E5B869] disabled:opacity-50">
                 {markingAll ? <LoaderCircle className="w-3.5 h-3.5 animate-spin" /> : <CheckCheck className="w-3.5 h-3.5" />}
-                <span>Mark all read</span>
+                <span>{tr("Mark all read")}</span>
               </button>
             )}
           </div>
 
-          {error && <div role="alert" className="px-4 py-2 text-xs text-red-300 bg-red-500/10">{error}<button type="button" onClick={() => void loadNotifications()} className="ml-2 underline">Retry</button></div>}
+          {error && <div role="alert" className="px-4 py-2 text-xs text-red-300 bg-red-500/10">{error}<button type="button" onClick={() => void loadNotifications()} className="ml-2 underline">{tr("Retry")}</button></div>}
           <div className="max-h-80 overflow-y-auto divide-y divide-white/5 scrollbar-thin scrollbar-thumb-white/10">
             {authLoading || loading ? (
-              <div className="flex items-center justify-center gap-2 py-8 text-xs text-gray-400"><LoaderCircle className="h-4 w-4 animate-spin" />Loading notifications…</div>
+              <div className="flex items-center justify-center gap-2 py-8 text-xs text-gray-400"><LoaderCircle className="h-4 w-4 animate-spin" />{tr("Loading notifications…")}</div>
             ) : !user ? (
-              <div className="text-center py-8 px-4 text-xs text-gray-400">Sign in to see your notifications.</div>
+              <div className="text-center py-8 px-4 text-xs text-gray-400">{tr("Sign in to see your notifications.")}</div>
             ) : notifications.length > 0 ? (
               notifications.slice(0, 5).map((notification) => (
                 <div key={notification.id} className={`group relative flex items-start gap-3 p-3.5 transition-colors hover:bg-white/[0.04] ${!notification.isRead ? 'bg-[#E5B869]/[0.03]' : ''}`}>
@@ -197,14 +198,14 @@ export default function NotificationDropdown() {
                   </button>
                   <div className="flex flex-col items-center justify-between self-stretch">
                     {!notification.isRead && <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[#E5B869] shadow-[0_0_6px_#E5B869]" />}
-                    <button type="button" disabled={busyId === notification.id} onClick={(event) => void handleDeleteItem(event, notification)} className="mt-auto p-1 text-gray-500 opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100 disabled:opacity-50" aria-label="Dismiss notification">
+                    <button type="button" disabled={busyId === notification.id} onClick={(event) => void handleDeleteItem(event, notification)} className="mt-auto p-1 text-gray-500 opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100 disabled:opacity-50" aria-label={tr("Dismiss notification")}>
                       {busyId === notification.id ? <LoaderCircle className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
                     </button>
                   </div>
                 </div>
               ))
             ) : (
-              <div className="space-y-2 px-4 py-8 text-center"><Bell className="mx-auto h-8 w-8 text-gray-600" /><p className="text-xs text-gray-400">No notifications yet.</p></div>
+              <div className="space-y-2 px-4 py-8 text-center"><Bell className="mx-auto h-8 w-8 text-gray-600" /><p className="text-xs text-gray-400">{tr("No notifications yet.")}</p></div>
             )}
           </div>
 

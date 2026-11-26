@@ -16,7 +16,7 @@ import {
   Info,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useLanguage } from '@/providers';
+import { useLanguage , useLocaleText} from '@/providers';
 import { api } from '@/lib/api';
 import { ReviewSection } from '@/components/shared';
 import { SafeImage } from '@/components/ui';
@@ -31,6 +31,7 @@ export default function TvShowDetailSection({
   initialShow,
   initialEpisodes,
 }: TvShowDetailSectionProps) {
+  const tr = useLocaleText();
   const { user } = useAuth();
   const { locale } = useLanguage();
   const [show] = useState<ContentDetails>(initialShow);
@@ -139,7 +140,7 @@ export default function TvShowDetailSection({
                 <div className="flex items-center text-[#E5B869] bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-full border border-[#E5B869]/30 shadow-sm">
                   <Star className="w-3.5 h-3.5 fill-current mr-1 text-[#E5B869]" />
                   <span className="font-bold">{show.imdb_rating}</span>
-                  <span className="text-gray-400 text-[10px] ml-1">IMDb</span>
+                  <span className="text-gray-400 text-[10px] ml-1">{tr("IMDb")}</span>
                 </div>
               )}
 
@@ -186,7 +187,7 @@ export default function TvShowDetailSection({
                   className="inline-flex items-center space-x-2.5 bg-[#E5B869] hover:bg-[#f3cf8a] text-black font-extrabold px-8 py-3.5 rounded-full shadow-xl shadow-[#E5B869]/25 transition-all transform hover:scale-[1.02] active:scale-95 cursor-pointer text-sm sm:text-base"
                 >
                   <Play className="w-5 h-5 fill-black" />
-                  <span>Play Episode 1</span>
+                  <span>{tr("Play Episode 1")}</span>
                 </Link>
               )}
 
@@ -208,7 +209,7 @@ export default function TvShowDetailSection({
                 type="button"
                 onClick={handleShare}
                 className="inline-flex items-center space-x-2 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white px-5 py-3.5 rounded-full border border-white/10 backdrop-blur-md transition-all text-sm font-medium cursor-pointer active:scale-95"
-                title="Share series link"
+                title={tr("Share series link")}
               >
                 <Share2 className="w-4 h-4" />
                 <span>{copiedShare ? 'Link Copied!' : 'Share'}</span>
@@ -229,11 +230,9 @@ export default function TvShowDetailSection({
               </div>
               <div>
                 <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                  Episodes & Chapters
-                </h2>
+                  {tr("Episodes & Chapters")}</h2>
                 <p className="text-xs text-gray-400">
-                  Select an episode to view synopsis, duration, and begin instant streaming
-                </p>
+                  {tr("Select an episode to view synopsis, duration, and begin instant streaming")}</p>
               </div>
             </div>
 
@@ -251,8 +250,7 @@ export default function TvShowDetailSection({
                 onClick={() => setSelectedSeason('all')}
                 className={`px-5 py-2 rounded-full text-xs font-bold transition-all ${selectedSeason === 'all' ? 'bg-[#E5B869] text-black' : 'bg-white/5 text-gray-400 border border-white/5'}`}
               >
-                All Episodes
-              </button>
+                {tr("All Episodes")}</button>
               {seasons.map((season, index) => {
                 const seasonId = String(season.id);
                 const seasonName = season.name || (season.season_number ? `Season ${season.season_number}` : `Season ${index + 1}`);
@@ -275,7 +273,7 @@ export default function TvShowDetailSection({
         {visibleEpisodes.length === 0 ? (
           <div className="py-16 text-center text-gray-400 text-sm bg-white/[0.02] border border-white/5 rounded-3xl p-8">
             <Info className="w-8 h-8 text-gray-500 mx-auto mb-3" />
-            <p className="text-white font-semibold">No episodes are available for this selection.</p>
+            <p className="text-white font-semibold">{tr("No episodes are available for this selection.")}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:gap-6">
@@ -344,7 +342,7 @@ export default function TvShowDetailSection({
                     <div className="flex items-center justify-between pt-4 mt-2 border-t border-white/5">
                       <div className="flex items-center space-x-3 text-xs text-gray-400">
                         <span className="inline-flex items-center font-bold text-[#E5B869] group-hover:underline">
-                          Watch Episode <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
+                          {tr("Watch Episode")}{' '}<ChevronRight className="w-3.5 h-3.5 ml-0.5" />
                         </span>
                         {ep.access && <span className="capitalize text-gray-400">{ep.access}</span>}
                       </div>
@@ -364,7 +362,7 @@ export default function TvShowDetailSection({
 
         {people.length > 0 && (
           <section className="pt-6 border-t border-white/10">
-            <h2 className="text-xl font-bold text-white mb-4">Cast & Crew</h2>
+            <h2 className="text-xl font-bold text-white mb-4">{tr("Cast & Crew")}</h2>
             <ul className="flex flex-wrap gap-3">
               {people.map((person) => (
                 <li key={`${person.role}-${person.id}`} className="px-4 py-2 rounded-xl bg-white/[0.04] border border-white/10">

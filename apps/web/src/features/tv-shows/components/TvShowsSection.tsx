@@ -11,6 +11,7 @@ import { MediaGrid } from '@/components/shared';
 import { Tv, Sparkles, Filter, Loader2, CheckCircle2 } from 'lucide-react';
 import { MediaItem } from '@/types';
 import { SectionHeader, EmptyState } from '@/components/ui';
+import { useLocaleText } from '@/providers';
 
 interface TvShowsSectionProps {
   initialShows: MediaItem[];
@@ -23,6 +24,7 @@ export default function TvShowsSection({
   initialCursor = null,
   initialHasMore = false,
 }: TvShowsSectionProps) {
+  const tr = useLocaleText();
   const dispatch = useAppDispatch();
   const {
     shows: reduxShows,
@@ -99,7 +101,7 @@ export default function TvShowsSection({
           className="mb-0 border-b-0 pb-0"
           badgeText="TV SERIES"
           badgeIcon={<Sparkles className="w-3.5 h-3.5 text-[#E5B869]" />}
-          title="Islamic TV Shows & Series"
+          title={tr("Islamic TV Shows & Series")}
           titleIcon={<Tv className="w-7 h-7 sm:w-8 sm:h-8 text-[#E5B869]" />}
           description="Browse shows and episodes currently available in the catalog."
           counterText={`${filteredShows.length} Series Shown`}
@@ -136,7 +138,7 @@ export default function TvShowsSection({
         emptyState={
           <EmptyState
             icon={<Tv className="w-10 h-10 text-gray-500" />}
-            title="No series found in this category"
+            title={tr("No series found in this category")}
             description="Try selecting another category filter above."
           />
         }
@@ -152,8 +154,7 @@ export default function TvShowsSection({
           <div className="flex items-center space-x-3 text-[#E5B869] bg-white/[0.04] border border-[#E5B869]/30 px-6 py-3 rounded-full backdrop-blur-md shadow-lg shadow-[#E5B869]/10 animate-pulse">
             <Loader2 className="w-4 h-4 animate-spin text-[#E5B869]" />
             <span className="text-xs font-bold tracking-wide text-white">
-              Loading more Islamic series...
-            </span>
+              {tr("Loading more Islamic series...")}</span>
           </div>
         )}
 
@@ -161,7 +162,7 @@ export default function TvShowsSection({
         {!isMoreAvailable && shows.length > 0 && (
           <div className="flex items-center space-x-2 text-xs text-gray-400 bg-white/[0.02] border border-white/5 px-5 py-2.5 rounded-full">
             <CheckCircle2 className="w-3.5 h-3.5 text-[#E5B869]" />
-            <span>You have reached the end of the collection • {shows.length} Series</span>
+            <span>{tr("You have reached the end of the collection •")}{' '}{shows.length} {' '}{tr("Series")}</span>
           </div>
         )}
       </div>

@@ -13,12 +13,17 @@ class Blog extends Model
 
     protected $fillable = [
         'title',
+        'title_bn',
         'slug',
         'summary',
+        'summary_bn',
         'content',
+        'content_bn',
         'image_url',
         'category',
+        'category_bn',
         'tags',
+        'tags_bn',
         'author_name',
         'author_avatar',
         'reading_time',
@@ -30,6 +35,7 @@ class Blog extends Model
 
     protected $casts = [
         'tags' => 'array',
+        'tags_bn' => 'array',
         'is_featured' => 'boolean',
         'status' => 'integer',
         'reading_time' => 'integer',
@@ -49,10 +55,10 @@ class Blog extends Model
 
     public function scopeCategory($query, $category)
     {
-        if (!empty($category) && strtolower($category) !== 'all') {
+        if (! empty($category) && strtolower($category) !== 'all') {
             return $query->where('category', $category);
         }
+
         return $query;
     }
 }
-

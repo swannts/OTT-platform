@@ -9,9 +9,10 @@ import { getSavedProgress } from '@/features/player/utils/playbackProgress';
 import { MediaRow } from '@/components/shared';
 import { Spinner } from '@/components/ui';
 import { ArrowLeft, Star, Clock, Calendar } from 'lucide-react';
-import { useLanguage } from '@/providers';
+import { useLanguage , useLocaleText} from '@/providers';
 
 export default function WatchPage() {
+  const tr = useLocaleText();
   const params = useParams();
   const router = useRouter();
   const { t, locale } = useLanguage();
@@ -103,7 +104,7 @@ export default function WatchPage() {
           className="inline-flex items-center space-x-2 text-gray-400 hover:text-white transition-colors text-xs font-semibold py-1"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back</span>
+          <span>{tr("Back")}</span>
         </button>
 
         {/* Video Player Container */}
@@ -131,8 +132,7 @@ export default function WatchPage() {
             <h1 className="text-2xl sm:text-3xl font-black text-white">{displayName}</h1>
             {content.access === 'paid' && (
               <span className="bg-amber-500 text-black text-xs font-bold px-2.5 py-0.5 rounded-full uppercase">
-                VIP
-              </span>
+                {tr("VIP")}</span>
             )}
           </div>
 
@@ -140,7 +140,7 @@ export default function WatchPage() {
             {content.imdb_rating && (
               <div className="flex items-center text-amber-400">
                 <Star className="w-3.5 h-3.5 fill-current mr-1" />
-                <span>{content.imdb_rating} IMDb</span>
+                <span>{content.imdb_rating} {' '}{tr("IMDb")}</span>
               </div>
             )}
             {content.release_year && (

@@ -2,6 +2,7 @@ import React from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { api } from '@/lib/api';
+import { LocalizedText } from '@/components/ui/LocalizedText';
 
 export const revalidate = 300; // Cache CMS pages for 5 minutes
 
@@ -15,6 +16,7 @@ interface StaticPageData {
   title?: string;
   description?: string;
   content?: string;
+  isFallback?: boolean;
 }
 
 async function getPageData(slug: string): Promise<StaticPageData> {
@@ -36,18 +38,7 @@ async function getPageData(slug: string): Promise<StaticPageData> {
   return {
     name: cleanName,
     title: cleanName,
-    description: `
-      <p>Welcome to <strong>NOOR Islamic Cinema</strong>. This policy document outlines our service standards, ethical broadcasting values, halal content curation principles, and user agreements.</p>
-      <br />
-      <h3>1. Halal Content & Family Safety Guarantee</h3>
-      <p>NOOR is committed to providing 100% halal, family-safe Islamic streaming content free from inappropriate imagery, profanity, or harmful values.</p>
-      <br />
-      <h3>2. Privacy & Data Integrity</h3>
-      <p>We respect the sacred privacy of our subscribers. We do not sell or monetize personal data or viewing habits to third-party ad networks.</p>
-      <br />
-      <h3>3. Subscription Terms & Cancellations</h3>
-      <p>Subscribers may manage or cancel their VIP subscriptions anytime through their account dashboard with zero hidden penalties.</p>
-    `,
+    isFallback: true,
   };
 }
 
@@ -80,8 +71,21 @@ export default async function StaticPolicyPage({ params }: PageProps) {
       </h1>
       <div
         className="prose prose-invert max-w-none text-sm leading-relaxed bg-[#0c1218] border border-white/10 p-6 sm:p-10 rounded-3xl shadow-xl"
-        dangerouslySetInnerHTML={{ __html: page.description || '' }}
-      />
+      >
+        {page.isFallback ? (
+          <>
+            <p><LocalizedText text="Welcome to" /> <strong>NOOR Islamic Cinema</strong><LocalizedText text=". This policy document outlines our service standards, ethical broadcasting values, halal content curation principles, and user agreements." /></p>
+            <h3><LocalizedText text="1. Halal Content & Family Safety Guarantee" /></h3>
+            <p><LocalizedText text="NOOR is committed to providing 100% halal, family-safe Islamic streaming content free from inappropriate imagery, profanity, or harmful values." /></p>
+            <h3><LocalizedText text="2. Privacy & Data Integrity" /></h3>
+            <p><LocalizedText text="We respect the sacred privacy of our subscribers. We do not sell or monetize personal data or viewing habits to third-party ad networks." /></p>
+            <h3><LocalizedText text="3. Subscription Terms & Cancellations" /></h3>
+            <p><LocalizedText text="Subscribers may manage or cancel their VIP subscriptions anytime through their account dashboard with zero hidden penalties." /></p>
+          </>
+        ) : (
+          <div dangerouslySetInnerHTML={{ __html: page.description || '' }} />
+        )}
+      </div>
     </div>
   );
 }

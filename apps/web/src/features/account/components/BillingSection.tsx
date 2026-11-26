@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Crown, Clock, CheckCircle2, AlertTriangle, Film, Receipt, ChevronRight } from 'lucide-react';
 import { Spinner } from '@/components/ui';
-import { useLanguage } from '@/providers';
+import { useLanguage , useLocaleText} from '@/providers';
 import { accountApi } from '../api/account.client';
 import { formatDhakaDate, formatDhakaDateTime, formatDaysRemaining } from '@/lib/datetime';
 import type { BillingSubscriptionRecord, BillingPayPerViewRecord, SubscriptionStatus } from '@/types';
@@ -15,6 +15,7 @@ interface BillingSectionProps {
 }
 
 export function BillingSection({ subscription, onRefresh }: BillingSectionProps) {
+  const tr = useLocaleText();
   const { t, locale } = useLanguage();
   const [history, setHistory] = useState<{
     subscriptions: BillingSubscriptionRecord[];
@@ -114,7 +115,7 @@ export function BillingSection({ subscription, onRefresh }: BillingSectionProps)
                 {renewalDate && (
                   <span className="flex items-center gap-1.5">
                     <Clock className="w-4 h-4 text-gray-500" />
-                    <span>Next renewal:</span>
+                    <span>{tr("Next renewal:")}</span>
                     <strong className="text-white font-semibold">
                       {formatDhakaDate(renewalDate)}
                     </strong>
@@ -128,8 +129,7 @@ export function BillingSection({ subscription, onRefresh }: BillingSectionProps)
               </div>
             ) : (
               <p className="text-gray-400 text-xs sm:text-sm pt-1">
-                Upgrade to unlock high-definition originals, ad-free streaming, and multi-screen access.
-              </p>
+                {tr("Upgrade to unlock high-definition originals, ad-free streaming, and multi-screen access.")}</p>
             )}
           </div>
 
@@ -160,11 +160,10 @@ export function BillingSection({ subscription, onRefresh }: BillingSectionProps)
       <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 sm:p-8 backdrop-blur-xl">
         <h4 className="text-lg font-bold text-white mb-2 flex items-center space-x-2">
           <Receipt className="w-5 h-5 text-[#E5B869]" />
-          <span>Billing History & Receipts</span>
+          <span>{tr("Billing History & Receipts")}</span>
         </h4>
         <p className="text-gray-400 text-xs mb-6">
-          Track recent subscription charges and rental transactions.
-        </p>
+          {tr("Track recent subscription charges and rental transactions.")}</p>
 
         {loading ? (
           <div className="py-8 flex justify-center">
@@ -172,8 +171,7 @@ export function BillingSection({ subscription, onRefresh }: BillingSectionProps)
           </div>
         ) : history.subscriptions.length === 0 && history.pay_per_view.length === 0 ? (
           <div className="py-8 text-center text-gray-500 text-xs">
-            No invoices or billing records found for this account.
-          </div>
+            {tr("No invoices or billing records found for this account.")}</div>
         ) : (
           <div className="space-y-6">
             {/* Subscriptions Table */}
@@ -182,11 +180,11 @@ export function BillingSection({ subscription, onRefresh }: BillingSectionProps)
                 <table className="w-full text-left text-xs">
                   <thead>
                     <tr className="border-b border-white/10 text-gray-400 uppercase tracking-wider">
-                      <th className="py-3 px-4">Date</th>
-                      <th className="py-3 px-4">Description</th>
-                      <th className="py-3 px-4">Amount</th>
-                      <th className="py-3 px-4">Payment Method</th>
-                      <th className="py-3 px-4 text-right">Status</th>
+                      <th className="py-3 px-4">{tr("Date")}</th>
+                      <th className="py-3 px-4">{tr("Description")}</th>
+                      <th className="py-3 px-4">{tr("Amount")}</th>
+                      <th className="py-3 px-4">{tr("Payment Method")}</th>
+                      <th className="py-3 px-4 text-right">{tr("Status")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5 text-gray-300">
@@ -227,7 +225,7 @@ export function BillingSection({ subscription, onRefresh }: BillingSectionProps)
               <div className="pt-4 border-t border-white/10">
                 <h5 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3 flex items-center gap-1.5">
                   <Film className="w-4 h-4 text-[#E5B869]" />
-                  <span>Pay-Per-View Rentals</span>
+                  <span>{tr("Pay-Per-View Rentals")}</span>
                 </h5>
                 <div className="space-y-2">
                   {history.pay_per_view.map((ppv) => (
@@ -248,7 +246,7 @@ export function BillingSection({ subscription, onRefresh }: BillingSectionProps)
                         <span className="font-bold text-white block">
                           {ppv.currency || '$'}{ppv.amount || 0}
                         </span>
-                        <span className="text-[10px] text-emerald-400 font-medium">Unlocked</span>
+                        <span className="text-[10px] text-emerald-400 font-medium">{tr("Unlocked")}</span>
                       </div>
                     </div>
                   ))}

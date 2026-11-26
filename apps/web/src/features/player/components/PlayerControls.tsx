@@ -17,6 +17,7 @@ import PlayerTimeline from './PlayerTimeline';
 import QualityMenu, { HlsQualityItem } from './QualityMenu';
 import { formatTime, formatRemainingTime } from '../utils/formatTime';
 import { VideoQuality } from '@/types';
+import { useLocaleText } from '@/providers';
 
 interface PlayerControlsProps {
   isPlaying: boolean;
@@ -71,6 +72,7 @@ export default function PlayerControls({
   isPipSupported = false,
   isLive = false,
 }: PlayerControlsProps) {
+  const tr = useLocaleText();
   const [showRemaining, setShowRemaining] = useState(false);
   const [isVolumeHovered, setIsVolumeHovered] = useState(false);
 
@@ -115,8 +117,8 @@ export default function PlayerControls({
               type="button"
               onClick={onRewind10}
               className="p-2 rounded-xl text-gray-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-              title="Rewind 10 Seconds (←)"
-              aria-label="Rewind 10s"
+              title={tr("Rewind 10 Seconds (←)")}
+              aria-label={tr("Rewind 10s")}
             >
               <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
@@ -128,8 +130,8 @@ export default function PlayerControls({
               type="button"
               onClick={onForward10}
               className="p-2 rounded-xl text-gray-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-              title="Fast Forward 10 Seconds (→)"
-              aria-label="Forward 10s"
+              title={tr("Fast Forward 10 Seconds (→)")}
+              aria-label={tr("Forward 10s")}
             >
               <RotateCw className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
@@ -165,7 +167,7 @@ export default function PlayerControls({
                 value={effectiveVolume}
                 onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
                 className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-[#E5B869]"
-                aria-label="Volume Slider"
+                aria-label={tr("Volume Slider")}
               />
             </div>
           </div>
@@ -176,7 +178,7 @@ export default function PlayerControls({
               type="button"
               onClick={() => setShowRemaining(!showRemaining)}
               className="hidden sm:inline-flex items-center text-xs font-mono font-medium text-gray-300 hover:text-white px-2 py-1 rounded cursor-pointer"
-              title="Toggle Remaining / Elapsed Time"
+              title={tr("Toggle Remaining / Elapsed Time")}
             >
               <span>{formatTime(currentTime)}</span>
               <span className="text-gray-500 mx-1">/</span>
@@ -205,8 +207,8 @@ export default function PlayerControls({
               type="button"
               onClick={onTogglePip}
               className="p-2 rounded-xl text-gray-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer hidden sm:inline-flex"
-              title="Picture in Picture (P)"
-              aria-label="Picture in Picture"
+              title={tr("Picture in Picture (P)")}
+              aria-label={tr("Picture in Picture")}
             >
               <PictureInPicture className="w-5 h-5" />
             </button>

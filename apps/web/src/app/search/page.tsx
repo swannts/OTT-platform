@@ -7,8 +7,10 @@ import { MediaItem } from '@/types';
 import { MediaGrid } from '@/components/shared';
 import { EmptyState } from '@/components/ui';
 import { Search } from 'lucide-react';
+import { useLocaleText } from '@/providers';
 
 function SearchPageContent() {
+  const tr = useLocaleText();
   const router = useRouter();
   const searchParams = useSearchParams();
   const q = searchParams?.get('q') || '';
@@ -58,7 +60,7 @@ function SearchPageContent() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search titles, actors, genres..."
+            placeholder={tr("Search titles, actors, genres...")}
             className="w-full bg-white/5 border border-white/20 rounded-2xl px-5 py-4 pl-12 text-white placeholder-gray-400 focus:outline-none focus:border-red-500 shadow-xl text-base"
           />
           <Search className="w-5 h-5 text-gray-400 absolute left-4 top-4.5 pointer-events-none" />
@@ -90,8 +92,9 @@ function SearchPageContent() {
 }
 
 export default function SearchPage() {
+  const tr = useLocaleText();
   return (
-    <Suspense fallback={<div className="min-h-screen pt-32 text-center text-white">Loading search...</div>}>
+    <Suspense fallback={<div className="min-h-screen pt-32 text-center text-white">{tr("Loading search...")}</div>}>
       <SearchPageContent />
     </Suspense>
   );

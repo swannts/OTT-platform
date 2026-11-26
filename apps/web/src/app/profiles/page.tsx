@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Spinner } from '@/components/ui';
 import { Plus, Trash2, Shield, X, AlertCircle } from 'lucide-react';
 import { useMultiProfiles, type ProfileItem } from '@/features/account';
+import { useLocaleText } from '@/providers';
 
 const AVATAR_COLORS = [
   'bg-red-600',
@@ -18,6 +19,7 @@ const AVATAR_COLORS = [
 ];
 
 export default function ProfilesPage() {
+  const tr = useLocaleText();
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
 
@@ -146,8 +148,7 @@ export default function ProfilesPage() {
                 )}
                 {isKids && (
                   <span className="text-[10px] uppercase font-bold tracking-wider bg-black/60 px-2 py-0.5 rounded-full mt-1">
-                    Kids
-                  </span>
+                    {tr("Kids")}</span>
                 )}
               </button>
 
@@ -160,7 +161,7 @@ export default function ProfilesPage() {
                     }
                   }}
                   className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center shadow-lg transition-transform hover:scale-110"
-                  title="Delete profile"
+                  title={tr("Delete profile")}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -187,8 +188,7 @@ export default function ProfilesPage() {
               <Plus className="w-8 h-8" />
             </button>
             <span className="text-sm font-semibold text-gray-400 group-hover:text-white mt-3">
-              Add Profile
-            </span>
+              {tr("Add Profile")}</span>
           </div>
         )}
       </div>
@@ -211,8 +211,7 @@ export default function ProfilesPage() {
           href="/account"
           className="text-xs uppercase tracking-widest font-bold px-6 py-2.5 rounded-xl text-gray-400 border border-white/20 hover:border-white/60 hover:text-white transition-all"
         >
-          Account Settings
-        </Link>
+          {tr("Account Settings")}</Link>
       </div>
 
       {/* Add Profile Modal */}
@@ -227,8 +226,8 @@ export default function ProfilesPage() {
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="text-xl font-bold text-white mb-1">Add Profile</h3>
-            <p className="text-xs text-gray-400 mb-6">Create a profile for someone else watching on this account.</p>
+            <h3 className="text-xl font-bold text-white mb-1">{tr("Add Profile")}</h3>
+            <p className="text-xs text-gray-400 mb-6">{tr("Create a profile for someone else watching on this account.")}</p>
 
             {errorMsg && (
               <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-2">
@@ -240,14 +239,13 @@ export default function ProfilesPage() {
             <form onSubmit={handleCreate} className="space-y-5">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">
-                  Profile Name
-                </label>
+                  {tr("Profile Name")}</label>
                 <input
                   type="text"
                   maxLength={12}
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  placeholder="e.g. Sarah"
+                  placeholder={tr("e.g. Sarah")}
                   required
                   autoFocus
                   className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#E5B869]"
@@ -256,8 +254,8 @@ export default function ProfilesPage() {
 
               <div className="flex items-center justify-between p-3.5 rounded-xl bg-white/5 border border-white/10">
                 <div>
-                  <p className="text-sm font-semibold text-white">Kid&apos;s Profile?</p>
-                  <p className="text-xs text-gray-400">Only show content suitable for children</p>
+                  <p className="text-sm font-semibold text-white">{tr("Kid's Profile?")}</p>
+                  <p className="text-xs text-gray-400">{tr("Only show content suitable for children")}</p>
                 </div>
                 <input
                   type="checkbox"
@@ -273,8 +271,7 @@ export default function ProfilesPage() {
                   onClick={() => setShowAddModal(false)}
                   className="px-4 py-2 text-xs font-semibold text-gray-400 hover:text-white"
                 >
-                  Cancel
-                </button>
+                  {tr("Cancel")}</button>
                 <button
                   type="submit"
                   disabled={actionLoading || !newName.trim()}
@@ -296,9 +293,9 @@ export default function ProfilesPage() {
               <Shield className="w-6 h-6" />
             </div>
 
-            <h3 className="text-lg font-bold text-white mb-1">Parental PIN Required</h3>
+            <h3 className="text-lg font-bold text-white mb-1">{tr("Parental PIN Required")}</h3>
             <p className="text-gray-400 text-xs mb-4">
-              Enter your 4-digit PIN to access &quot;{pinTargetProfile.name}&quot;.
+              {tr("Enter your 4-digit PIN to access \"")}{pinTargetProfile.name}&quot;.
             </p>
 
             {errorMsg && (
@@ -325,8 +322,7 @@ export default function ProfilesPage() {
                   onClick={cancelPinVerification}
                   className="px-4 py-2 text-xs text-gray-400 hover:text-white"
                 >
-                  Cancel
-                </button>
+                  {tr("Cancel")}</button>
                 <button
                   type="submit"
                   disabled={actionLoading || pinInput.length !== 4}

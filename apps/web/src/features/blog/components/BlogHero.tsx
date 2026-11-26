@@ -7,12 +7,14 @@ import { BlogPost } from '@/types';
 import { Clock, ArrowRight, Sparkles } from 'lucide-react';
 import { DEFAULT_FALLBACK_IMAGE } from '@/constants';
 import { formatDhakaDate } from '@/lib/datetime';
+import { useLocaleText } from '@/providers';
 
 interface BlogHeroProps {
   post: BlogPost;
 }
 
 export default function BlogHero({ post }: BlogHeroProps) {
+  const tr = useLocaleText();
   const [imgSrc, setImgSrc] = useState(post.image_url || DEFAULT_FALLBACK_IMAGE);
 
   const formattedDate = post.published_at || post.created_at
@@ -42,7 +44,7 @@ export default function BlogHero({ post }: BlogHeroProps) {
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#E5B869] text-black shadow-lg">
               <Sparkles className="w-3 h-3" />
-              <span>Featured Story</span>
+              <span>{tr("Featured Story")}</span>
             </span>
             <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/10 backdrop-blur-md text-gray-200 border border-white/15">
               {post.category}
@@ -78,7 +80,7 @@ export default function BlogHero({ post }: BlogHeroProps) {
               <span>&bull;</span>
               <span className="flex items-center space-x-1 text-gray-400">
                 <Clock className="w-3 h-3 text-[#E5B869]" />
-                <span>{post.reading_time} min read</span>
+                <span>{post.reading_time} {' '}{tr("min read")}</span>
               </span>
               <span>&bull;</span>
               <span className="text-gray-400 hidden sm:inline">{formattedDate}</span>
@@ -88,7 +90,7 @@ export default function BlogHero({ post }: BlogHeroProps) {
               href={`/blog/${post.slug}`}
               className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-full bg-white/10 hover:bg-[#E5B869] text-white hover:text-black font-bold text-xs border border-white/20 hover:border-transparent transition-all shadow-md active:scale-95 cursor-pointer"
             >
-              <span>Read Full Story</span>
+              <span>{tr("Read Full Story")}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>

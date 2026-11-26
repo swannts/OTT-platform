@@ -7,13 +7,14 @@ import { useAppDispatch } from '@/store/hooks';
 import { setActiveItem } from '@/store/slices/playerSlice';
 import { Play, Info, ChevronLeft, ChevronRight, Star, Clock } from 'lucide-react';
 import { SafeImage } from '@/components/ui';
-import { useLanguage } from '@/providers';
+import { useLanguage , useLocaleText} from '@/providers';
 
 interface HeroBannerProps {
   items: MediaItem[];
 }
 
 export default function HeroBanner({ items }: HeroBannerProps) {
+  const tr = useLocaleText();
   const dispatch = useAppDispatch();
   const { t, locale } = useLanguage();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -187,10 +188,9 @@ export default function HeroBanner({ items }: HeroBannerProps) {
           <div className="flex flex-wrap items-center gap-3">
             {!isBn && current.name?.toLowerCase().trim() === 'the life of prophet muhammad' ? (
               <h1 className="font-serif-title text-4xl sm:text-6xl lg:text-7xl font-bold text-white tracking-tight leading-[1.08] drop-shadow-2xl">
-                <span>The Life of</span>
+                <span>{tr("The Life of")}</span>
                 <span className="block mt-1 flex-wrap items-center gap-3">
-                  Prophet Muhammad
-                  <span className="inline-block ml-3 font-arabic text-2xl sm:text-3xl text-[#E5B869] font-normal align-middle select-none drop-shadow">
+                  {tr("Prophet Muhammad")}<span className="inline-block ml-3 font-arabic text-2xl sm:text-3xl text-[#E5B869] font-normal align-middle select-none drop-shadow">
                     ﷺ
                   </span>
                 </span>
@@ -245,7 +245,7 @@ export default function HeroBanner({ items }: HeroBannerProps) {
               <button
                 onClick={handlePrev}
                 className="w-8 h-8 rounded-full bg-black/40 hover:bg-[#E5B869] hover:text-black text-gray-300 border border-white/15 hover:border-[#E5B869] flex items-center justify-center transition-all backdrop-blur-md shadow-md active:scale-90 cursor-pointer outline-none focus:outline-none"
-                aria-label="Previous Slide"
+                aria-label={tr("Previous Slide")}
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -273,7 +273,7 @@ export default function HeroBanner({ items }: HeroBannerProps) {
             <button
               onClick={handleNext}
               className="w-8 h-8 rounded-full bg-black/40 hover:bg-[#E5B869] hover:text-black text-gray-300 border border-white/15 hover:border-[#E5B869] flex items-center justify-center transition-all backdrop-blur-md shadow-md active:scale-90 cursor-pointer outline-none focus:outline-none"
-              aria-label="Next Slide"
+              aria-label={tr("Next Slide")}
             >
               <ChevronRight className="w-4 h-4" />
             </button>

@@ -5,13 +5,14 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Play, Crown, ArrowRight, Radio } from 'lucide-react';
 import { LiveChannel } from '@/types';
-import { useLanguage } from '@/providers';
+import { useLanguage , useLocaleText} from '@/providers';
 
 interface LiveNowSectionProps {
   channels?: LiveChannel[];
 }
 
 export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
+  const tr = useLocaleText();
   const { t, locale } = useLanguage();
 
   if (!channels || channels.length === 0) {
@@ -95,7 +96,7 @@ export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
           {/* Live Badge in Top Left */}
           <div className="absolute top-3 left-3 z-10 flex items-center space-x-1.5 bg-red-600 text-white text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shadow-md">
             <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-            <span>LIVE</span>
+            <span>{tr("LIVE")}</span>
           </div>
 
           {/* Bottom Title & Subtitle + Play Icon */}
@@ -152,7 +153,7 @@ export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
 
         {/* 3. Go Premium Promo Card (Luxury Golden Islamic Card) */}
         <div className="group lg:col-span-4 relative rounded-2xl overflow-hidden border border-[#E5B869]/40 p-5 sm:p-6 flex flex-col justify-between shadow-2xl transition-all duration-300 hover:border-[#E5B869]/70 bg-gradient-to-br from-[#071c18] via-[#051411] to-[#040d0b] min-h-[160px] sm:min-h-[190px] cursor-pointer">
-          <Link href="/pricing" className="absolute inset-0 z-0 cursor-pointer" aria-label="Go Premium" />
+          <Link href="/pricing" className="absolute inset-0 z-0 cursor-pointer" aria-label={tr("Go Premium")} />
           {/* Mosque Minarets Silhouette Overlay positioned to the right */}
           <div
             className="absolute inset-y-0 right-0 w-3/5 opacity-40 pointer-events-none bg-cover bg-center mix-blend-screen"
@@ -167,12 +168,10 @@ export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
             <div className="flex items-center space-x-2 text-[#E5B869] mb-2">
               <Crown className="w-5 h-5 fill-[#E5B869]/30 text-[#E5B869]" />
               <h3 className="font-serif-title text-lg sm:text-xl font-bold tracking-tight text-white">
-                Go Premium
-              </h3>
+                {tr("Go Premium")}</h3>
             </div>
             <p className="text-xs text-gray-300 leading-relaxed max-w-[220px]">
-              Unlock exclusive content, ad-free experience and more.
-            </p>
+              {tr("Unlock exclusive content, ad-free experience and more.")}</p>
           </div>
 
           <div className="pt-3 relative z-10">
@@ -180,7 +179,7 @@ export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
               href="/pricing"
               className="inline-flex items-center space-x-1.5 bg-[#E5B869] hover:bg-[#f3cf8a] text-black font-bold text-xs px-5 py-2.5 rounded-full shadow-lg shadow-[#E5B869]/25 transition-transform active:scale-95"
             >
-              <span>Upgrade Now</span>
+              <span>{tr("Upgrade Now")}</span>
               <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
             </Link>
           </div>

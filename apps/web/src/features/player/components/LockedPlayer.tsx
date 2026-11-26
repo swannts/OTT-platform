@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Lock, Sparkles, ShieldCheck } from 'lucide-react';
+import { useLocaleText } from '@/providers';
 
 interface LockedPlayerProps {
   title: string;
@@ -12,11 +13,12 @@ interface LockedPlayerProps {
 }
 
 export default function LockedPlayer({ title, poster }: LockedPlayerProps) {
+  const tr = useLocaleText();
   return (
     <div
       className="relative aspect-video w-full max-h-[85vh] bg-[#05080c] rounded-2xl overflow-hidden flex items-center justify-center border border-[#E5B869]/20 shadow-[0_20px_50px_rgba(0,0,0,0.8)] select-none"
       role="region"
-      aria-label="Locked Content Player"
+      aria-label={tr("Locked Content Player")}
     >
       {/* Background Poster with Cinematic Gradient & Blur */}
       {poster && (
@@ -44,14 +46,12 @@ export default function LockedPlayer({ title, poster }: LockedPlayerProps) {
         <div className="space-y-2">
           <span className="inline-flex items-center space-x-1.5 px-3 py-0.5 rounded-full text-[11px] font-bold bg-[#E5B869]/15 text-[#E5B869] border border-[#E5B869]/30 uppercase tracking-wider">
             <Sparkles className="w-3 h-3 fill-current" />
-            <span>VIP Exclusive Content</span>
+            <span>{tr("VIP Exclusive Content")}</span>
           </span>
           <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-            Subscription Required
-          </h3>
+            {tr("Subscription Required")}</h3>
           <p className="text-xs sm:text-sm text-gray-300 leading-relaxed max-w-sm mx-auto">
-            &ldquo;{title}&rdquo; is reserved for NOOR VIP members. Unlock ad-free sacred broadcasts, 4K resolution, and exclusive documentary series.
-          </p>
+            &ldquo;{title}{tr("” is reserved for NOOR VIP members. Unlock ad-free sacred broadcasts, 4K resolution, and exclusive documentary series.")}</p>
         </div>
 
         <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -60,11 +60,11 @@ export default function LockedPlayer({ title, poster }: LockedPlayerProps) {
             className="w-full sm:w-auto flex-1 inline-flex items-center justify-center space-x-2 bg-gradient-to-r from-[#E5B869] to-[#d4a048] hover:from-[#f0c57d] hover:to-[#e5b869] text-black font-extrabold text-sm py-3 px-6 rounded-xl shadow-lg shadow-[#E5B869]/25 hover:shadow-[#E5B869]/40 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
           >
             <Sparkles className="w-4 h-4 fill-black" />
-            <span>Upgrade to VIP</span>
+            <span>{tr("Upgrade to VIP")}</span>
           </Link>
           <div className="flex items-center space-x-1 text-xs text-gray-400">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Cancel anytime</span>
+            <span>{tr("Cancel anytime")}</span>
           </div>
         </div>
       </div>

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { DEFAULT_FALLBACK_IMAGE } from '@/constants';
 import { formatDhakaDate } from '@/lib/datetime';
+import { useLocaleText } from '@/providers';
 
 interface BlogPostDetailProps {
   post: BlogPost;
@@ -23,6 +24,7 @@ interface BlogPostDetailProps {
 }
 
 export default function BlogPostDetail({ post, related }: BlogPostDetailProps) {
+  const tr = useLocaleText();
   const [copied, setCopied] = useState(false);
   const [imgSrc, setImgSrc] = useState(post.image_url || DEFAULT_FALLBACK_IMAGE);
 
@@ -101,7 +103,7 @@ export default function BlogPostDetail({ post, related }: BlogPostDetailProps) {
           className="inline-flex items-center space-x-2 text-xs font-semibold text-gray-400 hover:text-[#E5B869] transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to All Stories</span>
+          <span>{tr("Back to All Stories")}</span>
         </Link>
       </div>
 
@@ -113,7 +115,7 @@ export default function BlogPostDetail({ post, related }: BlogPostDetailProps) {
           </span>
           <span className="flex items-center space-x-1 text-xs text-gray-400">
             <Clock className="w-3.5 h-3.5 text-[#E5B869]" />
-            <span>{post.reading_time} min read</span>
+            <span>{post.reading_time} {' '}{tr("min read")}</span>
           </span>
           <span className="text-gray-600">&bull;</span>
           <span className="flex items-center space-x-1 text-xs text-gray-400">
@@ -125,7 +127,7 @@ export default function BlogPostDetail({ post, related }: BlogPostDetailProps) {
               <span className="text-gray-600">&bull;</span>
               <span className="flex items-center space-x-1 text-xs text-gray-400">
                 <Eye className="w-3.5 h-3.5" />
-                <span>{post.views_count} views</span>
+                <span>{post.views_count} {' '}{tr("views")}</span>
               </span>
             </>
           )}
@@ -160,7 +162,7 @@ export default function BlogPostDetail({ post, related }: BlogPostDetailProps) {
             )}
             <div>
               <p className="text-sm font-bold text-white leading-tight">{post.author_name}</p>
-              <p className="text-xs text-gray-400">NOOR Editorial Contributor</p>
+              <p className="text-xs text-gray-400">{tr("NOOR Editorial Contributor")}</p>
             </div>
           </div>
 
@@ -170,7 +172,7 @@ export default function BlogPostDetail({ post, related }: BlogPostDetailProps) {
               type="button"
               onClick={handleCopyLink}
               className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-gray-300 hover:text-white transition-colors cursor-pointer"
-              title="Copy Article Link"
+              title={tr("Copy Article Link")}
             >
               {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
               <span>{copied ? 'Copied!' : 'Copy Link'}</span>
@@ -180,7 +182,7 @@ export default function BlogPostDetail({ post, related }: BlogPostDetailProps) {
               target="_blank"
               rel="noopener noreferrer"
               className="w-8 h-8 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-[#E5B869] transition-colors"
-              aria-label="Share on X"
+              aria-label={tr("Share on X")}
             >
               <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
                 <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
@@ -210,7 +212,7 @@ export default function BlogPostDetail({ post, related }: BlogPostDetailProps) {
       {/* Tags */}
       {post.tags && post.tags.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 pt-6 pb-8 border-t border-white/10">
-          <span className="text-xs text-gray-400 font-semibold mr-1">Tags:</span>
+          <span className="text-xs text-gray-400 font-semibold mr-1">{tr("Tags:")}</span>
           {post.tags.map((tag) => (
             <span
               key={tag}
@@ -240,10 +242,9 @@ export default function BlogPostDetail({ post, related }: BlogPostDetailProps) {
         )}
         <div className="space-y-1">
           <h4 className="text-base font-bold text-white">{post.author_name}</h4>
-          <p className="text-xs text-[#E5B869]">Senior Scholar & Cinema Historian</p>
+          <p className="text-xs text-[#E5B869]">{tr("Senior Scholar & Cinema Historian")}</p>
           <p className="text-xs text-gray-400 leading-relaxed pt-1">
-            Writing regularly on Islamic cinematography, sacred history, and creative values for NOOR Cinema. Dedicated to uplifting family entertainment globally.
-          </p>
+            {tr("Writing regularly on Islamic cinematography, sacred history, and creative values for NOOR Cinema. Dedicated to uplifting family entertainment globally.")}</p>
         </div>
       </div>
 
@@ -252,7 +253,7 @@ export default function BlogPostDetail({ post, related }: BlogPostDetailProps) {
         <section className="pt-10 border-t border-white/10">
           <div className="flex items-center space-x-2 mb-6">
             <BookOpen className="w-5 h-5 text-[#E5B869]" />
-            <h2 className="text-xl font-bold text-white">Related Stories</h2>
+            <h2 className="text-xl font-bold text-white">{tr("Related Stories")}</h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {related.map((rel) => (

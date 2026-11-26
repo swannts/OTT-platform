@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Shield, KeyRound, AlertTriangle, CheckCircle2, AlertCircle, Trash2 } from 'lucide-react';
 import { accountApi } from '../api/account.client';
 import type { ChangePasswordInput } from '../schemas/account.schema';
+import { useLocaleText } from '@/providers';
 
 interface SecuritySectionProps {
   isParentalLockEnabled: boolean;
@@ -19,6 +20,7 @@ export function SecuritySection({
   onChangePassword,
   actionLoading,
 }: SecuritySectionProps) {
+  const tr = useLocaleText();
   const router = useRouter();
 
   // Password state
@@ -112,11 +114,10 @@ export function SecuritySection({
       <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 sm:p-8 backdrop-blur-xl">
         <h3 className="text-lg font-bold text-white mb-2 flex items-center space-x-2">
           <KeyRound className="w-5 h-5 text-[#E5B869]" />
-          <span>Change Password</span>
+          <span>{tr("Change Password")}</span>
         </h3>
         <p className="text-gray-400 text-xs mb-6">
-          Update your sign-in credentials to keep your account safe across all devices.
-        </p>
+          {tr("Update your sign-in credentials to keep your account safe across all devices.")}</p>
 
         {passwordMsg && (
           <div
@@ -138,8 +139,7 @@ export function SecuritySection({
         <form onSubmit={handlePasswordSubmit} className="space-y-5 max-w-xl">
           <div>
             <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">
-              Current Password
-            </label>
+              {tr("Current Password")}</label>
             <input
               type="password"
               required
@@ -153,27 +153,25 @@ export function SecuritySection({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">
-                New Password
-              </label>
+                {tr("New Password")}</label>
               <input
                 type="password"
                 required
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Min 6 characters"
+                placeholder={tr("Min 6 characters")}
                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#E5B869] transition-colors"
               />
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">
-                Confirm New Password
-              </label>
+                {tr("Confirm New Password")}</label>
               <input
                 type="password"
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Repeat new password"
+                placeholder={tr("Repeat new password")}
                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#E5B869] transition-colors"
               />
             </div>
@@ -193,11 +191,10 @@ export function SecuritySection({
       <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 sm:p-8 backdrop-blur-xl">
         <h3 className="text-lg font-bold text-white mb-2 flex items-center space-x-2">
           <Shield className="w-5 h-5 text-[#E5B869]" />
-          <span>Parental Lock & Content Restrictions</span>
+          <span>{tr("Parental Lock & Content Restrictions")}</span>
         </h3>
         <p className="text-gray-400 text-xs mb-6">
-          Set up a 4-digit PIN to prevent children from switching to standard/adult profiles and viewing restricted content.
-        </p>
+          {tr("Set up a 4-digit PIN to prevent children from switching to standard/adult profiles and viewing restricted content.")}</p>
 
         {pinMsg && (
           <div
@@ -219,8 +216,8 @@ export function SecuritySection({
         <form onSubmit={handlePinSubmit} className="space-y-6 max-w-xl">
           <div className="flex items-center justify-between p-4 rounded-xl bg-black/30 border border-white/10">
             <div>
-              <span className="text-white font-semibold text-sm block">Enable Parental Lock</span>
-              <span className="text-gray-400 text-xs">Require PIN to access non-child profiles</span>
+              <span className="text-white font-semibold text-sm block">{tr("Enable Parental Lock")}</span>
+              <span className="text-gray-400 text-xs">{tr("Require PIN to access non-child profiles")}</span>
             </div>
             <input
               type="checkbox"
@@ -233,8 +230,7 @@ export function SecuritySection({
           {parentalLock && (
             <div>
               <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">
-                4-Digit Security PIN
-              </label>
+                {tr("4-Digit Security PIN")}</label>
               <input
                 type="password"
                 maxLength={4}
@@ -261,11 +257,10 @@ export function SecuritySection({
       <div className="bg-red-500/[0.04] border border-red-500/20 rounded-2xl p-6 sm:p-8 backdrop-blur-xl">
         <h3 className="text-lg font-bold text-red-400 mb-2 flex items-center space-x-2">
           <AlertTriangle className="w-5 h-5" />
-          <span>Danger Zone: Delete Account</span>
+          <span>{tr("Danger Zone: Delete Account")}</span>
         </h3>
         <p className="text-gray-400 text-xs mb-4">
-          Permanently delete your user profile, active subscriptions, and all saved watchlists. This action cannot be undone.
-        </p>
+          {tr("Permanently delete your user profile, active subscriptions, and all saved watchlists. This action cannot be undone.")}</p>
 
         <button
           type="button"
@@ -273,7 +268,7 @@ export function SecuritySection({
           className="flex items-center space-x-2 text-sm text-red-400 hover:text-white bg-red-500/10 hover:bg-red-500/30 px-4 py-2.5 rounded-xl transition-colors border border-red-500/30 font-semibold"
         >
           <Trash2 className="w-4 h-4" />
-          <span>Delete Account</span>
+          <span>{tr("Delete Account")}</span>
         </button>
       </div>
 
@@ -281,10 +276,9 @@ export function SecuritySection({
       {showDeleteModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-gray-900 border border-red-500/30 rounded-2xl max-w-md w-full p-6 shadow-2xl">
-            <h3 className="text-xl font-bold text-white mb-2">Delete Your Account</h3>
+            <h3 className="text-xl font-bold text-white mb-2">{tr("Delete Your Account")}</h3>
             <p className="text-gray-400 text-xs mb-4">
-              To confirm deletion, please type <strong className="text-red-400">DELETE</strong> in the box below.
-            </p>
+              {tr("To confirm deletion, please type")}{' '}<strong className="text-red-400">{tr("DELETE")}</strong> {' '}{tr("in the box below.")}</p>
 
             {deleteError && (
               <div className="mb-4 p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
@@ -296,7 +290,7 @@ export function SecuritySection({
               type="text"
               value={deleteConfirmText}
               onChange={(e) => setDeleteConfirmText(e.target.value)}
-              placeholder="DELETE"
+              placeholder={tr("DELETE")}
               className="w-full bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-white uppercase text-center font-bold tracking-wider mb-4 focus:outline-none focus:border-red-500"
             />
 
@@ -306,8 +300,7 @@ export function SecuritySection({
                 onClick={() => setShowDeleteModal(false)}
                 className="px-4 py-2 text-sm text-gray-400 hover:text-white"
               >
-                Cancel
-              </button>
+                {tr("Cancel")}</button>
               <button
                 type="button"
                 disabled={deleting || deleteConfirmText.toLowerCase() !== 'delete'}

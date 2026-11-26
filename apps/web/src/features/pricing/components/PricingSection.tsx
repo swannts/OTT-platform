@@ -4,12 +4,14 @@ import Link from 'next/link';
 import { Plan, PlanLimitation } from '@/types';
 import { Crown, Check, Sparkles } from 'lucide-react';
 import { Heading, Text } from '@/components/ui';
+import { useLocaleText } from '@/providers';
 
 interface PricingSectionProps {
   initialPlans: Plan[];
 }
 
 export default function PricingSection({ initialPlans }: PricingSectionProps) {
+  const tr = useLocaleText();
   const plans = initialPlans;
 
   return (
@@ -18,14 +20,12 @@ export default function PricingSection({ initialPlans }: PricingSectionProps) {
       <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
         <div className="inline-flex items-center space-x-2 bg-[#E5B869]/10 border border-[#E5B869]/30 text-[#E5B869] text-xs font-bold px-3.5 py-1.5 rounded-full uppercase tracking-wider">
           <Sparkles className="w-3.5 h-3.5 fill-[#E5B869]" />
-          <span>VIP Halal Streaming</span>
+          <span>{tr("VIP Halal Streaming")}</span>
         </div>
         <Heading as="h1" size="hero" className="tracking-tight drop-shadow-md">
-          Choose Your Plan for Pure Islamic Entertainment
-        </Heading>
+          {tr("Choose Your Plan for Pure Islamic Entertainment")}</Heading>
         <Text variant="subtitle" size="base">
-          Cancel anytime. Zero lock-in contracts. Stream spiritual series and live sacred broadcasts in 4K UHD.
-        </Text>
+          {tr("Cancel anytime. Zero lock-in contracts. Stream spiritual series and live sacred broadcasts in 4K UHD.")}</Text>
       </div>
 
       {/* Plan Cards Grid */}
@@ -43,8 +43,7 @@ export default function PricingSection({ initialPlans }: PricingSectionProps) {
             >
               {isFeatured && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#E5B869] text-black font-extrabold text-[11px] px-4 py-1 rounded-full uppercase tracking-widest shadow-md">
-                  Most Popular
-                </div>
+                  {tr("Most Popular")}</div>
               )}
 
               <div>
@@ -87,8 +86,7 @@ export default function PricingSection({ initialPlans }: PricingSectionProps) {
                     : 'bg-white/10 hover:bg-white/20 text-white border border-white/10'
                 }`}
               >
-                Get Started
-              </Link>
+                {tr("Get Started")}</Link>
             </div>
           );
         })}

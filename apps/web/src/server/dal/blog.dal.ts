@@ -1,4 +1,5 @@
 import { api } from '@/lib/api';
+import { cookies } from 'next/headers';
 import {
   BlogCategory,
   BlogQueryParams,
@@ -6,9 +7,14 @@ import {
   BlogDetailResponse,
 } from '@/types';
 
+async function getRequestLocale(): Promise<'en' | 'bn'> {
+  const locale = (await cookies()).get('noor_locale')?.value;
+  return locale === 'en' ? 'en' : 'bn';
+}
+
 export async function getBlogsDal(params: BlogQueryParams = {}): Promise<BlogListResponse> {
   try {
-    const res = await api.getBlogs(params);
+    const res = await api.getBlogs(params, await getRequestLocale());
     if (res && Array.isArray(res.data)) {
       return res;
     }
@@ -27,7 +33,7 @@ export async function getBlogsDal(params: BlogQueryParams = {}): Promise<BlogLis
 
 export async function getBlogPostDal(slugOrId: string | number): Promise<BlogDetailResponse | null> {
   try {
-    const res = await api.getBlogPost(slugOrId);
+    const res = await api.getBlogPost(slugOrId, await getRequestLocale());
     if (res?.post) {
       return res;
     }
@@ -40,7 +46,7 @@ export async function getBlogPostDal(slugOrId: string | number): Promise<BlogDet
 
 export async function getBlogCategoriesDal(): Promise<BlogCategory[]> {
   try {
-    const res = await api.getBlogCategories();
+    const res = await api.getBlogCategories(await getRequestLocale());
     if (Array.isArray(res)) {
       return res;
     }

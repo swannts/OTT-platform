@@ -3,6 +3,7 @@
 import React from 'react';
 import { User, Users, Shield, Smartphone, CreditCard, Sliders } from 'lucide-react';
 import type { AccountTab } from '../types/account.types';
+import { useLocaleText } from '@/providers';
 
 interface AccountNavTabsProps {
   activeTab: AccountTab;
@@ -28,6 +29,7 @@ export function AccountNavTabs({
   profilesCount,
   isVIP,
 }: AccountNavTabsProps) {
+  const tr = useLocaleText();
   return (
     <div className="flex flex-wrap items-center gap-2 mb-8 border-b border-white/10 pb-4">
       {TABS.map((tab) => {
@@ -75,8 +77,7 @@ export function AccountNavTabs({
                   isActive ? 'bg-black text-[#E5B869]' : 'bg-[#E5B869]/20 text-[#E5B869]'
                 }`}
               >
-                VIP
-              </span>
+                {tr("VIP")}</span>
             )}
           </button>
         );

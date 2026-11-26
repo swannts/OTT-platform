@@ -6,7 +6,7 @@ import MediaCard from './MediaCard';
 import { ChevronRight, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { Heading, MediaCardSkeleton } from '@/components/ui';
-import { useLanguage } from '@/providers';
+import { useLanguage , useLocaleText} from '@/providers';
 
 interface MediaRowProps {
   title: string;
@@ -25,6 +25,7 @@ export default function MediaRow({
   aspectRatio = 'poster',
   isLoading = false,
 }: MediaRowProps) {
+  const tr = useLocaleText();
   const rowRef = useRef<HTMLDivElement>(null);
   const { t } = useLanguage();
 
@@ -108,7 +109,7 @@ export default function MediaRow({
         <button
           onClick={handleScrollNext}
           className="absolute -right-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full bg-black/85 hover:bg-[#E5B869] hover:text-black text-white flex items-center justify-center opacity-0 pointer-events-none group-hover/row:opacity-100 group-hover/row:pointer-events-auto transition-all backdrop-blur-md shadow-2xl border border-white/15 cursor-pointer hover:scale-105 active:scale-95"
-          aria-label="Scroll right"
+          aria-label={tr("Scroll right")}
         >
           <ChevronRight className="w-6 h-6" />
         </button>

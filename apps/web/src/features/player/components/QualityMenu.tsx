@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Settings, Check, Gauge, Layers, Sparkles } from 'lucide-react';
 import { VideoQuality } from '@/types';
+import { useLocaleText } from '@/providers';
 
 export interface HlsQualityItem {
   label: string;
@@ -29,6 +30,7 @@ export default function QualityMenu({
   onQualityChange,
   hlsQualities = [],
 }: QualityMenuProps) {
+  const tr = useLocaleText();
   const [isOpen, setIsOpen] = useState(false);
   const [tab, setTab] = useState<'main' | 'speed' | 'quality'>('main');
   const menuRef = useRef<HTMLDivElement>(null);
@@ -77,8 +79,8 @@ export default function QualityMenu({
             ? 'bg-[#E5B869] text-black shadow-lg shadow-[#E5B869]/30'
             : 'text-gray-300 hover:text-white hover:bg-white/10'
         }`}
-        title="Settings (Speed & Quality)"
-        aria-label="Settings"
+        title={tr("Settings (Speed & Quality)")}
+        aria-label={tr("Settings")}
         aria-expanded={isOpen}
       >
         <Settings className="w-5 h-5 transition-transform duration-300 group-hover:rotate-45" />
@@ -89,8 +91,7 @@ export default function QualityMenu({
           {tab === 'main' && (
             <div className="space-y-1">
               <div className="px-3 py-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider border-b border-white/10">
-                Playback Settings
-              </div>
+                {tr("Playback Settings")}</div>
 
               {/* Speed Option */}
               <button
@@ -100,7 +101,7 @@ export default function QualityMenu({
               >
                 <div className="flex items-center space-x-2">
                   <Gauge className="w-4 h-4 text-[#E5B869]" />
-                  <span>Playback Speed</span>
+                  <span>{tr("Playback Speed")}</span>
                 </div>
                 <span className="text-[#E5B869] font-bold">
                   {playbackRate === 1.0 ? 'Normal' : `${playbackRate}x`} ›
@@ -116,7 +117,7 @@ export default function QualityMenu({
                 >
                   <div className="flex items-center space-x-2">
                     <Layers className="w-4 h-4 text-[#E5B869]" />
-                    <span>Video Quality</span>
+                    <span>{tr("Video Quality")}</span>
                   </div>
                   <span className="text-[#E5B869] font-bold truncate max-w-[90px] text-right">
                     {activeQualityLabel} ›
@@ -134,7 +135,7 @@ export default function QualityMenu({
                 onClick={() => setTab('main')}
                 className="w-full text-left px-3 py-1.5 text-[11px] font-bold text-[#E5B869] hover:underline flex items-center space-x-1 cursor-pointer border-b border-white/10"
               >
-                <span>‹ Back to Settings</span>
+                <span>{tr("‹ Back to Settings")}</span>
               </button>
 
               <div className="py-1">
@@ -169,7 +170,7 @@ export default function QualityMenu({
                 onClick={() => setTab('main')}
                 className="w-full text-left px-3 py-1.5 text-[11px] font-bold text-[#E5B869] hover:underline flex items-center space-x-1 cursor-pointer border-b border-white/10"
               >
-                <span>‹ Back to Settings</span>
+                <span>{tr("‹ Back to Settings")}</span>
               </button>
 
               <div className="max-h-60 overflow-y-auto space-y-2">
@@ -178,7 +179,7 @@ export default function QualityMenu({
                   <div>
                     <p className="px-3 py-1 text-[10px] font-bold text-[#E5B869] uppercase tracking-wider flex items-center space-x-1">
                       <Sparkles className="w-3 h-3" />
-                      <span>Adaptive Resolutions</span>
+                      <span>{tr("Adaptive Resolutions")}</span>
                     </p>
                     <div className="py-0.5 space-y-0.5">
                       {hlsQualities.map((hls, idx) => (
@@ -211,8 +212,7 @@ export default function QualityMenu({
                       <div className="border-t border-white/10 my-1 pt-1" />
                     )}
                     <p className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                      Stream Sources
-                    </p>
+                      {tr("Stream Sources")}</p>
                     <div className="py-0.5 space-y-0.5">
                       {qualities.map((q, idx) => {
                         const isSelected = selectedQualityUrl === q.url;

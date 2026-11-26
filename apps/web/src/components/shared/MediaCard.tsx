@@ -9,7 +9,7 @@ import { setActiveItem } from '@/store/slices/playerSlice';
 import { Play } from 'lucide-react';
 import { Card, SafeImage, Badge, Heading, Text } from '@/components/ui';
 import { DEFAULT_FALLBACK_IMAGE } from '@/constants';
-import { useLanguage } from '@/providers';
+import { useLanguage , useLocaleText} from '@/providers';
 
 interface MediaCardProps {
   item: MediaItem;
@@ -24,6 +24,7 @@ export default function MediaCard({
   aspectRatio = 'backdrop',
   layout = 'grid',
 }: MediaCardProps) {
+  const tr = useLocaleText();
   const dispatch = useAppDispatch();
   const router = useRouter();
   const { locale } = useLanguage();
@@ -99,7 +100,7 @@ export default function MediaCard({
         )}
         {item.access === 'pay-per-view' && (
           <div className="pointer-events-none absolute top-2.5 right-2.5 z-25">
-            <Badge className="bg-amber-600 text-white font-extrabold">Rent</Badge>
+            <Badge className="bg-amber-600 text-white font-extrabold">{tr("Rent")}</Badge>
           </div>
         )}
 

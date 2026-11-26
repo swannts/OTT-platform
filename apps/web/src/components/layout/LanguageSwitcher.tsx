@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useLanguage } from '@/providers';
+import { useRouter } from 'next/navigation';
+import { useLanguage , useLocaleText} from '@/providers';
 import { Languages, Check } from 'lucide-react';
 
 interface LanguageSwitcherProps {
@@ -13,6 +14,8 @@ export default function LanguageSwitcher({
   variant = 'compact',
   className = '',
 }: LanguageSwitcherProps) {
+  const tr = useLocaleText();
+  const router = useRouter();
   const { locale, setLocale, availableLocales } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -33,6 +36,11 @@ export default function LanguageSwitcher({
 
   const activeLocale = availableLocales.find((l) => l.code === locale) || availableLocales[0];
 
+  function changeLocale(nextLocale: (typeof availableLocales)[number]['code']) {
+    setLocale(nextLocale);
+    router.refresh();
+  }
+
   if (variant === 'pill') {
     return (
       <div className={`inline-flex items-center p-0.5 rounded-full bg-white/[0.06] border border-white/10 ${className}`}>
@@ -42,7 +50,7 @@ export default function LanguageSwitcher({
             <button
               key={l.code}
               type="button"
-              onClick={() => setLocale(l.code)}
+              onClick={() => changeLocale(l.code)}
               className={`px-2.5 py-1 text-xs font-semibold rounded-full transition-all cursor-pointer ${
                 isActive
                   ? 'bg-[#E5B869] text-black shadow-sm'
@@ -67,7 +75,7 @@ export default function LanguageSwitcher({
             ? 'bg-[#E5B869]/20 border-[#E5B869]/60 text-[#E5B869]'
             : 'bg-white/[0.08] hover:bg-white/[0.12] border-white/10 hover:border-white/20 text-white'
         }`}
-        aria-label="Change Language"
+        aria-label={tr("Change Language")}
         aria-expanded={isOpen}
       >
         <Languages className="w-4 h-4 text-[#E5B869] flex-shrink-0" strokeWidth={1.8} />
@@ -77,8 +85,7 @@ export default function LanguageSwitcher({
       {isOpen && (
         <div className="absolute right-0 mt-2 w-36 bg-[#090e15]/98 backdrop-blur-2xl rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.8)] border border-white/10 py-1.5 z-50 animate-hero-title">
           <div className="px-3 py-1 text-[10px] uppercase font-bold text-gray-500 tracking-wider">
-            Language / ভাষা
-          </div>
+            {tr("Language / ভাষা")}</div>
           {availableLocales.map((l) => {
             const isActive = l.code === locale;
             return (
@@ -86,7 +93,7 @@ export default function LanguageSwitcher({
                 key={l.code}
                 type="button"
                 onClick={() => {
-                  setLocale(l.code);
+                  changeLocale(l.code);
                   setIsOpen(false);
                 }}
                 className={`w-full flex items-center justify-between px-3 py-2 text-xs transition-colors cursor-pointer ${

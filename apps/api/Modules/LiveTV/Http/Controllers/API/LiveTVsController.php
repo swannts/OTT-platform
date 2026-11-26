@@ -298,7 +298,7 @@ class LiveTVsController extends Controller
             
             // Get ALL channels for category grouping (not limited to 6)
             $allChannelData = LiveTvChannel::select([
-                'id','category_id','name','plan_id','slug','description','status','access','poster_url','poster_tv_url',
+                'id','category_id','name','name_bn','plan_id','slug','description','description_bn','status','access','poster_url','poster_tv_url',
             ])
             ->with([
                 'plan:id,level',
@@ -372,7 +372,7 @@ class LiveTVsController extends Controller
 
                 $bannerChannelIds = $bannerList->pluck('type_id')->filter()->unique()->toArray();
                 $bannerChannels = LiveTvChannel::select([
-                    'id','category_id','name','plan_id','slug','description','status','access','poster_url','poster_tv_url',
+                    'id','category_id','name','name_bn','plan_id','slug','description','description_bn','status','access','poster_url','poster_tv_url',
                 ])
                 ->with([
                     'plan:id,level',

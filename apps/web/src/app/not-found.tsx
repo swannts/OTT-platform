@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Film, Home, Search, Tv, Compass, Sparkles } from 'lucide-react';
+import { LocalizedText } from '@/components/ui/LocalizedText';
 
 export default function NotFound() {
   return (
@@ -22,10 +23,10 @@ export default function NotFound() {
         {/* Title & Description */}
         <div className="space-y-3">
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
-            Page or Broadcast Not Found
+            <LocalizedText text="Page or Broadcast Not Found" />
           </h1>
           <p className="text-sm sm:text-base text-gray-400 max-w-md mx-auto leading-relaxed">
-            The sacred cinema title, series episode, or resource you are looking for does not exist or may have been relocated.
+            <LocalizedText text="The sacred cinema title, series episode, or resource you are looking for does not exist or may have been relocated." />
           </p>
         </div>
 
@@ -36,21 +37,21 @@ export default function NotFound() {
             className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-6 py-3 rounded-full bg-[#E5B869] hover:bg-[#f3cf8a] text-black text-sm font-bold shadow-lg shadow-[#E5B869]/25 transition-all cursor-pointer hover:scale-[1.02] active:scale-95"
           >
             <Home className="w-4 h-4" />
-            <span>Return to Home</span>
+            <span><LocalizedText text="Return to Home" /></span>
           </Link>
           <Link
             href="/search"
             className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-6 py-3 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-white text-sm font-semibold transition-all cursor-pointer hover:border-white/20 active:scale-95"
           >
             <Search className="w-4 h-4 text-[#E5B869]" />
-            <span>Search Library</span>
+            <span><LocalizedText text="Search Library" /></span>
           </Link>
         </div>
 
         {/* Quick Direct Exploration Links */}
         <div className="pt-6 border-t border-white/10">
           <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-3">
-            Explore Curated Collections
+            <LocalizedText text="Explore Curated Collections" />
           </p>
           <div className="flex flex-wrap items-center justify-center gap-2">
             <Link
@@ -58,21 +59,21 @@ export default function NotFound() {
               className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-xs text-gray-300 hover:text-white transition-all cursor-pointer"
             >
               <Film className="w-3.5 h-3.5 text-[#E5B869]" />
-              <span>Sacred Cinema</span>
+              <span><LocalizedText text="Sacred Cinema" /></span>
             </Link>
             <Link
               href="/tv-shows"
               className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-xs text-gray-300 hover:text-white transition-all cursor-pointer"
             >
               <Tv className="w-3.5 h-3.5 text-[#E5B869]" />
-              <span>TV Series</span>
+              <span><LocalizedText text="TV Series" /></span>
             </Link>
             <Link
               href="/live-tv"
               className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-xs text-gray-300 hover:text-white transition-all cursor-pointer"
             >
               <Compass className="w-3.5 h-3.5 text-[#E5B869]" />
-              <span>Live Broadcasts</span>
+              <span><LocalizedText text="Live Broadcasts" /></span>
             </Link>
           </div>
         </div>
@@ -80,4 +81,3 @@ export default function NotFound() {
     </div>
   );
 }
-

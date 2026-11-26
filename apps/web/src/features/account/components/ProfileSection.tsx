@@ -4,7 +4,7 @@ import React, { useState, useRef } from 'react';
 import Link from 'next/link';
 import { User as UserIcon, CheckCircle2, AlertCircle, Save, Camera, Mail, Phone, Calendar, Sparkles, Crown, Upload, X } from 'lucide-react';
 import { Spinner } from '@/components/ui';
-import { useLanguage } from '@/providers';
+import { useLanguage , useLocaleText} from '@/providers';
 import { formatDhakaDate, formatDaysRemaining } from '@/lib/datetime';
 import type { User, SubscriptionStatus } from '@/types';
 import type { UpdateProfileInput } from '../schemas/account.schema';
@@ -41,6 +41,7 @@ export function ProfileSection({
   isUpdating,
   onNavigateTab,
 }: ProfileSectionProps) {
+  const tr = useLocaleText();
   const { t, locale } = useLanguage();
   const [firstName, setFirstName] = useState(user.first_name || user.name?.split(' ')[0] || '');
   const [lastName, setLastName] = useState(user.last_name || user.name?.split(' ').slice(1).join(' ') || '');
@@ -201,14 +202,14 @@ export function ProfileSection({
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={previewUrl}
-                  alt="New Avatar Preview"
+                  alt={tr("New Avatar Preview")}
                   className="w-full h-full object-cover"
                 />
                 <button
                   type="button"
                   onClick={handleRemoveStagedPhoto}
                   className="absolute top-1 right-1 p-1 bg-black/80 hover:bg-red-600 text-white rounded-lg transition-colors"
-                  title="Remove staged photo"
+                  title={tr("Remove staged photo")}
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -233,7 +234,7 @@ export function ProfileSection({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              title="Upload new avatar photo"
+              title={tr("Upload new avatar photo")}
               className="absolute -bottom-2 -right-2 p-1.5 bg-[#E5B869] hover:bg-[#d9ab5c] text-black rounded-xl shadow-md cursor-pointer hover:scale-110 transition-transform"
             >
               <Camera className="w-4 h-4" />
@@ -247,12 +248,10 @@ export function ProfileSection({
               </h2>
               {user.is_subscribe ? (
                 <span className="bg-[#E5B869] text-black text-xs font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-sm shadow-[#E5B869]/30">
-                  VIP Subscriber
-                </span>
+                  {tr("VIP Subscriber")}</span>
               ) : (
                 <span className="bg-white/10 text-gray-300 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                  Standard Member
-                </span>
+                  {tr("Standard Member")}</span>
               )}
             </div>
             <p className="text-gray-400 text-sm mt-1">{user.email}</p>
@@ -264,7 +263,7 @@ export function ProfileSection({
                 className="text-xs text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1.5"
               >
                 <Upload className="w-3.5 h-3.5 text-[#E5B869]" />
-                <span>Upload Custom Photo</span>
+                <span>{tr("Upload Custom Photo")}</span>
               </button>
 
               {normalizedAvatar && useThemeAvatar && !hasImgError && (
@@ -273,15 +272,13 @@ export function ProfileSection({
                   onClick={handleUseCustomPhoto}
                   className="text-xs text-[#E5B869] hover:text-[#d9ab5c] bg-[#E5B869]/10 hover:bg-[#E5B869]/20 border border-[#E5B869]/30 px-3 py-1.5 rounded-xl transition-colors font-medium"
                 >
-                  Restore Custom Photo
-                </button>
+                  {tr("Restore Custom Photo")}</button>
               )}
 
               {/* Quick avatar color picker presets */}
               <div className="flex items-center gap-2">
                 <span className="text-xs text-gray-400 flex items-center gap-1 mr-1">
-                  <Sparkles className="w-3.5 h-3.5 text-[#E5B869]" /> Theme:
-                </span>
+                  <Sparkles className="w-3.5 h-3.5 text-[#E5B869]" /> {' '}{tr("Theme:")}</span>
                 {AVATAR_PRESETS.map((preset) => (
                   <button
                     key={preset.id}
@@ -319,8 +316,7 @@ export function ProfileSection({
                   </span>
                 ) : (
                   <span className="bg-white/10 text-gray-400 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full">
-                    Free
-                  </span>
+                    {tr("Free")}</span>
                 )}
               </div>
               <h3 className="text-2xl font-black text-white mt-1">
@@ -364,8 +360,7 @@ export function ProfileSection({
                 href="/pricing"
                 className="bg-[#E5B869] hover:bg-[#d9ab5c] text-black font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-md shadow-[#E5B869]/20"
               >
-                Upgrade to VIP
-              </Link>
+                {tr("Upgrade to VIP")}</Link>
             )}
           </div>
         </div>
@@ -375,41 +370,40 @@ export function ProfileSection({
       <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 sm:p-8 backdrop-blur-xl">
         <h3 className="text-lg font-bold text-white mb-6 flex items-center space-x-2">
           <UserIcon className="w-5 h-5 text-[#E5B869]" />
-          <span>Personal Information</span>
+          <span>{tr("Personal Information")}</span>
         </h3>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
               <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">
-                First Name <span className="text-[#E5B869]">*</span>
+                {tr("First Name")}{' '}<span className="text-[#E5B869]">*</span>
               </label>
               <input
                 type="text"
                 required
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                placeholder="First name"
+                placeholder={tr("First name")}
                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-[#E5B869] focus:ring-1 focus:ring-[#E5B869] transition-colors"
               />
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">
-                Last Name
-              </label>
+                {tr("Last Name")}</label>
               <input
                 type="text"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                placeholder="Last name"
+                placeholder={tr("Last name")}
                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-[#E5B869] focus:ring-1 focus:ring-[#E5B869] transition-colors"
               />
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">
-                Email Address <span className="text-[#E5B869]">*</span>
+                {tr("Email Address")}{' '}<span className="text-[#E5B869]">*</span>
               </label>
               <div className="relative">
                 <input
@@ -417,7 +411,7 @@ export function ProfileSection({
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@example.com"
+                  placeholder={tr("name@example.com")}
                   className="w-full bg-black/40 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-[#E5B869] focus:ring-1 focus:ring-[#E5B869] transition-colors"
                 />
                 <Mail className="w-4 h-4 text-gray-500 absolute left-4 top-4" />
@@ -426,8 +420,7 @@ export function ProfileSection({
 
             <div>
               <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">
-                Mobile / Phone
-              </label>
+                {tr("Mobile / Phone")}</label>
               <div className="relative">
                 <input
                   type="tel"
@@ -442,24 +435,22 @@ export function ProfileSection({
 
             <div>
               <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">
-                Gender
-              </label>
+                {tr("Gender")}</label>
               <select
                 value={gender}
                 onChange={(e) => setGender(e.target.value as 'male' | 'female' | 'other' | '')}
                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#E5B869] focus:ring-1 focus:ring-[#E5B869] transition-colors"
               >
-                <option value="" className="bg-gray-900 text-gray-400">Select Gender</option>
-                <option value="male" className="bg-gray-900 text-white">Male</option>
-                <option value="female" className="bg-gray-900 text-white">Female</option>
-                <option value="other" className="bg-gray-900 text-white">Other</option>
+                <option value="" className="bg-gray-900 text-gray-400">{tr("Select Gender")}</option>
+                <option value="male" className="bg-gray-900 text-white">{tr("Male")}</option>
+                <option value="female" className="bg-gray-900 text-white">{tr("Female")}</option>
+                <option value="other" className="bg-gray-900 text-white">{tr("Other")}</option>
               </select>
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">
-                Date of Birth
-              </label>
+                {tr("Date of Birth")}</label>
               <div className="relative">
                 <input
                   type="date"
@@ -481,12 +472,12 @@ export function ProfileSection({
               {isUpdating ? (
                 <>
                   <Spinner size="sm" />
-                  <span>Saving Changes...</span>
+                  <span>{tr("Saving Changes...")}</span>
                 </>
               ) : (
                 <>
                   <Save className="w-4 h-4" />
-                  <span>Save Changes</span>
+                  <span>{tr("Save Changes")}</span>
                 </>
               )}
             </button>

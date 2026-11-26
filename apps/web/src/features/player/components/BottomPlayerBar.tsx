@@ -23,8 +23,10 @@ import {
   X,
   ChevronDown,
 } from 'lucide-react';
+import { useLocaleText } from '@/providers';
 
 export default function BottomPlayerBar() {
+  const tr = useLocaleText();
   const dispatch = useAppDispatch();
   const { activeItem, isPlaying, progress, volume, isMuted } = useAppSelector(selectPlayerState);
 
@@ -93,7 +95,7 @@ export default function BottomPlayerBar() {
             </p>
             <div className="flex items-center space-x-1.5 mt-0.5">
               <span className="w-1.5 h-1.5 rounded-full bg-[#E5B869] animate-pulse" />
-              <p className="text-[10px] text-gray-400 font-medium">Tap to expand</p>
+              <p className="text-[10px] text-gray-400 font-medium">{tr("Tap to expand")}</p>
             </div>
           </div>
 
@@ -125,7 +127,7 @@ export default function BottomPlayerBar() {
           ref={progressBarRef}
           onClick={handleSeek}
           className="relative w-full h-1.5 bg-white/10 hover:h-2.5 transition-all cursor-pointer group"
-          title="Click to seek"
+          title={tr("Click to seek")}
         >
           <div
             className="h-full bg-gradient-to-r from-[#d8a855] via-[#E5B869] to-[#f4d48f] relative shadow-[0_0_12px_rgba(229,184,105,0.7)]"
@@ -153,7 +155,7 @@ export default function BottomPlayerBar() {
               <Link
                 href={watchUrl}
                 className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-[#E5B869] cursor-pointer"
-                aria-label="Open full watch player"
+                aria-label={tr("Open full watch player")}
               >
                 <Maximize2 className="w-4 h-4" />
               </Link>
@@ -167,7 +169,7 @@ export default function BottomPlayerBar() {
                 >
                   {activeItem.name?.toLowerCase().includes('prophet muhammad') ? (
                     <span>
-                      The Life of Prophet Muhammad{' '}
+                      {tr("The Life of Prophet Muhammad")}{' '}
                       <span className="font-arabic text-xs text-[#E5B869]">ﷺ</span>
                     </span>
                   ) : (
@@ -181,7 +183,7 @@ export default function BottomPlayerBar() {
                 {/* 4 Animated Equalizer Bars */}
                 <div
                   className="flex items-end space-x-0.5 h-3.5 w-4 flex-shrink-0"
-                  title="Audio streaming"
+                  title={tr("Audio streaming")}
                 >
                   <span
                     className={`w-0.5 bg-[#E5B869] rounded-full ${
@@ -226,7 +228,7 @@ export default function BottomPlayerBar() {
                 <button
                   onClick={() => setShowSpeedMenu(!showSpeedMenu)}
                   className="text-[11px] font-semibold text-gray-300 hover:text-[#E5B869] px-2 py-0.5 rounded-full border border-white/10 hover:border-[#E5B869]/40 bg-white/5 transition-all cursor-pointer"
-                  title="Change playback speed"
+                  title={tr("Change playback speed")}
                 >
                   {playbackSpeed}x
                 </button>
@@ -256,8 +258,8 @@ export default function BottomPlayerBar() {
               <button
                 onClick={() => dispatch(setProgress(Math.max(0, progress - 5)))}
                 className="text-gray-400 hover:text-white p-1.5 transition-colors cursor-pointer hover:scale-110 active:scale-95"
-                aria-label="Rewind 10 seconds"
-                title="Rewind 10 seconds"
+                aria-label={tr("Rewind 10 seconds")}
+                title={tr("Rewind 10 seconds")}
               >
                 <RotateCcw className="w-4 h-4" />
               </button>
@@ -279,8 +281,8 @@ export default function BottomPlayerBar() {
               <button
                 onClick={() => dispatch(setProgress(Math.min(100, progress + 5)))}
                 className="text-gray-400 hover:text-white p-1.5 transition-colors cursor-pointer hover:scale-110 active:scale-95"
-                aria-label="Fast forward 10 seconds"
-                title="Fast forward 10 seconds"
+                aria-label={tr("Fast forward 10 seconds")}
+                title={tr("Fast forward 10 seconds")}
               >
                 <RotateCw className="w-4 h-4" />
               </button>
@@ -330,8 +332,8 @@ export default function BottomPlayerBar() {
             <Link
               href={watchUrl}
               className="text-gray-400 hover:text-[#E5B869] p-1.5 transition-colors hidden sm:block cursor-pointer hover:scale-110"
-              aria-label="Open fullscreen watch page"
-              title="Open full video player"
+              aria-label={tr("Open fullscreen watch page")}
+              title={tr("Open full video player")}
             >
               <Maximize2 className="w-4 h-4" />
             </Link>
@@ -340,8 +342,8 @@ export default function BottomPlayerBar() {
             <button
               onClick={() => setIsMinimized(true)}
               className="text-gray-400 hover:text-white p-1.5 transition-colors cursor-pointer hover:scale-110"
-              aria-label="Minimize player"
-              title="Minimize to floating bubble"
+              aria-label={tr("Minimize player")}
+              title={tr("Minimize to floating bubble")}
             >
               <ChevronDown className="w-4 h-4" />
             </button>
@@ -353,8 +355,8 @@ export default function BottomPlayerBar() {
                 setIsDismissed(true);
               }}
               className="text-gray-400 hover:text-red-400 p-1.5 transition-colors cursor-pointer hover:scale-110"
-              aria-label="Dismiss player"
-              title="Close player"
+              aria-label={tr("Dismiss player")}
+              title={tr("Close player")}
             >
               <X className="w-4 h-4" />
             </button>

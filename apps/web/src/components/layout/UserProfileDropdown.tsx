@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth, useLanguage } from '@/providers';
+import { useAuth, useLanguage , useLocaleText} from '@/providers';
 import {
   LogOut,
   Crown,
@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 
 export default function UserProfileDropdown() {
+  const tr = useLocaleText();
   const router = useRouter();
   const { user, subscription, logout } = useAuth();
   const { t } = useLanguage();
@@ -78,7 +79,7 @@ export default function UserProfileDropdown() {
             ? 'ring-2 ring-[#E5B869] shadow-[0_0_12px_rgba(229,184,105,0.4)]'
             : 'ring-1 ring-white/20 hover:ring-[#E5B869]/70'
         } bg-white/[0.08]`}
-        aria-label="User Profile"
+        aria-label={tr("User Profile")}
         aria-expanded={isOpen}
       >
         {userAvatar && !imgError ? (

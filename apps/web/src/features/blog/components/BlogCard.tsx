@@ -7,12 +7,14 @@ import { BlogPost } from '@/types';
 import { Clock, Calendar, ArrowRight } from 'lucide-react';
 import { DEFAULT_FALLBACK_IMAGE } from '@/constants';
 import { formatDhakaDate } from '@/lib/datetime';
+import { useLocaleText } from '@/providers';
 
 interface BlogCardProps {
   post: BlogPost;
 }
 
 export default function BlogCard({ post }: BlogCardProps) {
+  const tr = useLocaleText();
   const [imgSrc, setImgSrc] = useState(post.image_url || DEFAULT_FALLBACK_IMAGE);
 
   const formattedDate = post.published_at || post.created_at
@@ -45,7 +47,7 @@ export default function BlogCard({ post }: BlogCardProps) {
         <div className="flex items-center space-x-3 text-[11px] text-gray-400">
           <span className="flex items-center space-x-1">
             <Clock className="w-3 h-3 text-[#E5B869]" />
-            <span>{post.reading_time} min read</span>
+            <span>{post.reading_time} {' '}{tr("min read")}</span>
           </span>
           <span>&bull;</span>
           <span className="flex items-center space-x-1">
@@ -90,7 +92,7 @@ export default function BlogCard({ post }: BlogCardProps) {
             href={`/blog/${post.slug}`}
             className="inline-flex items-center space-x-1 text-xs font-semibold text-[#E5B869] group-hover:translate-x-0.5 transition-transform"
           >
-            <span>Read</span>
+            <span>{tr("Read")}</span>
             <ArrowRight className="w-3 h-3" />
           </Link>
         </div>

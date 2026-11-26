@@ -2,6 +2,7 @@
 
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { formatTime } from '../utils/formatTime';
+import { useLocaleText } from '@/providers';
 
 interface PlayerTimelineProps {
   currentTime: number;
@@ -20,6 +21,7 @@ export default function PlayerTimeline({
   onSeekingChange,
   isLive = false,
 }: PlayerTimelineProps) {
+  const tr = useLocaleText();
   const progressBarRef = useRef<HTMLDivElement>(null);
   const [isHovering, setIsHovering] = useState(false);
   const [hoverPosition, setHoverPosition] = useState(0); // 0 to 1
@@ -155,7 +157,7 @@ export default function PlayerTimeline({
       onMouseLeave={() => setIsHovering(false)}
       className="relative w-full py-3 select-none cursor-pointer group flex items-center touch-none"
       role="slider"
-      aria-label="Video progress timeline"
+      aria-label={tr("Video progress timeline")}
       aria-valuemin={0}
       aria-valuemax={duration}
       aria-valuenow={currentTime}

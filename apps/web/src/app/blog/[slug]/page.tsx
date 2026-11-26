@@ -8,7 +8,7 @@ interface BlogPostPageProps {
   params: Promise<{ slug: string }>;
 }
 
-export const revalidate = 60; // Cache for 60s
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: BlogPostPageProps): Promise<Metadata> {
   const { slug } = await params;
@@ -100,4 +100,3 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     </>
   );
 }
-

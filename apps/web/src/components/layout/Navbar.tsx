@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useAuth, useLanguage } from '@/providers';
+import { useAuth, useLanguage , useLocaleText} from '@/providers';
 import Logo from './Logo';
 import NotificationDropdown from './NotificationDropdown';
 import UserProfileDropdown from './UserProfileDropdown';
@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 
 export default function Navbar() {
+  const tr = useLocaleText();
   const pathname = usePathname();
   const router = useRouter();
   const { user, subscription, logout } = useAuth();
@@ -272,7 +273,7 @@ export default function Navbar() {
                   type="button"
                   onClick={() => setSearchQuery('')}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white cursor-pointer"
-                  aria-label="Clear search"
+                  aria-label={tr("Clear search")}
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -319,7 +320,7 @@ export default function Navbar() {
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="lg:hidden w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center bg-white/[0.04] border border-white/10 text-gray-300 hover:text-white cursor-pointer flex-shrink-0"
-              aria-label="Toggle Navigation Menu"
+              aria-label={tr("Toggle Navigation Menu")}
             >
               {isMobileMenuOpen ? <X className="w-4 h-4 sm:w-5 sm:h-5" /> : <Menu className="w-4 h-4 sm:w-5 sm:h-5" />}
             </button>
@@ -366,8 +367,7 @@ export default function Navbar() {
                     onClick={() => setIsMobileMenuOpen(false)}
                     className="text-xs font-bold text-[#E5B869] hover:underline"
                   >
-                    Account
-                  </Link>
+                    {tr("Account")}</Link>
                   <button
                     type="button"
                     onClick={async () => {
@@ -376,7 +376,7 @@ export default function Navbar() {
                       router.push('/');
                     }}
                     className="p-1.5 text-gray-400 hover:text-red-400 cursor-pointer"
-                    title="Sign Out"
+                    title={tr("Sign Out")}
                   >
                     <LogOut className="w-3.5 h-3.5" />
                   </button>
@@ -423,7 +423,7 @@ export default function Navbar() {
                   className="flex items-center justify-center space-x-2 w-full bg-gradient-to-r from-[#d8a855] to-[#E5B869] text-black text-xs font-bold py-2.5 rounded-xl shadow-lg"
                 >
                   <Crown className="w-4 h-4" />
-                  <span>Upgrade to VIP</span>
+                  <span>{tr("Upgrade to VIP")}</span>
                 </Link>
               </div>
             )}

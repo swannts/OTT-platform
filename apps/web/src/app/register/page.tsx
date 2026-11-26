@@ -6,8 +6,10 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { User, Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import Logo from '@/components/layout/Logo';
+import { useLocaleText } from '@/providers';
 
 export default function RegisterPage() {
+  const tr = useLocaleText();
   const router = useRouter();
   const { register } = useAuth();
 
@@ -53,11 +55,9 @@ export default function RegisterPage() {
             <Logo />
           </Link>
           <h2 className="text-2xl font-bold font-serif-title text-white tracking-tight mt-2">
-            Create an Account
-          </h2>
+            {tr("Create an Account")}</h2>
           <p className="text-xs text-gray-400">
-            Join NOOR for family-safe, sacred entertainment
-          </p>
+            {tr("Join NOOR for family-safe, sacred entertainment")}</p>
         </div>
 
         {error && (
@@ -70,15 +70,14 @@ export default function RegisterPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="text-xs font-semibold text-gray-300 block mb-1.5">
-              Full Name
-            </label>
+              {tr("Full Name")}</label>
             <div className="relative group">
               <input
                 type="text"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Jane Doe"
+                placeholder={tr("Jane Doe")}
                 className="w-full bg-white/[0.04] hover:bg-white/[0.06] focus:bg-[#080d14] border border-white/10 focus:border-[#E5B869]/70 focus:ring-1 focus:ring-[#E5B869]/40 rounded-xl px-4 py-3 pl-10 text-white text-sm placeholder-gray-500 transition-all duration-200 outline-none"
               />
               <User className="w-4 h-4 text-gray-400 group-focus-within:text-[#E5B869] absolute left-3.5 top-3.5 pointer-events-none transition-colors" />
@@ -87,15 +86,14 @@ export default function RegisterPage() {
 
           <div>
             <label className="text-xs font-semibold text-gray-300 block mb-1.5">
-              Email Address
-            </label>
+              {tr("Email Address")}</label>
             <div className="relative group">
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@example.com"
+                placeholder={tr("name@example.com")}
                 className="w-full bg-white/[0.04] hover:bg-white/[0.06] focus:bg-[#080d14] border border-white/10 focus:border-[#E5B869]/70 focus:ring-1 focus:ring-[#E5B869]/40 rounded-xl px-4 py-3 pl-10 text-white text-sm placeholder-gray-500 transition-all duration-200 outline-none"
               />
               <Mail className="w-4 h-4 text-gray-400 group-focus-within:text-[#E5B869] absolute left-3.5 top-3.5 pointer-events-none transition-colors" />
@@ -103,7 +101,7 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-300 block mb-1.5">Password</label>
+            <label className="text-xs font-semibold text-gray-300 block mb-1.5">{tr("Password")}</label>
             <div className="relative group">
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -111,7 +109,7 @@ export default function RegisterPage() {
                 minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="At least 6 characters"
+                placeholder={tr("At least 6 characters")}
                 className="w-full bg-white/[0.04] hover:bg-white/[0.06] focus:bg-[#080d14] border border-white/10 focus:border-[#E5B869]/70 focus:ring-1 focus:ring-[#E5B869]/40 rounded-xl px-4 py-3 pl-10 pr-10 text-white text-sm placeholder-gray-500 transition-all duration-200 outline-none"
               />
               <Lock className="w-4 h-4 text-gray-400 group-focus-within:text-[#E5B869] absolute left-3.5 top-3.5 pointer-events-none transition-colors" />
@@ -137,10 +135,9 @@ export default function RegisterPage() {
         </form>
 
         <div className="text-center text-xs text-gray-400 pt-2 border-t border-white/[0.08]">
-          Already have an account?{' '}
+          {tr("Already have an account?")}{' '}
           <Link href="/login" className="text-[#E5B869] hover:text-[#f3cf8a] font-semibold transition-colors hover:underline">
-            Sign in
-          </Link>
+            {tr("Sign in")}</Link>
         </div>
       </div>
     </div>
