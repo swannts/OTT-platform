@@ -21,6 +21,7 @@ export function filterNavigationByPermissions(data, user) {
 }
 
 export function requiredPermissionForPath(pathname) {
+  const normalizedPath = pathname.replace(/\/+$/, '') || '/';
   const routePermissions = {
     '/dashboard/access/roles': 'admin.roles.view',
     '/dashboard/access/permissions': 'admin.permissions.view',
@@ -33,22 +34,23 @@ export function requiredPermissionForPath(pathname) {
     '/dashboard/marketing': 'marketing.campaigns.manage',
     '/dashboard/support': 'support.tickets.manage',
   };
-  return routePermissions[pathname] || null;
+  return routePermissions[normalizedPath] || null;
 }
 
 export function requiredPermissionsForPath(pathname) {
-  if (pathname === '/dashboard/content/review') {
+  const normalizedPath = pathname.replace(/\/+$/, '') || '/';
+  if (normalizedPath === '/dashboard/content/review') {
     return ['content.submit', 'content.review', 'content.approve', 'content.publish'];
   }
-  if (pathname === '/dashboard/operations') {
+  if (normalizedPath === '/dashboard/operations') {
     return ['operations.health.view', 'operations.logs.view', 'operations.jobs.view', 'operations.jobs.retry', 'operations.incidents.manage', 'analytics.playback.view'];
   }
-  if (pathname === '/dashboard/support') {
+  if (normalizedPath === '/dashboard/support') {
     return ['support.accounts.view', 'support.tickets.manage'];
   }
-  if (pathname === '/dashboard/analytics') {
+  if (normalizedPath === '/dashboard/analytics') {
     return ['analytics.audience.view', 'analytics.subscriptions.view', 'analytics.content.view', 'analytics.revenue.view', 'analytics.playback.view'];
   }
-  const required = requiredPermissionForPath(pathname);
+  const required = requiredPermissionForPath(normalizedPath);
   return required ? [required] : [];
 }
