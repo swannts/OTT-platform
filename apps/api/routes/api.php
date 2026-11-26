@@ -50,6 +50,8 @@ Route::get('marketing/open/{token}', [\App\Http\Controllers\API\MarketingConsent
 Route::get('marketing/unsubscribe/{token}', [\App\Http\Controllers\API\MarketingConsentController::class, 'unsubscribePrompt'])->where('token', '[A-Fa-f0-9]{64}')->name('marketing.unsubscribe');
 Route::post('marketing/unsubscribe/{token}', [\App\Http\Controllers\API\MarketingConsentController::class, 'unsubscribe'])->where('token', '[A-Fa-f0-9]{64}');
 
+Route::get('v3/branding', [APISettingController::class, 'branding']);
+
 // Public Global SEO Settings
 Route::get('v3/seo-settings', [\Modules\SEO\Http\Controllers\SEOController::class, 'getSeoSettingsApi']);
 

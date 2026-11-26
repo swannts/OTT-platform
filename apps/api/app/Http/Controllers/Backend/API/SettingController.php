@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Backend\API;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\Setting;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\Currency\Models\Currency;
 use Modules\Tax\Models\Tax;
@@ -15,6 +16,34 @@ use Modules\Subscriptions\Models\PlanLimitation;
 
 class SettingController extends Controller
 {
+    public function branding(): JsonResponse
+    {
+        $settings = Setting::query()
+            ->whereIn('name', ['app_name', 'user_app_name', 'short_description', 'inquriy_email', 'helpline_number', 'copyright_text'])
+            ->pluck('val', 'name');
+
+        $text = static function (string $key) use ($settings): ?string {
+            $value = trim(strip_tags((string) $settings->get($key)));
+
+            return $value === '' ? null : $value;
+        };
+
+        $email = filter_var($text('inquriy_email'), FILTER_VALIDATE_EMAIL);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'platform_name' => $text('user_app_name') ?? 'NOOR Islamic Cinema',
+                'business_name' => $text('app_name') ?? 'NOOR Islamic Cinema',
+                'description' => $text('short_description'),
+                'support_email' => $email === false ? null : $email,
+                'support_phone' => $text('helpline_number'),
+                'copyright_text' => $text('copyright_text'),
+            ],
+            'meta' => ['request_id' => request()->attributes->get('request_id')],
+        ]);
+    }
+
     public function appConfiguraton(Request $request)
     {
         $header = request()->headers->all();
