@@ -62,6 +62,9 @@ use App\Services\RecommendationServiceV3;
 use App\Models\User;
 use App\Services\Media\MediaReadinessService;
 use App\Models\MediaAsset;
+use App\Models\Device;
+use App\Models\UserMultiProfile;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class EntertainmentsController extends Controller
 {
@@ -1049,8 +1052,20 @@ class EntertainmentsController extends Controller
     {
         $device_type = getDeviceType($request);
 
-        // Create cache key based on request parameters
-        $cacheKey = 'search_v3_' . md5(json_encode($request->all())) . '_' . $device_type;
+        $user = auth('sanctum')->user();
+        $user_id = $user?->id;
+        $token = $user?->currentAccessToken();
+        $profile_id = $token instanceof PersonalAccessToken
+            ? Device::query()->where('user_id', $user_id)->where('sanctum_token_id', $token->getKey())->value('active_profile')
+            : null;
+        $isChildProfile = (bool) getCurrentProfileSession('is_child_profile')
+            || ($profile_id !== null && (bool) UserMultiProfile::query()->where('user_id', $user_id)->whereKey($profile_id)->value('is_child_profile'));
+
+        $cacheKey = 'search_v3_public_' . md5(json_encode([
+            $request->except('user_id'),
+            $device_type,
+            app()->getLocale(),
+        ]));
         
         // Check cache version to invalidate cache when actors/directors are updated
         // When version changes, old cache keys become invalid
@@ -1058,9 +1073,6 @@ class EntertainmentsController extends Controller
         $cacheVersion = Cache::get($cacheVersionKey, 0);
         $versionedCacheKey = $cacheKey . '_v' . $cacheVersion;
         
-        // Also clear the non-versioned key if it exists (for backward compatibility)
-        Cache::forget($cacheKey);
-
         // Check if search term is provided
         if (
             (empty($request->search) || trim($request->search) === '') &&
@@ -1078,8 +1090,7 @@ class EntertainmentsController extends Controller
             );
         }
 
-        // OPTIMIZATION: Remove time() from cache key to enable proper caching
-        $cachedResult = cacheApiResponse($versionedCacheKey, 300, function() use ($request, $device_type) {
+        $load = function () use ($request, $device_type, $user_id, $profile_id, $isChildProfile) {
             $perPage = $request->input('per_page', 10);
             $buildPaginationMeta = function ($paginator) {
                 return [
@@ -1090,14 +1101,11 @@ class EntertainmentsController extends Controller
                     'prev_page_url' => $paginator->previousPageUrl(),
                 ];
             };
-            $user_id = $request->user_id;
             $purchasedIds = []; // Initialize for non-user case
             $moviePagination = null;
             $tvshowPagination = null;
             
             if($user_id){
-                $profile_id = getCurrentProfile($user_id, $request);
-                
                 // OPTIMIZATION: Cache device support check
                 $deviceTypeResponse = cache()->remember(
                     "device_support_{$user_id}_{$device_type}",
@@ -1122,7 +1130,6 @@ class EntertainmentsController extends Controller
             }else{
                 $deviceTypeResponse = [];
                 $userPlanId = 0;
-                $profile_id = null;
             }
 
             $defaultIncludedTypes = collect(['movie', 'tvshow', 'video', 'season', 'episode', 'livetv', 'channel']);
@@ -1166,7 +1173,7 @@ class EntertainmentsController extends Controller
             }
 
             isset($request->is_restricted) && $movieList = $movieList->where('is_restricted', $request->is_restricted);
-            (!empty(getCurrentProfileSession('is_child_profile')) && getCurrentProfileSession('is_child_profile') != 0) &&
+            $isChildProfile &&
                     $movieList = $movieList->where('is_restricted',0);
 
             // Filter by director_id if provided
@@ -1253,7 +1260,7 @@ class EntertainmentsController extends Controller
 
 
         isset($request->is_restricted) && $tvshowList = $tvshowList->where('is_restricted', $request->is_restricted);
-        (!empty(getCurrentProfileSession('is_child_profile')) && getCurrentProfileSession('is_child_profile') != 0) &&
+        $isChildProfile &&
             $tvshowList = $tvshowList->where('is_restricted',0);
 
         // Filter by director_id if provided
@@ -1372,7 +1379,7 @@ class EntertainmentsController extends Controller
         }
 
         isset($request->is_restricted) && $videoList = $videoList->where('is_restricted', $request->is_restricted);
-        (!empty(getCurrentProfileSession('is_child_profile')) && getCurrentProfileSession('is_child_profile') != 0) &&
+        $isChildProfile &&
                 $videoList = $videoList->where('is_restricted',0);
 
 
@@ -1861,9 +1868,13 @@ class EntertainmentsController extends Controller
             'message' => __('movie.search_list'),
         ];
 
-        });
+        };
 
-        return ApiResponse::custom($cachedResult['data'], 200);
+        $data = $user_id || $isChildProfile
+            ? $load()
+            : cacheApiResponse($versionedCacheKey, 300, $load)['data'];
+
+        return ApiResponse::custom($data, 200);
     }
 
 
