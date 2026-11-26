@@ -81,7 +81,11 @@ final class StagingContentReviewGenerator
 
                 $isLatest = $revision === $revisions;
                 $status = $isLatest
-                    ? match ($index % 10) { 0 => 'in_review', 1 => 'rejected', default => 'approved' }
+                    ? match ($index % 10) {
+                        0 => $context->profile->counts['media_assets'] > 0 && $context->profile->counts['playback_sessions'] > 0 ? 'approved' : 'in_review',
+                        1 => 'rejected',
+                        default => 'approved',
+                    }
                     : ($revision % 2 === 0 ? 'approved' : 'rejected');
                 $reviewerId = $status === 'in_review' ? null : $reviewers[($index + $revision) % count($reviewers)];
                 $submittedAt = $start->copy()->addSeconds((int) floor($span * (($index * max(1, $revisions) + $revision) / max(1, count($contentIds) * max(1, $perContent + 1)))));

@@ -42,7 +42,10 @@ final class StagingContentLicensingGenerator
             if ($index % 5 === 0) $territoryCodes[] = 'MY';
             if ($index % 7 === 0) $territoryCodes[] = 'GB';
 
-            if ($index % 10 === 0) {
+            $playableFixtureRequired = $index === 0
+                && $context->profile->counts['media_assets'] > 0
+                && $context->profile->counts['playback_sessions'] > 0;
+            if ($index % 10 === 0 && ! $playableFixtureRequired) {
                 $startsAt = $context->referenceDate->addDays(1 + ($index % 90))->startOfDay();
                 $endsAt = $startsAt->addDays(365);
             } elseif ($index % 10 === 1) {

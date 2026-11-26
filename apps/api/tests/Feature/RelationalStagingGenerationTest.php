@@ -4,11 +4,14 @@ namespace Tests\Feature;
 
 use App\Support\Staging\StagingDataIntegrityValidator;
 use App\Models\MediaAsset;
+use App\Services\AdminAnalyticsService;
 use App\Services\Media\MediaReadinessService;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class RelationalStagingGenerationTest extends TestCase
@@ -216,5 +219,39 @@ class RelationalStagingGenerationTest extends TestCase
         $this->assertSame(6, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-search-test')->where('entity_type', 'content_review_submission')->count());
         $this->assertSame(4, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-search-test')->where('entity_type', 'live_tv_channel')->count());
         $this->assertSame(5, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-search-test')->where('entity_type', 'video')->count());
+
+        $customer = DB::table('staging_dataset_records as owners')->join('users', 'users.email', '=', 'owners.entity_key')
+            ->where('owners.dataset_id', 'feature-staging-search-test')->where('owners.entity_type', 'customer')->first(['users.id']);
+        $profile = DB::table('user_multi_profiles')->where('user_id', $customer->id)->where('is_child_profile', 0)->first(['id']);
+        $content = DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-search-test')
+            ->where('entity_type', 'entertainment')->orderBy('entity_key')->first(['record_id']);
+        $mediaAssetId = DB::table('media_assets')->insertGetId([
+            'original_name' => 'analytics-only-fixture.mp4', 'disk' => 'private', 'source_path' => 'test/analytics-only.mp4',
+            'mime_type' => 'video/mp4', 'extension' => 'mp4', 'size_bytes' => 1, 'sha256' => str_repeat('a', 64),
+            'status' => 'ready', 'metadata' => json_encode(['Format' => ['duration' => '900.000000']], JSON_THROW_ON_ERROR),
+            'created_at' => '2026-11-25 09:00:00', 'updated_at' => '2026-11-25 09:00:00',
+        ]);
+        DB::table('entertainments')->where('id', $content->record_id)->update(['media_asset_id' => $mediaAssetId]);
+        $startedAt = CarbonImmutable::parse('2026-11-25 10:00:00', 'UTC');
+        $sessions = [];
+        foreach ([800, 700] as $index => $durationSeconds) {
+            $sessionStart = $startedAt->addHours($index);
+            $sessionEnd = $sessionStart->addSeconds($durationSeconds);
+            $sessions[] = [
+                'session_id' => (string) Str::uuid(), 'user_id' => $customer->id, 'device_token_id' => 0,
+                'profile_id' => $profile->id, 'content_id' => $content->record_id, 'content_type' => 'movie',
+                'last_heartbeat_at' => $sessionEnd->subSeconds(30), 'expires_at' => $sessionEnd->addSeconds(90),
+                'ended_at' => $sessionEnd, 'created_at' => $sessionStart, 'updated_at' => $sessionEnd,
+            ];
+        }
+        DB::table('playback_sessions')->insert($sessions);
+        $contentReport = app(AdminAnalyticsService::class)->group(
+            'content', CarbonImmutable::parse('2025-11-26', 'UTC'), CarbonImmutable::parse('2026-11-26', 'UTC'),
+        );
+        $this->assertSame(2, $contentReport['playback_session_count']);
+        $this->assertSame(0.42, $contentReport['session_watch_hours']);
+        $this->assertSame(50.0, $contentReport['session_completion_rate_percent']);
+        $this->assertSame((string) $content->record_id, $contentReport['popular_playback_content'][0]['content_id']);
+        $this->assertSame(2, $contentReport['popular_playback_content'][0]['sessions']);
     }
 }

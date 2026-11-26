@@ -110,9 +110,28 @@ final class AdminAnalyticsService
             ->whereBetween('views.created_at', [$from, $to->endOfDay()])->whereNull('views.deleted_at')->whereNull('content.deleted_at')
             ->selectRaw('content.id, content.name, content.type, COUNT(*) as view_count')->groupBy('content.id', 'content.name', 'content.type')
             ->orderByDesc('view_count')->limit(10)->get()->map(fn ($row): array => ['content_id' => (int) $row->id, 'title' => $row->name, 'type' => $row->type, 'views' => (int) $row->view_count])->all();
+        $sessions = DB::table('playback_sessions as sessions')
+            ->join('entertainments as content', 'content.id', '=', 'sessions.content_id')
+            ->join('media_assets as assets', 'assets.id', '=', 'content.media_asset_id')
+            ->whereIn('sessions.user_id', $this->customerIdsQuery())
+            ->whereNotNull('sessions.ended_at')->whereBetween('sessions.ended_at', [$from, $to->endOfDay()])
+            ->whereNull('content.deleted_at')
+            ->whereRaw('TIMESTAMPDIFF(SECOND, sessions.created_at, sessions.ended_at) > 0')
+            ->whereRaw("CAST(JSON_UNQUOTE(JSON_EXTRACT(assets.metadata, '$.Format.duration')) AS DECIMAL(12, 6)) > 0")
+            ->whereRaw("TIMESTAMPDIFF(SECOND, sessions.created_at, sessions.ended_at) <= CAST(JSON_UNQUOTE(JSON_EXTRACT(assets.metadata, '$.Format.duration')) AS DECIMAL(12, 6))");
+        $sessionStats = (clone $sessions)->selectRaw("COUNT(*) as session_count, SUM(TIMESTAMPDIFF(SECOND, sessions.created_at, sessions.ended_at)) as watched_seconds, SUM(CASE WHEN TIMESTAMPDIFF(SECOND, sessions.created_at, sessions.ended_at) / NULLIF(CAST(JSON_UNQUOTE(JSON_EXTRACT(assets.metadata, '$.Format.duration')) AS DECIMAL(12, 6)), 0) >= 0.8 THEN 1 ELSE 0 END) as completed_sessions")->first();
+        $sessionCount = (int) ($sessionStats->session_count ?? 0);
+        $popularPlaybackContent = (clone $sessions)
+            ->selectRaw('content.id, content.name, content.type, COUNT(*) as session_count')
+            ->groupBy('content.id', 'content.name', 'content.type')->orderByDesc('session_count')->limit(10)->get()
+            ->map(fn ($row): array => ['content_id' => (string) $row->id, 'title' => $row->name, 'type' => $row->type, 'sessions' => (int) $row->session_count])->all();
         $records = (int) ($watch->records ?? 0);
         return [
             'watch_hours' => round((float) ($watch->watched_seconds ?? 0) / 3600, 2),
+            'playback_session_count' => $sessionCount,
+            'session_watch_hours' => round((float) ($sessionStats->watched_seconds ?? 0) / 3600, 2),
+            'session_completion_rate_percent' => $sessionCount > 0 ? round((int) $sessionStats->completed_sessions / $sessionCount * 100, 2) : null,
+            'popular_playback_content' => $popularPlaybackContent,
             'continue_watch_records' => $records,
             'completion_rate_percent' => $records > 0 ? round((int) $watch->completed_records / $records * 100, 2) : 0.0,
             'audience_retention_percent' => $records > 0 ? round((int) $watch->completed_records / $records * 100, 2) : 0.0,
@@ -161,6 +180,10 @@ final class AdminAnalyticsService
         return [
             'active_accounts' => 'Distinct registered accounts with a playback session or catalog view during the selected period.',
             'watch_hours' => 'Sum of continue-watch watched_time, parsed as seconds or HH:MM:SS, divided by 3,600.',
+            'playback_session_count' => 'Ended customer playback sessions with a matching title and measured media duration in the selected period.',
+            'session_watch_hours' => 'Sum of ended playback-session elapsed seconds divided by 3,600; sessions exceeding measured media duration are excluded.',
+            'session_completion_rate_percent' => 'Ended playback sessions reaching at least 80 percent of the measured media duration.',
+            'popular_playback_content' => 'Titles ranked by valid ended customer playback-session count; UUID content identifiers remain strings.',
             'completion_rate_percent' => 'Continue-watch records where watched_time / total_watched_time is at least 80 percent.',
             'audience_retention_percent' => 'Completion proxy using the same 80 percent continue-watch threshold; this is not second-by-second cohort retention.',
             'mrr_by_currency' => 'Active subscription amount normalized to one month using plan duration and the most recent paid transaction currency; unknown currencies stay separate.',

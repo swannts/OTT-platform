@@ -137,7 +137,7 @@ class SeedStagingData extends Command
             ['Configured target movies', (string) $profile->counts['movies']],
             ['Configured target series', (string) $profile->counts['series']],
             ['Configured target episodes', (string) $profile->counts['episodes']],
-            ['Currently implemented generation', 'RBAC, staff, customers, profiles, devices, bilingual movie/series, standalone video and Live TV catalog drafts, series hierarchy, editorial articles, revisioned content review submissions, eligible free playable titles, ended historical playback sessions, coupons, search history, support tickets, marketing consent and campaigns, in-app notifications, synthetic operations incidents and audit history, shared cast/crew credits, licensing, playable local media fixtures, plans, subscriptions, and synthetic payment attempts'],
+            ['Currently implemented generation', 'RBAC, staff, customers, profiles, devices, bilingual movie/series, standalone video and Live TV catalog drafts, series hierarchy, editorial articles, revisioned content review submissions, eligible free playable titles, ended media-duration-bounded historical playback sessions, isolated bilingual search indexing, source-derived analytics snapshots, coupons, search history, support tickets, marketing consent and campaigns, in-app notifications, synthetic operations incidents and audit history, shared cast/crew credits, licensing, playable local media fixtures, plans, subscriptions, and synthetic payment attempts'],
         ]);
 
         if ($violations !== []) {

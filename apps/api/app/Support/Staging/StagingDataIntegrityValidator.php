@@ -175,6 +175,7 @@ final class StagingDataIntegrityValidator
                         ->where('content_owner.dataset_id', '=', $manifest->dataset_id)->where('content_owner.entity_type', '=', 'entertainment');
                 })
                 ->leftJoin('entertainments', 'entertainments.id', '=', 'sessions.content_id')
+                ->leftJoin('media_assets', 'media_assets.id', '=', 'entertainments.media_asset_id')
                 ->where('owners.dataset_id', $manifest->dataset_id)->where('owners.entity_type', 'playback_session')
                 ->where(function ($query) use ($historyStart, $referenceEnd): void {
                     $query->whereNull('sessions.session_id')->orWhereColumn('owners.entity_key', '!=', 'sessions.session_id')
@@ -186,6 +187,9 @@ final class StagingDataIntegrityValidator
                         ->orWhereColumn('devices.active_profile', '!=', 'sessions.profile_id')
                         ->orWhereColumn('devices.sanctum_token_id', '!=', 'sessions.device_token_id')
                         ->orWhere('sessions.content_type', '!=', 'movie')->orWhere('entertainments.type', '!=', 'movie')
+                        ->orWhereNull('media_assets.id')
+                        ->orWhereRaw('TIMESTAMPDIFF(SECOND, sessions.created_at, sessions.ended_at) <= 0')
+                        ->orWhereRaw("TIMESTAMPDIFF(SECOND, sessions.created_at, sessions.ended_at) > CAST(JSON_UNQUOTE(JSON_EXTRACT(media_assets.metadata, '$.Format.duration')) AS DECIMAL(12, 6))")
                         ->orWhere('entertainments.status', '!=', 1)->orWhere('entertainments.movie_access', '!=', 'free')
                         ->orWhereColumn('entertainments.release_date', '>', 'sessions.created_at')
                         ->orWhereNull('sessions.ended_at')->orWhereColumn('sessions.last_heartbeat_at', '>', 'sessions.ended_at')

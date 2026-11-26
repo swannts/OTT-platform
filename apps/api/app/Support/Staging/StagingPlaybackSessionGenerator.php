@@ -38,8 +38,9 @@ final class StagingPlaybackSessionGenerator
 
             $entropy = (int) hexdec(substr(hash('sha256', $context->seed.':playback:'.$ordinal), 0, 8));
             $title = $this->selectAvailableTitle($titles, $device, $start, $end, $entropy);
-            $availableSeconds = max(120, $title['available_start']->diffInSeconds($title['available_end']));
-            $duration = min(1800, max(120, 120 + ($entropy % max(1, min(1680, $availableSeconds - 120 + 1)))));
+            $availableSeconds = max(1, $title['available_start']->diffInSeconds($title['available_end']));
+            $maxPlaybackSeconds = min(1800, $title['media_duration_seconds'], $availableSeconds);
+            $duration = 1 + ($entropy % max(1, $maxPlaybackSeconds));
             $latestStart = max(0, $availableSeconds - $duration);
             $playedAt = $title['available_start']->addSeconds($latestStart > 0 ? $entropy % ($latestStart + 1) : 0);
             $endedAt = $playedAt->addSeconds($duration);
@@ -197,7 +198,7 @@ final class StagingPlaybackSessionGenerator
         );
     }
 
-    /** @return list<array{content_id:string,asset_id:int,window_start:?CarbonImmutable,window_end:?CarbonImmutable}> */
+    /** @return list<array{content_id:string,asset_id:int,media_duration_seconds:int,window_start:?CarbonImmutable,window_end:?CarbonImmutable}> */
     private function eligibleTitles(StagingGenerationContext $context, MediaReadinessService $readiness): array
     {
         $start = $context->historyStart();
@@ -228,6 +229,9 @@ final class StagingPlaybackSessionGenerator
             $seen[$row->content_id] = true;
             $asset = MediaAsset::query()->with('assetTracks')->find($row->asset_id);
             if (! $asset || ! $readiness->inspect($asset)['ready']) continue;
+            $mediaDuration = $asset->metadata['Format']['duration'] ?? null;
+            $mediaDurationSeconds = is_numeric($mediaDuration) ? (int) floor((float) $mediaDuration) : 0;
+            if ($mediaDurationSeconds < 1) continue;
             $windowStart = $start;
             if ($row->starts_at !== null) {
                 $candidate = CarbonImmutable::parse($row->starts_at);
@@ -245,6 +249,7 @@ final class StagingPlaybackSessionGenerator
             if ($windowStart->greaterThanOrEqualTo($windowEnd) || $windowStart->diffInSeconds($windowEnd) < 120) continue;
             $eligible[] = [
                 'content_id' => (string) $row->content_id, 'asset_id' => (int) $row->asset_id,
+                'media_duration_seconds' => $mediaDurationSeconds,
                 'available_start' => $windowStart, 'available_end' => $windowEnd,
             ];
         }
