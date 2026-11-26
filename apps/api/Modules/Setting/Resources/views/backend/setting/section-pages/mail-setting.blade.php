@@ -83,7 +83,7 @@
             <div class="form-group col-md-6">
                 <label class="form-label">{{ __('setting_mail_page.lbl_from_name') }} <span
                         class="text-danger">*</span></label>
-                {!! html()->text('from_name')->class('form-control')->placeholder('swann-Laravel')->value(old('from_name', $data['from_name'] ?? ''))->id('from_name') !!}
+                {!! html()->text('from_name')->class('form-control')->placeholder('OTT Platform')->value(old('from_name', $data['from_name'] ?? ''))->id('from_name') !!}
                 @error('from_name')
                     <span class="text-danger">{{ $message }}</span>
                 @enderror

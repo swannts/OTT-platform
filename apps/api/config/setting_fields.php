@@ -24,7 +24,7 @@ return [
                 'label' => 'User App Name', // you know what label it is
                 'rules' => 'required|min:2|max:50', // validation rule of laravel
                 'class' => '', // any class for input
-                'value' => 'swann', // default value if you want
+                'value' => 'NOOR Islamic Cinema', // default value if you want
                 'datatype' => 'bussiness',
             ],
             [
@@ -34,7 +34,7 @@ return [
                 'label' => 'User App Name', // you know what label it is
                 'rules' => 'required|min:2', // validation rule of laravel
                 'class' => '', // any class for input
-                'value' => 'swann', // default value if you want
+                'value' => 'NOOR Islamic Cinema', // default value if you want
                 'datatype' => 'bussiness',
             ],
 
@@ -56,7 +56,7 @@ return [
                 'label' => 'Email', // you know what label it is
                 'rules' => 'required|min:2', // validation rule of laravel
                 'class' => '', // any class for input
-                'value' => 'admin@swann.com', // default value if you want
+                'value' => 'support@example.com', // default value if you want
                 'datatype' => 'bussiness',
             ],
             [
@@ -1099,7 +1099,7 @@ return [
                 'label' => 'From Name', // you know what label it is
                 'rules' => 'required', // validation rule of laravel
                 'class' => '', // any class for input
-                'value' => 'swann-Laravel', // default value if you wantPassword
+                'value' => 'OTT Platform', // default value if you wantPassword
             ],
         ],
 

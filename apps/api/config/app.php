@@ -19,7 +19,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Swann'),
+    'name' => env('APP_NAME', 'OTT Platform'),
 
     'admin_bootstrap' => [
         'email' => env('ADMIN_BOOTSTRAP_EMAIL'),

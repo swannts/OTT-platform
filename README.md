@@ -1,4 +1,7 @@
-# Swann OTT Platform
+# OTT Platform
+
+The current customer-facing streaming brand is **NOOR Islamic Cinema**; the
+repository and infrastructure use brand-independent OTT Platform naming.
 
 An over-the-top (OTT) video streaming platform featuring a decoupled architecture:
 1. **Customer website** (`apps/web/`) — Next.js streaming website with server rendering and HLS playback.

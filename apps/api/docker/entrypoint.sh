@@ -35,5 +35,5 @@ if [ "$APP_ENV" = "production" ]; then
     php artisan view:cache 2>/dev/null || true
 fi
 
-echo "Starting Swann Laravel Backend..."
+echo "Starting OTT Platform API..."
 exec "$@"
