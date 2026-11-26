@@ -70,8 +70,9 @@ final class StagingDataIntegrityValidator
                 'content_review_submissions' => $groupedCounts['content_review_submission'] ?? 0,
                 'live_tv_categories' => $groupedCounts['live_tv_category'] ?? 0,
                 'live_tv_channels' => $groupedCounts['live_tv_channel'] ?? 0,
+                'videos' => $groupedCounts['video'] ?? 0,
             ];
-            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'cast_crew', 'entertainment_talent_mapping', 'content_license_window', 'content_license_territory', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction', 'media_asset', 'media_processing_job', 'media_asset_track', 'entertainment_media_link', 'blog', 'coupon', 'coupon_plan_mapping', 'user_search_history', 'support_ticket', 'support_ticket_note', 'marketing_consent', 'marketing_campaign', 'notification', 'operations_incident', 'admin_audit_log', 'analytics_report_run', 'content_review_submission', 'live_tv_category', 'live_tv_channel'];
+            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'cast_crew', 'entertainment_talent_mapping', 'content_license_window', 'content_license_territory', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction', 'media_asset', 'media_processing_job', 'media_asset_track', 'entertainment_media_link', 'blog', 'coupon', 'coupon_plan_mapping', 'user_search_history', 'support_ticket', 'support_ticket_note', 'marketing_consent', 'marketing_campaign', 'notification', 'operations_incident', 'admin_audit_log', 'analytics_report_run', 'content_review_submission', 'live_tv_category', 'live_tv_channel', 'video'];
             $unknownTypes = array_diff(array_keys($groupedCounts), $supportedTypes);
             foreach ($unknownTypes as $type) {
                 $violations[] = "Dataset {$manifest->dataset_id} has an unsupported ownership type {$type}.";
@@ -274,6 +275,23 @@ final class StagingDataIntegrityValidator
                 ->where('owners.dataset_id', $manifest->dataset_id)->where('owners.entity_type', 'live_tv_channel')->whereNull('mappings.deleted_at')->count();
             if ($invalidLiveTvCategories > 0 || $invalidLiveTvChannels > 0 || $mappedDraftChannels > 0) {
                 $violations[] = "Dataset {$manifest->dataset_id} has {$invalidLiveTvCategories} invalid Live TV categories, {$invalidLiveTvChannels} invalid channel drafts, or {$mappedDraftChannels} unverified stream mappings.";
+            }
+            $invalidVideoDrafts = DB::table('staging_dataset_records as owners')
+                ->leftJoin('videos', 'videos.id', '=', 'owners.record_id')
+                ->where('owners.dataset_id', $manifest->dataset_id)->where('owners.entity_type', 'video')
+                ->where(function ($query): void {
+                    $query->whereNull('videos.id')->orWhereNotNull('videos.deleted_at')
+                        ->orWhere('videos.status', '!=', 0)->orWhere('videos.type', '!=', 'video')
+                        ->orWhereNull('videos.name')->orWhere('videos.name', '')
+                        ->orWhereNull('videos.name_bn')->orWhere('videos.name_bn', '')
+                        ->orWhereNull('videos.description_bn')->orWhere('videos.description_bn', '')
+                        ->orWhereNotNull('videos.video_url_input')->orWhereColumn('videos.slug', '!=', 'owners.entity_key');
+                })->count();
+            $mappedDraftVideos = DB::table('staging_dataset_records as owners')
+                ->join('video_stream_content_mapping as mappings', 'mappings.video_id', '=', 'owners.record_id')
+                ->where('owners.dataset_id', $manifest->dataset_id)->where('owners.entity_type', 'video')->count();
+            if ($invalidVideoDrafts > 0 || $mappedDraftVideos > 0) {
+                $violations[] = "Dataset {$manifest->dataset_id} has {$invalidVideoDrafts} invalid standalone video drafts or {$mappedDraftVideos} stream mappings without a verified media asset.";
             }
             $invalidCoupons = DB::table('staging_dataset_records as owners')
                 ->leftJoin('coupons', 'coupons.id', '=', 'owners.record_id')
@@ -845,7 +863,7 @@ final class StagingDataIntegrityValidator
                 }
             }
             $configuredCounts = (array) ($manifest->configuration['counts'] ?? []);
-            foreach (['staff' => 'staff', 'customers' => 'customers', 'devices' => 'devices', 'cast_crew' => 'cast_crew', 'plans' => 'plans', 'subscriptions' => 'subscriptions', 'payments' => 'payments', 'media_assets' => 'media_assets', 'coupons' => 'coupons', 'search_history' => 'search_history', 'support_tickets' => 'support_tickets', 'marketing_campaigns' => 'campaigns', 'notifications' => 'notifications', 'incidents' => 'incidents', 'audit_logs' => 'audit_logs', 'analytics_reports' => 'analytics_reports', 'content_review_submissions' => 'content_review_submissions', 'live_tv_channels' => 'live_channels'] as $entity => $targetKey) {
+            foreach (['staff' => 'staff', 'customers' => 'customers', 'devices' => 'devices', 'cast_crew' => 'cast_crew', 'plans' => 'plans', 'subscriptions' => 'subscriptions', 'payments' => 'payments', 'media_assets' => 'media_assets', 'coupons' => 'coupons', 'search_history' => 'search_history', 'support_tickets' => 'support_tickets', 'marketing_campaigns' => 'campaigns', 'notifications' => 'notifications', 'incidents' => 'incidents', 'audit_logs' => 'audit_logs', 'analytics_reports' => 'analytics_reports', 'content_review_submissions' => 'content_review_submissions', 'live_tv_channels' => 'live_channels', 'videos' => 'videos'] as $entity => $targetKey) {
                 if (isset($configuredCounts[$targetKey]) && $counts[$entity] !== (int) $configuredCounts[$targetKey]) {
                     $violations[] = "Dataset {$manifest->dataset_id} has {$counts[$entity]} {$entity}; configured target is {$configuredCounts[$targetKey]}.";
                 }
