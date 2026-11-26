@@ -68,6 +68,7 @@ class RelationalStagingGenerationTest extends TestCase
                 'media_assets' => 2,
                 'blogs' => 20,
                 'search_history' => 5,
+                'support_tickets' => 10,
             ], JSON_THROW_ON_ERROR),
         ];
 
@@ -104,6 +105,8 @@ class RelationalStagingGenerationTest extends TestCase
         $this->assertSame(30, DB::table('coupon_subscription_plan')->count());
         $this->assertSame(5, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'user_search_history')->count());
         $this->assertSame(5, DB::table('user_search_histories')->whereNotNull('user_id')->whereNotNull('profile_id')->whereNotNull('search_query')->count());
+        $this->assertSame(10, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'support_ticket')->count());
+        $this->assertSame(7, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'support_ticket_note')->count());
         $this->assertSame(0, DB::table('verified_payments')->count());
         $this->assertSame(0, DB::table('subscriptions')->where('status', 'active')->where('is_trial', 0)->whereNull('payment_id')->count());
 
@@ -123,5 +126,7 @@ class RelationalStagingGenerationTest extends TestCase
         $this->assertSame(15, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'coupon')->count());
         $this->assertSame(30, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'coupon_plan_mapping')->count());
         $this->assertSame(5, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'user_search_history')->count());
+        $this->assertSame(10, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'support_ticket')->count());
+        $this->assertSame(7, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'support_ticket_note')->count());
     }
 }
