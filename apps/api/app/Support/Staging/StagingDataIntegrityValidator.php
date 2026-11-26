@@ -55,8 +55,9 @@ final class StagingDataIntegrityValidator
                 'media_processing_jobs' => $groupedCounts['media_processing_job'] ?? 0,
                 'media_asset_tracks' => $groupedCounts['media_asset_track'] ?? 0,
                 'entertainment_media_links' => $groupedCounts['entertainment_media_link'] ?? 0,
+                'blogs' => $groupedCounts['blog'] ?? 0,
             ];
-            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'cast_crew', 'entertainment_talent_mapping', 'content_license_window', 'content_license_territory', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction', 'media_asset', 'media_processing_job', 'media_asset_track', 'entertainment_media_link'];
+            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'cast_crew', 'entertainment_talent_mapping', 'content_license_window', 'content_license_territory', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction', 'media_asset', 'media_processing_job', 'media_asset_track', 'entertainment_media_link', 'blog'];
             $unknownTypes = array_diff(array_keys($groupedCounts), $supportedTypes);
             foreach ($unknownTypes as $type) {
                 $violations[] = "Dataset {$manifest->dataset_id} has an unsupported ownership type {$type}.";
@@ -130,6 +131,31 @@ final class StagingDataIntegrityValidator
                         ->orWhere('entertainments.status', '!=', 0);
                 });
             $invalidCatalog = $invalidCatalogQuery->count();
+            $invalidBlogs = DB::table('staging_dataset_records as owners')
+                ->leftJoin('blogs', 'blogs.id', '=', 'owners.record_id')
+                ->where('owners.dataset_id', $manifest->dataset_id)
+                ->where('owners.entity_type', 'blog')
+                ->where(function ($query): void {
+                    $query->whereNull('blogs.id')->orWhereNotNull('blogs.deleted_at')
+                        ->orWhereColumn('blogs.slug', '!=', 'owners.entity_key')
+                        ->orWhereNull('blogs.title')->orWhere('blogs.title', '')
+                        ->orWhereNull('blogs.title_bn')->orWhere('blogs.title_bn', '')
+                        ->orWhereNull('blogs.summary')->orWhere('blogs.summary', '')
+                        ->orWhereNull('blogs.summary_bn')->orWhere('blogs.summary_bn', '')
+                        ->orWhereNull('blogs.content')->orWhere('blogs.content', '')
+                        ->orWhereNull('blogs.content_bn')->orWhere('blogs.content_bn', '')
+                        ->orWhereNull('blogs.status')->orWhereNotIn('blogs.status', [0, 1])
+                        ->orWhere('blogs.reading_time', '<', 1)->orWhere('blogs.views_count', '<', 0)
+                        ->orWhere(function ($query): void {
+                            $query->where('blogs.status', 1)->whereNull('blogs.published_at');
+                        })
+                        ->orWhere(function ($query): void {
+                            $query->where('blogs.status', 0)->whereNotNull('blogs.published_at');
+                        });
+                })->count();
+            if ($invalidBlogs > 0) {
+                $violations[] = "Dataset {$manifest->dataset_id} has {$invalidBlogs} invalid or incompletely localized editorial articles.";
+            }
             $ownedMedia = DB::table('staging_dataset_records')
                 ->where('dataset_id', $manifest->dataset_id)
                 ->where('entity_type', 'media_asset')
@@ -470,7 +496,7 @@ final class StagingDataIntegrityValidator
         return [
             'valid' => $violations === [],
             'complete' => $complete,
-            'coverage' => 'manifest, staff role, customer identity, profile and device ownership, unpublished bilingual catalog, genre mappings, fictional cast/crew credits, licensing windows and territories, actual media fixture readiness and ownership, series hierarchy, plans, subscription lifecycle, and synthetic payment attempts; remaining business-domain checks are pending',
+            'coverage' => 'manifest, staff role, customer identity, profile and device ownership, unpublished bilingual catalog, genre mappings, fictional cast/crew credits, bilingual editorial articles, licensing windows and territories, actual media fixture readiness and ownership, series hierarchy, plans, subscription lifecycle, and synthetic payment attempts; remaining business-domain checks are pending',
             'checked_at' => now()->toIso8601String(),
             'datasets' => $datasets,
             'violations' => array_values(array_unique($violations)),
