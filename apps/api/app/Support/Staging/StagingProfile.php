@@ -52,6 +52,9 @@ final readonly class StagingProfile
                 (int) $counts['profiles'] * (int) $counts['media_assets'],
             );
         }
+        if (array_intersect(['media_assets', 'movies', 'series'], array_keys($explicitOverrides)) !== [] && ! array_key_exists('banners', $explicitOverrides)) {
+            $counts['banners'] = min((int) $counts['banners'], (int) $counts['media_assets'], (int) $counts['movies'] + (int) $counts['series']);
+        }
         if ($counts['staff'] < count(array_keys(\App\Support\Rbac\RbacRegistry::roles()))) {
             throw new InvalidArgumentException('Staging staff count must include at least one account for every canonical administrative role.');
         }
@@ -90,6 +93,12 @@ final readonly class StagingProfile
         }
         if ($counts['continue_watch'] > $counts['playback_sessions'] || $counts['continue_watch'] > $counts['profiles'] * $counts['media_assets']) {
             throw new InvalidArgumentException('Continue-watching target cannot exceed playback sessions or the profile/media-pair capacity.');
+        }
+        if ($counts['banners'] > 0 && ($counts['movies'] + $counts['series'] === 0 || $counts['media_assets'] === 0)) {
+            throw new InvalidArgumentException('Staging homepage banners require published catalog titles and generated media posters.');
+        }
+        if ($counts['banners'] > min($counts['movies'] + $counts['series'], $counts['media_assets'])) {
+            throw new InvalidArgumentException('Staging banner target cannot exceed available catalog title or media poster capacity.');
         }
         if ($counts['support_tickets'] > 0 && ($counts['customers'] === 0 || $counts['staff'] === 0)) {
             throw new InvalidArgumentException('Support tickets require staging customers and staff accounts.');

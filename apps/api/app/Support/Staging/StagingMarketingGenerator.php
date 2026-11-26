@@ -2,18 +2,19 @@
 
 namespace App\Support\Staging;
 
+use App\Support\Marketing\CampaignAudience;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 final class StagingMarketingGenerator
 {
-    /** @return array{consents: int, campaigns: int, draft: int, pending_approval: int, approved: int, rejected: int} */
+    /** @return array{consents:int,campaigns:int,draft:int,pending_approval:int,approved:int,rejected:int,deliveries:int} */
     public function generate(StagingGenerationContext $context): array
     {
         $datasetPart = StagingIdentifiers::datasetPart($context->datasetId);
         $campaignTarget = $context->profile->counts['campaigns'];
-        if ($campaignTarget === 0) return ['consents' => 0, 'campaigns' => 0, 'draft' => 0, 'pending_approval' => 0, 'approved' => 0, 'rejected' => 0];
+        if ($campaignTarget === 0) return ['consents' => 0, 'campaigns' => 0, 'draft' => 0, 'pending_approval' => 0, 'approved' => 0, 'rejected' => 0, 'deliveries' => 0];
         $this->generateConsents($context, $datasetPart);
 
         $authors = $this->staffForRole($context, 'marketing_manager');
@@ -49,7 +50,14 @@ final class StagingMarketingGenerator
                     if ($unownedSlugs->has($key)) throw new RuntimeException("Campaign {$key} exists without staging ownership.");
 
                     $kind = match ($ordinal % 4) { 1 => 'promotion', 2 => 'notification', 3 => 'landing_page', default => 'campaign' };
-                    $channel = $kind === 'notification' ? (($ordinal % 2) ? 'email' : 'push') : ($kind === 'campaign' ? 'in_app' : null);
+                    $audienceSegment = ['all_consented', 'email_consented', 'push_consented', 'subscribers', 'registered'][($ordinal - 1) % 5];
+                    $channel = $kind === 'notification'
+                        ? match ($audienceSegment) {
+                            'email_consented' => 'email',
+                            'push_consented' => 'push',
+                            default => ($ordinal % 2) ? 'email' : 'push',
+                        }
+                        : ($kind === 'campaign' ? 'in_app' : null);
                     $status = match ($ordinal % 6) { 1 => 'pending_approval', 2 => 'approved', 3 => 'rejected', 5 => 'pending_approval', default => 'draft' };
                     $createdAt = $this->createdAt($context, $ordinal);
                     $approvedBy = $status === 'approved' ? $approvers[($ordinal - 1) % count($approvers)] : null;
@@ -59,7 +67,7 @@ final class StagingMarketingGenerator
                     $slug = $key;
                     $rows[] = [
                         'name' => $names[($ordinal - 1) % count($names)], 'slug' => $slug, 'kind' => $kind, 'channel' => $channel,
-                        'status' => $status, 'audience_segment' => ['all_consented', 'email_consented', 'push_consented', 'subscribers', 'registered'][($ordinal - 1) % 5],
+                        'status' => $status, 'audience_segment' => $audienceSegment,
                         'subject' => $channel === 'email' ? 'A new learning collection from NOOR' : null,
                         'body' => 'Synthetic staging campaign for testing editorial discovery and subscription communication workflows. No message is delivered.',
                         'call_to_action' => 'Explore the collection', 'destination_url' => 'https://example.test/staging',
@@ -84,7 +92,68 @@ final class StagingMarketingGenerator
         }
         $actual = DB::table('staging_dataset_records')->where('dataset_id', $context->datasetId)->where('entity_type', 'marketing_campaign')->count();
         if ($actual !== $campaignTarget) throw new RuntimeException("Staging marketing generated {$actual} of {$campaignTarget} configured campaigns.");
-        return ['consents' => DB::table('staging_dataset_records')->where('dataset_id', $context->datasetId)->where('entity_type', 'marketing_consent')->count(), 'campaigns' => $actual, ...$states];
+        $deliveries = $this->generateSuppressedDeliveries($context);
+        return ['consents' => DB::table('staging_dataset_records')->where('dataset_id', $context->datasetId)->where('entity_type', 'marketing_consent')->count(), 'campaigns' => $actual, ...$states, 'deliveries' => $deliveries];
+    }
+
+    private function generateSuppressedDeliveries(StagingGenerationContext $context): int
+    {
+        $campaigns = DB::table('staging_dataset_records as owners')->join('marketing_campaigns as campaigns', 'campaigns.id', '=', 'owners.record_id')
+            ->where('owners.dataset_id', $context->datasetId)->where('owners.entity_type', 'marketing_campaign')
+            ->where('campaigns.status', 'approved')->where('campaigns.kind', 'notification')->whereIn('campaigns.channel', ['email', 'push'])
+            ->orderBy('campaigns.id')->get(['campaigns.id', 'campaigns.channel', 'campaigns.audience_segment', 'campaigns.variant_b_percent', 'campaigns.created_at', 'campaigns.approved_at']);
+        foreach ($campaigns as $campaign) {
+            CampaignAudience::query((string) $campaign->audience_segment, (string) $campaign->channel)
+                ->join('staging_dataset_records as customer_owners', function ($join) use ($context): void {
+                    $join->on('customer_owners.entity_key', '=', 'users.email')->where('customer_owners.dataset_id', '=', $context->datasetId)->where('customer_owners.entity_type', '=', 'customer');
+                })
+                ->select('users.id as id')->orderBy('users.id')->chunkById($context->profile->batchSize, function ($users) use ($context, $campaign): void {
+                    $userIds = $users->pluck('id')->all();
+                    $existing = DB::table('marketing_campaign_deliveries')->where('campaign_id', $campaign->id)->where('channel', $campaign->channel)
+                        ->whereIn('user_id', $userIds)->get(['id', 'user_id'])->keyBy('user_id');
+                    $keys = array_map(fn ($userId): string => $campaign->id.':'.$userId.':'.$campaign->channel, $userIds);
+                    $owned = DB::table('staging_dataset_records')->where('dataset_id', $context->datasetId)
+                        ->where('entity_type', 'marketing_campaign_delivery')->whereIn('entity_key', $keys)->get(['entity_key', 'record_id'])->keyBy('entity_key');
+                    $rows = [];
+                    $newKeys = [];
+                    foreach ($userIds as $userId) {
+                        $key = $campaign->id.':'.$userId.':'.$campaign->channel;
+                        $delivery = $existing->get($userId);
+                        if ($delivery) {
+                            $owner = $owned->get($key);
+                            if (! $owner || (string) $owner->record_id !== (string) $delivery->id) {
+                                throw new RuntimeException("Marketing delivery {$key} exists without matching staging ownership.");
+                            }
+                            continue;
+                        }
+                        if ($owned->has($key)) throw new RuntimeException("Owned marketing delivery {$key} is missing from its source table.");
+                        $variant = (int) $campaign->variant_b_percent > 0
+                            && (hexdec(substr(hash('sha256', $campaign->id.':'.$userId), 0, 4)) % 100) < (int) $campaign->variant_b_percent ? 'B' : 'A';
+                        $rows[] = ['campaign_id' => $campaign->id, 'user_id' => $userId, 'channel' => $campaign->channel,
+                            'variant' => $variant, 'status' => 'cancelled', 'failure_code' => 'staging_external_delivery_disabled',
+                            'created_at' => $campaign->approved_at ?? $campaign->created_at,
+                            'updated_at' => $campaign->approved_at ?? $campaign->created_at];
+                        $newKeys[] = $key;
+                    }
+                    if ($rows === []) return;
+                    DB::transaction(function () use ($rows, $newKeys, $context, $campaign): void {
+                        DB::table('marketing_campaign_deliveries')->insert($rows);
+                        $userIds = array_column($rows, 'user_id');
+                        $inserted = DB::table('marketing_campaign_deliveries')->where('campaign_id', $campaign->id)
+                            ->where('channel', $campaign->channel)->whereIn('user_id', $userIds)->get(['id', 'user_id'])->keyBy('user_id');
+                        $owners = [];
+                        foreach ($rows as $index => $row) {
+                            $key = $newKeys[$index];
+                            $delivery = $inserted->get($row['user_id']);
+                            if (! $delivery) throw new RuntimeException("Unable to resolve generated suppressed marketing delivery {$key}.");
+                            $owners[] = ['dataset_id' => $context->datasetId, 'entity_type' => 'marketing_campaign_delivery', 'entity_key' => $key,
+                                'record_id' => (string) $delivery->id, 'created_at' => now(), 'updated_at' => now()];
+                        }
+                        DB::table('staging_dataset_records')->insert($owners);
+                    });
+                }, 'users.id', 'id');
+        }
+        return (int) DB::table('staging_dataset_records')->where('dataset_id', $context->datasetId)->where('entity_type', 'marketing_campaign_delivery')->count();
     }
 
     private function generateConsents(StagingGenerationContext $context, string $datasetPart): void

@@ -168,7 +168,11 @@ class RelationalStagingGenerationTest extends TestCase
         $this->assertSame(40, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-search-test')->where('entity_type', 'marketing_consent')->count());
         $this->assertSame(10, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-search-test')->where('entity_type', 'marketing_campaign')->count());
         $this->assertSame(0, DB::table('marketing_campaigns')->where('status', 'published')->count());
-        $this->assertSame(0, DB::table('marketing_campaign_deliveries')->count());
+        $this->assertSame(0, DB::table('marketing_campaign_deliveries')->whereIn('status', ['queued', 'sent'])->count());
+        $this->assertSame(
+            DB::table('marketing_campaign_deliveries')->count(),
+            DB::table('marketing_campaign_deliveries')->where('status', 'cancelled')->where('failure_code', 'staging_external_delivery_disabled')->count(),
+        );
         $this->assertSame(15, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-search-test')->where('entity_type', 'notification')->count());
         $this->assertSame(3, DB::table('notifications')->whereNull('read_at')->whereNull('archived_at')->count());
         $this->assertSame(1, DB::table('notifications')->whereNotNull('archived_at')->count());

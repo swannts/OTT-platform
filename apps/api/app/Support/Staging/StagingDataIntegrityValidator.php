@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\MediaAsset;
 use App\Support\Rbac\RbacRegistry;
 use App\Services\Media\MediaReadinessService;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -74,16 +75,55 @@ final class StagingDataIntegrityValidator
                 'live_tv_categories' => $groupedCounts['live_tv_category'] ?? 0,
                 'live_tv_channels' => $groupedCounts['live_tv_channel'] ?? 0,
                 'videos' => $groupedCounts['video'] ?? 0,
+                'banners' => $groupedCounts['banner'] ?? 0,
                 'watchlists' => $groupedCounts['watchlist'] ?? 0,
                 'reviews' => $groupedCounts['review'] ?? 0,
                 'watch_history' => $groupedCounts['user_watch_history'] ?? 0,
                 'continue_watch' => $groupedCounts['continue_watch'] ?? 0,
+                'marketing_campaign_deliveries' => $groupedCounts['marketing_campaign_delivery'] ?? 0,
             ];
-            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'playback_token', 'playback_session', 'search_document', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'cast_crew', 'entertainment_talent_mapping', 'content_license_window', 'content_license_territory', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction', 'media_asset', 'media_processing_job', 'media_asset_track', 'entertainment_media_link', 'blog', 'coupon', 'coupon_plan_mapping', 'user_search_history', 'support_ticket', 'support_ticket_note', 'marketing_consent', 'marketing_campaign', 'notification', 'operations_incident', 'admin_audit_log', 'analytics_report_run', 'content_review_submission', 'live_tv_category', 'live_tv_channel', 'video', 'watchlist', 'review', 'user_watch_history', 'continue_watch'];
+            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'playback_token', 'playback_session', 'search_document', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'cast_crew', 'entertainment_talent_mapping', 'content_license_window', 'content_license_territory', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction', 'media_asset', 'media_processing_job', 'media_asset_track', 'entertainment_media_link', 'blog', 'coupon', 'coupon_plan_mapping', 'user_search_history', 'support_ticket', 'support_ticket_note', 'marketing_consent', 'marketing_campaign', 'marketing_campaign_delivery', 'notification', 'operations_incident', 'admin_audit_log', 'analytics_report_run', 'content_review_submission', 'live_tv_category', 'live_tv_channel', 'video', 'banner', 'watchlist', 'review', 'user_watch_history', 'continue_watch'];
             $unknownTypes = array_diff(array_keys($groupedCounts), $supportedTypes);
             foreach ($unknownTypes as $type) {
                 $violations[] = "Dataset {$manifest->dataset_id} has an unsupported ownership type {$type}.";
             }
+            $invalidBanners = DB::table('staging_dataset_records as owners')
+                ->leftJoin('banners', 'banners.id', '=', 'owners.record_id')
+                ->leftJoin('entertainments as content', 'content.id', '=', 'banners.type_id')
+                ->leftJoin('staging_dataset_records as content_owners', function ($join) use ($manifest): void {
+                    $join->on('content_owners.record_id', '=', 'content.id')->where('content_owners.dataset_id', '=', $manifest->dataset_id)->where('content_owners.entity_type', '=', 'entertainment');
+                })
+                ->where('owners.dataset_id', $manifest->dataset_id)->where('owners.entity_type', 'banner')
+                ->where(function ($query) use ($manifest): void {
+                    $reference = CarbonImmutable::parse($manifest->reference_date)->toDateTimeString();
+                    $query->whereNull('banners.id')->orWhereNull('content.id')->orWhereNull('content_owners.record_id')
+                        ->orWhere('banners.banner_for', '!=', 'home')->orWhere('banners.status', '!=', 1)->orWhere('content.status', '!=', 1)->orWhereNull('content.poster_url')
+                        ->orWhereColumn('banners.type', '!=', 'content.type')->orWhereColumn('banners.poster_url', '!=', 'content.poster_url')
+                        ->orWhereNull('banners.starts_at')->orWhere('banners.starts_at', '>', $reference)
+                        ->orWhereNull('banners.ends_at')->orWhere('banners.ends_at', '<=', $reference);
+                })->count();
+            if ($invalidBanners > 0) $violations[] = "Dataset {$manifest->dataset_id} has {$invalidBanners} banners without active schedule or owned published-content relationships.";
+            $invalidDeliveries = DB::table('staging_dataset_records as owners')
+                ->leftJoin('marketing_campaign_deliveries as deliveries', 'deliveries.id', '=', 'owners.record_id')
+                ->leftJoin('marketing_campaigns as campaigns', 'campaigns.id', '=', 'deliveries.campaign_id')
+                ->leftJoin('staging_dataset_records as campaign_owners', function ($join) use ($manifest): void {
+                    $join->on('campaign_owners.record_id', '=', 'campaigns.id')->where('campaign_owners.dataset_id', '=', $manifest->dataset_id)->where('campaign_owners.entity_type', '=', 'marketing_campaign');
+                })
+                ->leftJoin('users', 'users.id', '=', 'deliveries.user_id')
+                ->leftJoin('marketing_consents as delivery_consents', function ($join): void {
+                    $join->on('delivery_consents.user_id', '=', 'deliveries.user_id')->on('delivery_consents.channel', '=', 'deliveries.channel');
+                })
+                ->leftJoin('staging_dataset_records as customer_owners', function ($join) use ($manifest): void {
+                    $join->on('customer_owners.entity_key', '=', 'users.email')->where('customer_owners.dataset_id', '=', $manifest->dataset_id)->where('customer_owners.entity_type', '=', 'customer');
+                })
+                ->where('owners.dataset_id', $manifest->dataset_id)->where('owners.entity_type', 'marketing_campaign_delivery')
+                ->where(function ($query): void {
+                    $query->whereNull('deliveries.id')->orWhereNull('campaigns.id')->orWhereNull('campaign_owners.record_id')->orWhereNull('customer_owners.record_id')->orWhereNull('delivery_consents.id')
+                        ->orWhere('delivery_consents.consented', '!=', 1)->orWhere('campaigns.status', '!=', 'approved')->orWhereColumn('campaigns.channel', '!=', 'deliveries.channel')
+                        ->orWhere('deliveries.status', '!=', 'cancelled')->orWhere('deliveries.failure_code', '!=', 'staging_external_delivery_disabled')
+                        ->orWhereNotNull('deliveries.sent_at')->orWhereNotNull('deliveries.tracking_token_hash')->orWhereNotNull('deliveries.unsubscribe_token_hash');
+                })->count();
+            if ($invalidDeliveries > 0) $violations[] = "Dataset {$manifest->dataset_id} has {$invalidDeliveries} marketing delivery records not safely suppressed or linked to owned recipients/campaigns.";
             $invalidContinueWatch = DB::table('staging_dataset_records as owners')
                 ->leftJoin('continue_watch', 'continue_watch.id', '=', 'owners.record_id')
                 ->leftJoin('user_multi_profiles as profiles', 'profiles.id', '=', 'continue_watch.profile_id')
@@ -1063,7 +1103,7 @@ final class StagingDataIntegrityValidator
                 }
             }
             $configuredCounts = (array) ($manifest->configuration['counts'] ?? []);
-            foreach (['staff' => 'staff', 'customers' => 'customers', 'devices' => 'devices', 'playback_sessions' => 'playback_sessions', 'watchlists' => 'watchlists', 'reviews' => 'reviews', 'watch_history' => 'watch_history', 'continue_watch' => 'continue_watch', 'cast_crew' => 'cast_crew', 'plans' => 'plans', 'subscriptions' => 'subscriptions', 'payments' => 'payments', 'media_assets' => 'media_assets', 'coupons' => 'coupons', 'search_history' => 'search_history', 'support_tickets' => 'support_tickets', 'marketing_campaigns' => 'campaigns', 'notifications' => 'notifications', 'incidents' => 'incidents', 'audit_logs' => 'audit_logs', 'analytics_reports' => 'analytics_reports', 'content_review_submissions' => 'content_review_submissions', 'live_tv_channels' => 'live_channels', 'videos' => 'videos'] as $entity => $targetKey) {
+            foreach (['staff' => 'staff', 'customers' => 'customers', 'devices' => 'devices', 'playback_sessions' => 'playback_sessions', 'watchlists' => 'watchlists', 'reviews' => 'reviews', 'watch_history' => 'watch_history', 'continue_watch' => 'continue_watch', 'banners' => 'banners', 'cast_crew' => 'cast_crew', 'plans' => 'plans', 'subscriptions' => 'subscriptions', 'payments' => 'payments', 'media_assets' => 'media_assets', 'coupons' => 'coupons', 'search_history' => 'search_history', 'support_tickets' => 'support_tickets', 'marketing_campaigns' => 'campaigns', 'notifications' => 'notifications', 'incidents' => 'incidents', 'audit_logs' => 'audit_logs', 'analytics_reports' => 'analytics_reports', 'content_review_submissions' => 'content_review_submissions', 'live_tv_channels' => 'live_channels', 'videos' => 'videos'] as $entity => $targetKey) {
                 if (isset($configuredCounts[$targetKey]) && $counts[$entity] !== (int) $configuredCounts[$targetKey]) {
                     $violations[] = "Dataset {$manifest->dataset_id} has {$counts[$entity]} {$entity}; configured target is {$configuredCounts[$targetKey]}.";
                 }
