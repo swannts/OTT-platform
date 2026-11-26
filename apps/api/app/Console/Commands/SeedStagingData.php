@@ -23,6 +23,7 @@ use App\Support\Staging\StagingVideoCatalogGenerator;
 use App\Support\Staging\StagingPlayableContentPublisher;
 use App\Support\Staging\StagingPlaybackSessionGenerator;
 use App\Support\Staging\StagingEngagementGenerator;
+use App\Support\Staging\StagingContinueWatchGenerator;
 use App\Support\Staging\StagingSearchIndexer;
 use App\Services\Content\AdminContentPublicationService;
 use App\Services\Media\MediaReadinessService;
@@ -79,6 +80,7 @@ class SeedStagingData extends Command
         StagingPlayableContentPublisher $playableContentPublisher,
         StagingPlaybackSessionGenerator $playbackSessionGenerator,
         StagingEngagementGenerator $engagementGenerator,
+        StagingContinueWatchGenerator $continueWatchGenerator,
         StagingSearchIndexer $searchIndexer,
         AdminContentPublicationService $contentPublicationService,
         MediaReadinessService $mediaReadinessService,
@@ -139,7 +141,7 @@ class SeedStagingData extends Command
             ['Configured target movies', (string) $profile->counts['movies']],
             ['Configured target series', (string) $profile->counts['series']],
             ['Configured target episodes', (string) $profile->counts['episodes']],
-            ['Currently implemented generation', 'RBAC, staff, customers, profiles, devices, bilingual movie/series, standalone video and Live TV catalog drafts, series hierarchy, editorial articles, revisioned content review submissions, eligible free playable titles, ended media-duration-bounded historical playback sessions, customer watchlists, bilingual customer reviews, customer watch-history events, isolated bilingual search indexing, source-derived analytics snapshots, coupons, search history, support tickets, marketing consent and campaigns, in-app notifications, synthetic operations incidents and audit history, shared cast/crew credits, licensing, playable local media fixtures, plans, subscriptions, and synthetic payment attempts'],
+            ['Currently implemented generation', 'RBAC, staff, customers, profiles, devices, bilingual movie/series, standalone video and Live TV catalog drafts, series hierarchy, editorial articles, revisioned content review submissions, eligible free playable titles, ended media-duration-bounded historical playback sessions, session-derived continue-watching progress, customer watchlists, bilingual customer reviews, customer watch-history events, isolated bilingual search indexing, source-derived analytics snapshots, coupons, search history, support tickets, marketing consent and campaigns, in-app notifications, synthetic operations incidents and audit history, shared cast/crew credits, licensing, playable local media fixtures, plans, subscriptions, and synthetic payment attempts'],
         ]);
 
         if ($violations !== []) {
@@ -177,7 +179,7 @@ class SeedStagingData extends Command
                 'history_months' => $historyMonths,
                 'batch_size' => $profile->batchSize,
                 'counts' => $profile->counts,
-                'implemented_domains' => ['rbac', 'staff', 'customers', 'profiles', 'devices', 'genres', 'movies', 'series', 'seasons', 'episodes', 'videos', 'blogs', 'live_tv_channels', 'coupons', 'search_history', 'content_review_submissions', 'playback_sessions', 'watchlists', 'reviews', 'watch_history', 'search_index', 'cast_crew', 'talent_mappings', 'content_licenses', 'media_fixtures', 'plans', 'subscriptions', 'payments'],
+                'implemented_domains' => ['rbac', 'staff', 'customers', 'profiles', 'devices', 'genres', 'movies', 'series', 'seasons', 'episodes', 'videos', 'blogs', 'live_tv_channels', 'coupons', 'search_history', 'content_review_submissions', 'playback_sessions', 'continue_watch', 'watchlists', 'reviews', 'watch_history', 'search_index', 'cast_crew', 'talent_mappings', 'content_licenses', 'media_fixtures', 'plans', 'subscriptions', 'payments'],
             ];
             $manifest = StagingDatasetManifest::query()->where('dataset_id', $datasetId)->first();
             $savedInputs = (array) ($manifest?->configuration ?? []);
@@ -219,6 +221,7 @@ class SeedStagingData extends Command
                 $contentReviewResults = $contentReviewGenerator->generate($context);
                 $playableContentResults = $playableContentPublisher->publish($context, $contentPublicationService);
                 $playbackResults = $playbackSessionGenerator->generate($context, $mediaReadinessService);
+                $continueWatchCount = $continueWatchGenerator->generate($context);
                 $engagementResults = $engagementGenerator->generate($context);
                 $liveTvResults = $liveTvCatalogGenerator->generate($context);
                 $videoResults = $videoCatalogGenerator->generate($context);
@@ -273,6 +276,7 @@ class SeedStagingData extends Command
                     'watchlists' => $recordCounts['watchlist'] ?? 0,
                     'reviews' => $recordCounts['review'] ?? 0,
                     'watch_history' => $recordCounts['user_watch_history'] ?? 0,
+                    'continue_watch' => $recordCounts['continue_watch'] ?? 0,
                     'playback_tokens' => $recordCounts['playback_token'] ?? 0,
                     'search_documents' => $recordCounts['search_document'] ?? 0,
                 ];
@@ -330,8 +334,8 @@ class SeedStagingData extends Command
                 $this->info(sprintf('Dataset Live TV catalog: %d categories and %d bilingual channel drafts; no streams or customer-visible channels were created.', $liveTvResults['categories'], $liveTvResults['channels']));
                 $this->info(sprintf('Dataset standalone video catalog: %d bilingual video drafts; no media assets or stream mappings were created.', $videoResults['videos']));
                 $this->info(sprintf('Dataset search: %d bilingual catalog documents synchronized to isolated index %s; English, Bengali, type and genre filters passed.', $searchResults['documents'], $searchResults['index_uid']));
-                $this->info(sprintf('Customer engagement: %d watchlists, %d ratings/reviews, and %d watch-history events generated.', $engagementResults['watchlists'], $engagementResults['reviews'], $engagementResults['watch_history']));
-                $this->warn('This milestone remains partial: refunds/reconciliation, continue-watching progress, campaign deliveries/banners, and browser workflows are not yet generated or verified. Standalone videos and Live TV rows are draft metadata without stream sources. Playback sessions are ended historical records only; hashed device tokens have no abilities and no bearer secrets are generated. Synthetic transactions never contact payment providers.');
+                $this->info(sprintf('Customer engagement: %d continue-watching rows, %d watchlists, %d ratings/reviews, and %d watch-history events generated.', $continueWatchCount, $engagementResults['watchlists'], $engagementResults['reviews'], $engagementResults['watch_history']));
+                $this->warn('This milestone remains partial: refunds/reconciliation and campaign deliveries/banners are not yet generated; browser workflows are not verified. Standalone videos and Live TV rows are draft metadata without stream sources. Playback sessions are ended historical records only; hashed device tokens have no abilities and no bearer secrets are generated. Synthetic transactions never contact payment providers.');
 
                 return self::SUCCESS;
             } catch (Throwable $exception) {

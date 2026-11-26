@@ -77,12 +77,36 @@ final class StagingDataIntegrityValidator
                 'watchlists' => $groupedCounts['watchlist'] ?? 0,
                 'reviews' => $groupedCounts['review'] ?? 0,
                 'watch_history' => $groupedCounts['user_watch_history'] ?? 0,
+                'continue_watch' => $groupedCounts['continue_watch'] ?? 0,
             ];
-            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'playback_token', 'playback_session', 'search_document', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'cast_crew', 'entertainment_talent_mapping', 'content_license_window', 'content_license_territory', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction', 'media_asset', 'media_processing_job', 'media_asset_track', 'entertainment_media_link', 'blog', 'coupon', 'coupon_plan_mapping', 'user_search_history', 'support_ticket', 'support_ticket_note', 'marketing_consent', 'marketing_campaign', 'notification', 'operations_incident', 'admin_audit_log', 'analytics_report_run', 'content_review_submission', 'live_tv_category', 'live_tv_channel', 'video', 'watchlist', 'review', 'user_watch_history'];
+            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'playback_token', 'playback_session', 'search_document', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'cast_crew', 'entertainment_talent_mapping', 'content_license_window', 'content_license_territory', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction', 'media_asset', 'media_processing_job', 'media_asset_track', 'entertainment_media_link', 'blog', 'coupon', 'coupon_plan_mapping', 'user_search_history', 'support_ticket', 'support_ticket_note', 'marketing_consent', 'marketing_campaign', 'notification', 'operations_incident', 'admin_audit_log', 'analytics_report_run', 'content_review_submission', 'live_tv_category', 'live_tv_channel', 'video', 'watchlist', 'review', 'user_watch_history', 'continue_watch'];
             $unknownTypes = array_diff(array_keys($groupedCounts), $supportedTypes);
             foreach ($unknownTypes as $type) {
                 $violations[] = "Dataset {$manifest->dataset_id} has an unsupported ownership type {$type}.";
             }
+            $invalidContinueWatch = DB::table('staging_dataset_records as owners')
+                ->leftJoin('continue_watch', 'continue_watch.id', '=', 'owners.record_id')
+                ->leftJoin('user_multi_profiles as profiles', 'profiles.id', '=', 'continue_watch.profile_id')
+                ->leftJoin('entertainments as content', 'content.id', '=', 'continue_watch.entertainment_id')
+                ->leftJoin('media_assets as assets', 'assets.id', '=', 'content.media_asset_id')
+                ->leftJoin('staging_dataset_records as content_owners', function ($join) use ($manifest): void {
+                    $join->on('content_owners.record_id', '=', 'content.id')->where('content_owners.dataset_id', '=', $manifest->dataset_id)->where('content_owners.entity_type', '=', 'entertainment');
+                })
+                ->leftJoin('staging_dataset_records as profile_owners', function ($join) use ($manifest): void {
+                    $join->on('profile_owners.entity_key', '=', 'profiles.id')->where('profile_owners.dataset_id', '=', $manifest->dataset_id)->where('profile_owners.entity_type', '=', 'user_multi_profile');
+                })
+                ->where('owners.dataset_id', $manifest->dataset_id)->where('owners.entity_type', 'continue_watch')
+                ->where(function ($query): void {
+                    $query->whereNull('continue_watch.id')->orWhereNull('content.id')->orWhereNull('assets.id')
+                        ->orWhereNull('content_owners.record_id')->orWhereNull('profile_owners.record_id')->orWhereNull('continue_watch.total_watched_time')
+                        ->orWhereColumn('profiles.user_id', '!=', 'continue_watch.user_id')
+                        ->orWhere('continue_watch.entertainment_type', '!=', 'movie')
+                        ->orWhereNotIn('continue_watch.user_id', DB::table('staging_dataset_records as customers')->join('users as customer_users', 'customer_users.email', '=', 'customers.entity_key')->select('customer_users.id')->where('customers.dataset_id', $manifest->dataset_id)->where('customers.entity_type', 'customer'))
+                        ->orWhereRaw('TIME_TO_SEC(continue_watch.watched_time) <= 0')
+                        ->orWhereRaw('TIME_TO_SEC(continue_watch.watched_time) >= TIME_TO_SEC(continue_watch.total_watched_time)')
+                        ->orWhereRaw("TIME_TO_SEC(continue_watch.total_watched_time) > FLOOR(CAST(JSON_UNQUOTE(JSON_EXTRACT(assets.metadata, '$.Format.duration')) AS DECIMAL(12, 6)))");
+                })->count();
+            if ($invalidContinueWatch > 0) $violations[] = "Dataset {$manifest->dataset_id} has {$invalidContinueWatch} continue-watching rows with invalid customer, profile, title, or duration progress.";
             $invalidWatchlists = DB::table('staging_dataset_records as owners')
                 ->leftJoin('watchlists', 'watchlists.id', '=', 'owners.record_id')
                 ->leftJoin('user_multi_profiles as profiles', 'profiles.id', '=', 'watchlists.profile_id')
@@ -1039,7 +1063,7 @@ final class StagingDataIntegrityValidator
                 }
             }
             $configuredCounts = (array) ($manifest->configuration['counts'] ?? []);
-            foreach (['staff' => 'staff', 'customers' => 'customers', 'devices' => 'devices', 'playback_sessions' => 'playback_sessions', 'watchlists' => 'watchlists', 'reviews' => 'reviews', 'watch_history' => 'watch_history', 'cast_crew' => 'cast_crew', 'plans' => 'plans', 'subscriptions' => 'subscriptions', 'payments' => 'payments', 'media_assets' => 'media_assets', 'coupons' => 'coupons', 'search_history' => 'search_history', 'support_tickets' => 'support_tickets', 'marketing_campaigns' => 'campaigns', 'notifications' => 'notifications', 'incidents' => 'incidents', 'audit_logs' => 'audit_logs', 'analytics_reports' => 'analytics_reports', 'content_review_submissions' => 'content_review_submissions', 'live_tv_channels' => 'live_channels', 'videos' => 'videos'] as $entity => $targetKey) {
+            foreach (['staff' => 'staff', 'customers' => 'customers', 'devices' => 'devices', 'playback_sessions' => 'playback_sessions', 'watchlists' => 'watchlists', 'reviews' => 'reviews', 'watch_history' => 'watch_history', 'continue_watch' => 'continue_watch', 'cast_crew' => 'cast_crew', 'plans' => 'plans', 'subscriptions' => 'subscriptions', 'payments' => 'payments', 'media_assets' => 'media_assets', 'coupons' => 'coupons', 'search_history' => 'search_history', 'support_tickets' => 'support_tickets', 'marketing_campaigns' => 'campaigns', 'notifications' => 'notifications', 'incidents' => 'incidents', 'audit_logs' => 'audit_logs', 'analytics_reports' => 'analytics_reports', 'content_review_submissions' => 'content_review_submissions', 'live_tv_channels' => 'live_channels', 'videos' => 'videos'] as $entity => $targetKey) {
                 if (isset($configuredCounts[$targetKey]) && $counts[$entity] !== (int) $configuredCounts[$targetKey]) {
                     $violations[] = "Dataset {$manifest->dataset_id} has {$counts[$entity]} {$entity}; configured target is {$configuredCounts[$targetKey]}.";
                 }
