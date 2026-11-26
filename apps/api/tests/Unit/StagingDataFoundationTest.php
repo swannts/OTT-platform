@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Support\Staging\StagingDataSafety;
 use App\Support\Staging\StagingGenerationContext;
+use App\Support\Staging\StagingIdentifiers;
 use App\Support\Staging\StagingProfile;
 use InvalidArgumentException;
 use Tests\TestCase;
@@ -58,6 +59,14 @@ class StagingDataFoundationTest extends TestCase
                 $this->assertTrue(true);
             }
         }
+    }
+
+    public function test_staging_uuids_are_stable_and_valid_v5_values(): void
+    {
+        $id = StagingIdentifiers::stableUuid('dataset-a', 'live-tv-channel:one');
+        $this->assertSame($id, StagingIdentifiers::stableUuid('dataset-a', 'live-tv-channel:one'));
+        $this->assertNotSame($id, StagingIdentifiers::stableUuid('dataset-b', 'live-tv-channel:one'));
+        $this->assertMatchesRegularExpression('/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/', $id);
     }
 
     public function test_staging_safety_gate_fails_closed_when_isolation_is_not_explicit(): void

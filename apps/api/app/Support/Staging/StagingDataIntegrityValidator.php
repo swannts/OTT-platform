@@ -68,8 +68,10 @@ final class StagingDataIntegrityValidator
                 'audit_logs' => $groupedCounts['admin_audit_log'] ?? 0,
                 'analytics_reports' => $groupedCounts['analytics_report_run'] ?? 0,
                 'content_review_submissions' => $groupedCounts['content_review_submission'] ?? 0,
+                'live_tv_categories' => $groupedCounts['live_tv_category'] ?? 0,
+                'live_tv_channels' => $groupedCounts['live_tv_channel'] ?? 0,
             ];
-            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'cast_crew', 'entertainment_talent_mapping', 'content_license_window', 'content_license_territory', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction', 'media_asset', 'media_processing_job', 'media_asset_track', 'entertainment_media_link', 'blog', 'coupon', 'coupon_plan_mapping', 'user_search_history', 'support_ticket', 'support_ticket_note', 'marketing_consent', 'marketing_campaign', 'notification', 'operations_incident', 'admin_audit_log', 'analytics_report_run', 'content_review_submission'];
+            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'cast_crew', 'entertainment_talent_mapping', 'content_license_window', 'content_license_territory', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction', 'media_asset', 'media_processing_job', 'media_asset_track', 'entertainment_media_link', 'blog', 'coupon', 'coupon_plan_mapping', 'user_search_history', 'support_ticket', 'support_ticket_note', 'marketing_consent', 'marketing_campaign', 'notification', 'operations_incident', 'admin_audit_log', 'analytics_report_run', 'content_review_submission', 'live_tv_category', 'live_tv_channel'];
             $unknownTypes = array_diff(array_keys($groupedCounts), $supportedTypes);
             foreach ($unknownTypes as $type) {
                 $violations[] = "Dataset {$manifest->dataset_id} has an unsupported ownership type {$type}.";
@@ -245,6 +247,33 @@ final class StagingDataIntegrityValidator
                 })->count();
             if ($hasReviewPermissions > 0) {
                 $violations[] = "Dataset {$manifest->dataset_id} has {$hasReviewPermissions} content reviews without owned staff holding the required submitter or reviewer roles.";
+            }
+            $invalidLiveTvCategories = DB::table('staging_dataset_records as owners')
+                ->leftJoin('live_tv_category as categories', 'categories.id', '=', 'owners.record_id')
+                ->where('owners.dataset_id', $manifest->dataset_id)->where('owners.entity_type', 'live_tv_category')
+                ->where(function ($query): void {
+                    $query->whereNull('categories.id')->orWhereNotNull('categories.deleted_at')
+                        ->orWhere('categories.status', '!=', 1)->orWhereColumn('categories.slug', '!=', 'owners.entity_key');
+                })->count();
+            $invalidLiveTvChannels = DB::table('staging_dataset_records as owners')
+                ->leftJoin('live_tv_channel as channels', 'channels.id', '=', 'owners.record_id')
+                ->leftJoin('staging_dataset_records as category_owner', function ($join) use ($manifest): void {
+                    $join->on('category_owner.record_id', '=', 'channels.category_id')
+                        ->where('category_owner.dataset_id', '=', $manifest->dataset_id)->where('category_owner.entity_type', '=', 'live_tv_category');
+                })
+                ->where('owners.dataset_id', $manifest->dataset_id)->where('owners.entity_type', 'live_tv_channel')
+                ->where(function ($query): void {
+                    $query->whereNull('channels.id')->orWhereNotNull('channels.deleted_at')
+                        ->orWhere('channels.status', '!=', 0)->orWhereNull('channels.name')->orWhere('channels.name', '')
+                        ->orWhereNull('channels.name_bn')->orWhere('channels.name_bn', '')
+                        ->orWhereNull('channels.description_bn')->orWhere('channels.description_bn', '')
+                        ->orWhereNull('category_owner.id')->orWhereColumn('channels.slug', '!=', 'owners.entity_key');
+                })->count();
+            $mappedDraftChannels = DB::table('staging_dataset_records as owners')
+                ->join('live_tv_stream_content_mapping as mappings', 'mappings.tv_channel_id', '=', 'owners.record_id')
+                ->where('owners.dataset_id', $manifest->dataset_id)->where('owners.entity_type', 'live_tv_channel')->whereNull('mappings.deleted_at')->count();
+            if ($invalidLiveTvCategories > 0 || $invalidLiveTvChannels > 0 || $mappedDraftChannels > 0) {
+                $violations[] = "Dataset {$manifest->dataset_id} has {$invalidLiveTvCategories} invalid Live TV categories, {$invalidLiveTvChannels} invalid channel drafts, or {$mappedDraftChannels} unverified stream mappings.";
             }
             $invalidCoupons = DB::table('staging_dataset_records as owners')
                 ->leftJoin('coupons', 'coupons.id', '=', 'owners.record_id')
@@ -816,7 +845,7 @@ final class StagingDataIntegrityValidator
                 }
             }
             $configuredCounts = (array) ($manifest->configuration['counts'] ?? []);
-            foreach (['staff' => 'staff', 'customers' => 'customers', 'devices' => 'devices', 'cast_crew' => 'cast_crew', 'plans' => 'plans', 'subscriptions' => 'subscriptions', 'payments' => 'payments', 'media_assets' => 'media_assets', 'coupons' => 'coupons', 'search_history' => 'search_history', 'support_tickets' => 'support_tickets', 'marketing_campaigns' => 'campaigns', 'notifications' => 'notifications', 'incidents' => 'incidents', 'audit_logs' => 'audit_logs', 'analytics_reports' => 'analytics_reports', 'content_review_submissions' => 'content_review_submissions'] as $entity => $targetKey) {
+            foreach (['staff' => 'staff', 'customers' => 'customers', 'devices' => 'devices', 'cast_crew' => 'cast_crew', 'plans' => 'plans', 'subscriptions' => 'subscriptions', 'payments' => 'payments', 'media_assets' => 'media_assets', 'coupons' => 'coupons', 'search_history' => 'search_history', 'support_tickets' => 'support_tickets', 'marketing_campaigns' => 'campaigns', 'notifications' => 'notifications', 'incidents' => 'incidents', 'audit_logs' => 'audit_logs', 'analytics_reports' => 'analytics_reports', 'content_review_submissions' => 'content_review_submissions', 'live_tv_channels' => 'live_channels'] as $entity => $targetKey) {
                 if (isset($configuredCounts[$targetKey]) && $counts[$entity] !== (int) $configuredCounts[$targetKey]) {
                     $violations[] = "Dataset {$manifest->dataset_id} has {$counts[$entity]} {$entity}; configured target is {$configuredCounts[$targetKey]}.";
                 }
