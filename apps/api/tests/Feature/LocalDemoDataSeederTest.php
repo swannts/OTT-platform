@@ -17,7 +17,7 @@ class LocalDemoDataSeederTest extends TestCase
     public function test_explicit_local_demo_seed_populates_major_product_areas_idempotently(): void
     {
         $this->assertSame('mysql', config('database.default'));
-        $this->assertSame('swann_test', config('database.connections.mysql.database'), 'Feature tests must never connect to the local application database.');
+        $this->assertSame(getenv('STAGING_TEST_DATABASE') ?: 'swann_test', config('database.connections.mysql.database'), 'Feature tests must never connect to the local application database.');
 
         config(['app.demo_seed_password' => 'local-demo-only-test-password']);
         $existingUser = User::factory()->create([

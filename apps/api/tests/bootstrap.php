@@ -1,11 +1,16 @@
 <?php
 
+$testDatabase = getenv('STAGING_TEST_DATABASE') ?: 'swann_test';
+if (! preg_match('/^swann_test(?:_[a-zA-Z0-9_-]+)?$/', $testDatabase)) {
+    throw new RuntimeException('STAGING_TEST_DATABASE must use the isolated swann_test[_suffix] naming convention.');
+}
+
 $testingEnvironment = [
     'APP_ENV' => 'testing',
     'BCRYPT_ROUNDS' => '4',
     'CACHE_DRIVER' => 'array',
     'DB_CONNECTION' => 'mysql',
-    'DB_DATABASE' => 'swann_test',
+    'DB_DATABASE' => $testDatabase,
     'MAIL_MAILER' => 'array',
     'QUEUE_CONNECTION' => 'sync',
     'SESSION_DRIVER' => 'array',
@@ -30,9 +35,9 @@ try {
         $databasePassword,
         [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION],
     );
-    $pdo->exec('CREATE DATABASE IF NOT EXISTS `swann_test` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
+    $pdo->exec('CREATE DATABASE IF NOT EXISTS `'.$testDatabase.'` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
 } catch (Throwable $error) {
-    throw new RuntimeException('Could not prepare the isolated swann_test database for PHPUnit.', 0, $error);
+    throw new RuntimeException("Could not prepare the isolated {$testDatabase} database for PHPUnit.", 0, $error);
 }
 
 require dirname(__DIR__).'/vendor/autoload.php';

@@ -21,6 +21,8 @@ return [
     'large_min_free_disk_gb' => (int) env('STAGING_SEED_LARGE_MIN_FREE_DISK_GB', 10),
     'staff_password' => env('STAGING_SEED_STAFF_PASSWORD'),
     'customer_password' => env('STAGING_SEED_CUSTOMER_PASSWORD'),
+    'ffmpeg_binary' => env('STAGING_SEED_FFMPEG_BINARY', 'ffmpeg'),
+    'ffprobe_binary' => env('STAGING_SEED_FFPROBE_BINARY', 'ffprobe'),
     'profiles' => [
         'small' => [
             'staff' => 12, 'customers' => 1000, 'profiles' => 1600, 'devices' => 2000,
@@ -30,7 +32,7 @@ return [
             'refunds' => 30, 'coupons' => 15, 'campaigns' => 10, 'support_tickets' => 100,
             'watchlists' => 3000, 'reviews' => 1000, 'playback_sessions' => 10000,
             'watch_history' => 15000, 'search_history' => 10000, 'notifications' => 5000,
-            'audit_logs' => 5000,
+            'audit_logs' => 5000, 'media_assets' => 5,
         ],
         'standard' => [
             'staff' => 36, 'customers' => 10000, 'profiles' => 18000, 'devices' => 25000,
@@ -40,7 +42,7 @@ return [
             'refunds' => 600, 'coupons' => 50, 'campaigns' => 50, 'support_tickets' => 2000,
             'watchlists' => 50000, 'reviews' => 15000, 'playback_sessions' => 250000,
             'watch_history' => 500000, 'search_history' => 200000, 'notifications' => 100000,
-            'audit_logs' => 100000,
+            'audit_logs' => 100000, 'media_assets' => 25,
         ],
         'large' => [
             'staff' => 120, 'customers' => 100000, 'profiles' => 180000, 'devices' => 250000,
@@ -50,7 +52,7 @@ return [
             'refunds' => 7000, 'coupons' => 200, 'campaigns' => 200, 'support_tickets' => 20000,
             'watchlists' => 500000, 'reviews' => 150000, 'playback_sessions' => 3000000,
             'watch_history' => 5000000, 'search_history' => 2000000, 'notifications' => 1000000,
-            'audit_logs' => 1000000,
+            'audit_logs' => 1000000, 'media_assets' => 50,
         ],
     ],
 ];

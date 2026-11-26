@@ -3,23 +3,33 @@
 namespace Tests\Feature;
 
 use App\Support\Staging\StagingDataIntegrityValidator;
+use App\Models\MediaAsset;
+use App\Services\Media\MediaReadinessService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class RelationalStagingGenerationTest extends TestCase
 {
     use DatabaseTransactions;
 
+    protected function tearDown(): void
+    {
+        Storage::disk('private')->deleteDirectory('media/staging/feature-staging-small');
+        parent::tearDown();
+    }
+
     public function test_small_dataset_generation_is_relational_and_repeatable(): void
     {
+        $testDatabase = getenv('STAGING_TEST_DATABASE') ?: 'swann_test';
         config([
             'app.env' => 'testing',
             'database.default' => 'mysql',
-            'database.connections.mysql.database' => 'swann_test',
+            'database.connections.mysql.database' => $testDatabase,
             'staging-data.enabled' => true,
             'staging-data.dataset_id' => 'feature-staging-small',
-            'staging-data.allowed_database' => 'swann_test',
+            'staging-data.allowed_database' => $testDatabase,
             'staging-data.allowed_database_host' => '127.0.0.1',
             'staging-data.isolated_cache_prefix' => 'ott_staging_feature_test',
             'cache.prefix' => 'ott_staging_feature_test',
@@ -55,6 +65,7 @@ class RelationalStagingGenerationTest extends TestCase
                 'cast_crew' => 12,
                 'subscriptions' => 24,
                 'payments' => 30,
+                'media_assets' => 2,
             ], JSON_THROW_ON_ERROR),
         ];
 
@@ -76,6 +87,13 @@ class RelationalStagingGenerationTest extends TestCase
         $this->assertSame(48, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'entertainment_talent_mapping')->count());
         $this->assertSame(11, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'content_license_window')->count());
         $this->assertSame(19, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'content_license_territory')->count());
+        $mediaAssetIds = DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'media_asset')->pluck('record_id');
+        $this->assertCount(2, $mediaAssetIds);
+        foreach (MediaAsset::query()->whereIn('id', $mediaAssetIds)->with('assetTracks')->get() as $asset) {
+            $this->assertTrue(app(MediaReadinessService::class)->inspect($asset)['ready']);
+            $this->assertSame($asset->sha256, hash_file('sha256', Storage::disk('private')->path($asset->source_path)));
+        }
+        $this->assertSame(2, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'entertainment_media_link')->count());
         $this->assertSame(0, DB::table('verified_payments')->count());
         $this->assertSame(0, DB::table('subscriptions')->where('status', 'active')->where('is_trial', 0)->whereNull('payment_id')->count());
 
