@@ -74,6 +74,9 @@ final readonly class StagingProfile
         if ($counts['notifications'] > 0 && $counts['customers'] === 0) {
             throw new InvalidArgumentException('Staging notifications require customer accounts.');
         }
+        if ($counts['analytics_reports'] > 0 && $counts['staff'] < count(array_keys(\App\Support\Rbac\RbacRegistry::roles()))) {
+            throw new InvalidArgumentException('Staging analytics reports require canonical administrative staff.');
+        }
         if ($counts['movies'] + $counts['series'] > 0 && $counts['cast_crew'] < 4) {
             throw new InvalidArgumentException('Catalog content requires at least three cast members and one director.');
         }

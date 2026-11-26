@@ -73,6 +73,7 @@ class RelationalStagingGenerationTest extends TestCase
                 'notifications' => 15,
                 'incidents' => 6,
                 'audit_logs' => 12,
+                'analytics_reports' => 5,
             ], JSON_THROW_ON_ERROR),
         ];
 
@@ -120,6 +121,8 @@ class RelationalStagingGenerationTest extends TestCase
         $this->assertSame(1, DB::table('notifications')->whereNotNull('archived_at')->count());
         $this->assertSame(6, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'operations_incident')->count());
         $this->assertSame(12, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'admin_audit_log')->count());
+        $this->assertSame(5, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'analytics_report_run')->count());
+        $this->assertSame(5, DB::table('analytics_report_runs')->where('status', 'ready')->whereNotNull('result')->count());
         $this->assertSame(0, DB::table('operations_incidents')->where('title', 'not a staging incident')->count());
         $this->assertSame(0, DB::table('verified_payments')->count());
         $this->assertSame(0, DB::table('subscriptions')->where('status', 'active')->where('is_trial', 0)->whereNull('payment_id')->count());
@@ -147,5 +150,6 @@ class RelationalStagingGenerationTest extends TestCase
         $this->assertSame(15, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'notification')->count());
         $this->assertSame(6, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'operations_incident')->count());
         $this->assertSame(12, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'admin_audit_log')->count());
+        $this->assertSame(5, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'analytics_report_run')->count());
     }
 }
