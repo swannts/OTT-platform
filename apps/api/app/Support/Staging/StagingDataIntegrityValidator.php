@@ -74,12 +74,67 @@ final class StagingDataIntegrityValidator
                 'live_tv_categories' => $groupedCounts['live_tv_category'] ?? 0,
                 'live_tv_channels' => $groupedCounts['live_tv_channel'] ?? 0,
                 'videos' => $groupedCounts['video'] ?? 0,
+                'watchlists' => $groupedCounts['watchlist'] ?? 0,
+                'reviews' => $groupedCounts['review'] ?? 0,
+                'watch_history' => $groupedCounts['user_watch_history'] ?? 0,
             ];
-            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'playback_token', 'playback_session', 'search_document', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'cast_crew', 'entertainment_talent_mapping', 'content_license_window', 'content_license_territory', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction', 'media_asset', 'media_processing_job', 'media_asset_track', 'entertainment_media_link', 'blog', 'coupon', 'coupon_plan_mapping', 'user_search_history', 'support_ticket', 'support_ticket_note', 'marketing_consent', 'marketing_campaign', 'notification', 'operations_incident', 'admin_audit_log', 'analytics_report_run', 'content_review_submission', 'live_tv_category', 'live_tv_channel', 'video'];
+            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'playback_token', 'playback_session', 'search_document', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'cast_crew', 'entertainment_talent_mapping', 'content_license_window', 'content_license_territory', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction', 'media_asset', 'media_processing_job', 'media_asset_track', 'entertainment_media_link', 'blog', 'coupon', 'coupon_plan_mapping', 'user_search_history', 'support_ticket', 'support_ticket_note', 'marketing_consent', 'marketing_campaign', 'notification', 'operations_incident', 'admin_audit_log', 'analytics_report_run', 'content_review_submission', 'live_tv_category', 'live_tv_channel', 'video', 'watchlist', 'review', 'user_watch_history'];
             $unknownTypes = array_diff(array_keys($groupedCounts), $supportedTypes);
             foreach ($unknownTypes as $type) {
                 $violations[] = "Dataset {$manifest->dataset_id} has an unsupported ownership type {$type}.";
             }
+            $invalidWatchlists = DB::table('staging_dataset_records as owners')
+                ->leftJoin('watchlists', 'watchlists.id', '=', 'owners.record_id')
+                ->leftJoin('user_multi_profiles as profiles', 'profiles.id', '=', 'watchlists.profile_id')
+                ->leftJoin('entertainments as content', 'content.id', '=', 'watchlists.entertainment_id')
+                ->leftJoin('staging_dataset_records as content_owners', function ($join) use ($manifest): void {
+                    $join->on('content_owners.record_id', '=', 'content.id')->where('content_owners.dataset_id', '=', $manifest->dataset_id)->where('content_owners.entity_type', '=', 'entertainment');
+                })
+                ->leftJoin('staging_dataset_records as profile_owners', function ($join) use ($manifest): void {
+                    $join->on('profile_owners.entity_key', '=', 'profiles.id')->where('profile_owners.dataset_id', '=', $manifest->dataset_id)->where('profile_owners.entity_type', '=', 'user_multi_profile');
+                })
+                ->where('owners.dataset_id', $manifest->dataset_id)->where('owners.entity_type', 'watchlist')
+                ->where(function ($query) use ($manifest): void {
+                    $query->whereNull('watchlists.id')->orWhereNull('content.id')->orWhereNull('profiles.id')->orWhereNull('content_owners.record_id')->orWhereNull('profile_owners.record_id')
+                        ->orWhereColumn('profiles.user_id', '!=', 'watchlists.user_id')
+                        ->orWhereColumn('watchlists.type', '!=', 'content.type')
+                        ->orWhereNotIn('content.type', ['movie', 'tvshow'])
+                        ->orWhereNotIn('watchlists.user_id', DB::table('staging_dataset_records as customers')->join('users', 'users.email', '=', 'customers.entity_key')->select('users.id')->where('customers.dataset_id', $manifest->dataset_id)->where('customers.entity_type', 'customer'));
+                })->count();
+            if ($invalidWatchlists > 0) $violations[] = "Dataset {$manifest->dataset_id} has {$invalidWatchlists} watchlists with invalid customer, profile, or title relationships.";
+            $invalidReviews = DB::table('staging_dataset_records as owners')
+                ->leftJoin('reviews', 'reviews.id', '=', 'owners.record_id')
+                ->leftJoin('entertainments as content', 'content.id', '=', 'reviews.entertainment_id')
+                ->leftJoin('staging_dataset_records as content_owners', function ($join) use ($manifest): void {
+                    $join->on('content_owners.record_id', '=', 'content.id')->where('content_owners.dataset_id', '=', $manifest->dataset_id)->where('content_owners.entity_type', '=', 'entertainment');
+                })
+                ->leftJoin('users', 'users.id', '=', 'reviews.user_id')
+                ->leftJoin('staging_dataset_records as customer_owners', function ($join) use ($manifest): void {
+                    $join->on('customer_owners.entity_key', '=', 'users.email')->where('customer_owners.dataset_id', '=', $manifest->dataset_id)->where('customer_owners.entity_type', '=', 'customer');
+                })
+                ->where('owners.dataset_id', $manifest->dataset_id)->where('owners.entity_type', 'review')
+                ->where(function ($query): void {
+                    $query->whereNull('reviews.id')->orWhereNull('content.id')->orWhereNull('content_owners.record_id')->orWhereNull('customer_owners.record_id')->orWhereNull('reviews.review')
+                        ->orWhere('reviews.rating', '<', 1)->orWhere('reviews.rating', '>', 5);
+                })->count();
+            if ($invalidReviews > 0) $violations[] = "Dataset {$manifest->dataset_id} has {$invalidReviews} reviews with invalid customer content or rating values.";
+            $invalidWatchHistory = DB::table('staging_dataset_records as owners')
+                ->leftJoin('user_watch_histories as history', 'history.id', '=', 'owners.record_id')
+                ->leftJoin('user_multi_profiles as profiles', 'profiles.id', '=', 'history.profile_id')
+                ->leftJoin('entertainments as content', 'content.id', '=', 'history.entertainment_id')
+                ->leftJoin('staging_dataset_records as content_owners', function ($join) use ($manifest): void {
+                    $join->on('content_owners.record_id', '=', 'content.id')->where('content_owners.dataset_id', '=', $manifest->dataset_id)->where('content_owners.entity_type', '=', 'entertainment');
+                })
+                ->leftJoin('staging_dataset_records as profile_owners', function ($join) use ($manifest): void {
+                    $join->on('profile_owners.entity_key', '=', 'profiles.id')->where('profile_owners.dataset_id', '=', $manifest->dataset_id)->where('profile_owners.entity_type', '=', 'user_multi_profile');
+                })
+                ->where('owners.dataset_id', $manifest->dataset_id)->where('owners.entity_type', 'user_watch_history')
+                ->where(function ($query) use ($manifest): void {
+                    $query->whereNull('history.id')->orWhereNull('content.id')->orWhereNull('profiles.id')->orWhereNull('content_owners.record_id')->orWhereNull('profile_owners.record_id')
+                        ->orWhereColumn('profiles.user_id', '!=', 'history.user_id')
+                        ->orWhereNotIn('history.user_id', DB::table('staging_dataset_records as customers')->join('users', 'users.email', '=', 'customers.entity_key')->select('users.id')->where('customers.dataset_id', $manifest->dataset_id)->where('customers.entity_type', 'customer'));
+                })->count();
+            if ($invalidWatchHistory > 0) $violations[] = "Dataset {$manifest->dataset_id} has {$invalidWatchHistory} watch-history rows with invalid customer, profile, or title relationships.";
             $registeredUserTypes = ['staff_user', 'customer'];
             $invalidUsers = DB::table('staging_dataset_records as records')
                 ->leftJoin('users', 'users.email', '=', 'records.entity_key')
@@ -984,7 +1039,7 @@ final class StagingDataIntegrityValidator
                 }
             }
             $configuredCounts = (array) ($manifest->configuration['counts'] ?? []);
-            foreach (['staff' => 'staff', 'customers' => 'customers', 'devices' => 'devices', 'playback_sessions' => 'playback_sessions', 'cast_crew' => 'cast_crew', 'plans' => 'plans', 'subscriptions' => 'subscriptions', 'payments' => 'payments', 'media_assets' => 'media_assets', 'coupons' => 'coupons', 'search_history' => 'search_history', 'support_tickets' => 'support_tickets', 'marketing_campaigns' => 'campaigns', 'notifications' => 'notifications', 'incidents' => 'incidents', 'audit_logs' => 'audit_logs', 'analytics_reports' => 'analytics_reports', 'content_review_submissions' => 'content_review_submissions', 'live_tv_channels' => 'live_channels', 'videos' => 'videos'] as $entity => $targetKey) {
+            foreach (['staff' => 'staff', 'customers' => 'customers', 'devices' => 'devices', 'playback_sessions' => 'playback_sessions', 'watchlists' => 'watchlists', 'reviews' => 'reviews', 'watch_history' => 'watch_history', 'cast_crew' => 'cast_crew', 'plans' => 'plans', 'subscriptions' => 'subscriptions', 'payments' => 'payments', 'media_assets' => 'media_assets', 'coupons' => 'coupons', 'search_history' => 'search_history', 'support_tickets' => 'support_tickets', 'marketing_campaigns' => 'campaigns', 'notifications' => 'notifications', 'incidents' => 'incidents', 'audit_logs' => 'audit_logs', 'analytics_reports' => 'analytics_reports', 'content_review_submissions' => 'content_review_submissions', 'live_tv_channels' => 'live_channels', 'videos' => 'videos'] as $entity => $targetKey) {
                 if (isset($configuredCounts[$targetKey]) && $counts[$entity] !== (int) $configuredCounts[$targetKey]) {
                     $violations[] = "Dataset {$manifest->dataset_id} has {$counts[$entity]} {$entity}; configured target is {$configuredCounts[$targetKey]}.";
                 }

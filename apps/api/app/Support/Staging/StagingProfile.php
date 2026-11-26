@@ -65,6 +65,12 @@ final readonly class StagingProfile
         if ($counts['search_history'] > 0 && ($counts['customers'] === 0 || $counts['profiles'] === 0 || $counts['movies'] + $counts['series'] === 0)) {
             throw new InvalidArgumentException('Search history requires staging customers, profiles, and catalog titles.');
         }
+        if (($counts['watchlists'] > 0 || $counts['watch_history'] > 0) && ($counts['customers'] === 0 || $counts['profiles'] === 0 || $counts['movies'] + $counts['series'] === 0)) {
+            throw new InvalidArgumentException('Staging watchlists and watch history require customers, profiles, and catalog titles.');
+        }
+        if ($counts['reviews'] > 0 && ($counts['customers'] === 0 || $counts['movies'] + $counts['series'] === 0)) {
+            throw new InvalidArgumentException('Staging customer reviews require customers and catalog titles.');
+        }
         if ($counts['content_review_submissions'] > 0 && $counts['movies'] + $counts['series'] === 0) {
             throw new InvalidArgumentException('Content review submissions require staging movies or series.');
         }
