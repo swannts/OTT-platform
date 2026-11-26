@@ -58,8 +58,9 @@ final class StagingDataIntegrityValidator
                 'blogs' => $groupedCounts['blog'] ?? 0,
                 'coupons' => $groupedCounts['coupon'] ?? 0,
                 'coupon_plan_mappings' => $groupedCounts['coupon_plan_mapping'] ?? 0,
+                'search_history' => $groupedCounts['user_search_history'] ?? 0,
             ];
-            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'cast_crew', 'entertainment_talent_mapping', 'content_license_window', 'content_license_territory', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction', 'media_asset', 'media_processing_job', 'media_asset_track', 'entertainment_media_link', 'blog', 'coupon', 'coupon_plan_mapping'];
+            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'cast_crew', 'entertainment_talent_mapping', 'content_license_window', 'content_license_territory', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction', 'media_asset', 'media_processing_job', 'media_asset_track', 'entertainment_media_link', 'blog', 'coupon', 'coupon_plan_mapping', 'user_search_history'];
             $unknownTypes = array_diff(array_keys($groupedCounts), $supportedTypes);
             foreach ($unknownTypes as $type) {
                 $violations[] = "Dataset {$manifest->dataset_id} has an unsupported ownership type {$type}.";
@@ -196,6 +197,36 @@ final class StagingDataIntegrityValidator
                 })->count();
             if ($invalidCoupons > 0 || $invalidCouponMappings > 0) {
                 $violations[] = "Dataset {$manifest->dataset_id} has {$invalidCoupons} invalid staging coupons and {$invalidCouponMappings} invalid coupon-to-plan mappings.";
+            }
+            $invalidSearchHistory = DB::table('staging_dataset_records as owners')
+                ->leftJoin('user_search_histories as history', 'history.id', '=', 'owners.record_id')
+                ->leftJoin('users', 'users.id', '=', 'history.user_id')
+                ->leftJoin('user_multi_profiles as profiles', function ($join): void {
+                    $join->on('profiles.id', '=', 'history.profile_id')->on('profiles.user_id', '=', 'history.user_id');
+                })
+                ->leftJoin('staging_dataset_records as customer_owner', function ($join) use ($manifest): void {
+                    $join->on('customer_owner.entity_key', '=', 'users.email')
+                        ->where('customer_owner.dataset_id', '=', $manifest->dataset_id)
+                        ->where('customer_owner.entity_type', '=', 'customer');
+                })
+                ->leftJoin('staging_dataset_records as profile_owner', function ($join) use ($manifest): void {
+                    $join->where('profile_owner.dataset_id', '=', $manifest->dataset_id)
+                        ->where('profile_owner.entity_type', '=', 'user_multi_profile')
+                        ->whereRaw('profile_owner.entity_key = CAST(profiles.id AS CHAR)');
+                })
+                ->where('owners.dataset_id', $manifest->dataset_id)
+                ->where('owners.entity_type', 'user_search_history')
+                ->where(function ($query) use ($manifest): void {
+                    $query->whereNull('history.id')->orWhereNull('users.id')->orWhereNull('profiles.id')
+                        ->orWhereNull('customer_owner.id')->orWhereNull('profile_owner.id')
+                        ->orWhereNull('history.search_query')->orWhere('history.search_query', '')
+                        ->orWhereNotIn('history.type', ['movie', 'tvshow'])
+                        ->orWhereColumn('owners.record_id', '!=', 'history.id')
+                        ->orWhereColumn('history.created_at', '<', 'users.created_at')
+                        ->orWhereDate('history.created_at', '>', $manifest->reference_date);
+                })->count();
+            if ($invalidSearchHistory > 0) {
+                $violations[] = "Dataset {$manifest->dataset_id} has {$invalidSearchHistory} search-history rows with invalid customer/profile ownership, content type, or timestamp.";
             }
             $ownedMedia = DB::table('staging_dataset_records')
                 ->where('dataset_id', $manifest->dataset_id)
@@ -482,7 +513,7 @@ final class StagingDataIntegrityValidator
                 }
             }
             $configuredCounts = (array) ($manifest->configuration['counts'] ?? []);
-            foreach (['staff' => 'staff', 'customers' => 'customers', 'devices' => 'devices', 'cast_crew' => 'cast_crew', 'plans' => 'plans', 'subscriptions' => 'subscriptions', 'payments' => 'payments', 'media_assets' => 'media_assets', 'coupons' => 'coupons'] as $entity => $targetKey) {
+            foreach (['staff' => 'staff', 'customers' => 'customers', 'devices' => 'devices', 'cast_crew' => 'cast_crew', 'plans' => 'plans', 'subscriptions' => 'subscriptions', 'payments' => 'payments', 'media_assets' => 'media_assets', 'coupons' => 'coupons', 'search_history' => 'search_history'] as $entity => $targetKey) {
                 if (isset($configuredCounts[$targetKey]) && $counts[$entity] !== (int) $configuredCounts[$targetKey]) {
                     $violations[] = "Dataset {$manifest->dataset_id} has {$counts[$entity]} {$entity}; configured target is {$configuredCounts[$targetKey]}.";
                 }
@@ -537,7 +568,7 @@ final class StagingDataIntegrityValidator
         return [
             'valid' => $violations === [],
             'complete' => $complete,
-            'coverage' => 'manifest, staff role, customer identity, profile and device ownership, unpublished bilingual catalog, genre mappings, fictional cast/crew credits, bilingual editorial articles, coupon and plan mappings, licensing windows and territories, actual media fixture readiness and ownership, series hierarchy, plans, subscription lifecycle, and synthetic payment attempts; remaining business-domain checks are pending',
+            'coverage' => 'manifest, staff role, customer identity, profile and device ownership, unpublished bilingual catalog, genre mappings, fictional cast/crew credits, bilingual editorial articles, coupon and plan mappings, customer search-history ownership, licensing windows and territories, actual media fixture readiness and ownership, series hierarchy, plans, subscription lifecycle, and synthetic payment attempts; remaining business-domain checks are pending',
             'checked_at' => now()->toIso8601String(),
             'datasets' => $datasets,
             'violations' => array_values(array_unique($violations)),

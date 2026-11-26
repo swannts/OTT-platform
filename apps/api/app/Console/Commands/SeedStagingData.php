@@ -11,6 +11,7 @@ use App\Support\Staging\StagingContentLicensingGenerator;
 use App\Support\Staging\StagingMediaFixtureGenerator;
 use App\Support\Staging\StagingEditorialGenerator;
 use App\Support\Staging\StagingCouponGenerator;
+use App\Support\Staging\StagingSearchHistoryGenerator;
 use App\Support\Staging\StagingGenerationContext;
 use App\Support\Staging\StagingProfile;
 use App\Support\Staging\StagingStaffGenerator;
@@ -51,6 +52,7 @@ class SeedStagingData extends Command
         StagingMediaFixtureGenerator $mediaFixtureGenerator,
         StagingEditorialGenerator $editorialGenerator,
         StagingCouponGenerator $couponGenerator,
+        StagingSearchHistoryGenerator $searchHistoryGenerator,
     ): int {
         try {
             $profileName = (string) ($this->option('profile') ?: config('staging-data.profile'));
@@ -107,7 +109,7 @@ class SeedStagingData extends Command
             ['Configured target movies', (string) $profile->counts['movies']],
             ['Configured target series', (string) $profile->counts['series']],
             ['Configured target episodes', (string) $profile->counts['episodes']],
-            ['Currently implemented generation', 'RBAC, staff, customers, profiles, devices, bilingual catalog, series hierarchy, editorial articles, coupons, shared cast/crew credits, licensing, playable local media fixtures, plans, subscriptions, and synthetic payment attempts'],
+            ['Currently implemented generation', 'RBAC, staff, customers, profiles, devices, bilingual catalog, series hierarchy, editorial articles, coupons, search history, shared cast/crew credits, licensing, playable local media fixtures, plans, subscriptions, and synthetic payment attempts'],
         ]);
 
         if ($violations !== []) {
@@ -145,7 +147,7 @@ class SeedStagingData extends Command
                 'history_months' => $historyMonths,
                 'batch_size' => $profile->batchSize,
                 'counts' => $profile->counts,
-                'implemented_domains' => ['rbac', 'staff', 'customers', 'profiles', 'devices', 'genres', 'movies', 'series', 'seasons', 'episodes', 'blogs', 'coupons', 'cast_crew', 'talent_mappings', 'content_licenses', 'media_fixtures', 'plans', 'subscriptions', 'payments'],
+                'implemented_domains' => ['rbac', 'staff', 'customers', 'profiles', 'devices', 'genres', 'movies', 'series', 'seasons', 'episodes', 'blogs', 'coupons', 'search_history', 'cast_crew', 'talent_mappings', 'content_licenses', 'media_fixtures', 'plans', 'subscriptions', 'payments'],
             ];
             $manifest = StagingDatasetManifest::query()->where('dataset_id', $datasetId)->first();
             $savedInputs = (array) ($manifest?->configuration ?? []);
@@ -179,6 +181,7 @@ class SeedStagingData extends Command
                 $editorialResults = $editorialGenerator->generate($context);
                 $subscriptionResults = $subscriptionGenerator->generate($context);
                 $couponResults = $couponGenerator->generate($context);
+                $searchHistoryResults = $searchHistoryGenerator->generate($context);
                 $recordCounts = DB::table('staging_dataset_records')
                     ->where('dataset_id', $datasetId)
                     ->select('entity_type', DB::raw('count(*) as records'))
@@ -211,6 +214,7 @@ class SeedStagingData extends Command
                     'blogs' => $recordCounts['blog'] ?? 0,
                     'coupons' => $recordCounts['coupon'] ?? 0,
                     'coupon_plan_mappings' => $recordCounts['coupon_plan_mapping'] ?? 0,
+                    'search_history' => $recordCounts['user_search_history'] ?? 0,
                 ];
                 $recordCounts['movies'] = $catalogResults['movies'];
                 $recordCounts['series'] = $catalogResults['series'];
@@ -255,7 +259,8 @@ class SeedStagingData extends Command
                 $this->info(sprintf('Dataset media: %d actual local test assets and %d linked catalog titles.', $mediaResults['assets'], $mediaResults['linked_titles']));
                 $this->info(sprintf('Dataset editorial: %d bilingual articles (%d published, %d drafts).', $editorialResults['blogs'], $editorialResults['published'], $editorialResults['drafts']));
                 $this->info(sprintf('Dataset coupons: %d staging coupons across %d owned plan mappings (%d active, %d expired, %d scheduled, %d inactive).', $couponResults['coupons'], $couponResults['plan_mappings'], $couponResults['active'], $couponResults['expired'], $couponResults['scheduled'], $couponResults['inactive']));
-                $this->warn('This milestone remains partial: refunds/reconciliation, playback, customer engagement, marketing, support, notifications, operations, analytics, and search indexing are not yet generated. Catalog entries remain unpublished; synthetic transactions never contact payment providers.');
+                $this->info(sprintf('Dataset search activity: %d historical searches linked to owned customer profiles.', $searchHistoryResults['search_history']));
+                $this->warn('This milestone remains partial: refunds/reconciliation, playback, watchlists/reviews, marketing, support, notifications, operations, analytics, and search indexing are not yet generated. Catalog entries remain unpublished; synthetic transactions never contact payment providers.');
 
                 return self::SUCCESS;
             } catch (Throwable $exception) {

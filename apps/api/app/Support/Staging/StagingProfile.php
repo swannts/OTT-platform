@@ -62,6 +62,9 @@ final readonly class StagingProfile
         if ($counts['coupons'] > 0 && $counts['plans'] === 0) {
             throw new InvalidArgumentException('Coupon targets require staging plans.');
         }
+        if ($counts['search_history'] > 0 && ($counts['customers'] === 0 || $counts['profiles'] === 0 || $counts['movies'] + $counts['series'] === 0)) {
+            throw new InvalidArgumentException('Search history requires staging customers, profiles, and catalog titles.');
+        }
         if ($counts['movies'] + $counts['series'] > 0 && $counts['cast_crew'] < 4) {
             throw new InvalidArgumentException('Catalog content requires at least three cast members and one director.');
         }
