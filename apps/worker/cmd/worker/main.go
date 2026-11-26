@@ -27,11 +27,13 @@ func main() {
 
 	log.Info().Msg("Starting OTT Go Background Worker Service...")
 
-	cfg := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatal().Err(err).Msg("Invalid worker configuration")
+	}
 
 	// 2. Database Connection
 	var db *sql.DB
-	var err error
 	if cfg.DBDSN != "" {
 		db, err = sql.Open("mysql", cfg.DBDSN)
 		if err != nil {
@@ -61,7 +63,7 @@ func main() {
 	consumersReady := true
 
 	// 5. Start Queue Consumers
-	if err := b.Consume(ctx, broker.QueueMedia, 4, mediaH.Handle); err != nil {
+	if err := b.Consume(ctx, broker.QueueMedia, cfg.MediaConcurrency, mediaH.Handle); err != nil {
 		log.Error().Err(err).Msg("Failed to start media consumer")
 		consumersReady = false
 	}

@@ -109,6 +109,21 @@ class PlaybackSessionTest extends TestCase
         $service->heartbeat($user, $token, $session['session_id']);
     }
 
+    public function test_playback_heartbeat_rejects_a_different_device_token(): void
+    {
+        $user = User::factory()->create();
+        $ownerToken = $user->createToken('owner-device')->accessToken;
+        $otherToken = $user->createToken('other-device');
+        $session = app(PlaybackSessionService::class)->start($user, $ownerToken, 1, 'content-12', 'movie');
+
+        $this->withToken($otherToken->plainTextToken)
+            ->postJson('/api/v3/playback/sessions/'.$session['session_id'].'/heartbeat')
+            ->assertForbidden()
+            ->assertJsonPath('message', 'Playback session has expired or was revoked.');
+
+        $this->assertDatabaseHas('playback_sessions', ['session_id' => $session['session_id'], 'ended_at' => null]);
+    }
+
     public function test_customer_end_endpoint_records_one_diagnostic_event_for_idempotent_end(): void
     {
         $user = User::factory()->create();

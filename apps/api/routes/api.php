@@ -12,6 +12,7 @@ use Modules\Frontend\Http\Controllers\QueryOptimizeController;
 
 use Modules\User\Http\Controllers\API\UserController;
 use Modules\Entertainment\Http\Controllers\API\EntertainmentsController;
+use Modules\Entertainment\Http\Controllers\API\PlaybackSessionController;
 use Modules\LiveTV\Http\Controllers\API\LiveTVsController;
 use App\Http\Controllers\TvAuthController;
 use App\Http\Controllers\Backend\SettingController;
@@ -49,6 +50,8 @@ Route::get('marketing/open/{token}', [\App\Http\Controllers\API\MarketingConsent
 Route::get('marketing/unsubscribe/{token}', [\App\Http\Controllers\API\MarketingConsentController::class, 'unsubscribePrompt'])->where('token', '[A-Fa-f0-9]{64}')->name('marketing.unsubscribe');
 Route::post('marketing/unsubscribe/{token}', [\App\Http\Controllers\API\MarketingConsentController::class, 'unsubscribe'])->where('token', '[A-Fa-f0-9]{64}');
 
+Route::get('v3/branding', [APISettingController::class, 'branding']);
+
 // Public Global SEO Settings
 Route::get('v3/seo-settings', [\Modules\SEO\Http\Controllers\SEOController::class, 'getSeoSettingsApi']);
 
@@ -59,7 +62,9 @@ Route::post('webhooks/paystack', [WebPaymentApiController::class, 'paystackWebho
 Route::post('webhooks/revenuecat', [WebPaymentApiController::class, 'revenueCatWebhook'])->middleware('throttle:300,1');
 
 
-Route::get('/optimize', [QueryOptimizeController::class, 'optimize'])->name('optimize');
+Route::get('/optimize', [QueryOptimizeController::class, 'optimize'])
+    ->middleware(['auth:sanctum', 'explicit.permission:admin.access', 'explicit.permission:settings.security.manage', 'throttle:1,60,db-maintenance'])
+    ->name('optimize');
 
 Route::middleware(['auth:sanctum', 'checkApiDevice'])->get('/user', function (Request $request) {
     return $request->user();
@@ -325,10 +330,10 @@ Route::prefix('v3')->middleware(['auth:sanctum', 'throttle:api'])->group(functio
     Route::post('pay-per-view/verify-payment', [WebPaymentApiController::class, 'verifyPayPerViewPayment']);
 
     // Playback URLs are returned only after Laravel verifies profile ownership and entitlement.
-    Route::post('playback/details', [EntertainmentsController::class, 'playbackDetails'])->middleware('throttle:30,1');
+    Route::post('playback/details', [PlaybackSessionController::class, 'playbackDetails'])->middleware('throttle:30,1');
     Route::post('playback/diagnostics', [\App\Http\Controllers\API\PlaybackDiagnosticsController::class, 'store'])->middleware('throttle:30,1');
-    Route::post('playback/sessions/{sessionId}/heartbeat', [EntertainmentsController::class, 'heartbeatPlayback'])->whereUuid('sessionId')->middleware('throttle:120,1');
-    Route::post('playback/sessions/{sessionId}/end', [EntertainmentsController::class, 'endPlayback'])->whereUuid('sessionId')->middleware('throttle:30,1');
+    Route::post('playback/sessions/{sessionId}/heartbeat', [PlaybackSessionController::class, 'heartbeatPlayback'])->whereUuid('sessionId')->middleware('throttle:120,1');
+    Route::post('playback/sessions/{sessionId}/end', [PlaybackSessionController::class, 'endPlayback'])->whereUuid('sessionId')->middleware('throttle:30,1');
 });
 
 

@@ -47,6 +47,7 @@ class BlogApiController extends Controller
             $tag = trim($request->tag);
             $query->where(function ($q) use ($tag) {
                 $q->whereJsonContains('tags', $tag)
+                    ->orWhereJsonContains('tags_bn', $tag)
                     ->orWhere('tags', 'LIKE', "%{$tag}%");
             });
         }
@@ -98,7 +99,7 @@ class BlogApiController extends Controller
                 ->get();
         }
 
-        $this->localizeBlog($blog);
+        $blog = $this->localizeBlog($blog);
         $related->transform(fn (Blog $relatedBlog): Blog => $this->localizeBlog($relatedBlog));
 
         return ApiResponse::success([
@@ -131,6 +132,7 @@ class BlogApiController extends Controller
             return $blog;
         }
 
+        $blog = clone $blog;
         foreach (['title', 'summary', 'content', 'category', 'tags'] as $field) {
             $localizedField = "{$field}_bn";
             $localizedValue = $blog->getAttribute($localizedField);

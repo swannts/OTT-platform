@@ -6,14 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\Request;
 use App\Models\MobileSetting;
-use Modules\Entertainment\Http\Requests\API\PlaybackDetailsRequest;
 use Modules\Entertainment\Models\Entertainment;
 use Modules\Entertainment\Services\ContentEngagementService;
 use Modules\Entertainment\Services\ContentMediaMetadataService;
-use Modules\Entertainment\Services\PlaybackAuthorizationAction;
 use Modules\Entertainment\Transformers\SeasonResourceV3;
 use Modules\Entertainment\Transformers\EpisodeResourceV3;
-use Modules\Entertainment\Transformers\MovieDetailDataResource;;
+use Modules\Entertainment\Transformers\MovieDetailDataResource;
 use Modules\Entertainment\Transformers\TvshowDetailResource;
 use Modules\Entertainment\Models\Watchlist;
 use Modules\Entertainment\Models\Like;
@@ -62,13 +60,12 @@ use Modules\LiveTV\Transformers\LiveTvChannelResourceV3;
 use Modules\Frontend\Models\PayPerView;
 use App\Services\RecommendationServiceV3;
 use App\Models\User;
-use Modules\Entertainment\Services\PlaybackEntitlementService;
-use Modules\Entertainment\Services\PlaybackSessionService;
-use Modules\Entertainment\Services\PlaybackMediaUrlService;
 use App\Services\Media\MediaReadinessService;
 use App\Models\MediaAsset;
+use App\Models\Device;
+use App\Models\UserMultiProfile;
 use Laravel\Sanctum\PersonalAccessToken;
-use App\Support\Playback\PlaybackDiagnosticRecorder;
+
 class EntertainmentsController extends Controller
 {
     protected $recommendationService;
@@ -76,79 +73,6 @@ class EntertainmentsController extends Controller
     public function __construct(RecommendationServiceV3 $recommendationService)
     {
         $this->recommendationService = $recommendationService;
-    }
-
-    public function playbackDetails(PlaybackDetailsRequest $request, PlaybackAuthorizationAction $action)
-    {
-        $result = $action->execute($request, $request->validated());
-        if (! $result['ok']) {
-            return ApiResponse::error($result['message'], $result['status']);
-        }
-
-        return ApiResponse::success($result['data'], $result['message'], 200);
-    }
-
-    public function heartbeatPlayback(Request $request, string $sessionId, PlaybackSessionService $sessions, PlaybackMediaUrlService $mediaUrls, PlaybackEntitlementService $entitlements)
-    {
-        $token = $request->user()->currentAccessToken();
-        if (!$token instanceof PersonalAccessToken) {
-            return ApiResponse::error('A registered playback session is required.', 401);
-        }
-        $session = DB::table('playback_sessions')
-            ->where('session_id', $sessionId)
-            ->where('user_id', $request->user()->id)
-            ->where('device_token_id', $token->getKey())
-            ->whereNull('ended_at')
-            ->where('expires_at', '>', now())
-            ->first();
-        if (!$session) {
-            return ApiResponse::error('Playback session has expired or was revoked.', 403);
-        }
-        try {
-            $entitlements->authorize(
-                $request->user(),
-                (string) $session->content_id,
-                (string) $session->content_type,
-                (int) $session->profile_id,
-                $request
-            );
-            $expiresAt = $sessions->heartbeat($request->user(), $token, $sessionId);
-        } catch (\Illuminate\Auth\Access\AuthorizationException $exception) {
-            return ApiResponse::error($exception->getMessage(), 403);
-        }
-        $response = ['expires_at' => $expiresAt];
-        $model = match ($session->content_type) {
-            'movie', 'tvshow' => Entertainment::class,
-            'episode' => Episode::class,
-            'video' => Video::class,
-            default => null,
-        };
-        $assetId = $model ? $model::query()->whereKey($session->content_id)->value('media_asset_id') : null;
-        if ($assetId) {
-            $response['media_url'] = $mediaUrls->sign((int) $assetId, 'master.m3u8', $sessionId);
-        }
-        return ApiResponse::success($response, 'Playback session refreshed.', 200);
-    }
-
-    public function endPlayback(Request $request, string $sessionId, PlaybackSessionService $sessions, PlaybackDiagnosticRecorder $diagnostics)
-    {
-        $token = $request->user()->currentAccessToken();
-        if (!$token instanceof PersonalAccessToken) {
-            return ApiResponse::error('A registered playback session is required.', 401);
-        }
-        try {
-            DB::transaction(function () use ($request, $token, $sessionId, $sessions, $diagnostics) {
-                $ended = $sessions->end($request->user(), $token, $sessionId);
-                if ($ended !== null) {
-                    $diagnostics->record($request->user(), 'playback.session_ended', $ended['content_type'], $ended['content_id'], $sessionId);
-                }
-
-                return $ended;
-            }, 3);
-        } catch (\Illuminate\Auth\Access\AuthorizationException $exception) {
-            return ApiResponse::error($exception->getMessage(), 403);
-        }
-        return ApiResponse::success(null, 'Playback session ended.', 200);
     }
 
     public function movieListV3(Request $request)
@@ -1128,8 +1052,20 @@ class EntertainmentsController extends Controller
     {
         $device_type = getDeviceType($request);
 
-        // Create cache key based on request parameters
-        $cacheKey = 'search_v3_' . md5(json_encode($request->all())) . '_' . $device_type;
+        $user = auth('sanctum')->user();
+        $user_id = $user?->id;
+        $token = $user?->currentAccessToken();
+        $profile_id = $token instanceof PersonalAccessToken
+            ? Device::query()->where('user_id', $user_id)->where('sanctum_token_id', $token->getKey())->value('active_profile')
+            : null;
+        $isChildProfile = (bool) getCurrentProfileSession('is_child_profile')
+            || ($profile_id !== null && (bool) UserMultiProfile::query()->where('user_id', $user_id)->whereKey($profile_id)->value('is_child_profile'));
+
+        $cacheKey = 'search_v3_public_' . md5(json_encode([
+            $request->except('user_id'),
+            $device_type,
+            app()->getLocale(),
+        ]));
         
         // Check cache version to invalidate cache when actors/directors are updated
         // When version changes, old cache keys become invalid
@@ -1137,9 +1073,6 @@ class EntertainmentsController extends Controller
         $cacheVersion = Cache::get($cacheVersionKey, 0);
         $versionedCacheKey = $cacheKey . '_v' . $cacheVersion;
         
-        // Also clear the non-versioned key if it exists (for backward compatibility)
-        Cache::forget($cacheKey);
-
         // Check if search term is provided
         if (
             (empty($request->search) || trim($request->search) === '') &&
@@ -1157,8 +1090,7 @@ class EntertainmentsController extends Controller
             );
         }
 
-        // OPTIMIZATION: Remove time() from cache key to enable proper caching
-        $cachedResult = cacheApiResponse($versionedCacheKey, 300, function() use ($request, $device_type) {
+        $load = function () use ($request, $device_type, $user_id, $profile_id, $isChildProfile) {
             $perPage = $request->input('per_page', 10);
             $buildPaginationMeta = function ($paginator) {
                 return [
@@ -1169,14 +1101,11 @@ class EntertainmentsController extends Controller
                     'prev_page_url' => $paginator->previousPageUrl(),
                 ];
             };
-            $user_id = $request->user_id;
             $purchasedIds = []; // Initialize for non-user case
             $moviePagination = null;
             $tvshowPagination = null;
             
             if($user_id){
-                $profile_id = getCurrentProfile($user_id, $request);
-                
                 // OPTIMIZATION: Cache device support check
                 $deviceTypeResponse = cache()->remember(
                     "device_support_{$user_id}_{$device_type}",
@@ -1201,7 +1130,6 @@ class EntertainmentsController extends Controller
             }else{
                 $deviceTypeResponse = [];
                 $userPlanId = 0;
-                $profile_id = null;
             }
 
             $defaultIncludedTypes = collect(['movie', 'tvshow', 'video', 'season', 'episode', 'livetv', 'channel']);
@@ -1245,7 +1173,7 @@ class EntertainmentsController extends Controller
             }
 
             isset($request->is_restricted) && $movieList = $movieList->where('is_restricted', $request->is_restricted);
-            (!empty(getCurrentProfileSession('is_child_profile')) && getCurrentProfileSession('is_child_profile') != 0) &&
+            $isChildProfile &&
                     $movieList = $movieList->where('is_restricted',0);
 
             // Filter by director_id if provided
@@ -1332,7 +1260,7 @@ class EntertainmentsController extends Controller
 
 
         isset($request->is_restricted) && $tvshowList = $tvshowList->where('is_restricted', $request->is_restricted);
-        (!empty(getCurrentProfileSession('is_child_profile')) && getCurrentProfileSession('is_child_profile') != 0) &&
+        $isChildProfile &&
             $tvshowList = $tvshowList->where('is_restricted',0);
 
         // Filter by director_id if provided
@@ -1451,7 +1379,7 @@ class EntertainmentsController extends Controller
         }
 
         isset($request->is_restricted) && $videoList = $videoList->where('is_restricted', $request->is_restricted);
-        (!empty(getCurrentProfileSession('is_child_profile')) && getCurrentProfileSession('is_child_profile') != 0) &&
+        $isChildProfile &&
                 $videoList = $videoList->where('is_restricted',0);
 
 
@@ -1940,9 +1868,13 @@ class EntertainmentsController extends Controller
             'message' => __('movie.search_list'),
         ];
 
-        });
+        };
 
-        return ApiResponse::custom($cachedResult['data'], 200);
+        $data = $user_id || $isChildProfile
+            ? $load()
+            : cacheApiResponse($versionedCacheKey, 300, $load)['data'];
+
+        return ApiResponse::custom($data, 200);
     }
 
 

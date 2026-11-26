@@ -64,9 +64,11 @@ EOF
 
 (cd -- "$STAGE_DIR" && sha256sum database.sql.gz.age media.tar.gz.age > SHA256SUMS)
 tar -C "$STAGE_DIR" -cf "$STAGE_DIR/backup.tar" database.sql.gz.age media.tar.gz.age manifest.txt SHA256SUMS
-mv -- "$STAGE_DIR/backup.tar" "$FINAL_ARCHIVE"
-chmod 0600 "$FINAL_ARCHIVE"
-rm -f -- "$STAGE_DIR/database.sql.gz.age" "$STAGE_DIR/media.tar.gz.age" "$STAGE_DIR/manifest.txt" "$STAGE_DIR/SHA256SUMS"
+chmod 0600 "$STAGE_DIR/backup.tar"
+# Both paths are on the backup filesystem. Link the complete archive without
+# replacing an archive published by another process after the existence check.
+ln -T -- "$STAGE_DIR/backup.tar" "$FINAL_ARCHIVE" || fail "could not publish backup: $FINAL_ARCHIVE"
+rm -f -- "$STAGE_DIR/backup.tar" "$STAGE_DIR/database.sql.gz.age" "$STAGE_DIR/media.tar.gz.age" "$STAGE_DIR/manifest.txt" "$STAGE_DIR/SHA256SUMS"
 rmdir -- "$STAGE_DIR"
 STAGE_DIR=''
 

@@ -5,7 +5,7 @@ import { HomeSection } from '@/features/home';
 
 // Render against the backend at request time so a build without backend access
 // cannot bake an empty hero into the production homepage. Public data remains
-// cached by its individual API requests for one hour.
+// cached by the home DAL when the upstream requests succeed.
 export const revalidate = 0;
 
 export const metadata: Metadata = {

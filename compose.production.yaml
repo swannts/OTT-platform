@@ -132,6 +132,7 @@ services:
       RABBITMQ_URL: ${RABBITMQ_URL:?Set the URL-encoded RabbitMQ worker URL}
       DB_DSN: ${DB_DSN:?Set the MySQL worker DSN with URL-safe credentials}
       REDIS_ADDR: redis:6379
+      WORKER_MEDIA_CONCURRENCY: "${WORKER_MEDIA_CONCURRENCY:-4}"
       STORAGE_DRIVER: local
       STORAGE_LOCAL_PATH: /var/www/html/public/storage
       PRIVATE_STORAGE_PATH: /var/www/html/storage/app/private

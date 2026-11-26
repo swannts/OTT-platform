@@ -51,4 +51,40 @@ class BlogLocalizationTest extends TestCase
             ->assertJsonPath('data.data.0.title', 'Demo: Stories of Mercy')
             ->assertJsonPath('data.data.0.category', 'Demo: Faith & Values');
     }
+
+    public function test_blog_filters_by_bengali_tags_and_preserves_english_fallback(): void
+    {
+        $published = Blog::query()->create([
+            'title' => 'English fallback',
+            'slug' => 'english-fallback',
+            'content' => 'English article body',
+            'category' => 'Faith',
+            'tags' => ['mercy'],
+            'tags_bn' => ['দয়া'],
+            'status' => 1,
+            'published_at' => now(),
+        ]);
+        Blog::query()->create([
+            'title' => 'Unpublished',
+            'slug' => 'unpublished-tag-match',
+            'content' => 'Unpublished article body',
+            'category' => 'Faith',
+            'tags_bn' => ['দয়া'],
+            'status' => 0,
+            'published_at' => now(),
+        ]);
+
+        $this->withHeader('app-locale', 'bn')
+            ->getJson('/api/v3/blogs?tag='.urlencode('দয়া'))
+            ->assertOk()
+            ->assertJsonCount(1, 'data.data')
+            ->assertJsonPath('data.data.0.id', $published->id)
+            ->assertJsonPath('data.data.0.title', 'English fallback')
+            ->assertJsonPath('data.data.0.tags.0', 'দয়া');
+
+        $this->withHeader('app-locale', 'en')
+            ->getJson('/api/v3/blogs?tag=mercy')
+            ->assertOk()
+            ->assertJsonPath('data.data.0.tags.0', 'mercy');
+    }
 }
