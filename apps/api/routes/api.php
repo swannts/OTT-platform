@@ -60,7 +60,9 @@ Route::post('webhooks/paystack', [WebPaymentApiController::class, 'paystackWebho
 Route::post('webhooks/revenuecat', [WebPaymentApiController::class, 'revenueCatWebhook'])->middleware('throttle:300,1');
 
 
-Route::get('/optimize', [QueryOptimizeController::class, 'optimize'])->name('optimize');
+Route::get('/optimize', [QueryOptimizeController::class, 'optimize'])
+    ->middleware(['auth:sanctum', 'explicit.permission:admin.access', 'explicit.permission:settings.security.manage', 'throttle:1,60,db-maintenance'])
+    ->name('optimize');
 
 Route::middleware(['auth:sanctum', 'checkApiDevice'])->get('/user', function (Request $request) {
     return $request->user();

@@ -4,13 +4,15 @@ namespace Modules\Frontend\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-
+use Laravel\Sanctum\PersonalAccessToken;
 
 class QueryOptimizeController extends Controller
 {
 
     public function optimize(Request $request)
     {
+        abort_unless($request->user()->currentAccessToken() instanceof PersonalAccessToken, 403);
+
         $database = env('DB_DATABASE');
 
         $tables = \DB::select('SHOW TABLES');
