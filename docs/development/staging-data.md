@@ -4,7 +4,7 @@ The staging seeder is intentionally separate from `DatabaseSeeder`, the explicit
 
 ## Current implementation status
 
-Milestone 14 is in progress. The command currently creates the RBAC foundation and synthetic administrative staff only. It does **not** yet generate the configured customer, content, billing, playback, marketing, support, notification, or analytics volumes. The profile counts are targets for the remaining generators, not claims about rows currently present.
+Milestone 14 is in progress. Implemented generation currently covers RBAC, synthetic staff and customers, profiles and devices, bilingual genres and unpublished movies/series, plus season/episode hierarchies. Catalog rows have no media asset and remain unpublished; they are not presented as playable or approved content. Profile targets for other domains remain unimplemented and are not claims about rows present.
 
 The configured default profile is `standard`; `small` is recommended while developing the remaining generators. `large` additionally requires explicit database-capacity confirmation, the configured PHP memory limit, and local free-storage thresholds. These local checks do not measure a remote database volume; database capacity confirmation remains an operator responsibility. Profiles and deterministic run inputs live in `apps/api/config/staging-data.php`.
 
@@ -42,12 +42,13 @@ Also configure `CACHE_PREFIX` to exactly match `STAGING_SEED_CACHE_PREFIX`, use 
 ```bash
 php artisan migrate --force
 php artisan ott:seed-staging --profile=small --history-months=12 --seed=2026 --reference-date=2026-11-26 --dry-run
+php artisan ott:seed-staging --profile=small --counts='{"staff":12,"customers":20,"profiles":30,"devices":25,"genres":12,"movies":10,"series":2,"seasons":3,"episodes":20}' --dry-run
 php artisan ott:seed-staging --profile=small --history-months=12 --seed=2026 --reference-date=2026-11-26
 php artisan ott:staging-data-status
 php artisan ott:verify-staging-data --format=json
 ```
 
-The dry run reports all safety failures and performs no writes. A successful initial generation currently leaves a manifest in `partial` state because catalog, subscription, payment, playback, engagement, marketing, support, notification, and analytics generators are still pending. The seed command creates RBAC, staff, synthetic customer accounts, household profiles, and registered devices. Customers use reserved `example.test` emails, and no usable auth/device tokens are created. Profile volume is an approximate household distribution; device volume follows the selected profile target. The command refuses a completed manifest and refuses to change the configuration for an existing dataset. It can resume an identical partial/failed run using registered ownership rows; existing unregistered accounts are never adopted or modified.
+The dry run reports all configured safety failures and performs no writes. A real run also queries MySQL for the database name actually reached and compares it with `STAGING_SEED_ALLOWED_DATABASE` before acquiring a lock or writing a manifest. A successful run currently leaves a manifest in `partial` state because cast/crew, media fixtures, subscriptions, payments, playback, engagement, marketing, support, notifications, operational history, analytics, and search integration are still pending. The implemented generators create RBAC, staff, synthetic customer accounts, household profiles, registered devices, bilingual genres, draft catalog entries, and relational series hierarchies. Customers use reserved `example.test` emails, and no usable auth/device tokens are created. Profile volume is an approximate household distribution; device volume follows the selected profile target. The command refuses a completed manifest and refuses to change the configuration for an existing dataset. It can resume an identical partial/failed run using registered ownership rows; existing unregistered accounts are never adopted or modified. Catalog ownership stores a stable fixture key and a separate row UUID because legacy entertainment and episode schemas do not retain slug columns.
 
 There is deliberately no reset command yet. Until every generated table has ownership tracking, selective deletion cannot be proven safe. Use a disposable database and recreate it through the database operator's isolated staging workflow when a run must be discarded.
 

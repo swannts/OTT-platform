@@ -9,6 +9,7 @@
 - Hardened local role/demo accounts so reruns preserve existing credentials and refuse unowned account collisions or new role assignments.
 - Added opt-in Small/Standard/Large target profiles, fixed seed/reference-date context, exact database-name/host and cache isolation checks, explicit integration-isolation gates, and separate private staff/customer password requirements. Large profile checks PHP memory, local disk space, and requires operator confirmation of database capacity.
 - Added manifest and per-record ownership tables, dataset-locked RBAC/staff/customer/profile/device generation, read-only status, and machine-readable ownership validation for those generated relationships.
+- Added bilingual genre and catalog generation, genre mappings, and correctly linked series/season/episode trees. Catalog content is explicitly draft/unpublished and has no media asset, avoiding false playable or licensed claims. Catalog records use registry-stored UUIDs because the final entertainment/episode schema does not have slug columns.
 - Added focused configuration and determinism tests.
 
 ### Validation
@@ -20,4 +21,4 @@
 
 ### Remaining acceptance work
 
-Customer/catalog/media/subscription/payment/playback/engagement/marketing/support/notification/operations and analytics generators are not implemented. Full business-level integrity checks, search/cache integration, safe reset, Standard generation and benchmark, browser checks, bilingual data coverage, and the remaining integration tests are pending. The seeder command reports the manifest as `partial` and explicitly warns that configured business targets are not generated. Large profile is not verified. No CI/CD or Flutter work is included.
+Cast/crew, media fixtures, publication workflow, subscription/payment/playback/engagement/marketing/support/notification/operations and analytics generators are not implemented. Integrity checks include catalog parent/mapping consistency but do not yet cover missing business domains. Search/cache integration, safe reset, Standard generation and benchmark, browser checks, and remaining integration tests are pending. The seeder command reports the manifest as `partial` and warns which configured targets remain ungenerated. Large profile is not verified. No CI/CD or Flutter work is included.

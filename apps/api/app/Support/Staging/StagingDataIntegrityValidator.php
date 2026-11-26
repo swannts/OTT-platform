@@ -18,7 +18,7 @@ final class StagingDataIntegrityValidator
             return [
                 'valid' => false,
                 'complete' => false,
-                'coverage' => 'staging manifest, staff, customer, profile, and device ownership only',
+                'coverage' => 'staging manifest, staff, customer, profile, device, bilingual catalog, season, and episode ownership only',
                 'checked_at' => now()->toIso8601String(),
                 'datasets' => [],
                 'violations' => ['Staging manifest and ownership tables are missing; run database migrations first.'],
@@ -44,7 +44,8 @@ final class StagingDataIntegrityValidator
                 'profiles' => $groupedCounts['user_multi_profile'] ?? 0,
                 'devices' => $groupedCounts['device'] ?? 0,
             ];
-            $unknownTypes = array_diff(array_keys($groupedCounts), ['staff_user', 'customer', 'user_multi_profile', 'device']);
+            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode'];
+            $unknownTypes = array_diff(array_keys($groupedCounts), $supportedTypes);
             foreach ($unknownTypes as $type) {
                 $violations[] = "Dataset {$manifest->dataset_id} has an unsupported ownership type {$type}.";
             }
@@ -108,6 +109,81 @@ final class StagingDataIntegrityValidator
             if ($invalidDevices > 0) {
                 $violations[] = "Dataset {$manifest->dataset_id} has {$invalidDevices} missing or incorrectly owned devices.";
             }
+            $invalidCatalogQuery = DB::table('staging_dataset_records as records')
+                ->leftJoin('entertainments', 'entertainments.id', '=', 'records.record_id')
+                ->where('records.dataset_id', $manifest->dataset_id)
+                ->where('records.entity_type', 'entertainment')
+                ->where(function ($query): void {
+                    $query->whereNull('entertainments.id')->orWhereNotNull('entertainments.deleted_at')
+                        ->orWhere('entertainments.status', '!=', 0);
+                });
+            if (Schema::hasColumn('entertainments', 'media_asset_id')) {
+                $invalidCatalogQuery->orWhere(function ($query) use ($manifest): void {
+                    $query->where('records.dataset_id', $manifest->dataset_id)
+                        ->where('records.entity_type', 'entertainment')
+                        ->whereNotNull('entertainments.media_asset_id');
+                });
+            }
+            $invalidCatalog = $invalidCatalogQuery->count();
+            $invalidGenres = DB::table('staging_dataset_records as records')
+                ->leftJoin('genres', 'genres.id', '=', 'records.record_id')
+                ->where('records.dataset_id', $manifest->dataset_id)
+                ->where('records.entity_type', 'genre')
+                ->where(function ($query): void {
+                    $query->whereNull('genres.id')->orWhereNotNull('genres.deleted_at')->orWhere('genres.status', '!=', 1);
+                })->count();
+            $invalidMappings = DB::table('staging_dataset_records as records')
+                ->leftJoin('entertainment_gener_mapping as mappings', 'mappings.id', '=', 'records.record_id')
+                ->leftJoin('staging_dataset_records as entertainment_owner', function ($join) use ($manifest): void {
+                    $join->on('entertainment_owner.record_id', '=', 'mappings.entertainment_id')
+                        ->where('entertainment_owner.dataset_id', '=', $manifest->dataset_id)
+                        ->where('entertainment_owner.entity_type', '=', 'entertainment');
+                })
+                ->leftJoin('staging_dataset_records as genre_owner', function ($join) use ($manifest): void {
+                    $join->on('genre_owner.record_id', '=', 'mappings.genre_id')
+                        ->where('genre_owner.dataset_id', '=', $manifest->dataset_id)
+                        ->where('genre_owner.entity_type', '=', 'genre');
+                })
+                ->where('records.dataset_id', $manifest->dataset_id)
+                ->where('records.entity_type', 'entertainment_genre_mapping')
+                ->where(function ($query): void {
+                    $query->whereNull('mappings.id')->orWhereNotNull('mappings.deleted_at')
+                        ->orWhereNull('entertainment_owner.id')->orWhereNull('genre_owner.id');
+                })->count();
+            $invalidSeasons = DB::table('staging_dataset_records as records')
+                ->leftJoin('seasons', 'seasons.id', '=', 'records.record_id')
+                ->leftJoin('entertainments as parent_series', 'parent_series.id', '=', 'seasons.entertainment_id')
+                ->leftJoin('staging_dataset_records as series_owner', function ($join) use ($manifest): void {
+                    $join->on('series_owner.record_id', '=', 'seasons.entertainment_id')
+                        ->where('series_owner.dataset_id', '=', $manifest->dataset_id)
+                        ->where('series_owner.entity_type', '=', 'entertainment');
+                })
+                ->where('records.dataset_id', $manifest->dataset_id)
+                ->where('records.entity_type', 'season')
+                ->where(function ($query): void {
+                    $query->whereNull('seasons.id')->orWhereNotNull('seasons.deleted_at')
+                        ->orWhere('seasons.status', '!=', 0)->orWhereNull('series_owner.id')
+                        ->orWhereNull('parent_series.id')->orWhere('parent_series.type', '!=', 'tvshow');
+                })->count();
+            $invalidEpisodes = DB::table('staging_dataset_records as records')
+                ->leftJoin('episodes', 'episodes.id', '=', 'records.record_id')
+                ->leftJoin('seasons', 'seasons.id', '=', 'episodes.season_id')
+                ->leftJoin('staging_dataset_records as season_owner', function ($join) use ($manifest): void {
+                    $join->on('season_owner.record_id', '=', 'episodes.season_id')
+                        ->where('season_owner.dataset_id', '=', $manifest->dataset_id)
+                        ->where('season_owner.entity_type', '=', 'season');
+                })
+                ->where('records.dataset_id', $manifest->dataset_id)
+                ->where('records.entity_type', 'episode')
+                ->where(function ($query): void {
+                    $query->whereNull('episodes.id')->orWhereNotNull('episodes.deleted_at')
+                        ->orWhere('episodes.status', '!=', 0)->orWhereNull('seasons.id')
+                        ->orWhereColumn('episodes.entertainment_id', '!=', 'seasons.entertainment_id')
+                        ->orWhereNull('season_owner.id');
+                })->count();
+            if ($invalidCatalog || $invalidGenres || $invalidMappings || $invalidSeasons || $invalidEpisodes) {
+                $violations[] = "Dataset {$manifest->dataset_id} has invalid catalog relationships: {$invalidGenres} genres, {$invalidCatalog} catalog records, {$invalidMappings} genre mappings, {$invalidSeasons} seasons, {$invalidEpisodes} episodes.";
+            }
             $roleNames = array_keys(RbacRegistry::roles());
             DB::table('staging_dataset_records')
                 ->where('dataset_id', $manifest->dataset_id)
@@ -145,7 +221,22 @@ final class StagingDataIntegrityValidator
                     $violations[] = "Dataset {$manifest->dataset_id} profile count is outside the configured target's 10% tolerance.";
                 }
             }
-            $registeredCount = array_sum($counts);
+            $catalogCounts = [
+                'genres' => $groupedCounts['genre'] ?? 0,
+                'movies' => DB::table('staging_dataset_records as records')->join('entertainments', 'entertainments.id', '=', 'records.record_id')->where('records.dataset_id', $manifest->dataset_id)->where('records.entity_type', 'entertainment')->where('entertainments.type', 'movie')->count(),
+                'series' => DB::table('staging_dataset_records as records')->join('entertainments', 'entertainments.id', '=', 'records.record_id')->where('records.dataset_id', $manifest->dataset_id)->where('records.entity_type', 'entertainment')->where('entertainments.type', 'tvshow')->count(),
+                'seasons' => $groupedCounts['season'] ?? 0,
+                'episodes' => $groupedCounts['episode'] ?? 0,
+            ];
+            foreach ($catalogCounts as $entity => $actual) {
+                if (($recordCounts[$entity] ?? 0) !== $actual) {
+                    $violations[] = "Dataset {$manifest->dataset_id} manifest {$entity} count does not match its catalog ownership records.";
+                }
+                if (isset($configuredCounts[$entity]) && $actual !== (int) $configuredCounts[$entity]) {
+                    $violations[] = "Dataset {$manifest->dataset_id} has {$actual} {$entity}; configured target is {$configuredCounts[$entity]}.";
+                }
+            }
+            $registeredCount = array_sum($counts) + array_sum($catalogCounts) + ($groupedCounts['entertainment_genre_mapping'] ?? 0);
             return [
                 'dataset_id' => $manifest->dataset_id,
                 'profile' => $manifest->profile,
@@ -171,7 +262,7 @@ final class StagingDataIntegrityValidator
         return [
             'valid' => $violations === [],
             'complete' => $complete,
-            'coverage' => 'manifest, staff role, customer identity, profile ownership, and device ownership; remaining business-domain checks are pending',
+            'coverage' => 'manifest, staff role, customer identity, profile and device ownership, unpublished bilingual catalog, genre mappings, and series hierarchy; remaining business-domain checks are pending',
             'checked_at' => now()->toIso8601String(),
             'datasets' => $datasets,
             'violations' => array_values(array_unique($violations)),

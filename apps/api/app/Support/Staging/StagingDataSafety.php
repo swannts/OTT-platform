@@ -14,6 +14,7 @@ final class StagingDataSafety
         $checks = [
             'staging seeding must be explicitly enabled' => (bool) config('staging-data.enabled'),
             'APP_ENV must be local, testing, or staging' => app()->environment(['local', 'testing', 'staging']),
+            'staging generation currently requires an explicit MySQL connection' => config('database.connections.'.config('database.default').'.driver') === 'mysql',
             'profile must be small, standard, or large' => array_key_exists($profile, (array) config('staging-data.profiles')),
             'an explicitly allowed staging database name is required' => filled(config('staging-data.allowed_database')),
             'an explicitly allowed staging database host is required' => filled(config('staging-data.allowed_database_host')),
@@ -49,8 +50,15 @@ final class StagingDataSafety
             throw new RuntimeException("Staging data safety checks failed:\n- ".implode("\n- ", $violations));
         }
 
-        if (DB::connection()->getName() !== config('database.default')) {
+        $connection = DB::connection();
+        if ($connection->getName() !== config('database.default')) {
             throw new RuntimeException('Staging data requires an explicitly selected primary database connection.');
+        }
+
+        $databaseIdentity = $connection->selectOne('SELECT DATABASE() AS database_name');
+        $connectedDatabase = (string) ($databaseIdentity->database_name ?? '');
+        if ($connectedDatabase === '' || ! hash_equals((string) config('staging-data.allowed_database'), $connectedDatabase)) {
+            throw new RuntimeException('The live MySQL connection did not reach the explicitly allowed staging database.');
         }
     }
 
