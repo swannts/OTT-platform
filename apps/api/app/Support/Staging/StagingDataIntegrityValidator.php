@@ -18,7 +18,7 @@ final class StagingDataIntegrityValidator
             return [
                 'valid' => false,
                 'complete' => false,
-                'coverage' => 'manifest, staff, customers, profiles, devices, bilingual catalog, series hierarchy, plans, subscriptions, and synthetic transactions',
+                'coverage' => 'manifest, staff, customers, profiles, devices, bilingual catalog, cast/crew credits, series hierarchy, plans, subscriptions, and synthetic transactions',
                 'checked_at' => now()->toIso8601String(),
                 'datasets' => [],
                 'violations' => ['Staging manifest and ownership tables are missing; run database migrations first.'],
@@ -46,8 +46,9 @@ final class StagingDataIntegrityValidator
                 'plans' => $groupedCounts['plan'] ?? 0,
                 'subscriptions' => $groupedCounts['subscription'] ?? 0,
                 'payments' => $groupedCounts['subscription_transaction'] ?? 0,
+                'cast_crew' => $groupedCounts['cast_crew'] ?? 0,
             ];
-            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction'];
+            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'cast_crew', 'entertainment_talent_mapping', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction'];
             $unknownTypes = array_diff(array_keys($groupedCounts), $supportedTypes);
             foreach ($unknownTypes as $type) {
                 $violations[] = "Dataset {$manifest->dataset_id} has an unsupported ownership type {$type}.";
@@ -268,6 +269,35 @@ final class StagingDataIntegrityValidator
             if ($invalidPlans || $invalidPlanMappings || $invalidSubscriptions || $invalidPayments) {
                 $violations[] = "Dataset {$manifest->dataset_id} has invalid subscription relationships: {$invalidPlans} plans, {$invalidPlanMappings} plan limitations, {$invalidSubscriptions} subscriptions, {$invalidPayments} synthetic transactions.";
             }
+            $invalidTalent = DB::table('staging_dataset_records as records')
+                ->leftJoin('cast_crew', 'cast_crew.id', '=', 'records.record_id')
+                ->where('records.dataset_id', $manifest->dataset_id)
+                ->where('records.entity_type', 'cast_crew')
+                ->where(function ($query): void {
+                    $query->whereNull('cast_crew.id')->orWhereNotNull('cast_crew.deleted_at')
+                        ->orWhere('cast_crew.status', '!=', 1)->orWhereNotIn('cast_crew.type', ['actor', 'director']);
+                })->count();
+            $invalidTalentMappings = DB::table('staging_dataset_records as records')
+                ->leftJoin('entertainment_talent_mapping as mappings', 'mappings.id', '=', 'records.record_id')
+                ->leftJoin('staging_dataset_records as content_owner', function ($join) use ($manifest): void {
+                    $join->on('content_owner.record_id', '=', 'mappings.entertainment_id')
+                        ->where('content_owner.dataset_id', '=', $manifest->dataset_id)
+                        ->where('content_owner.entity_type', '=', 'entertainment');
+                })
+                ->leftJoin('staging_dataset_records as talent_owner', function ($join) use ($manifest): void {
+                    $join->on('talent_owner.record_id', '=', 'mappings.talent_id')
+                        ->where('talent_owner.dataset_id', '=', $manifest->dataset_id)
+                        ->where('talent_owner.entity_type', '=', 'cast_crew');
+                })
+                ->where('records.dataset_id', $manifest->dataset_id)
+                ->where('records.entity_type', 'entertainment_talent_mapping')
+                ->where(function ($query): void {
+                    $query->whereNull('mappings.id')->orWhereNotNull('mappings.deleted_at')
+                        ->orWhereNull('content_owner.id')->orWhereNull('talent_owner.id');
+                })->count();
+            if ($invalidTalent || $invalidTalentMappings) {
+                $violations[] = "Dataset {$manifest->dataset_id} has {$invalidTalent} invalid fictional cast/crew records and {$invalidTalentMappings} invalid title credits.";
+            }
             $roleNames = array_keys(RbacRegistry::roles());
             DB::table('staging_dataset_records')
                 ->where('dataset_id', $manifest->dataset_id)
@@ -293,7 +323,7 @@ final class StagingDataIntegrityValidator
                 }
             }
             $configuredCounts = (array) ($manifest->configuration['counts'] ?? []);
-            foreach (['staff' => 'staff', 'customers' => 'customers', 'devices' => 'devices', 'plans' => 'plans', 'subscriptions' => 'subscriptions', 'payments' => 'payments'] as $entity => $targetKey) {
+            foreach (['staff' => 'staff', 'customers' => 'customers', 'devices' => 'devices', 'cast_crew' => 'cast_crew', 'plans' => 'plans', 'subscriptions' => 'subscriptions', 'payments' => 'payments'] as $entity => $targetKey) {
                 if (isset($configuredCounts[$targetKey]) && $counts[$entity] !== (int) $configuredCounts[$targetKey]) {
                     $violations[] = "Dataset {$manifest->dataset_id} has {$counts[$entity]} {$entity}; configured target is {$configuredCounts[$targetKey]}.";
                 }
@@ -311,6 +341,7 @@ final class StagingDataIntegrityValidator
                 'series' => DB::table('staging_dataset_records as records')->join('entertainments', 'entertainments.id', '=', 'records.record_id')->where('records.dataset_id', $manifest->dataset_id)->where('records.entity_type', 'entertainment')->where('entertainments.type', 'tvshow')->count(),
                 'seasons' => $groupedCounts['season'] ?? 0,
                 'episodes' => $groupedCounts['episode'] ?? 0,
+                'cast_crew_mappings' => $groupedCounts['entertainment_talent_mapping'] ?? 0,
             ];
             foreach ($catalogCounts as $entity => $actual) {
                 if (($recordCounts[$entity] ?? 0) !== $actual) {
@@ -347,7 +378,7 @@ final class StagingDataIntegrityValidator
         return [
             'valid' => $violations === [],
             'complete' => $complete,
-            'coverage' => 'manifest, staff role, customer identity, profile and device ownership, unpublished bilingual catalog, genre mappings, series hierarchy, plans, subscription lifecycle, and synthetic payment attempts; remaining business-domain checks are pending',
+            'coverage' => 'manifest, staff role, customer identity, profile and device ownership, unpublished bilingual catalog, genre mappings, fictional cast/crew credits, series hierarchy, plans, subscription lifecycle, and synthetic payment attempts; remaining business-domain checks are pending',
             'checked_at' => now()->toIso8601String(),
             'datasets' => $datasets,
             'violations' => array_values(array_unique($violations)),

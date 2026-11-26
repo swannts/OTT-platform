@@ -59,6 +59,9 @@ final readonly class StagingProfile
         if ($counts['payments'] > 0 && $counts['plans'] === 0) {
             throw new InvalidArgumentException('Payment targets require staging plans.');
         }
+        if ($counts['movies'] + $counts['series'] > 0 && $counts['cast_crew'] < 4) {
+            throw new InvalidArgumentException('Catalog content requires at least three cast members and one director.');
+        }
 
         return new self($name, $counts, $historyMonths, $batchSize);
     }
