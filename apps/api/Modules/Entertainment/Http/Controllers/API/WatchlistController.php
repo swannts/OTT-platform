@@ -7,7 +7,8 @@ use App\Http\Responses\ApiResponse;
 use Artisan;
 use Illuminate\Http\Request;
 use Modules\Entertainment\Models\Watchlist;
-use Modules\Entertainment\Services\WatchlistAndContinueWatchService;
+use Modules\Entertainment\Services\WatchlistService;
+use Modules\Entertainment\Services\WatchProgressService;
 use Modules\Entertainment\Transformers\WatchlistResource;
 use Modules\Entertainment\Transformers\WatchlistResourceV3;
 use Modules\Entertainment\Models\ContinueWatch;
@@ -23,7 +24,8 @@ use Modules\Frontend\Models\PayPerView;
 class WatchlistController extends Controller
 {
     public function __construct(
-        private readonly WatchlistAndContinueWatchService $watchlistService,
+        private readonly WatchlistService $watchlistService,
+        private readonly WatchProgressService $watchProgressService,
     ) {}
 
     public function watchList(Request $request)
@@ -504,7 +506,7 @@ class WatchlistController extends Controller
             return ApiResponse::error('Select an active viewing profile.', 403);
         }
 
-        $this->watchlistService->saveContinueWatch($user, $profileId, $request);
+        $this->watchProgressService->saveContinueWatch($user, $profileId, $request);
 
         return ApiResponse::success(null, __('movie.save_msg'), 200);
     }
@@ -517,7 +519,7 @@ class WatchlistController extends Controller
             return ApiResponse::error('Select an active viewing profile.', 403);
         }
 
-        $this->watchlistService->deleteContinueWatch($userId, $profileId, $request);
+        $this->watchProgressService->deleteContinueWatch($userId, $profileId, $request);
 
         return ApiResponse::success(null, 'Continue watching item removed', 200);
     }

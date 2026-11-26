@@ -4,7 +4,7 @@ namespace Modules\Entertainment\Transformers;
 
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class CommonContentDetails  extends JsonResource
+class ContentDetailsResource extends JsonResource
 {
     /**
      * Transform the resource into an array.

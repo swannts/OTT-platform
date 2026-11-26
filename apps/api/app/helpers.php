@@ -38,22 +38,22 @@ function mail_footer($type)
 
 function sendNotification($data)
 {
-    app(\App\Services\Notifications\PushNotificationHelperService::class)->sendNotification((array) $data);
+    app(\App\Services\Notifications\PushNotificationService::class)->sendNotification((array) $data);
 }
 
 function sendNotifications($data)
 {
-    return app(\App\Services\Notifications\PushNotificationHelperService::class)->sendPushNotifications((array) $data);
+    return app(\App\Services\Notifications\PushNotificationService::class)->sendPushNotifications((array) $data);
 }
 
 function fcm($fields)
 {
-    app(\App\Services\Notifications\PushNotificationHelperService::class)->sendFcm((array) $fields);
+    app(\App\Services\Notifications\PushNotificationService::class)->sendFcm((array) $fields);
 }
 
 function getAccessToken()
 {
-    return app(\App\Services\Notifications\PushNotificationHelperService::class)->getFirebaseAccessToken();
+    return app(\App\Services\Notifications\PushNotificationService::class)->getFirebaseAccessToken();
 }
 
 function formatOffset($offset)

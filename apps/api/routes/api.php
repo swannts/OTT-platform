@@ -7,7 +7,7 @@ use App\Http\Controllers\Backend\API\InvoiceController;
 use App\Http\Controllers\Backend\API\ImageBlurHashController;
 
 use App\Http\Controllers\Backend\API\SettingController as APISettingController;
-use Modules\Frontend\Http\Controllers\PerviewPaymentController;
+use Modules\Frontend\Http\Controllers\PayPerViewPaymentController;
 use Modules\Frontend\Http\Controllers\QueryOptimizeController;
 
 use Modules\User\Http\Controllers\API\UserController;
@@ -260,7 +260,7 @@ Route::middleware(['auth:sanctum', 'checkApiDevice', 'throttle:api'])->group(fun
     Route::post('change-password', [AuthController::class, 'changePassword']);
     Route::post('delete-account', [AuthController::class, 'deleteAccount']);
 
-    Route::get('unlocked-content', [PerviewPaymentController::class, 'allUnlockVideos']);
+    Route::get('unlocked-content', [PayPerViewPaymentController::class, 'allUnlockVideos']);
 
     Route::get('download-invoice/{id}', [InvoiceController::class, 'download']);
     Route::get('pay-per-view-invoice/{id}', [InvoiceController::class, 'downloadPayPerViewInvoice']);
@@ -307,7 +307,7 @@ Route::prefix('v3')->middleware(['throttle:api'])->group(function () {
 });
 Route::prefix('v3')->middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::get('profile-details', [UserController::class, 'profileDetailsV3'])->name('api.v3.profile-details');
-    Route::get('rented-content-list', [PerviewPaymentController::class, 'allUnlockVideosV3']);
+    Route::get('rented-content-list', [PayPerViewPaymentController::class, 'allUnlockVideosV3']);
     Route::post('delete-notification', [NotificationsController::class, 'deleteNotification']);
 
     // Authenticated User Subscription Management & Checkout

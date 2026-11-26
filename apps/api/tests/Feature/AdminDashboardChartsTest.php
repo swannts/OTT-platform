@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Services\Dashboard\AdminChartService;
+use App\Services\Dashboard\AnalyticsChartService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +18,7 @@ class AdminDashboardChartsTest extends TestCase
 
     public function test_parse_date_range_and_comparison_helpers(): void
     {
-        $service = new AdminChartService;
+        $service = new AnalyticsChartService;
 
         [$singleStart, $singleEnd] = $service->parseDateRange('2026-03-15');
         $this->assertSame('2026-03-15 00:00:00', $singleStart->format('Y-m-d H:i:s'));
@@ -109,7 +109,7 @@ class AdminDashboardChartsTest extends TestCase
             'review' => 'Great show',
         ]);
 
-        $service = new AdminChartService;
+        $service = new AnalyticsChartService;
 
         $genreChart = $service->getGenreChartData();
         $this->assertSame(['Action', 'Drama'], $genreChart['category']);

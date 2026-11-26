@@ -34,7 +34,7 @@ use App\Models\User;
 use Modules\Subscriptions\Models\Subscription;
 use Modules\Entertainment\Transformers\Backend\CommonContentResourceV3;
 
-class PerviewPaymentController extends Controller
+class PayPerViewPaymentController extends Controller
 {
     public function __construct(
         private readonly CheckoutPricingService $checkoutPricing,

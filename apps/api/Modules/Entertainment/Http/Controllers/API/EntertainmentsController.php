@@ -38,7 +38,7 @@ use Modules\Entertainment\Transformers\TvshowDetailResourceV2;
 use Modules\Entertainment\Transformers\TvshowResourceV2;
 use Illuminate\Support\Facades\DB;
 use Modules\Entertainment\Models\Subtitle;
-use Modules\Entertainment\Transformers\CommonContentDetails;
+use Modules\Entertainment\Transformers\ContentDetailsResource;
 use Modules\Subscriptions\Models\Subscription;
 use Modules\Entertainment\Models\EntertainmentStreamContentMapping;
 use Modules\Episode\Models\EpisodeStreamContentMapping;
@@ -3591,9 +3591,9 @@ class EntertainmentsController extends Controller
                 if($request->type == 'actor' || $request->type == 'director'){
                     $responseData = new ContentDetailsCastCrewV3($movie);
                 }else{
-                    $responseData = new CommonContentDetails($movie);
+                    $responseData = new ContentDetailsResource($movie);
                 }
-            // $responseData =  new CommonContentDetails($movie);
+            // $responseData = new ContentDetailsResource($movie);
                      return $responseData;
          });
 

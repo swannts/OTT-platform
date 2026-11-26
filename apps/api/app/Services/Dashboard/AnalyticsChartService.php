@@ -13,7 +13,7 @@ use Modules\Subscriptions\Models\Plan;
 use Modules\Subscriptions\Models\Subscription;
 use Modules\Subscriptions\Models\SubscriptionTransactions;
 
-class AdminChartService
+class AnalyticsChartService
 {
     public function getLocalizedPlanName(?string $planName, ?string $planIdentifier = null): string
     {

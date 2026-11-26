@@ -13,7 +13,7 @@ use Modules\Frontend\Http\Controllers\VideoController;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Modules\Frontend\Http\Controllers\Auth\UserController;
-use Modules\Frontend\Http\Controllers\PerviewPaymentController;
+use Modules\Frontend\Http\Controllers\PayPerViewPaymentController;
 use Modules\Entertainment\Http\Controllers\Backend\EntertainmentsController;
 use Modules\NotificationTemplate\Http\Controllers\Backend\NotificationTemplatesController;
 
@@ -98,7 +98,7 @@ Route::get('/tvshow-details/{id}', [TvShowController::class, 'tvshowDetail'])->m
 Route::get('/episode-details/{id}', [TvShowController::class, 'episodeDetail'])->middleware('checkModule')->name('episode-details');
 Route::get('/videos', [VideoController::class, 'videoList'])->middleware('checkModule')->name('videos');
 Route::get('/video-details/{id}', [VideoController::class, 'videoDetails'])->middleware('checkModule')->name('video-detail');
-Route::get('/pay-per-view', [PerviewPaymentController::class, 'peyPerView'])->name('pay-per-view');
+Route::get('/pay-per-view', [PayPerViewPaymentController::class, 'peyPerView'])->name('pay-per-view');
 Route::get('/content/{type}', [FrontendController::class, 'contentList'])->middleware('checkModule')->name('content.list');
 Route::get('/section/{slug}', [FrontendController::class, 'customSectionList'])->name('custom-section');
 Route::get('/comming-soon-details/{id}', [EntertainmentsController::class, 'commingSoonDetail'])->name('comming-soon-details');
@@ -181,10 +181,10 @@ Route::group(['as' => 'frontend.', 'middleware' => ['auth']], function () {
     })->name('cache_config_clear'); // Define the name for the route
 });
 
-Route::get('/payment-form/pay-per-view', [PerviewPaymentController::class, 'PayPerViewForm'])->name('pay-per-view.paymentform');
-Route::post('/process-payment/pay-per-view', [PerviewPaymentController::class, 'processPayment'])->name('process-payment.payperview');
-Route::get('/payment/success/pay-per-view', [PerviewPaymentController::class, 'paymentSuccess'])->name('payperview.payment.success');
-Route::get('/unlock-videos', [PerviewPaymentController::class, 'unlockVideos'])->name('unlock.videos');
+Route::get('/payment-form/pay-per-view', [PayPerViewPaymentController::class, 'PayPerViewForm'])->name('pay-per-view.paymentform');
+Route::post('/process-payment/pay-per-view', [PayPerViewPaymentController::class, 'processPayment'])->name('process-payment.payperview');
+Route::get('/payment/success/pay-per-view', [PayPerViewPaymentController::class, 'paymentSuccess'])->name('payperview.payment.success');
+Route::get('/unlock-videos', [PayPerViewPaymentController::class, 'unlockVideos'])->name('unlock.videos');
 
 // Notification routes
 Route::get('/notifications', [\Modules\Frontend\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
@@ -193,6 +193,6 @@ Route::post('/notifications/{id}/mark-read', [\Modules\Frontend\Http\Controllers
 Route::delete('/notifications/delete-all', [\Modules\Frontend\Http\Controllers\NotificationController::class, 'deleteAll'])->name('notifications.deleteAll');
 Route::delete('/notifications/delete-selected', [\Modules\Frontend\Http\Controllers\NotificationController::class, 'deleteSelected'])->name('notifications.deleteSelected');
 
-Route::post('/pay-per-view/start-date', [PerviewPaymentController::class, 'setStartDate'])->name('pay-per-view.start-date');
+Route::post('/pay-per-view/start-date', [PayPerViewPaymentController::class, 'setStartDate'])->name('pay-per-view.start-date');
 Route::get('/update-profile', [UserController::class, 'updateProfile'])->name('update-profile');
 Route::get('/change-password', [UserController::class, 'changePassword'])->name('change-password');

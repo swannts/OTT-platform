@@ -14,7 +14,7 @@ use Modules\NotificationTemplate\Models\NotificationTemplate;
 use Modules\NotificationTemplate\Notifications\CommonNotification;
 use Modules\Subscriptions\Models\Subscription;
 
-class PushNotificationHelperService
+class PushNotificationService
 {
     public function sendNotification(array $data): void
     {

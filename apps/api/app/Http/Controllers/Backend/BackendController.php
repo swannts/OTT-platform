@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
-use App\Services\Dashboard\AdminChartService;
+use App\Services\Dashboard\AnalyticsChartService;
 use App\Models\User;
 use App\Models\Setting;
 use Carbon\Carbon;
@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\Storage;
 
 class BackendController extends Controller
 {
-    public function __construct(private readonly AdminChartService $adminChartService)
+    public function __construct(private readonly AnalyticsChartService $analyticsChartService)
     {
     }
 
@@ -39,7 +39,7 @@ class BackendController extends Controller
       
         $defaultFormat = Setting::where('name', 'default_date_format')->where('datatype', 'misc')->value('val')  ?? 'Y-m-d';
 
-        [$startDate, $endDate] = $this->adminChartService->parseDateRange($request->get('date_range'));
+        [$startDate, $endDate] = $this->analyticsChartService->parseDateRange($request->get('date_range'));
 
         $dateRange = $request->get('date_range');
 
@@ -56,7 +56,7 @@ class BackendController extends Controller
             }
         }
 
-        [$currentStart, $currentEnd, $previousStart, $previousEnd] = $this->adminChartService->resolveComparisonPeriods($startDate, $endDate);
+        [$currentStart, $currentEnd, $previousStart, $previousEnd] = $this->analyticsChartService->resolveComparisonPeriods($startDate, $endDate);
 
         // Optimize: Cache frequently used values
         $startOfMonth = Carbon::now()->startOfMonth();
@@ -238,17 +238,17 @@ class BackendController extends Controller
             ->whereIn('id', $soonExpireUserIds)->count();
 
         // Calculate percentage changes and trends
-        [$usersChangePercent, $usersChangeUp] = $this->adminChartService->computePercentageChange($usersCurrent, $usersPrevious);
+        [$usersChangePercent, $usersChangeUp] = $this->analyticsChartService->computePercentageChange($usersCurrent, $usersPrevious);
         $usersTrend = [$usersPrevious, $usersCurrent];
-        $usersTrendDates = $this->adminChartService->generateTrendDates($previousStart, $previousEnd, $currentStart, $currentEnd);
+        $usersTrendDates = $this->analyticsChartService->generateTrendDates($previousStart, $previousEnd, $currentStart, $currentEnd);
 
-        [$subsChangePercent, $subsChangeUp] = $this->adminChartService->computePercentageChange($subsCurrent, $subsPrevious);
+        [$subsChangePercent, $subsChangeUp] = $this->analyticsChartService->computePercentageChange($subsCurrent, $subsPrevious);
         $subsTrend = [$subsPrevious, $subsCurrent];
-        $subsTrendDates = $this->adminChartService->generateTrendDates($previousStart, $previousEnd, $currentStart, $currentEnd);
+        $subsTrendDates = $this->analyticsChartService->generateTrendDates($previousStart, $previousEnd, $currentStart, $currentEnd);
 
-        [$soonExpireChangePercent, $soonExpireChangeUp] = $this->adminChartService->computePercentageChange($soonExpireCurrent, $soonExpirePrevious);
+        [$soonExpireChangePercent, $soonExpireChangeUp] = $this->analyticsChartService->computePercentageChange($soonExpireCurrent, $soonExpirePrevious);
         $soonExpireTrend = [$soonExpirePrevious, $soonExpireCurrent];
-        $soonExpireTrendDates = $this->adminChartService->generateTrendDates($previousStart, $previousEnd, $currentStart, $currentEnd);
+        $soonExpireTrendDates = $this->analyticsChartService->generateTrendDates($previousStart, $previousEnd, $currentStart, $currentEnd);
 
         return compact('allUsers', 'newUsersCount', 'totalusers', 'activeusers', 'totalSubscribers',
                       'usersCurrent', 'usersPrevious', 'usersChangePercent', 'usersChangeUp', 'usersTrend', 'usersTrendDates',
@@ -333,21 +333,21 @@ class BackendController extends Controller
         $subscriptionRevenuePrevious = (float) SubscriptionTransactions::where('payment_status', 'paid')
             ->whereBetween('created_at', [$previousStart, $previousEnd])
             ->sum('amount');
-        [$subscriptionRevenueChangePercent, $subscriptionRevenueChangeUp] = $this->adminChartService->computePercentageChange($subscriptionRevenueCurrent, $subscriptionRevenuePrevious);
+        [$subscriptionRevenueChangePercent, $subscriptionRevenueChangeUp] = $this->analyticsChartService->computePercentageChange($subscriptionRevenueCurrent, $subscriptionRevenuePrevious);
         $subscriptionRevenueTrend = [$subscriptionRevenuePrevious, $subscriptionRevenueCurrent];
-        $subscriptionRevenueTrendDates = $this->adminChartService->generateTrendDates($previousStart, $previousEnd, $currentStart, $currentEnd);
+        $subscriptionRevenueTrendDates = $this->analyticsChartService->generateTrendDates($previousStart, $previousEnd, $currentStart, $currentEnd);
 
         $rentRevenueCurrent = (float) PayperviewTransaction::whereBetween('created_at', [$currentStart, $currentEnd])->sum('amount');
         $rentRevenuePrevious = (float) PayperviewTransaction::whereBetween('created_at', [$previousStart, $previousEnd])->sum('amount');
-        [$rentRevenueChangePercent, $rentRevenueChangeUp] = $this->adminChartService->computePercentageChange($rentRevenueCurrent, $rentRevenuePrevious);
+        [$rentRevenueChangePercent, $rentRevenueChangeUp] = $this->analyticsChartService->computePercentageChange($rentRevenueCurrent, $rentRevenuePrevious);
         $rentRevenueTrend = [$rentRevenuePrevious, $rentRevenueCurrent];
-        $rentRevenueTrendDates = $this->adminChartService->generateTrendDates($previousStart, $previousEnd, $currentStart, $currentEnd);
+        $rentRevenueTrendDates = $this->analyticsChartService->generateTrendDates($previousStart, $previousEnd, $currentStart, $currentEnd);
 
         $totalRevenueCurrent = $subscriptionRevenueCurrent + $rentRevenueCurrent;
         $totalRevenuePrevious = $subscriptionRevenuePrevious + $rentRevenuePrevious;
-        [$totalRevenueChangePercent, $totalRevenueChangeUp] = $this->adminChartService->computePercentageChange($totalRevenueCurrent, $totalRevenuePrevious);
+        [$totalRevenueChangePercent, $totalRevenueChangeUp] = $this->analyticsChartService->computePercentageChange($totalRevenueCurrent, $totalRevenuePrevious);
         $totalRevenueTrend = [$totalRevenuePrevious, $totalRevenueCurrent];
-        $totalRevenueTrendDates = $this->adminChartService->generateTrendDates($previousStart, $previousEnd, $currentStart, $currentEnd);
+        $totalRevenueTrendDates = $this->analyticsChartService->generateTrendDates($previousStart, $previousEnd, $currentStart, $currentEnd);
 
         return compact('subscription_revenue', 'rent_revenue', 'total_revenue', 'subscriptionRevenueChangePercent',
                       'subscriptionRevenueChangeUp', 'subscriptionRevenueTrend', 'subscriptionRevenueTrendDates',
@@ -388,9 +388,9 @@ class BackendController extends Controller
             ->whereBetween('created_at', [$previousStart, $previousEnd])->count();
         $rentContentPrevious = $prevRentMovie + $prevRentEpisode + $prevRentVideo;
 
-        [$rentContentChangePercent, $rentContentChangeUp] = $this->adminChartService->computePercentageChange($rentContentCurrent, $rentContentPrevious);
+        [$rentContentChangePercent, $rentContentChangeUp] = $this->analyticsChartService->computePercentageChange($rentContentCurrent, $rentContentPrevious);
         $rentContentTrend = [$rentContentPrevious, $rentContentCurrent];
-        $rentContentTrendDates = $this->adminChartService->generateTrendDates($previousStart, $previousEnd, $currentStart, $currentEnd);
+        $rentContentTrendDates = $this->analyticsChartService->generateTrendDates($previousStart, $previousEnd, $currentStart, $currentEnd);
 
         return compact('count_of_rent_movie', 'count_of_rent_episode', 'count_of_rent_video',
                       'rentContentChangePercent', 'rentContentChangeUp', 'rentContentTrend', 'rentContentTrendDates');
@@ -409,9 +409,9 @@ class BackendController extends Controller
 
         $reviewsCurrent = Review::whereBetween('created_at', [$currentStart, $currentEnd])->count();
         $reviewsPrevious = Review::whereBetween('created_at', [$previousStart, $previousEnd])->count();
-        [$reviewsChangePercent, $reviewsChangeUp] = $this->adminChartService->computePercentageChange($reviewsCurrent, $reviewsPrevious);
+        [$reviewsChangePercent, $reviewsChangeUp] = $this->analyticsChartService->computePercentageChange($reviewsCurrent, $reviewsPrevious);
         $reviewsTrend = [$reviewsPrevious, $reviewsCurrent];
-        $reviewsTrendDates = $this->adminChartService->generateTrendDates($previousStart, $previousEnd, $currentStart, $currentEnd);
+        $reviewsTrendDates = $this->analyticsChartService->generateTrendDates($previousStart, $previousEnd, $currentStart, $currentEnd);
 
         $reviewDataQuery = Review::with(['entertainment', 'user'])
             ->whereHas('entertainment', function($query) {
@@ -480,7 +480,7 @@ class BackendController extends Controller
     }
     public function getRevenuechartData(Request $request, $type)
     {
-        $data = $this->adminChartService->getRevenueChartData((string) $type, $request->get('date_range'));
+        $data = $this->analyticsChartService->getRevenueChartData((string) $type, $request->get('date_range'));
 
         return response()->json(['data' => $data, 'status' => true])
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
@@ -489,28 +489,28 @@ class BackendController extends Controller
 
     public function getSubscriberChartData(Request $request, $type)
     {
-        $data = $this->adminChartService->getSubscriberChartData((string) $type, $request->get('date_range'));
+        $data = $this->analyticsChartService->getSubscriberChartData((string) $type, $request->get('date_range'));
 
         return response()->json(['data' => $data, 'status' => true]);
     }
 
     public function getGenreChartData(Request $request)
     {
-        $data = $this->adminChartService->getGenreChartData($request->get('date_range'));
+        $data = $this->analyticsChartService->getGenreChartData($request->get('date_range'));
 
         return response()->json(['data' => $data, 'status' => true]);
     }
 
     public function getMostwatchChartData(Request $request, $type)
     {
-        $data = $this->adminChartService->getMostWatchChartData((string) $type, $request->get('date_range'));
+        $data = $this->analyticsChartService->getMostWatchChartData((string) $type, $request->get('date_range'));
 
         return response()->json(['data' => $data, 'status' => true]);
     }
 
     public function getTopRatedChartData(Request $request)
     {
-        $data = $this->adminChartService->getTopRatedChartData($request->get('date_range'));
+        $data = $this->analyticsChartService->getTopRatedChartData($request->get('date_range'));
 
         return response()->json(['data' => $data, 'status' => true]);
     }
