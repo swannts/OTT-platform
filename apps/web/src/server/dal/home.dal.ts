@@ -14,7 +14,8 @@ export interface HomeInitialData {
   liveChannels: LiveChannel[];
 }
 
-async function loadHomeInitialData(): Promise<HomeInitialData> {
+async function loadHomeInitialData(): Promise<{ data: HomeInitialData; complete: boolean }> {
+  let complete = true;
   const result: HomeInitialData = {
     banners: [],
     top10: [],
@@ -31,6 +32,8 @@ async function loadHomeInitialData(): Promise<HomeInitialData> {
       api.getDashboard(),
       api.getLiveTvDashboard(),
     ]);
+
+    complete = [bannerRes, dashRes, liveRes].every((response) => response.status === 'fulfilled' && response.value != null);
 
     if (bannerRes.status === 'fulfilled' && Array.isArray(bannerRes.value)) {
       result.banners = bannerRes.value.map(normalizeMediaItem);
@@ -63,7 +66,7 @@ async function loadHomeInitialData(): Promise<HomeInitialData> {
             result.latestMovies = mList.map(normalizeMediaItem);
           }
         } catch {
-          // Fallback ignore
+          complete = false;
         }
       }
     }
@@ -104,18 +107,31 @@ async function loadHomeInitialData(): Promise<HomeInitialData> {
       result.liveChannels = unique;
     }
   } catch {
-    // Return the successfully loaded sections and allow the page to render its empty state.
+    complete = false;
   }
 
-  return result;
+  return { data: result, complete };
+}
+
+class UncacheableHomeDataError extends Error {
+  #data: HomeInitialData;
+
+  constructor(data: HomeInitialData) {
+    super('Home catalog is incomplete or empty.');
+    this.#data = data;
+  }
+
+  get data(): HomeInitialData {
+    return this.#data;
+  }
 }
 
 const getCachedHomeInitialData = unstable_cache(async () => {
-  const data = await loadHomeInitialData();
+  const { data, complete } = await loadHomeInitialData();
   const hasCatalogData = Object.values(data).some((section) => section.length > 0);
-  if (!hasCatalogData) throw new Error('Home catalog is unavailable; skip caching the empty response.');
+  if (!complete || !hasCatalogData) throw new UncacheableHomeDataError(data);
   return data;
-}, ['home-initial-data-v1'], {
+}, ['home-initial-data-v2'], {
   revalidate: 3600,
   tags: ['home-initial-data', 'dashboard-detail', 'banner-data-home', 'livetv-dashboard'],
 });
@@ -123,7 +139,8 @@ const getCachedHomeInitialData = unstable_cache(async () => {
 export async function getHomeInitialDataDal(): Promise<HomeInitialData> {
   try {
     return await getCachedHomeInitialData();
-  } catch {
-    return loadHomeInitialData();
+  } catch (error) {
+    if (error instanceof UncacheableHomeDataError) return error.data;
+    return (await loadHomeInitialData()).data;
   }
 }
