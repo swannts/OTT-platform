@@ -108,6 +108,7 @@ services:
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-swann}:${RABBITMQ_PASSWORD:-swann-local}@rabbitmq:5672/
       DB_DSN: ${DB_USERNAME:-root}:${DB_PASSWORD:-swann-local}@tcp(mysql:3306)/${DB_DATABASE:-swann}?charset=utf8mb4&parseTime=True&loc=Local
       REDIS_ADDR: redis:6379
+      WORKER_MEDIA_CONCURRENCY: "${WORKER_MEDIA_CONCURRENCY:-4}"
       STORAGE_DRIVER: local
       STORAGE_LOCAL_PATH: /var/www/html/public/storage
       PRIVATE_STORAGE_PATH: /var/www/html/storage/app/private

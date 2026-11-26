@@ -104,7 +104,9 @@ func (b *Broker) setupTopology() error {
 	if err != nil {
 		return fmt.Errorf("queue declare %s: %w", QueueDeadLetter, err)
 	}
-	_ = b.ch.QueueBind(QueueDeadLetter, "#", ExchangeDeadLetter, false, nil)
+	if err := b.ch.QueueBind(QueueDeadLetter, "#", ExchangeDeadLetter, false, nil); err != nil {
+		return fmt.Errorf("queue bind %s to %s: %w", QueueDeadLetter, ExchangeDeadLetter, err)
+	}
 
 	// DLX arguments for worker queues
 	dlxArgs := amqp.Table{
@@ -157,7 +159,10 @@ func (b *Broker) Consume(ctx context.Context, queue string, concurrency int, han
 		return fmt.Errorf("failed to open channel for %s: %w", queue, err)
 	}
 	// Fair dispatch prefetch
-	_ = ch.Qos(concurrency*2, 0, false)
+	if err := ch.Qos(concurrency*2, 0, false); err != nil {
+		_ = ch.Close()
+		return fmt.Errorf("failed to set consumer prefetch for %s: %w", queue, err)
+	}
 
 	msgs, err := ch.Consume(
 		queue,
@@ -169,6 +174,7 @@ func (b *Broker) Consume(ctx context.Context, queue string, concurrency int, han
 		nil,
 	)
 	if err != nil {
+		_ = ch.Close()
 		return fmt.Errorf("failed to register consumer for %s: %w", queue, err)
 	}
 
