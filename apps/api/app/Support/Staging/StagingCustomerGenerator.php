@@ -73,7 +73,7 @@ final class StagingCustomerGenerator
                         'email' => $email,
                         'password' => $passwordHash,
                         'user_type' => 'user',
-                        'status' => $index % 50 === 49 ? 0 : 1,
+                        'status' => $index % 50 === 49 && $index < (int) floor($customerTarget * 0.8) ? 0 : 1,
                         'is_banned' => 0,
                         'is_subscribe' => 0,
                         'email_verified_at' => $index % 10 === 0 ? null : $createdAt,

@@ -53,6 +53,12 @@ final readonly class StagingProfile
         if ($counts['customers'] > 0 && ($counts['profiles'] < $counts['customers'] || $counts['profiles'] > $counts['customers'] * 4)) {
             throw new InvalidArgumentException('Profile target must allow at least one and no more than four profiles per customer.');
         }
+        if ($counts['subscriptions'] > 0 && ($counts['customers'] === 0 || $counts['plans'] === 0)) {
+            throw new InvalidArgumentException('Subscription targets require staging customers and plans.');
+        }
+        if ($counts['payments'] > 0 && $counts['plans'] === 0) {
+            throw new InvalidArgumentException('Payment targets require staging plans.');
+        }
 
         return new self($name, $counts, $historyMonths, $batchSize);
     }

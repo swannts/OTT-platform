@@ -178,15 +178,23 @@ final class StagingCatalogGenerator
         $kind = $type === 'movie' ? 'movie' : 'series';
         for ($offset = 0; $offset < $target; $offset += $context->profile->batchSize) {
             $end = min($target, $offset + $context->profile->batchSize);
-            DB::transaction(function () use ($offset, $end, $target, $kind, $type, $datasetPart, $genreIds, $context, &$ids): void {
+            $fixtureKeys = [];
+            for ($index = $offset; $index < $end; $index++) {
+                $fixtureKeys[] = sprintf('stg-%s-%s-%05d', $datasetPart, $kind, $index + 1);
+            }
+            $ownedRecords = DB::table('staging_dataset_records')->where('dataset_id', $context->datasetId)
+                ->where('entity_type', 'entertainment')->whereIn('entity_key', $fixtureKeys)
+                ->get(['entity_key', 'record_id'])->keyBy('entity_key');
+            $existingRows = DB::table('entertainments')->whereIn('id', $ownedRecords->pluck('record_id')->filter()->all())
+                ->get(['id', 'type', 'status'])->keyBy('id');
+            DB::transaction(function () use ($offset, $end, $target, $kind, $type, $datasetPart, $genreIds, $context, $ownedRecords, $existingRows, &$ids): void {
                 $rows = [];
                 $contentGenres = [];
                 $owners = [];
                 for ($index = $offset; $index < $end; $index++) {
                     $slug = sprintf('stg-%s-%s-%05d', $datasetPart, $kind, $index + 1);
-                    $owner = DB::table('staging_dataset_records')->where('dataset_id', $context->datasetId)
-                        ->where('entity_type', 'entertainment')->where('entity_key', $slug)->first();
-                    $existing = $owner?->record_id ? DB::table('entertainments')->where('id', $owner->record_id)->first() : null;
+                    $owner = $ownedRecords->get($slug);
+                    $existing = $owner?->record_id ? $existingRows->get($owner->record_id) : null;
                     if ($existing) {
                         if ($existing->type !== $type || (int) $existing->status !== 0) {
                             throw new RuntimeException("Refusing to adopt or alter existing catalog fixture {$slug}.");
@@ -269,11 +277,19 @@ final class StagingCatalogGenerator
 
         $seasonIds = [];
         $seasonRows = [];
+        $seasonKeys = [];
+        for ($index = 0; $index < $seasonTarget; $index++) {
+            $seasonKeys[] = sprintf('stg-%s-season-%06d', $datasetPart, $index + 1);
+        }
+        $ownedSeasons = DB::table('staging_dataset_records')->where('dataset_id', $context->datasetId)
+            ->where('entity_type', 'season')->whereIn('entity_key', $seasonKeys)
+            ->get(['entity_key', 'record_id'])->keyBy('entity_key');
+        $existingSeasons = DB::table('seasons')->whereIn('id', $ownedSeasons->pluck('record_id')->filter()->all())
+            ->get(['id', 'status'])->keyBy('id');
         for ($index = 0; $index < $seasonTarget; $index++) {
             $slug = sprintf('stg-%s-season-%06d', $datasetPart, $index + 1);
-            $owner = DB::table('staging_dataset_records')->where('dataset_id', $context->datasetId)
-                ->where('entity_type', 'season')->where('entity_key', $slug)->first();
-            $existing = $owner?->record_id ? DB::table('seasons')->where('id', $owner->record_id)->first() : null;
+            $owner = $ownedSeasons->get($slug);
+            $existing = $owner?->record_id ? $existingSeasons->get($owner->record_id) : null;
             if ($existing) {
                 if ((int) $existing->status !== 0) {
                     throw new RuntimeException("Refusing to adopt or alter existing season fixture {$slug}.");
@@ -323,11 +339,21 @@ final class StagingCatalogGenerator
         $episodeOwners = [];
         $createdEpisodes = 0;
         $existingEpisodes = 0;
+        $episodeKeys = [];
+        for ($index = 0; $index < $episodeTarget; $index++) {
+            $episodeKeys[] = sprintf('stg-%s-episode-%07d', $datasetPart, $index + 1);
+        }
+        $ownedEpisodes = DB::table('staging_dataset_records')->where('dataset_id', $context->datasetId)
+            ->where('entity_type', 'episode')->whereIn('entity_key', $episodeKeys)
+            ->get(['entity_key', 'record_id'])->keyBy('entity_key');
+        $existingEpisodeRows = DB::table('episodes')->whereIn('id', $ownedEpisodes->pluck('record_id')->filter()->all())
+            ->get(['id', 'status'])->keyBy('id');
+        $seasonDetails = DB::table('seasons')->whereIn('id', $seasonIds)
+            ->get(['id', 'entertainment_id', 'season_index'])->keyBy('id');
         for ($index = 0; $index < $episodeTarget; $index++) {
             $slug = sprintf('stg-%s-episode-%07d', $datasetPart, $index + 1);
-            $owner = DB::table('staging_dataset_records')->where('dataset_id', $context->datasetId)
-                ->where('entity_type', 'episode')->where('entity_key', $slug)->first();
-            $existing = $owner?->record_id ? DB::table('episodes')->where('id', $owner->record_id)->first() : null;
+            $owner = $ownedEpisodes->get($slug);
+            $existing = $owner?->record_id ? $existingEpisodeRows->get($owner->record_id) : null;
             if ($existing) {
                 if ((int) $existing->status !== 0) {
                     throw new RuntimeException("Refusing to adopt or alter existing episode fixture {$slug}.");
@@ -343,11 +369,12 @@ final class StagingCatalogGenerator
             }
 
             $seasonId = $seasonIds[$index % count($seasonIds)];
-            $parentSeriesId = DB::table('seasons')->where('id', $seasonId)->value('entertainment_id');
+            $season = $seasonDetails->get($seasonId);
+            $parentSeriesId = $season?->entertainment_id;
             if (! $parentSeriesId) {
                 throw new RuntimeException('Generated episode season has no valid parent series.');
             }
-            $seasonIndex = (int) DB::table('seasons')->where('id', $seasonId)->value('season_index');
+            $seasonIndex = (int) $season->season_index;
             $episodeNumber = 1 + intdiv($index, count($seasonIds));
             $theme = self::TOPICS[$index % count(self::TOPICS)];
             $id = (string) Str::uuid7();

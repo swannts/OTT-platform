@@ -76,14 +76,22 @@ class LocalDemoDataSeeder extends Seeder
                 'last_name' => $lastName,
                 'email' => $email,
                 'password' => Hash::make($password),
-                'user_type' => $role ?? 'user',
+                'user_type' => $role === null ? 'user' : 'admin',
                 'status' => 1,
                 'is_banned' => 0,
                 'is_subscribe' => $subscribed ? 1 : 0,
                 'email_verified_at' => now(),
             ]);
         } elseif ($user->trashed() || $user->username !== 'local-demo:'.$email || $user->user_type !== ($role === null ? 'user' : 'admin') || ! $user->status || $user->is_banned) {
-            throw new RuntimeException("The existing demo account {$email} is not an eligible account of the expected type.");
+            throw new RuntimeException(sprintf(
+                'The existing demo account %s is not an eligible account of the expected type (owned=%s, type=%s, active=%s, banned=%s, deleted=%s).',
+                $email,
+                $user->username === 'local-demo:'.$email ? 'yes' : 'no',
+                (string) $user->user_type,
+                $user->status ? 'yes' : 'no',
+                $user->is_banned ? 'yes' : 'no',
+                $user->trashed() ? 'yes' : 'no',
+            ));
         }
 
         if ($role !== null) {

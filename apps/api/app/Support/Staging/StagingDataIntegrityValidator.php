@@ -18,7 +18,7 @@ final class StagingDataIntegrityValidator
             return [
                 'valid' => false,
                 'complete' => false,
-                'coverage' => 'staging manifest, staff, customer, profile, device, bilingual catalog, season, and episode ownership only',
+                'coverage' => 'manifest, staff, customers, profiles, devices, bilingual catalog, series hierarchy, plans, subscriptions, and synthetic transactions',
                 'checked_at' => now()->toIso8601String(),
                 'datasets' => [],
                 'violations' => ['Staging manifest and ownership tables are missing; run database migrations first.'],
@@ -43,8 +43,11 @@ final class StagingDataIntegrityValidator
                 'customers' => $groupedCounts['customer'] ?? 0,
                 'profiles' => $groupedCounts['user_multi_profile'] ?? 0,
                 'devices' => $groupedCounts['device'] ?? 0,
+                'plans' => $groupedCounts['plan'] ?? 0,
+                'subscriptions' => $groupedCounts['subscription'] ?? 0,
+                'payments' => $groupedCounts['subscription_transaction'] ?? 0,
             ];
-            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode'];
+            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction'];
             $unknownTypes = array_diff(array_keys($groupedCounts), $supportedTypes);
             foreach ($unknownTypes as $type) {
                 $violations[] = "Dataset {$manifest->dataset_id} has an unsupported ownership type {$type}.";
@@ -184,6 +187,87 @@ final class StagingDataIntegrityValidator
             if ($invalidCatalog || $invalidGenres || $invalidMappings || $invalidSeasons || $invalidEpisodes) {
                 $violations[] = "Dataset {$manifest->dataset_id} has invalid catalog relationships: {$invalidGenres} genres, {$invalidCatalog} catalog records, {$invalidMappings} genre mappings, {$invalidSeasons} seasons, {$invalidEpisodes} episodes.";
             }
+            $invalidPlans = DB::table('staging_dataset_records as records')
+                ->leftJoin('plan', 'plan.id', '=', 'records.record_id')
+                ->where('records.dataset_id', $manifest->dataset_id)
+                ->where('records.entity_type', 'plan')
+                ->where(function ($query): void {
+                    $query->whereNull('plan.id')->orWhereNotNull('plan.deleted_at')->orWhere('plan.status', '!=', 1);
+                })->count();
+            $invalidPlanMappings = DB::table('staging_dataset_records as records')
+                ->leftJoin('planlimitation_mapping as mappings', 'mappings.id', '=', 'records.record_id')
+                ->leftJoin('staging_dataset_records as plan_owner', function ($join) use ($manifest): void {
+                    $join->where('plan_owner.dataset_id', '=', $manifest->dataset_id)
+                        ->where('plan_owner.entity_type', '=', 'plan')
+                        ->whereRaw('plan_owner.record_id = CAST(mappings.plan_id AS CHAR)');
+                })
+                ->where('records.dataset_id', $manifest->dataset_id)
+                ->where('records.entity_type', 'planlimitation_mapping')
+                ->where(function ($query): void {
+                    $query->whereNull('mappings.id')->orWhereNotNull('mappings.deleted_at')->orWhereNull('plan_owner.id');
+                })->count();
+            $invalidSubscriptions = DB::table('staging_dataset_records as records')
+                ->leftJoin('subscriptions', 'subscriptions.id', '=', 'records.record_id')
+                ->leftJoin('users', 'users.id', '=', 'subscriptions.user_id')
+                ->leftJoin('staging_dataset_records as customer_owner', function ($join) use ($manifest): void {
+                    $join->on('customer_owner.entity_key', '=', 'users.email')
+                        ->where('customer_owner.dataset_id', '=', $manifest->dataset_id)
+                        ->where('customer_owner.entity_type', '=', 'customer');
+                })
+                ->leftJoin('staging_dataset_records as plan_owner', function ($join) use ($manifest): void {
+                    $join->where('plan_owner.dataset_id', '=', $manifest->dataset_id)
+                        ->where('plan_owner.entity_type', '=', 'plan')
+                        ->whereRaw('plan_owner.record_id = CAST(subscriptions.plan_id AS CHAR)');
+                })
+                ->where('records.dataset_id', $manifest->dataset_id)
+                ->where('records.entity_type', 'subscription')
+                ->where(function ($query): void {
+                    $query->whereNull('subscriptions.id')->orWhereNotNull('subscriptions.deleted_at')
+                        ->orWhereNull('customer_owner.id')->orWhereNull('plan_owner.id')
+                        ->orWhereNull('subscriptions.start_date')->orWhereNull('subscriptions.end_date')
+                        ->orWhereColumn('subscriptions.end_date', '<=', 'subscriptions.start_date')
+                        ->orWhere(function ($query): void {
+                            $query->where('subscriptions.status', 'active')->where('subscriptions.is_trial', 0)
+                                ->whereNull('subscriptions.payment_id');
+                        })
+                        ->orWhere(function ($query): void {
+                            $query->whereNotNull('subscriptions.payment_id')->whereNotExists(function ($subquery): void {
+                                $subquery->selectRaw('1')->from('subscriptions_transactions as paid_transaction')
+                                    ->whereColumn('paid_transaction.id', 'subscriptions.payment_id')
+                                    ->whereColumn('paid_transaction.subscriptions_id', 'subscriptions.id')
+                                    ->whereColumn('paid_transaction.user_id', 'subscriptions.user_id')
+                                    ->where('paid_transaction.payment_type', 'synthetic-staging')
+                                    ->where('paid_transaction.payment_status', 'paid')
+                                    ->whereNull('paid_transaction.deleted_at');
+                            });
+                        })
+                        ->orWhere(function ($query): void {
+                            $query->where('subscriptions.is_trial', 1)
+                                ->where(function ($trial): void {
+                                    $trial->where('subscriptions.status', '!=', 'active')->orWhere('subscriptions.total_amount', '!=', 0);
+                                });
+                        })
+                        ->orWhereNotIn('subscriptions.status', ['active', 'inactive']);
+                })->count();
+            $invalidPayments = DB::table('staging_dataset_records as records')
+                ->leftJoin('subscriptions_transactions as transactions', 'transactions.id', '=', 'records.record_id')
+                ->leftJoin('staging_dataset_records as subscription_owner', function ($join) use ($manifest): void {
+                    $join->where('subscription_owner.dataset_id', '=', $manifest->dataset_id)
+                        ->where('subscription_owner.entity_type', '=', 'subscription')
+                        ->whereRaw('subscription_owner.record_id = CAST(transactions.subscriptions_id AS CHAR)');
+                })
+                ->leftJoin('subscriptions', 'subscriptions.id', '=', 'transactions.subscriptions_id')
+                ->where('records.dataset_id', $manifest->dataset_id)
+                ->where('records.entity_type', 'subscription_transaction')
+                ->where(function ($query): void {
+                    $query->whereNull('transactions.id')->orWhereNotNull('transactions.deleted_at')
+                        ->orWhereNull('subscription_owner.id')->orWhereColumn('transactions.user_id', '!=', 'subscriptions.user_id')
+                        ->orWhere('transactions.payment_type', '!=', 'synthetic-staging')
+                        ->orWhereNotIn('transactions.payment_status', ['paid', 'failed']);
+                })->count();
+            if ($invalidPlans || $invalidPlanMappings || $invalidSubscriptions || $invalidPayments) {
+                $violations[] = "Dataset {$manifest->dataset_id} has invalid subscription relationships: {$invalidPlans} plans, {$invalidPlanMappings} plan limitations, {$invalidSubscriptions} subscriptions, {$invalidPayments} synthetic transactions.";
+            }
             $roleNames = array_keys(RbacRegistry::roles());
             DB::table('staging_dataset_records')
                 ->where('dataset_id', $manifest->dataset_id)
@@ -209,7 +293,7 @@ final class StagingDataIntegrityValidator
                 }
             }
             $configuredCounts = (array) ($manifest->configuration['counts'] ?? []);
-            foreach (['staff' => 'staff', 'customers' => 'customers', 'devices' => 'devices'] as $entity => $targetKey) {
+            foreach (['staff' => 'staff', 'customers' => 'customers', 'devices' => 'devices', 'plans' => 'plans', 'subscriptions' => 'subscriptions', 'payments' => 'payments'] as $entity => $targetKey) {
                 if (isset($configuredCounts[$targetKey]) && $counts[$entity] !== (int) $configuredCounts[$targetKey]) {
                     $violations[] = "Dataset {$manifest->dataset_id} has {$counts[$entity]} {$entity}; configured target is {$configuredCounts[$targetKey]}.";
                 }
@@ -236,7 +320,8 @@ final class StagingDataIntegrityValidator
                     $violations[] = "Dataset {$manifest->dataset_id} has {$actual} {$entity}; configured target is {$configuredCounts[$entity]}.";
                 }
             }
-            $registeredCount = array_sum($counts) + array_sum($catalogCounts) + ($groupedCounts['entertainment_genre_mapping'] ?? 0);
+            $registeredCount = array_sum($counts) + array_sum($catalogCounts) + ($groupedCounts['entertainment_genre_mapping'] ?? 0)
+                + ($groupedCounts['planlimitation_mapping'] ?? 0);
             return [
                 'dataset_id' => $manifest->dataset_id,
                 'profile' => $manifest->profile,
@@ -262,7 +347,7 @@ final class StagingDataIntegrityValidator
         return [
             'valid' => $violations === [],
             'complete' => $complete,
-            'coverage' => 'manifest, staff role, customer identity, profile and device ownership, unpublished bilingual catalog, genre mappings, and series hierarchy; remaining business-domain checks are pending',
+            'coverage' => 'manifest, staff role, customer identity, profile and device ownership, unpublished bilingual catalog, genre mappings, series hierarchy, plans, subscription lifecycle, and synthetic payment attempts; remaining business-domain checks are pending',
             'checked_at' => now()->toIso8601String(),
             'datasets' => $datasets,
             'violations' => array_values(array_unique($violations)),

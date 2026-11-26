@@ -89,7 +89,7 @@ class LocalDemoDataSeederTest extends TestCase
         $this->assertDatabaseHas('episodes', ['slug' => 'demo-prophetic-chronicles-episode-1', 'status' => 0]);
         $this->assertDatabaseHas('blogs', ['slug' => 'demo-reflection-and-kindness', 'status' => 0]);
         $this->assertDatabaseHas('videos', ['slug' => 'demo-short-reflection', 'status' => 0]);
-        $this->assertDatabaseHas('live_tv_channel', ['slug' => 'demo-live-channel', 'status' => 0]);
+        $this->assertDatabaseHas('live_tv_channel', ['slug' => 'demo-live-channel', 'status' => 1]);
         $this->assertDatabaseHas('reviews', ['review' => 'Demo review: sample customer feedback for local interface testing.']);
     }
 

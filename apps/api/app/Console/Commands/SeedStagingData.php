@@ -9,6 +9,7 @@ use App\Support\Staging\StagingCatalogGenerator;
 use App\Support\Staging\StagingGenerationContext;
 use App\Support\Staging\StagingProfile;
 use App\Support\Staging\StagingStaffGenerator;
+use App\Support\Staging\StagingSubscriptionGenerator;
 use Database\Seeders\RbacFoundationSeeder;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
@@ -39,6 +40,7 @@ class SeedStagingData extends Command
         StagingStaffGenerator $staffGenerator,
         StagingCustomerGenerator $customerGenerator,
         StagingCatalogGenerator $catalogGenerator,
+        StagingSubscriptionGenerator $subscriptionGenerator,
     ): int {
         try {
             $profileName = (string) ($this->option('profile') ?: config('staging-data.profile'));
@@ -95,7 +97,7 @@ class SeedStagingData extends Command
             ['Configured target movies', (string) $profile->counts['movies']],
             ['Configured target series', (string) $profile->counts['series']],
             ['Configured target episodes', (string) $profile->counts['episodes']],
-            ['Currently implemented generation', 'RBAC, staff, customers, profiles, devices, bilingual genres/catalog, seasons, and episodes'],
+            ['Currently implemented generation', 'RBAC, staff, customers, profiles, devices, bilingual catalog, series hierarchy, plans, subscription histories, and synthetic payment attempts'],
         ]);
 
         if ($violations !== []) {
@@ -133,13 +135,13 @@ class SeedStagingData extends Command
                 'history_months' => $historyMonths,
                 'batch_size' => $profile->batchSize,
                 'counts' => $profile->counts,
-                'implemented_domains' => ['rbac', 'staff', 'customers', 'profiles', 'devices', 'genres', 'movies', 'series', 'seasons', 'episodes'],
+                'implemented_domains' => ['rbac', 'staff', 'customers', 'profiles', 'devices', 'genres', 'movies', 'series', 'seasons', 'episodes', 'plans', 'subscriptions', 'payments'],
             ];
             $manifest = StagingDatasetManifest::query()->where('dataset_id', $datasetId)->first();
             $savedInputs = (array) ($manifest?->configuration ?? []);
             $requestedInputs = $configuration;
             unset($savedInputs['implemented_domains'], $requestedInputs['implemented_domains']);
-            if ($manifest && ($savedInputs !== $requestedInputs || $manifest->status === 'complete')) {
+            if ($manifest && ($this->canonicalizeConfiguration($savedInputs) !== $this->canonicalizeConfiguration($requestedInputs) || $manifest->status === 'complete')) {
                 $this->error('This dataset already has a different or completed manifest. Use a new dataset identifier; reset is not available until all generated domains have safe ownership tracking.');
 
                 return self::FAILURE;
@@ -161,6 +163,7 @@ class SeedStagingData extends Command
                 $created = $staffGenerator->generate($context, (string) config('staging-data.staff_password'));
                 $customerResults = $customerGenerator->generate($context, (string) config('staging-data.customer_password'));
                 $catalogResults = $catalogGenerator->generate($context);
+                $subscriptionResults = $subscriptionGenerator->generate($context);
                 $recordCounts = DB::table('staging_dataset_records')
                     ->where('dataset_id', $datasetId)
                     ->select('entity_type', DB::raw('count(*) as records'))
@@ -179,6 +182,9 @@ class SeedStagingData extends Command
                     'seasons' => $recordCounts['season'] ?? 0,
                     'episodes' => $recordCounts['episode'] ?? 0,
                     'genre_mappings' => $recordCounts['entertainment_genre_mapping'] ?? 0,
+                    'plans' => $recordCounts['plan'] ?? 0,
+                    'subscriptions' => $recordCounts['subscription'] ?? 0,
+                    'payments' => $recordCounts['subscription_transaction'] ?? 0,
                 ];
                 $recordCounts['movies'] = $catalogResults['movies'];
                 $recordCounts['series'] = $catalogResults['series'];
@@ -188,18 +194,29 @@ class SeedStagingData extends Command
                     'failure_summary' => null,
                 ])->save();
                 $this->info(sprintf(
-                    'Created %d staff, %d customers, %d profiles, %d devices, %d genres, %d movies, %d series, %d seasons, and %d episodes in this run.',
+                    'Created %d new staff, %d new customers, %d new profiles, and %d new devices in this run.',
                     $created,
                     $customerResults['customers'],
                     $customerResults['profiles'],
                     $customerResults['devices'],
+                ));
+                $this->info(sprintf(
+                    'Dataset catalog totals: %d genres, %d movies, %d series, %d seasons, and %d episodes.',
                     $catalogResults['genres'],
                     $catalogResults['movies'],
                     $catalogResults['series'],
                     $catalogResults['seasons'],
                     $catalogResults['episodes'],
                 ));
-                $this->warn('This milestone remains partial: media assets, finance, playback, engagement, marketing, support, notifications, and analytics are not yet generated. Catalog entries are unpublished and have no media attached.');
+                $this->info(sprintf(
+                    'Dataset subscription totals: %d plans, %d subscriptions (%d current active, %d trials), and %d synthetic payment attempts.',
+                    $subscriptionResults['plans'],
+                    $subscriptionResults['subscriptions'],
+                    $subscriptionResults['active'],
+                    $subscriptionResults['trials'],
+                    $subscriptionResults['payments'],
+                ));
+                $this->warn('This milestone remains partial: media assets, refunds/reconciliation, playback, engagement, marketing, support, notifications, and analytics are not yet generated. Catalog entries are unpublished and have no media attached; synthetic transactions never contact payment providers.');
 
                 return self::SUCCESS;
             } catch (Throwable $exception) {
@@ -213,5 +230,23 @@ class SeedStagingData extends Command
         } finally {
             $lock->release();
         }
+    }
+
+    /** @param array<string, mixed> $configuration
+     *  @return array<string, mixed>
+     */
+    private function canonicalizeConfiguration(array $configuration): array
+    {
+        foreach ($configuration as $key => $value) {
+            if (is_array($value)) {
+                $configuration[$key] = $this->canonicalizeConfiguration($value);
+            }
+        }
+
+        if (! array_is_list($configuration)) {
+            ksort($configuration);
+        }
+
+        return $configuration;
     }
 }
