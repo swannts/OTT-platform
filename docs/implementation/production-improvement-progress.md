@@ -1,19 +1,21 @@
 # Production improvement progress
 
-**Baseline** `e2b4f71ad7f3abca818c2972b67856129a4084c1`. See the [plan](production-improvement-plan.md) for initial source assessment and verification gates.
+GitHub baseline `e2b4f71ad7f3abca818c2972b67856129a4084c1`. The implementation checkpoint ends at `c719df8f3fb57b30c05513cc05f8628d98f167a5`. See the [plan](production-improvement-plan.md) and [checkpoint report](production-improvement-final-report.md).
 
-| Milestone | Status | Implementation | Verification | Commit | Blockers |
+| Milestone | Status | Implementation | Verification | Commit | Blockers and pending work |
 | --- | --- | --- | --- | --- | --- |
-| M1 Backend | In progress | Playback extraction selected | Source reviewed | | PHP and Composer |
-| M2 API | In progress | Route and middleware structure reviewed | Source reviewed | | PHP and Composer |
-| M3 Database and cache | In progress | Versioned cache invalidation reviewed | Source reviewed | | Isolated MySQL and Redis |
-| M4 Admin | In progress | Prior admin functional plan reviewed | Source reviewed | | Browser-to-API stack |
-| M5 Customer web | In progress | Partial-failure homepage cache identified | Source reviewed | | Next.js dependencies and API stack |
-| M6 Localization | In progress | Blog regression and latest bilingual changes identified | Source reviewed | | PHP and full browser stack |
-| M7 Branding | In progress | Existing Settings ownership confirmed | Source reviewed | | Full stack |
-| M8 Worker | In progress | Hardcoded consumer limits and shutdown reviewed | Source reviewed | | Go compiler and RabbitMQ |
-| M9 Media delivery | In progress | Signed delivery and existing provider gaps reviewed | Source reviewed | | Private CDN/origin and DRM credentials |
-| M10 Security | In progress | Existing webhook, RBAC and BFF controls identified | Source reviewed | | Isolated app stack and provider sandboxes |
-| M11 Observability | In progress | Existing operations and health endpoints identified | Source reviewed | | Running services and alert destination |
-| M12 Testing | In progress | Existing test trees and reported validation inspected | Source reviewed | | Runtime stack and load tool |
-| M13 Recovery/staging | In progress | Two backup paths reviewed, host backup publish race found | Source reviewed | | Docker, age, staging and backup destination |
+| [M1 Backend](production-improvements/milestone-01-backend.md) | Partially implemented | Playback controller split | Route and method comparison, PHP syntax | [a0a9704](https://github.com/swannts/OTT-platform/commit/a0a970497e29af05c13b1257d021ce7100b8e36e) | Laravel feature suite and broader refactoring |
+| [M2 API](production-improvements/milestone-02-api.md) | Partially implemented | Generated correlation ID and response header | PHP syntax | [dabdb61](https://github.com/swannts/OTT-platform/commit/dabdb61a8e82d5958be942b98f0d5eed9401f785) | Runtime route inventory, Scramble export and contracts |
+| [M3 Database and cache](production-improvements/milestone-03-database-cache.md) | Partially implemented | Locale-aware anonymous search cache | PHP syntax | [786aaf2](https://github.com/swannts/OTT-platform/commit/786aaf253dadd2e38a1af1ec6d114e0186c0aa2f) | MySQL plans, Redis coverage and measurements |
+| [M4 Admin](production-improvements/milestone-04-admin.md) | Partially implemented | Campaign/banner editing fix and inventory | Chromium component fixture, focused lint | [c719df8](https://github.com/swannts/OTT-platform/commit/c719df8f3fb57b30c05513cc05f8628d98f167a5) | Real browser-to-Laravel workflows and full inventory |
+| [M5 Customer web](production-improvements/milestone-05-customer-web.md) | Partially implemented | Partial homepage responses skip shared cache | Lint, TypeScript, build, production-server recovery test | [dffb43a](https://github.com/swannts/OTT-platform/commit/dffb43ad1c6750f1eeca5e39afed8f82dc399ac8) | Performance, accessibility, and player quality metrics |
+| [M6 Localization](production-improvements/milestone-06-localization.md) | Partially implemented | Bengali blog tag matching and English fallback | PHP syntax | [d275fc0](https://github.com/swannts/OTT-platform/commit/d275fc0bc18d73277dfa4e238642b2150e228def) | Laravel and browser locale tests |
+| [M7 Branding](production-improvements/milestone-07-branding.md) | Partially implemented | Allowlisted public branding text endpoint | PHP syntax | [2978fdf](https://github.com/swannts/OTT-platform/commit/2978fdf4beb15dc92b3c9cac43c43524809d86ab) | Runtime tests, assets and frontend wiring |
+| [M8 Worker](production-improvements/milestone-08-worker.md) | Partially implemented | Bounded media pool and startup checks | Go formatting and YAML parse | [59f4652](https://github.com/swannts/OTT-platform/commit/59f4652fd05c9f3a4717c01016c993c8b6fe470b) | Native Go, broker tests, resource measurements |
+| [M9 Media delivery](production-improvements/milestone-09-media-delivery.md) | Blocked | Staging design and existing authorization reviewed | Static source review | [a0a9704](https://github.com/swannts/OTT-platform/commit/a0a970497e29af05c13b1257d021ce7100b8e36e) | Private origin, authorized CDN/provider and DRM sandbox |
+| [M10 Security](production-improvements/milestone-10-security.md) | Partially implemented | Maintenance and search authorization hardened | PHP syntax | [a299e58](https://github.com/swannts/OTT-platform/commit/a299e58ff979be68a26d8ae7c8102768806c77b6) | Runtime checks and broader audit |
+| [M11 Observability](production-improvements/milestone-11-observability.md) | Partially implemented | API correlation, broker startup errors | PHP syntax, Go formatting | [dabdb61](https://github.com/swannts/OTT-platform/commit/dabdb61a8e82d5958be942b98f0d5eed9401f785) | Live correlation, metrics, and delivered alerts |
+| [M12 Testing](production-improvements/milestone-12-testing.md) | Partially implemented | Focused homepage, marketing and backup checks | Built web fixture, Chromium component fixture, shell regression | [dffb43a](https://github.com/swannts/OTT-platform/commit/dffb43ad1c6750f1eeca5e39afed8f82dc399ac8) | Real infrastructure, OTT lifecycle, and load tests |
+| [M13 Recovery/staging](production-improvements/milestone-13-recovery-staging.md) | Partially implemented | Atomic backup publication and staging checklist | Bash syntax and concurrent fixture | [bd680b2](https://github.com/swannts/OTT-platform/commit/bd680b2830615b52b3eb12c23d80751455762f27) | Docker, encryption, staging and restore rehearsal |
+
+The individual homepage recovery, marketing form, and backup publication regressions were verified within their documented fixture boundaries. Every milestone retains open acceptance checks.
