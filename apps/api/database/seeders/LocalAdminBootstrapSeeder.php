@@ -23,7 +23,8 @@ class LocalAdminBootstrapSeeder extends Seeder
             return;
         }
 
-        $user = User::query()->where('email', 'admin@swann.com')->first();
+        $user = User::withTrashed()->where('email', 'admin@swann.com')->first();
+        $created = false;
 
         if ($user === null) {
             $user = User::query()->create([
@@ -36,6 +37,9 @@ class LocalAdminBootstrapSeeder extends Seeder
                 'is_banned' => 0,
                 'email_verified_at' => now(),
             ]);
+            $created = true;
+        } elseif ($user->trashed()) {
+            throw new RuntimeException('admin@swann.com is soft-deleted; restore it through the account recovery process.');
         } elseif ($user->user_type !== 'admin') {
             throw new RuntimeException('admin@swann.com belongs to a non-admin account; refusing to elevate it.');
         } elseif (! $user->status || $user->is_banned) {
@@ -48,6 +52,10 @@ class LocalAdminBootstrapSeeder extends Seeder
             ->where('is_active', true)
             ->firstOrFail();
 
-        $user->roles()->syncWithoutDetaching([$role->getKey()]);
+        if ($created) {
+            $user->roles()->syncWithoutDetaching([$role->getKey()]);
+        } elseif (! $user->hasRole($role)) {
+            throw new RuntimeException('The existing local admin lacks the Super Admin role; grant access through the authorized RBAC workflow.');
+        }
     }
 }

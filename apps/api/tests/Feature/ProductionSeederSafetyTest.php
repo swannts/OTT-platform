@@ -18,6 +18,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use LogicException;
+use RuntimeException;
 use Tests\TestCase;
 
 class ProductionSeederSafetyTest extends TestCase
@@ -76,6 +77,7 @@ class ProductionSeederSafetyTest extends TestCase
             \Database\Seeders\BlogSeeder::class,
             \Database\Seeders\MobileSettingsTableSeeder::class,
             \Database\Seeders\StaffRolesSeeder::class,
+            \Database\Seeders\LocalAdminRoleAccountsSeeder::class,
             \Modules\Ad\database\seeders\CustomAdsSettingTableSeeder::class,
             \Modules\Ad\database\seeders\VastAdsSettingTableSeeder::class,
             \Modules\Banner\database\seeders\BannerDatabaseSeeder::class,
@@ -240,5 +242,31 @@ class ProductionSeederSafetyTest extends TestCase
 
         $this->assertSame($replacementPassword, $user->fresh()->password);
         $this->assertDatabaseMissing('users', ['email' => 'admin@swann.com']);
+    }
+
+    public function test_production_bootstrap_refuses_to_elevate_an_existing_admin_without_super_admin(): void
+    {
+        app()->detectEnvironment(static fn (): string => 'production');
+        config([
+            'app.admin_bootstrap.email' => 'existing-admin@example.test',
+            'app.admin_bootstrap.password' => 'A-long-one-time-secret-2026',
+            'app.admin_bootstrap.name' => 'Existing Admin',
+        ]);
+        $user = User::factory()->create([
+            'email' => 'existing-admin@example.test',
+            'user_type' => 'admin',
+            'password' => Hash::make('preserve-this-password'),
+        ]);
+        $passwordHash = $user->password;
+
+        try {
+            app(ProductionAdminBootstrapSeeder::class)->run();
+            $this->fail('Existing administrators must not be silently elevated.');
+        } catch (RuntimeException $exception) {
+            $this->assertStringContainsString('authorized RBAC recovery workflow', $exception->getMessage());
+        }
+
+        $this->assertSame($passwordHash, $user->fresh()->password);
+        $this->assertFalse($user->fresh()->hasRole('super-admin'));
     }
 }

@@ -19,10 +19,8 @@ class DatabaseSeeder extends Seeder
             return;
         }
 
-        // The default seeding command must never replace local user, catalog, or
-        // business data with sample fixtures. Run a specific development seeder
-        // explicitly when sample data is needed.
-        $this->call(RbacFoundationSeeder::class);
-        $this->call(LocalAdminBootstrapSeeder::class);
+        // Local seeding initializes RBAC and only creates the explicitly configured
+        // role-account fixtures. Catalog and business demo data stay opt-in.
+        $this->call(LocalAdminRoleAccountsSeeder::class);
     }
 }

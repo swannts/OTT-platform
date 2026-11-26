@@ -112,4 +112,25 @@ class LocalDemoDataSeederTest extends TestCase
             $this->assertDatabaseCount('users', 0);
         }
     }
+
+    public function test_demo_seed_refuses_to_reuse_an_unowned_fixture_account(): void
+    {
+        config(['app.demo_seed_password' => 'local-demo-only-test-password']);
+        $existing = User::factory()->create([
+            'email' => 'demo.content.manager@example.test',
+            'user_type' => 'user',
+            'password' => Hash::make('keep-this-existing-password'),
+        ]);
+        $passwordHash = $existing->password;
+
+        try {
+            app(LocalDemoDataSeeder::class)->run();
+            $this->fail('An unowned account with a demo fixture email must be preserved.');
+        } catch (RuntimeException $exception) {
+            $this->assertStringContainsString('not an eligible account', $exception->getMessage());
+        }
+
+        $this->assertSame($passwordHash, $existing->fresh()->password);
+        $this->assertFalse($existing->fresh()->hasAnyRole(array_keys(\App\Support\Rbac\RbacRegistry::roles())));
+    }
 }

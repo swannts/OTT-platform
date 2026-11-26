@@ -37,7 +37,7 @@ class ProductionAdminBootstrapSeeder extends Seeder
         $this->call(RbacFoundationSeeder::class);
 
         DB::transaction(function () use ($email, $password, $name): void {
-            $user = User::query()->where('email', $email)->lockForUpdate()->first();
+            $user = User::withTrashed()->where('email', $email)->lockForUpdate()->first();
 
             if ($user === null) {
                 $parts = preg_split('/\s+/', $name, 2) ?: ['Platform Administrator'];
@@ -51,6 +51,8 @@ class ProductionAdminBootstrapSeeder extends Seeder
                     'is_banned' => 0,
                     'email_verified_at' => now(),
                 ]);
+            } elseif ($user->trashed()) {
+                throw new RuntimeException('The configured bootstrap account is soft-deleted; restore it through the authorized account recovery process.');
             } elseif ($user->user_type !== 'admin') {
                 throw new RuntimeException('The configured bootstrap email belongs to a non-admin account; refusing to elevate it.');
             } elseif (! $user->status || $user->is_banned) {
@@ -58,7 +60,11 @@ class ProductionAdminBootstrapSeeder extends Seeder
             }
 
             $superAdminRole = Role::query()->where('name', 'super-admin')->where('guard_name', 'web')->firstOrFail();
-            $user->roles()->syncWithoutDetaching([$superAdminRole->getKey()]);
+            if ($user->wasRecentlyCreated) {
+                $user->roles()->syncWithoutDetaching([$superAdminRole->getKey()]);
+            } elseif (! $user->hasRole($superAdminRole)) {
+                throw new RuntimeException('The configured bootstrap account already exists without the Super Admin role; use the authorized RBAC recovery workflow to grant access.');
+            }
         });
     }
 }

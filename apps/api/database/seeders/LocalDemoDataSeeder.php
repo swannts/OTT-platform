@@ -67,23 +67,32 @@ class LocalDemoDataSeeder extends Seeder
 
     private function account(string $email, string $firstName, string $lastName, string $password, ?string $role, bool $subscribed = false): User
     {
-        $user = User::query()->firstOrCreate(
-            ['email' => $email],
-            [
+        $user = User::withTrashed()->where('email', $email)->first();
+        $created = $user === null;
+        if ($created) {
+            $user = User::query()->create([
+                'username' => 'local-demo:'.$email,
                 'first_name' => $firstName,
                 'last_name' => $lastName,
+                'email' => $email,
                 'password' => Hash::make($password),
                 'user_type' => $role ?? 'user',
                 'status' => 1,
                 'is_banned' => 0,
                 'is_subscribe' => $subscribed ? 1 : 0,
                 'email_verified_at' => now(),
-            ],
-        );
+            ]);
+        } elseif ($user->trashed() || $user->username !== 'local-demo:'.$email || $user->user_type !== ($role === null ? 'user' : 'admin') || ! $user->status || $user->is_banned) {
+            throw new RuntimeException("The existing demo account {$email} is not an eligible account of the expected type.");
+        }
 
         if ($role !== null) {
             $roleModel = Role::query()->where('name', $role)->where('guard_name', 'web')->firstOrFail();
-            $user->roles()->syncWithoutDetaching([$roleModel->getKey()]);
+            if ($created) {
+                $user->roles()->syncWithoutDetaching([$roleModel->getKey()]);
+            } elseif (! $user->hasRole($roleModel)) {
+                throw new RuntimeException("The existing demo account {$email} lacks its expected role; refusing to assign access.");
+            }
         }
 
         return $user;
