@@ -31,6 +31,8 @@ final class StagingDataSafety
                 && (config('queue.default') !== 'database'
                     || in_array(config('queue.connections.database.connection'), [null, config('database.default')], true)),
             'search index isolation must be explicitly confirmed' => (bool) config('staging-data.search_isolated'),
+            'an explicit non-production search endpoint is required' => $this->hasSafeSearchEndpoint(),
+            'a reserved staging-only search index prefix is required' => preg_match('/^ott_staging_[a-z0-9_]{2,24}$/', (string) config('staging-data.search_index_prefix')) === 1,
             'media storage isolation must be explicitly confirmed' => (bool) config('staging-data.media_isolated')
                 && in_array(config('filesystems.default'), ['local', 'public'], true),
             'external email and push delivery must be disabled' => (bool) config('staging-data.external_delivery_disabled')
@@ -41,6 +43,13 @@ final class StagingDataSafety
         ];
 
         return [...array_keys(array_filter($checks, static fn (bool $passed): bool => ! $passed)), ...$resourceChecks];
+    }
+
+    private function hasSafeSearchEndpoint(): bool
+    {
+        $url = parse_url((string) config('staging-data.search_index_url'));
+        if (! is_array($url) || ! in_array($url['scheme'] ?? null, ['http', 'https'], true) || empty($url['host'])) return false;
+        return preg_match('/(^|[-.])(prod|production|live)([-.]|$)/i', (string) $url['host']) === 0;
     }
 
     public function assertSafe(string $profile): void

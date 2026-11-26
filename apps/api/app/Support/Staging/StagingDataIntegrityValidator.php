@@ -47,6 +47,7 @@ final class StagingDataIntegrityValidator
                 'devices' => $groupedCounts['device'] ?? 0,
                 'playback_sessions' => $groupedCounts['playback_session'] ?? 0,
                 'playback_tokens' => $groupedCounts['playback_token'] ?? 0,
+                'search_documents' => $groupedCounts['search_document'] ?? 0,
                 'plans' => $groupedCounts['plan'] ?? 0,
                 'subscriptions' => $groupedCounts['subscription'] ?? 0,
                 'payments' => $groupedCounts['subscription_transaction'] ?? 0,
@@ -74,7 +75,7 @@ final class StagingDataIntegrityValidator
                 'live_tv_channels' => $groupedCounts['live_tv_channel'] ?? 0,
                 'videos' => $groupedCounts['video'] ?? 0,
             ];
-            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'playback_token', 'playback_session', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'cast_crew', 'entertainment_talent_mapping', 'content_license_window', 'content_license_territory', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction', 'media_asset', 'media_processing_job', 'media_asset_track', 'entertainment_media_link', 'blog', 'coupon', 'coupon_plan_mapping', 'user_search_history', 'support_ticket', 'support_ticket_note', 'marketing_consent', 'marketing_campaign', 'notification', 'operations_incident', 'admin_audit_log', 'analytics_report_run', 'content_review_submission', 'live_tv_category', 'live_tv_channel', 'video'];
+            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'playback_token', 'playback_session', 'search_document', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'cast_crew', 'entertainment_talent_mapping', 'content_license_window', 'content_license_territory', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction', 'media_asset', 'media_processing_job', 'media_asset_track', 'entertainment_media_link', 'blog', 'coupon', 'coupon_plan_mapping', 'user_search_history', 'support_ticket', 'support_ticket_note', 'marketing_consent', 'marketing_campaign', 'notification', 'operations_incident', 'admin_audit_log', 'analytics_report_run', 'content_review_submission', 'live_tv_category', 'live_tv_channel', 'video'];
             $unknownTypes = array_diff(array_keys($groupedCounts), $supportedTypes);
             foreach ($unknownTypes as $type) {
                 $violations[] = "Dataset {$manifest->dataset_id} has an unsupported ownership type {$type}.";
@@ -204,6 +205,21 @@ final class StagingDataIntegrityValidator
                 })->count();
             if ($invalidPlaybackTokens > 0 || $invalidPlaybackSessions > 0) {
                 $violations[] = "Dataset {$manifest->dataset_id} has {$invalidPlaybackTokens} usable or incorrectly owned playback tokens and {$invalidPlaybackSessions} invalid historical playback sessions.";
+            }
+            $invalidSearchDocuments = DB::table('staging_dataset_records as owners')
+                ->leftJoin('entertainments', 'entertainments.id', '=', 'owners.record_id')
+                ->leftJoin('staging_dataset_records as content_owner', function ($join) use ($manifest): void {
+                    $join->on('content_owner.record_id', '=', 'owners.record_id')
+                        ->where('content_owner.dataset_id', '=', $manifest->dataset_id)->where('content_owner.entity_type', '=', 'entertainment');
+                })
+                ->where('owners.dataset_id', $manifest->dataset_id)->where('owners.entity_type', 'search_document')
+                ->where(function ($query): void {
+                    $query->whereNull('entertainments.id')->orWhereNull('content_owner.id')
+                        ->orWhereColumn('owners.entity_key', '!=', 'owners.record_id')
+                        ->orWhereNotIn('entertainments.type', ['movie', 'tvshow']);
+                })->count();
+            if ($invalidSearchDocuments > 0) {
+                $violations[] = "Dataset {$manifest->dataset_id} has {$invalidSearchDocuments} search-index ownership records without matching catalog content.";
             }
             $invalidCatalogQuery = DB::table('staging_dataset_records as records')
                 ->leftJoin('entertainments', 'entertainments.id', '=', 'records.record_id')
@@ -998,6 +1014,9 @@ final class StagingDataIntegrityValidator
                     $violations[] = "Dataset {$manifest->dataset_id} has {$actual} {$entity}; configured target is {$configuredCounts[$entity]}.";
                 }
             }
+            if ($counts['search_documents'] !== $catalogCounts['movies'] + $catalogCounts['series']) {
+                $violations[] = "Dataset {$manifest->dataset_id} search-document ownership does not cover its catalog titles.";
+            }
             $registeredCount = array_sum($counts) + array_sum($catalogCounts) + ($groupedCounts['entertainment_genre_mapping'] ?? 0)
                 + ($groupedCounts['planlimitation_mapping'] ?? 0);
             return [
@@ -1025,7 +1044,7 @@ final class StagingDataIntegrityValidator
         return [
             'valid' => $violations === [],
             'complete' => $complete,
-            'coverage' => 'manifest, staff role, customer identity, profile and device ownership, ended historical playback and unusable token ownership, bilingual catalog and publication prerequisites, genre mappings, fictional cast/crew credits, bilingual editorial articles, coupon and plan mappings, customer search-history ownership, support ticket and staff-note lifecycle ownership, marketing consent and maker-checker campaign ownership, customer-owned in-app notification payloads and timestamps, synthetic operations incident lifecycles and explicitly labeled staging audit events, analytics reports derived from generated source data, licensing windows and territories, actual media fixture readiness and ownership, series hierarchy, plans, subscription lifecycle, and synthetic payment attempts; remaining business-domain checks are pending',
+            'coverage' => 'manifest, staff role, customer identity, profile and device ownership, ended historical playback and unusable token ownership, bilingual catalog and publication prerequisites, dataset-isolated English/Bengali search-index documents and filter query verification, genre mappings, fictional cast/crew credits, bilingual editorial articles, coupon and plan mappings, customer search-history ownership, support ticket and staff-note lifecycle ownership, marketing consent and maker-checker campaign ownership, customer-owned in-app notification payloads and timestamps, synthetic operations incident lifecycles and explicitly labeled staging audit events, analytics reports derived from generated source data, licensing windows and territories, actual media fixture readiness and ownership, series hierarchy, plans, subscription lifecycle, and synthetic payment attempts; remaining business-domain checks are pending',
             'checked_at' => now()->toIso8601String(),
             'datasets' => $datasets,
             'violations' => array_values(array_unique($violations)),

@@ -22,6 +22,7 @@ use App\Support\Staging\StagingLiveTvCatalogGenerator;
 use App\Support\Staging\StagingVideoCatalogGenerator;
 use App\Support\Staging\StagingPlayableContentPublisher;
 use App\Support\Staging\StagingPlaybackSessionGenerator;
+use App\Support\Staging\StagingSearchIndexer;
 use App\Services\Content\AdminContentPublicationService;
 use App\Services\Media\MediaReadinessService;
 use App\Services\AdminAnalyticsService;
@@ -76,6 +77,7 @@ class SeedStagingData extends Command
         StagingVideoCatalogGenerator $videoCatalogGenerator,
         StagingPlayableContentPublisher $playableContentPublisher,
         StagingPlaybackSessionGenerator $playbackSessionGenerator,
+        StagingSearchIndexer $searchIndexer,
         AdminContentPublicationService $contentPublicationService,
         MediaReadinessService $mediaReadinessService,
         AdminAnalyticsService $analyticsService,
@@ -173,7 +175,7 @@ class SeedStagingData extends Command
                 'history_months' => $historyMonths,
                 'batch_size' => $profile->batchSize,
                 'counts' => $profile->counts,
-                'implemented_domains' => ['rbac', 'staff', 'customers', 'profiles', 'devices', 'genres', 'movies', 'series', 'seasons', 'episodes', 'videos', 'blogs', 'live_tv_channels', 'coupons', 'search_history', 'content_review_submissions', 'playback_sessions', 'cast_crew', 'talent_mappings', 'content_licenses', 'media_fixtures', 'plans', 'subscriptions', 'payments'],
+                'implemented_domains' => ['rbac', 'staff', 'customers', 'profiles', 'devices', 'genres', 'movies', 'series', 'seasons', 'episodes', 'videos', 'blogs', 'live_tv_channels', 'coupons', 'search_history', 'content_review_submissions', 'playback_sessions', 'search_index', 'cast_crew', 'talent_mappings', 'content_licenses', 'media_fixtures', 'plans', 'subscriptions', 'payments'],
             ];
             $manifest = StagingDatasetManifest::query()->where('dataset_id', $datasetId)->first();
             $savedInputs = (array) ($manifest?->configuration ?? []);
@@ -215,9 +217,10 @@ class SeedStagingData extends Command
                 $contentReviewResults = $contentReviewGenerator->generate($context);
                 $playableContentResults = $playableContentPublisher->publish($context, $contentPublicationService);
                 $playbackResults = $playbackSessionGenerator->generate($context, $mediaReadinessService);
-                $analyticsReportCount = $analyticsReportGenerator->generate($context, $analyticsService);
                 $liveTvResults = $liveTvCatalogGenerator->generate($context);
                 $videoResults = $videoCatalogGenerator->generate($context);
+                $searchResults = $searchIndexer->sync($context);
+                $analyticsReportCount = $analyticsReportGenerator->generate($context, $analyticsService);
                 $recordCounts = DB::table('staging_dataset_records')
                     ->where('dataset_id', $datasetId)
                     ->select('entity_type', DB::raw('count(*) as records'))
@@ -265,6 +268,7 @@ class SeedStagingData extends Command
                     'videos' => $recordCounts['video'] ?? 0,
                     'playback_sessions' => $recordCounts['playback_session'] ?? 0,
                     'playback_tokens' => $recordCounts['playback_token'] ?? 0,
+                    'search_documents' => $recordCounts['search_document'] ?? 0,
                 ];
                 $recordCounts['movies'] = $catalogResults['movies'];
                 $recordCounts['series'] = $catalogResults['series'];
@@ -319,7 +323,8 @@ class SeedStagingData extends Command
                 $this->info(sprintf('Dataset playback: %d eligible free titles published through the admin workflow; %d ended historical sessions and %d unusable hashed device tokens generated.', $playableContentResults['published_titles'], $playbackResults['playback_sessions'], $playbackResults['device_tokens']));
                 $this->info(sprintf('Dataset Live TV catalog: %d categories and %d bilingual channel drafts; no streams or customer-visible channels were created.', $liveTvResults['categories'], $liveTvResults['channels']));
                 $this->info(sprintf('Dataset standalone video catalog: %d bilingual video drafts; no media assets or stream mappings were created.', $videoResults['videos']));
-                $this->warn('This milestone remains partial: refunds/reconciliation, customer watchlists/ratings, campaign deliveries/banners, and search indexing are not yet generated. Standalone videos and Live TV rows are draft metadata without stream sources. Playback sessions are ended historical records only; hashed device tokens have no abilities and no bearer secrets are generated. Synthetic transactions never contact payment providers.');
+                $this->info(sprintf('Dataset search: %d bilingual catalog documents synchronized to isolated index %s; English, Bengali, type and genre filters passed.', $searchResults['documents'], $searchResults['index_uid']));
+                $this->warn('This milestone remains partial: refunds/reconciliation, customer watchlists/ratings, and campaign deliveries/banners are not yet generated. Standalone videos and Live TV rows are draft metadata without stream sources. Playback sessions are ended historical records only; hashed device tokens have no abilities and no bearer secrets are generated. Synthetic transactions never contact payment providers.');
 
                 return self::SUCCESS;
             } catch (Throwable $exception) {

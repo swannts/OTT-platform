@@ -84,6 +84,8 @@ class StagingDataFoundationTest extends TestCase
             'staging-data.isolated_cache_prefix' => null,
             'staging-data.queue_isolated' => false,
             'staging-data.search_isolated' => false,
+            'staging-data.search_index_url' => null,
+            'staging-data.search_index_prefix' => null,
             'staging-data.media_isolated' => false,
             'staging-data.external_delivery_disabled' => false,
             'staging-data.payment_gateway' => null,
@@ -94,7 +96,22 @@ class StagingDataFoundationTest extends TestCase
 
         $this->assertContains('staging seeding must be explicitly enabled', $violations);
         $this->assertContains('an explicitly allowed staging database name is required', $violations);
+        $this->assertContains('an explicit non-production search endpoint is required', $violations);
+        $this->assertContains('a reserved staging-only search index prefix is required', $violations);
         $this->assertContains('external email and push delivery must be disabled', $violations);
+    }
+
+    public function test_staging_safety_rejects_production_search_hosts_and_unreserved_prefixes(): void
+    {
+        config([
+            'staging-data.search_index_url' => 'https://meili-production.example.test',
+            'staging-data.search_index_prefix' => 'ott_catalog',
+        ]);
+
+        $violations = app(StagingDataSafety::class)->violations('small');
+
+        $this->assertContains('an explicit non-production search endpoint is required', $violations);
+        $this->assertContains('a reserved staging-only search index prefix is required', $violations);
     }
 
     public function test_large_profile_requires_capacity_confirmation(): void
