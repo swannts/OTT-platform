@@ -129,10 +129,10 @@ Run checks from the relevant application directory:
 (cd apps/mobile && flutter analyze && flutter test)
 ```
 
-GitHub Actions run application checks, browser tests, dependency review, secret
-scanning, and Compose configuration validation. Passing CI does not by itself
-prove production readiness or validate external payment, Firebase, or media
-provider accounts.
+Run the checks above locally before merging changes. This repository does not
+currently configure automated CI workflows. Local checks do not prove
+production readiness or validate external payment, Firebase, or media provider
+accounts.
 
 ---
 

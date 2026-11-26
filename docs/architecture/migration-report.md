@@ -9,8 +9,8 @@ role, permission, payment, playback, and queue contracts were preserved.
 
 The migration is **not fully complete**. Flutter still has its legacy
 screen-oriented directory layout, full product brand independence is not
-implemented, Go could not be checked locally, and GitHub-hosted workflows have
-not run in this checkout. See the milestone table in
+implemented, and Go could not be checked locally. Automated CI workflows are
+not configured. See the milestone table in
 [`repository-migration-plan.md`](repository-migration-plan.md) for the exact
 status of every phase.
 
@@ -27,7 +27,6 @@ compose.yaml
 compose.production.yaml
 docs/architecture/
 scripts/
-.github/workflows/
 ```
 
 The application moves were:
@@ -99,10 +98,10 @@ review.
 | Laravel | Composer autoload and PHP syntax checks passed; route listing returned 323 API routes. On an isolated disposable MySQL container, migrations completed and PHPUnit passed 154 tests / 762 assertions with one PHPUnit deprecation. |
 | RBAC catalog | Source registry reports 12 roles and 79 permissions. |
 | Docker Compose | Local and production Compose files both parse. Production validation used fake CI-only environment values; no images were built or deployed. |
-| Workflow YAML | Both GitHub Actions workflow files parse locally. The hosted actions were not run. |
-| Go worker | Not verified locally: the Go CLI is unavailable. Workflow config includes formatting, vet, and test checks. |
+| Automated CI | Not configured; application checks were run manually as listed above. |
+| Go worker | Not verified locally: the Go CLI is unavailable. |
 | Flutter | Not verified: Dart 3.11.3 cannot resolve `flutter_custom_tabs 2.6.0`, which requires Dart 3.12+. A read-only formatter check reports 300 of 338 Dart files would be reformatted. |
-| Security | Generated Playwright artifacts were checked with a path-only heuristic for common secret patterns; no matches were found. The configured Gitleaks and dependency-review workflows have not run. |
+| Security | Generated Playwright artifacts were checked with a path-only heuristic for common secret patterns; no matches were found. Automated secret scanning and dependency review are not configured. |
 
 The disposable MySQL test container was stopped and removed. The existing
 development Compose stack was left running and untouched. No image build,
