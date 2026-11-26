@@ -30,19 +30,23 @@ final class StagingMarketingGenerator
         for ($offset = 0; $offset < $campaignTarget; $offset += $context->profile->batchSize) {
             $end = min($campaignTarget, $offset + $context->profile->batchSize);
             DB::transaction(function () use ($offset, $end, $context, $datasetPart, $authors, $approvers, $coupons, &$states): void {
+                $keys = [];
+                for ($ordinal = $offset + 1; $ordinal <= $end; $ordinal++) $keys[] = sprintf('stg-%s-campaign-%06d', $datasetPart, $ordinal);
+                $existingOwners = DB::table('staging_dataset_records')->where('dataset_id', $context->datasetId)
+                    ->where('entity_type', 'marketing_campaign')->whereIn('entity_key', $keys)->get(['entity_key', 'record_id'])->keyBy('entity_key');
+                $unownedSlugs = DB::table('marketing_campaigns')->whereIn('slug', $keys)->pluck('slug')->flip();
                 $rows = [];
                 $owners = [];
                 for ($ordinal = $offset + 1; $ordinal <= $end; $ordinal++) {
                     $key = sprintf('stg-%s-campaign-%06d', $datasetPart, $ordinal);
-                    $owner = DB::table('staging_dataset_records')->where('dataset_id', $context->datasetId)
-                        ->where('entity_type', 'marketing_campaign')->where('entity_key', $key)->first(['record_id']);
+                    $owner = $existingOwners->get($key);
                     if ($owner !== null) {
                         $existing = DB::table('marketing_campaigns')->where('id', $owner->record_id)->where('slug', $key)->first(['status']);
                         if ($existing === null) throw new RuntimeException("Owned staging campaign {$key} is missing or inconsistent.");
                         if (array_key_exists($existing->status, $states)) $states[$existing->status]++;
                         continue;
                     }
-                    if (DB::table('marketing_campaigns')->where('slug', $key)->exists()) throw new RuntimeException("Campaign {$key} exists without staging ownership.");
+                    if ($unownedSlugs->has($key)) throw new RuntimeException("Campaign {$key} exists without staging ownership.");
 
                     $kind = match ($ordinal % 4) { 1 => 'promotion', 2 => 'notification', 3 => 'landing_page', default => 'campaign' };
                     $channel = $kind === 'notification' ? (($ordinal % 2) ? 'email' : 'push') : ($kind === 'campaign' ? 'in_app' : null);
@@ -91,18 +95,23 @@ final class StagingMarketingGenerator
         if ($context->profile->counts['campaigns'] > 0 && $customers->isEmpty()) throw new RuntimeException('Staging marketing requires owned customer accounts.');
         foreach ($customers->chunk($context->profile->batchSize) as $batch) {
             DB::transaction(function () use ($batch, $context, $datasetPart): void {
+                $consentKeys = [];
+                foreach ($batch as $customer) foreach (['email', 'push'] as $channel) $consentKeys[] = $customer->id.':'.$channel;
+                $existingOwners = DB::table('staging_dataset_records')->where('dataset_id', $context->datasetId)
+                    ->where('entity_type', 'marketing_consent')->whereIn('entity_key', $consentKeys)->get(['entity_key', 'record_id'])->keyBy('entity_key');
+                $existingConsents = DB::table('marketing_consents')->whereIn('user_id', $batch->pluck('id')->all())
+                    ->whereIn('channel', ['email', 'push'])->get(['user_id', 'channel'])->keyBy(fn ($row) => $row->user_id.':'.$row->channel);
                 $rows = [];
                 foreach ($batch as $customer) {
                     foreach (['email', 'push'] as $channel) {
                         $key = $customer->id.':'.$channel;
-                        $owner = DB::table('staging_dataset_records')->where('dataset_id', $context->datasetId)
-                            ->where('entity_type', 'marketing_consent')->where('entity_key', $key)->first(['record_id']);
+                        $owner = $existingOwners->get($key);
                         if ($owner !== null) {
                             $existing = DB::table('marketing_consents')->where('id', $owner->record_id)->where('user_id', $customer->id)->where('channel', $channel)->first();
                             if ($existing === null) throw new RuntimeException("Owned marketing consent {$key} is missing or inconsistent.");
                             continue;
                         }
-                        if (DB::table('marketing_consents')->where('user_id', $customer->id)->where('channel', $channel)->exists()) {
+                        if ($existingConsents->has($key)) {
                             throw new RuntimeException("Customer marketing consent {$key} exists without staging ownership.");
                         }
                         $consented = $channel === 'email' ? ((int) $customer->id % 4 !== 0) : ((int) $customer->id % 5 !== 0);

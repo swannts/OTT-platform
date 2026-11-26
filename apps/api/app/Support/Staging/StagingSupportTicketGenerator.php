@@ -33,18 +33,24 @@ final class StagingSupportTicketGenerator
         for ($offset = 0; $offset < $target; $offset += $context->profile->batchSize) {
             $end = min($target, $offset + $context->profile->batchSize);
             DB::transaction(function () use ($offset, $end, $context, $datasetPart, $customers, $staff): void {
+                $keys = [];
+                for ($ordinal = $offset + 1; $ordinal <= $end; $ordinal++) $keys[] = sprintf('stg-%s-ticket-%08d', $datasetPart, $ordinal);
+                $existingOwners = DB::table('staging_dataset_records')->where('dataset_id', $context->datasetId)
+                    ->where('entity_type', 'support_ticket')->whereIn('entity_key', $keys)->get(['entity_key', 'record_id'])->keyBy('entity_key');
+                $publicIds = [];
+                for ($ordinal = $offset + 1; $ordinal <= $end; $ordinal++) $publicIds[] = self::uuid($context->datasetId, $ordinal);
+                $unownedPublicIds = DB::table('support_tickets')->whereIn('public_id', $publicIds)->pluck('public_id')->flip();
                 $rows = [];
                 $owners = [];
                 for ($ordinal = $offset + 1; $ordinal <= $end; $ordinal++) {
                     $key = sprintf('stg-%s-ticket-%08d', $datasetPart, $ordinal);
-                    $owner = DB::table('staging_dataset_records')->where('dataset_id', $context->datasetId)
-                        ->where('entity_type', 'support_ticket')->where('entity_key', $key)->first(['record_id']);
+                    $owner = $existingOwners->get($key);
                     if ($owner !== null) {
                         $existing = DB::table('support_tickets')->where('id', $owner->record_id)->where('public_id', self::uuid($context->datasetId, $ordinal))->first();
                         if ($existing === null) throw new RuntimeException("Owned support ticket {$key} is missing or inconsistent.");
                         continue;
                     }
-                    if (DB::table('support_tickets')->where('public_id', self::uuid($context->datasetId, $ordinal))->exists()) {
+                    if ($unownedPublicIds->has(self::uuid($context->datasetId, $ordinal))) {
                         throw new RuntimeException("Support ticket {$key} exists without staging ownership.");
                     }
 
@@ -94,12 +100,14 @@ final class StagingSupportTicketGenerator
                 ->whereNotNull('tickets.first_response_at')->orderBy('tickets.id')->offset($offset)->limit($context->profile->batchSize)
                 ->get(['tickets.id', 'tickets.assigned_to', 'tickets.first_response_at', 'owners.entity_key']);
             $offset += $context->profile->batchSize;
+            $noteKeys = $tickets->map(fn ($ticket): string => sprintf('stg-%s-note-%08d', StagingIdentifiers::datasetPart($context->datasetId), (int) substr($ticket->entity_key, -8)))->all();
+            $existingNotes = $noteKeys === [] ? collect() : DB::table('staging_dataset_records')->where('dataset_id', $context->datasetId)
+                ->where('entity_type', 'support_ticket_note')->whereIn('entity_key', $noteKeys)->get(['entity_key', 'record_id'])->keyBy('entity_key');
             $rows = [];
             foreach ($tickets as $ticket) {
                 $ordinal = (int) substr($ticket->entity_key, -8);
                 $noteKey = sprintf('stg-%s-note-%08d', StagingIdentifiers::datasetPart($context->datasetId), $ordinal);
-                $ownedNote = DB::table('staging_dataset_records')->where('dataset_id', $context->datasetId)
-                    ->where('entity_type', 'support_ticket_note')->where('entity_key', $noteKey)->first(['record_id']);
+                $ownedNote = $existingNotes->get($noteKey);
                 if ($ownedNote !== null) {
                     if (! DB::table('support_ticket_notes')->where('id', $ownedNote->record_id)->where('ticket_id', $ticket->id)->exists()) {
                         throw new RuntimeException("Owned support note {$noteKey} is missing or inconsistent.");

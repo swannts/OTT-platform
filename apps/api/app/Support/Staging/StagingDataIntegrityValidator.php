@@ -64,8 +64,10 @@ final class StagingDataIntegrityValidator
                 'marketing_campaigns' => $groupedCounts['marketing_campaign'] ?? 0,
                 'marketing_consents' => $groupedCounts['marketing_consent'] ?? 0,
                 'notifications' => $groupedCounts['notification'] ?? 0,
+                'incidents' => $groupedCounts['operations_incident'] ?? 0,
+                'audit_logs' => $groupedCounts['admin_audit_log'] ?? 0,
             ];
-            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'cast_crew', 'entertainment_talent_mapping', 'content_license_window', 'content_license_territory', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction', 'media_asset', 'media_processing_job', 'media_asset_track', 'entertainment_media_link', 'blog', 'coupon', 'coupon_plan_mapping', 'user_search_history', 'support_ticket', 'support_ticket_note', 'marketing_consent', 'marketing_campaign', 'notification'];
+            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'cast_crew', 'entertainment_talent_mapping', 'content_license_window', 'content_license_territory', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction', 'media_asset', 'media_processing_job', 'media_asset_track', 'entertainment_media_link', 'blog', 'coupon', 'coupon_plan_mapping', 'user_search_history', 'support_ticket', 'support_ticket_note', 'marketing_consent', 'marketing_campaign', 'notification', 'operations_incident', 'admin_audit_log'];
             $unknownTypes = array_diff(array_keys($groupedCounts), $supportedTypes);
             foreach ($unknownTypes as $type) {
                 $violations[] = "Dataset {$manifest->dataset_id} has an unsupported ownership type {$type}.";
@@ -362,6 +364,69 @@ final class StagingDataIntegrityValidator
             if ($invalidNotifications > 0) {
                 $violations[] = "Dataset {$manifest->dataset_id} has {$invalidNotifications} notifications with invalid customer ownership, type, payload, or timestamps.";
             }
+            $invalidIncidents = DB::table('staging_dataset_records as owners')
+                ->leftJoin('operations_incidents as incidents', 'incidents.id', '=', 'owners.record_id')
+                ->leftJoin('users as openers', 'openers.id', '=', 'incidents.opened_by')
+                ->leftJoin('users as assignees', 'assignees.id', '=', 'incidents.assigned_to')
+                ->leftJoin('users as resolvers', 'resolvers.id', '=', 'incidents.resolved_by')
+                ->leftJoin('staging_dataset_records as opener_owner', function ($join) use ($manifest): void {
+                    $join->on('opener_owner.entity_key', '=', 'openers.email')->where('opener_owner.dataset_id', '=', $manifest->dataset_id)->where('opener_owner.entity_type', '=', 'staff_user');
+                })
+                ->leftJoin('staging_dataset_records as assignee_owner', function ($join) use ($manifest): void {
+                    $join->on('assignee_owner.entity_key', '=', 'assignees.email')->where('assignee_owner.dataset_id', '=', $manifest->dataset_id)->where('assignee_owner.entity_type', '=', 'staff_user');
+                })
+                ->leftJoin('staging_dataset_records as resolver_owner', function ($join) use ($manifest): void {
+                    $join->on('resolver_owner.entity_key', '=', 'resolvers.email')->where('resolver_owner.dataset_id', '=', $manifest->dataset_id)->where('resolver_owner.entity_type', '=', 'staff_user');
+                })
+                ->where('owners.dataset_id', $manifest->dataset_id)->where('owners.entity_type', 'operations_incident')
+                ->where(function ($query) use ($manifest): void {
+                    $query->whereNull('incidents.id')->orWhereNull('opener_owner.id')
+                        ->orWhereNotIn('incidents.severity', ['low', 'medium', 'high', 'critical'])
+                        ->orWhereNotIn('incidents.status', ['open', 'acknowledged', 'resolved'])
+                        ->orWhereColumn('incidents.updated_at', '<', 'incidents.created_at')
+                        ->orWhereDate('incidents.created_at', '>', $manifest->reference_date)
+                        ->orWhere(function ($acknowledged): void {
+                            $acknowledged->where('incidents.status', '!=', 'open')->where(function ($missing): void {
+                                $missing->whereNull('incidents.acknowledged_at')->orWhereColumn('incidents.acknowledged_at', '<', 'incidents.created_at');
+                            });
+                        })
+                        ->orWhere(function ($resolved): void {
+                            $resolved->where('incidents.status', 'resolved')->where(function ($missing): void {
+                                $missing->whereNull('incidents.resolved_at')->orWhereNull('resolver_owner.id')
+                                    ->orWhereColumn('incidents.resolved_at', '<', 'incidents.acknowledged_at');
+                            });
+                        })
+                        ->orWhere(function ($notResolved): void {
+                            $notResolved->where('incidents.status', '!=', 'resolved')->where(function ($fields): void {
+                                $fields->whereNotNull('incidents.resolved_at')->orWhereNotNull('incidents.resolved_by');
+                            });
+                        })
+                        ->orWhereColumn('owners.record_id', '!=', 'incidents.id');
+                })->count();
+            if ($invalidIncidents > 0) {
+                $violations[] = "Dataset {$manifest->dataset_id} has {$invalidIncidents} operations incidents with invalid ownership, severity, or lifecycle timestamps.";
+            }
+            $invalidAuditLogs = DB::table('staging_dataset_records as owners')
+                ->leftJoin('admin_audit_logs as logs', 'logs.id', '=', 'owners.record_id')
+                ->leftJoin('users as actors', 'actors.id', '=', 'logs.actor_id')
+                ->leftJoin('staging_dataset_records as actor_owner', function ($join) use ($manifest): void {
+                    $join->on('actor_owner.entity_key', '=', 'actors.email')->where('actor_owner.dataset_id', '=', $manifest->dataset_id)->where('actor_owner.entity_type', '=', 'staff_user');
+                })
+                ->leftJoin('staging_dataset_records as source_owner', function ($join) use ($manifest): void {
+                    $join->on('source_owner.id', '=', DB::raw('CAST(logs.resource_id AS UNSIGNED)'))
+                        ->where('source_owner.dataset_id', '=', $manifest->dataset_id)->where('source_owner.entity_type', '!=', 'admin_audit_log');
+                })
+                ->where('owners.dataset_id', $manifest->dataset_id)->where('owners.entity_type', 'admin_audit_log')
+                ->where(function ($query): void {
+                    $query->whereNull('logs.id')->orWhereNull('actor_owner.id')->orWhereNull('source_owner.id')
+                        ->orWhere('logs.action', '!=', 'staging.fixture.generated')->orWhere('logs.outcome', '!=', 'success')
+                        ->orWhereColumn('owners.record_id', '!=', 'logs.id')
+                        ->orWhereRaw('JSON_VALID(logs.after_values) = 0')
+                        ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(logs.after_values, '$.synthetic')) != 'true'");
+                })->count();
+            if ($invalidAuditLogs > 0) {
+                $violations[] = "Dataset {$manifest->dataset_id} has {$invalidAuditLogs} audit events without owned actors, source records, and synthetic markers.";
+            }
             $ownedMedia = DB::table('staging_dataset_records')
                 ->where('dataset_id', $manifest->dataset_id)
                 ->where('entity_type', 'media_asset')
@@ -647,7 +712,7 @@ final class StagingDataIntegrityValidator
                 }
             }
             $configuredCounts = (array) ($manifest->configuration['counts'] ?? []);
-            foreach (['staff' => 'staff', 'customers' => 'customers', 'devices' => 'devices', 'cast_crew' => 'cast_crew', 'plans' => 'plans', 'subscriptions' => 'subscriptions', 'payments' => 'payments', 'media_assets' => 'media_assets', 'coupons' => 'coupons', 'search_history' => 'search_history', 'support_tickets' => 'support_tickets', 'marketing_campaigns' => 'campaigns', 'notifications' => 'notifications'] as $entity => $targetKey) {
+            foreach (['staff' => 'staff', 'customers' => 'customers', 'devices' => 'devices', 'cast_crew' => 'cast_crew', 'plans' => 'plans', 'subscriptions' => 'subscriptions', 'payments' => 'payments', 'media_assets' => 'media_assets', 'coupons' => 'coupons', 'search_history' => 'search_history', 'support_tickets' => 'support_tickets', 'marketing_campaigns' => 'campaigns', 'notifications' => 'notifications', 'incidents' => 'incidents', 'audit_logs' => 'audit_logs'] as $entity => $targetKey) {
                 if (isset($configuredCounts[$targetKey]) && $counts[$entity] !== (int) $configuredCounts[$targetKey]) {
                     $violations[] = "Dataset {$manifest->dataset_id} has {$counts[$entity]} {$entity}; configured target is {$configuredCounts[$targetKey]}.";
                 }
@@ -702,7 +767,7 @@ final class StagingDataIntegrityValidator
         return [
             'valid' => $violations === [],
             'complete' => $complete,
-            'coverage' => 'manifest, staff role, customer identity, profile and device ownership, unpublished bilingual catalog, genre mappings, fictional cast/crew credits, bilingual editorial articles, coupon and plan mappings, customer search-history ownership, support ticket and staff-note lifecycle ownership, marketing consent and maker-checker campaign ownership, customer-owned in-app notification payloads and timestamps, licensing windows and territories, actual media fixture readiness and ownership, series hierarchy, plans, subscription lifecycle, and synthetic payment attempts; remaining business-domain checks are pending',
+            'coverage' => 'manifest, staff role, customer identity, profile and device ownership, unpublished bilingual catalog, genre mappings, fictional cast/crew credits, bilingual editorial articles, coupon and plan mappings, customer search-history ownership, support ticket and staff-note lifecycle ownership, marketing consent and maker-checker campaign ownership, customer-owned in-app notification payloads and timestamps, synthetic operations incident lifecycles and explicitly labeled staging audit events, licensing windows and territories, actual media fixture readiness and ownership, series hierarchy, plans, subscription lifecycle, and synthetic payment attempts; remaining business-domain checks are pending',
             'checked_at' => now()->toIso8601String(),
             'datasets' => $datasets,
             'violations' => array_values(array_unique($violations)),

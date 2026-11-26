@@ -15,6 +15,7 @@ use App\Support\Staging\StagingSearchHistoryGenerator;
 use App\Support\Staging\StagingSupportTicketGenerator;
 use App\Support\Staging\StagingMarketingGenerator;
 use App\Support\Staging\StagingNotificationGenerator;
+use App\Support\Staging\StagingOperationsHistoryGenerator;
 use App\Support\Staging\StagingGenerationContext;
 use App\Support\Staging\StagingProfile;
 use App\Support\Staging\StagingStaffGenerator;
@@ -59,6 +60,7 @@ class SeedStagingData extends Command
         StagingSupportTicketGenerator $supportTicketGenerator,
         StagingMarketingGenerator $marketingGenerator,
         StagingNotificationGenerator $notificationGenerator,
+        StagingOperationsHistoryGenerator $operationsGenerator,
     ): int {
         try {
             $profileName = (string) ($this->option('profile') ?: config('staging-data.profile'));
@@ -115,7 +117,7 @@ class SeedStagingData extends Command
             ['Configured target movies', (string) $profile->counts['movies']],
             ['Configured target series', (string) $profile->counts['series']],
             ['Configured target episodes', (string) $profile->counts['episodes']],
-            ['Currently implemented generation', 'RBAC, staff, customers, profiles, devices, bilingual catalog, series hierarchy, editorial articles, coupons, search history, shared cast/crew credits, licensing, playable local media fixtures, plans, subscriptions, and synthetic payment attempts'],
+            ['Currently implemented generation', 'RBAC, staff, customers, profiles, devices, bilingual catalog, series hierarchy, editorial articles, coupons, search history, support tickets, marketing consent and campaigns, in-app notifications, synthetic operations incidents and audit history, shared cast/crew credits, licensing, playable local media fixtures, plans, subscriptions, and synthetic payment attempts'],
         ]);
 
         if ($violations !== []) {
@@ -191,6 +193,7 @@ class SeedStagingData extends Command
                 $supportResults = $supportTicketGenerator->generate($context);
                 $marketingResults = $marketingGenerator->generate($context);
                 $notificationResults = $notificationGenerator->generate($context);
+                $operationsResults = $operationsGenerator->generate($context);
                 $recordCounts = DB::table('staging_dataset_records')
                     ->where('dataset_id', $datasetId)
                     ->select('entity_type', DB::raw('count(*) as records'))
@@ -229,6 +232,8 @@ class SeedStagingData extends Command
                     'marketing_campaigns' => $recordCounts['marketing_campaign'] ?? 0,
                     'marketing_consents' => $recordCounts['marketing_consent'] ?? 0,
                     'notifications' => $recordCounts['notification'] ?? 0,
+                    'incidents' => $recordCounts['operations_incident'] ?? 0,
+                    'audit_logs' => $recordCounts['admin_audit_log'] ?? 0,
                 ];
                 $recordCounts['movies'] = $catalogResults['movies'];
                 $recordCounts['series'] = $catalogResults['series'];
@@ -277,7 +282,8 @@ class SeedStagingData extends Command
                 $this->info(sprintf('Dataset customer support: %d synthetic tickets and %d internal staff notes; no external message is sent.', $supportResults['tickets'], $supportResults['notes']));
                 $this->info(sprintf('Dataset marketing: %d consent choices and %d campaigns (%d drafts, %d awaiting review, %d approved, %d rejected); no campaign is published or delivered.', $marketingResults['consents'], $marketingResults['campaigns'], $marketingResults['draft'], $marketingResults['pending_approval'], $marketingResults['approved'], $marketingResults['rejected']));
                 $this->info(sprintf('Dataset in-app notifications: %d historical records (%d unread, %d archived); no mail or push is dispatched.', $notificationResults['notifications'], $notificationResults['unread'], $notificationResults['archived']));
-                $this->warn('This milestone remains partial: refunds/reconciliation, playback, watchlists/reviews, campaign deliveries/banners, operations, analytics, and search indexing are not yet generated. Catalog entries remain unpublished; synthetic transactions never contact payment providers.');
+                $this->info(sprintf('Dataset operations: %d historical synthetic incidents (%d open, %d acknowledged, %d resolved) and %d explicitly labeled staging audit events; no alert is sent.', $operationsResults['incidents'], $operationsResults['open'], $operationsResults['acknowledged'], $operationsResults['resolved'], $operationsResults['audit_logs']));
+                $this->warn('This milestone remains partial: refunds/reconciliation, playback, watchlists/reviews, campaign deliveries/banners, analytics, and search indexing are not yet generated. Catalog entries remain unpublished; synthetic transactions never contact payment providers.');
 
                 return self::SUCCESS;
             } catch (Throwable $exception) {
