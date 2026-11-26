@@ -57,6 +57,7 @@ class BlogLocalizationTest extends TestCase
         $published = Blog::query()->create([
             'title' => 'English fallback',
             'slug' => 'english-fallback',
+            'content' => 'English article body',
             'category' => 'Faith',
             'tags' => ['mercy'],
             'tags_bn' => ['দয়া'],
@@ -66,6 +67,7 @@ class BlogLocalizationTest extends TestCase
         Blog::query()->create([
             'title' => 'Unpublished',
             'slug' => 'unpublished-tag-match',
+            'content' => 'Unpublished article body',
             'category' => 'Faith',
             'tags_bn' => ['দয়া'],
             'status' => 0,
