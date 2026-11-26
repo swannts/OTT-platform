@@ -1,0 +1,223 @@
+name: CI
+
+on:
+  push:
+    paths:
+      - '.github/workflows/**'
+      - 'AGENTS.md'
+      - 'README.md'
+      - 'compose.yaml'
+      - 'compose.production.yaml'
+      - '.env.example'
+      - '.env.production.example'
+      - 'apps/api/**'
+      - 'apps/web/**'
+      - 'apps/admin/**'
+      - 'apps/mobile/**'
+      - 'apps/worker/**'
+      - 'docs/architecture/**'
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - 'AGENTS.md'
+      - 'README.md'
+      - 'compose.yaml'
+      - 'compose.production.yaml'
+      - '.env.example'
+      - '.env.production.example'
+      - 'apps/api/**'
+      - 'apps/web/**'
+      - 'apps/admin/**'
+      - 'apps/mobile/**'
+      - 'apps/worker/**'
+      - 'docs/architecture/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  customer-web:
+    name: Customer web
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci --legacy-peer-deps
+      - run: npm run lint
+      - run: npx tsc --noEmit
+      - run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:8000/api
+          NEXT_PUBLIC_APP_NAME: NOOR Islamic Cinema
+      - uses: cypress-io/github-action@v6
+        with:
+          working-directory: apps/web
+          install: false
+          start: npm run dev -- --port 3000
+          wait-on: http://127.0.0.1:3000
+          wait-on-timeout: 120
+          browser: chrome
+          command: npm run cypress:run -- --browser chrome
+
+  admin-web:
+    name: Admin portal
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/admin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/admin/package-lock.json
+      - run: npm ci --legacy-peer-deps
+      - run: npm run lint
+      - run: npm run test:bff
+      - run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:8000/api
+
+  laravel-api:
+    name: Laravel API
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: swann_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -ppassword"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: bcmath, ctype, curl, dom, fileinfo, gd, intl, mbstring, mysqli, openssl, pdo_mysql, tokenizer, xml, zip
+          coverage: none
+      - uses: ramsey/composer-install@v3
+        with:
+          working-directory: apps/api
+          composer-options: --no-interaction --prefer-dist --no-progress
+      - run: composer validate --no-check-publish
+      - run: php artisan route:list --path=api --json > /tmp/ott-api-routes.json
+        env:
+          APP_ENV: testing
+          APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: swann_test
+          DB_USERNAME: root
+          DB_PASSWORD: password
+      - run: vendor/bin/phpunit
+        env:
+          APP_ENV: testing
+          APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: swann_test
+          DB_USERNAME: root
+          DB_PASSWORD: password
+          CACHE_STORE: array
+          QUEUE_CONNECTION: sync
+          SESSION_DRIVER: array
+
+  go-worker:
+    name: Go worker
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/worker/go.mod
+          cache-dependency-path: apps/worker/go.sum
+      - name: Check formatting
+        run: test -z "$(gofmt -l $(find . -type f -name '*.go'))"
+      - run: go vet ./...
+      - run: go test ./...
+
+  flutter-mobile:
+    name: Flutter mobile and TV
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.50.1'
+          channel: stable
+          cache: true
+          cache-dependency-path: apps/mobile/pubspec.lock
+      - run: flutter pub get
+      - run: dart format --output=none --set-exit-if-changed lib test
+      - run: flutter analyze
+      - run: flutter test
+
+  compose:
+    name: Docker Compose configuration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose --env-file .env.example -f compose.yaml config -q
+      - run: docker compose --env-file .env.production.example -f compose.production.yaml config -q
+        env:
+          ADMIN_IMAGE: ott-platform/admin:ci
+          ADMIN_PORT: '3032'
+          ADMIN_UI_URL: https://admin.example.test
+          API_IMAGE: ott-platform/api:ci
+          APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+          APP_URL: https://api.example.test
+          AWS_BACKUP_BUCKET: ci-validation-bucket
+          AWS_BACKUP_REGION: us-east-1
+          BACKEND_PORT: '8000'
+          BACKUP_ARCHIVE_PASSWORD: ci-validation-only
+          CORS_ALLOWED_ORIGINS: https://admin.example.test,https://example.test
+          DB_DATABASE: ott_ci
+          DB_DSN: root:ci-validation-only@tcp(mysql:3306)/ott_ci?charset=utf8mb4
+          DB_PASSWORD: ci-validation-only
+          DB_USERNAME: ott_ci
+          FRONTEND_PORT: '3000'
+          FRONTEND_URL: https://example.test
+          MAIL_FROM_ADDRESS: ci@example.test
+          MAIL_HOST: mail.example.test
+          MEILISEARCH_IMAGE: getmeili/meilisearch:v1.12
+          MEILI_MASTER_KEY: ci-validation-only-meilisearch-key
+          MYSQL_IMAGE: mysql:8.0
+          MYSQL_ROOT_PASSWORD: ci-validation-only-root
+          NEXT_PUBLIC_API_URL: https://api.example.test/api
+          RABBITMQ_IMAGE: rabbitmq:3.13-management-alpine
+          RABBITMQ_PASS: ci-validation-only
+          RABBITMQ_URL: amqp://ott_ci:ci-validation-only@rabbitmq:5672/
+          RABBITMQ_USER: ott_ci
+          REDIS_IMAGE: redis:7-alpine
+          WEB_IMAGE: ott-platform/web:ci
+          WORKER_IMAGE: ott-platform/worker:ci

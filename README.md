@@ -85,6 +85,54 @@ docker compose down
 
 This repository uses the root `compose.yaml` for local development.
 
+## Architecture and compatibility
+
+The platform is a modular Laravel backend with separate customer web, admin,
+mobile/TV, and worker applications. Existing API routes, persisted database
+schemas, the 12 canonical admin roles, playback entitlements, payment
+integrations, RabbitMQ contracts, and mobile application identifiers are
+compatibility boundaries. Start with the [architecture overview](docs/architecture/overview.md)
+and [migration plan](docs/architecture/repository-migration-plan.md) before
+cross-application changes.
+
+Key references:
+
+- [Monorepo structure](docs/architecture/monorepo-structure.md)
+- [Backend architecture](docs/architecture/backend-architecture.md)
+- [Frontend architecture](docs/architecture/frontend-architecture.md)
+- [Worker architecture](docs/architecture/worker-architecture.md)
+- [Mobile architecture](docs/architecture/mobile-architecture.md)
+- [API, database, and RBAC compatibility](docs/architecture/api-database-rbac-compatibility.md)
+- [Branding configuration](docs/architecture/branding-configuration.md)
+- [Naming conventions](docs/architecture/naming-conventions.md)
+
+## Validation commands
+
+Run checks from the relevant application directory:
+
+```bash
+# Customer web
+(cd apps/web && npm run lint && npx tsc --noEmit && npm run build)
+(cd apps/web && npm run cypress:run -- --browser chromium)
+
+# Admin portal
+(cd apps/admin && npm run lint && npm run test:bff && npm run build)
+
+# Laravel API (requires its test database)
+(cd apps/api && composer validate --no-check-publish && vendor/bin/phpunit)
+
+# Go worker
+(cd apps/worker && go vet ./... && go test ./...)
+
+# Flutter mobile/TV (requires a compatible Flutter SDK)
+(cd apps/mobile && flutter analyze && flutter test)
+```
+
+GitHub Actions run application checks, browser tests, dependency review, secret
+scanning, and Compose configuration validation. Passing CI does not by itself
+prove production readiness or validate external payment, Firebase, or media
+provider accounts.
+
 ---
 
 ## Running Without Docker (Manual Mode)

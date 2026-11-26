@@ -1,0 +1,59 @@
+name: Security checks
+
+on:
+  push:
+    paths:
+      - '.github/workflows/**'
+      - 'apps/**/package-lock.json'
+      - 'apps/**/composer.lock'
+      - 'apps/**/go.mod'
+      - 'apps/**/go.sum'
+      - 'apps/mobile/pubspec.lock'
+      - 'package-lock.json'
+      - '**/*.php'
+      - '**/*.go'
+      - '**/*.ts'
+      - '**/*.tsx'
+      - '**/*.dart'
+      - '**/*.env*'
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - 'apps/**/package-lock.json'
+      - 'apps/**/composer.lock'
+      - 'apps/**/go.mod'
+      - 'apps/**/go.sum'
+      - 'apps/mobile/pubspec.lock'
+      - 'package-lock.json'
+      - '**/*.php'
+      - '**/*.go'
+      - '**/*.ts'
+      - '**/*.tsx'
+      - '**/*.dart'
+      - '**/*.env*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
