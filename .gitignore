@@ -18,12 +18,17 @@
 **/storage/logs/*.log
 **/debug.log
 **/storage/installed
+**/*.tsbuildinfo
 
 # Flutter / Dart generated files and build output
 **/.dart_tool/
 **/.packages
 **/build/
 **/coverage/
+**/test-results/
+**/playwright-report/
+**/playwright/.cache/
+**/playwright/.auth/
 **/android/local.properties
 **/ios/Pods/
 **/ios/.symlinks/
@@ -44,3 +49,5 @@ Thumbs.db
 # Cypress test artifacts
 **/cypress/screenshots/
 **/cypress/videos/
+**/cypress/downloads/
+*.log

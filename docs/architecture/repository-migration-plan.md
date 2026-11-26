@@ -148,7 +148,7 @@ and validate a separate rollback procedure before execution.
 | Milestone | Status | Evidence / remaining work |
 | --- | --- | --- |
 | M1 — Repository analysis and baseline | Implemented and verified | This plan and baseline table; route/autoload/Compose checks pass, with platform limitations recorded. |
-| M2 — Generated artifact cleanup | Not implemented | 99 tracked files under `nextjs-web/test-results/` identified for safe review and untracking. |
+| M2 — Generated artifact cleanup | Implemented and verified | 99 generated Playwright outputs removed from Git tracking, preserved locally, and covered by root ignore rules. A path-only heuristic scan found no common token/password patterns in the tracked artifacts. |
 | M3 — Application directory migration | Not implemented | Five Git-aware moves and all path references remain. |
 | M4 — Docker, scripts and configuration | Not implemented | Compose and script migration remains; persistent identifiers must be preserved. |
 | M5 — Laravel internal naming | Not implemented | Requires dependency-by-dependency assessment; avoid mass class renames. |
