@@ -67,8 +67,9 @@ final class StagingDataIntegrityValidator
                 'incidents' => $groupedCounts['operations_incident'] ?? 0,
                 'audit_logs' => $groupedCounts['admin_audit_log'] ?? 0,
                 'analytics_reports' => $groupedCounts['analytics_report_run'] ?? 0,
+                'content_review_submissions' => $groupedCounts['content_review_submission'] ?? 0,
             ];
-            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'cast_crew', 'entertainment_talent_mapping', 'content_license_window', 'content_license_territory', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction', 'media_asset', 'media_processing_job', 'media_asset_track', 'entertainment_media_link', 'blog', 'coupon', 'coupon_plan_mapping', 'user_search_history', 'support_ticket', 'support_ticket_note', 'marketing_consent', 'marketing_campaign', 'notification', 'operations_incident', 'admin_audit_log', 'analytics_report_run'];
+            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'cast_crew', 'entertainment_talent_mapping', 'content_license_window', 'content_license_territory', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction', 'media_asset', 'media_processing_job', 'media_asset_track', 'entertainment_media_link', 'blog', 'coupon', 'coupon_plan_mapping', 'user_search_history', 'support_ticket', 'support_ticket_note', 'marketing_consent', 'marketing_campaign', 'notification', 'operations_incident', 'admin_audit_log', 'analytics_report_run', 'content_review_submission'];
             $unknownTypes = array_diff(array_keys($groupedCounts), $supportedTypes);
             foreach ($unknownTypes as $type) {
                 $violations[] = "Dataset {$manifest->dataset_id} has an unsupported ownership type {$type}.";
@@ -166,6 +167,84 @@ final class StagingDataIntegrityValidator
                 })->count();
             if ($invalidBlogs > 0) {
                 $violations[] = "Dataset {$manifest->dataset_id} has {$invalidBlogs} invalid or incompletely localized editorial articles.";
+            }
+            $invalidReviewLifecycle = DB::table('staging_dataset_records as owners')
+                ->leftJoin('admin_content_review_submissions as submissions', 'submissions.id', '=', 'owners.record_id')
+                ->leftJoin('staging_dataset_records as content_owner', function ($join) use ($manifest): void {
+                    $join->on('content_owner.record_id', '=', 'submissions.content_id')
+                        ->where('content_owner.dataset_id', '=', $manifest->dataset_id)->where('content_owner.entity_type', '=', 'entertainment');
+                })
+                ->leftJoin('entertainments', 'entertainments.id', '=', 'submissions.content_id')
+                ->where('owners.dataset_id', $manifest->dataset_id)->where('owners.entity_type', 'content_review_submission')
+                ->where(function ($query): void {
+                    $query->whereNull('submissions.id')->orWhereNull('content_owner.id')->orWhereNull('entertainments.id')
+                        ->orWhereColumn('owners.record_id', '!=', 'submissions.id')
+                        ->orWhere('submissions.content_type', '!=', 'entertainment')
+                        ->orWhereNotIn('submissions.status', ['in_review', 'approved', 'rejected'])
+                        ->orWhere('entertainments.status', '!=', 0)
+                        ->orWhereColumn('submissions.submitted_by', '=', 'submissions.reviewed_by')
+                        ->orWhere(function ($pending): void {
+                            $pending->where('submissions.status', 'in_review')->where(function ($fields): void {
+                                $fields->whereNotNull('submissions.reviewed_by')->orWhereNotNull('submissions.reviewed_at');
+                            });
+                        })
+                        ->orWhere(function ($decided): void {
+                            $decided->whereIn('submissions.status', ['approved', 'rejected'])->where(function ($fields): void {
+                                $fields->whereNull('submissions.reviewed_by')->orWhereNull('submissions.reviewed_at');
+                            });
+                        })
+                        ->orWhereColumn('submissions.reviewed_at', '<', 'submissions.submitted_at')
+                        ->orWhereNull('submissions.snapshot')->orWhereNull('submissions.snapshot_hash');
+                })->count();
+            if ($invalidReviewLifecycle > 0) {
+                $violations[] = "Dataset {$manifest->dataset_id} has {$invalidReviewLifecycle} content reviews with invalid ownership, lifecycle, snapshot, or publication state.";
+            }
+            DB::table('staging_dataset_records as owners')
+                ->join('admin_content_review_submissions as submissions', 'submissions.id', '=', 'owners.record_id')
+                ->where('owners.dataset_id', $manifest->dataset_id)->where('owners.entity_type', 'content_review_submission')
+                ->orderBy('submissions.id')->select(['owners.entity_key', 'submissions.content_id', 'submissions.revision', 'submissions.snapshot', 'submissions.snapshot_hash'])
+                ->chunk(500, function ($reviews) use ($manifest, &$violations): void {
+                    foreach ($reviews as $review) {
+                        $expectedKey = (string) $review->content_id.':'.(string) $review->revision;
+                        $snapshot = is_array($review->snapshot) ? $review->snapshot : json_decode((string) $review->snapshot, true);
+                        if ($review->entity_key !== $expectedKey || ! is_array($snapshot)) {
+                            $violations[] = "Dataset {$manifest->dataset_id} has a content review with an invalid ownership key or snapshot.";
+                            continue;
+                        }
+                        ksort($snapshot);
+                        $encoded = json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                        if (! is_string($encoded) || ! hash_equals((string) $review->snapshot_hash, hash('sha256', $encoded))) {
+                            $violations[] = "Dataset {$manifest->dataset_id} has a content review with a mismatched snapshot hash.";
+                            break;
+                        }
+                    }
+                });
+            $hasReviewPermissions = DB::table('staging_dataset_records as owners')
+                ->join('admin_content_review_submissions as submissions', 'submissions.id', '=', 'owners.record_id')
+                ->where('owners.dataset_id', $manifest->dataset_id)->where('owners.entity_type', 'content_review_submission')
+                ->where(function ($query): void {
+                    $query->whereNotExists(function ($submitter): void {
+                        $submitter->selectRaw('1')->from('users as submitters')
+                            ->join('model_has_roles as role_assignments', function ($join): void {
+                                $join->on('role_assignments.model_id', '=', 'submitters.id')->where('role_assignments.model_type', '=', User::class);
+                            })->join('roles', 'roles.id', '=', 'role_assignments.role_id')
+                            ->join('staging_dataset_records as staff_owner', function ($join): void {
+                                $join->on('staff_owner.entity_key', '=', 'submitters.email')->where('staff_owner.entity_type', '=', 'staff_user');
+                            })->whereColumn('submitters.id', 'submissions.submitted_by')->where('roles.name', 'content_editor');
+                    })->orWhere(function ($decided): void {
+                        $decided->whereIn('submissions.status', ['approved', 'rejected'])->whereNotExists(function ($reviewer): void {
+                            $reviewer->selectRaw('1')->from('users as reviewers')
+                                ->join('model_has_roles as role_assignments', function ($join): void {
+                                    $join->on('role_assignments.model_id', '=', 'reviewers.id')->where('role_assignments.model_type', '=', User::class);
+                                })->join('roles', 'roles.id', '=', 'role_assignments.role_id')
+                                ->join('staging_dataset_records as staff_owner', function ($join): void {
+                                    $join->on('staff_owner.entity_key', '=', 'reviewers.email')->where('staff_owner.entity_type', '=', 'staff_user');
+                                })->whereColumn('reviewers.id', 'submissions.reviewed_by')->where('roles.name', 'content_reviewer');
+                        });
+                    });
+                })->count();
+            if ($hasReviewPermissions > 0) {
+                $violations[] = "Dataset {$manifest->dataset_id} has {$hasReviewPermissions} content reviews without owned staff holding the required submitter or reviewer roles.";
             }
             $invalidCoupons = DB::table('staging_dataset_records as owners')
                 ->leftJoin('coupons', 'coupons.id', '=', 'owners.record_id')
@@ -737,7 +816,7 @@ final class StagingDataIntegrityValidator
                 }
             }
             $configuredCounts = (array) ($manifest->configuration['counts'] ?? []);
-            foreach (['staff' => 'staff', 'customers' => 'customers', 'devices' => 'devices', 'cast_crew' => 'cast_crew', 'plans' => 'plans', 'subscriptions' => 'subscriptions', 'payments' => 'payments', 'media_assets' => 'media_assets', 'coupons' => 'coupons', 'search_history' => 'search_history', 'support_tickets' => 'support_tickets', 'marketing_campaigns' => 'campaigns', 'notifications' => 'notifications', 'incidents' => 'incidents', 'audit_logs' => 'audit_logs', 'analytics_reports' => 'analytics_reports'] as $entity => $targetKey) {
+            foreach (['staff' => 'staff', 'customers' => 'customers', 'devices' => 'devices', 'cast_crew' => 'cast_crew', 'plans' => 'plans', 'subscriptions' => 'subscriptions', 'payments' => 'payments', 'media_assets' => 'media_assets', 'coupons' => 'coupons', 'search_history' => 'search_history', 'support_tickets' => 'support_tickets', 'marketing_campaigns' => 'campaigns', 'notifications' => 'notifications', 'incidents' => 'incidents', 'audit_logs' => 'audit_logs', 'analytics_reports' => 'analytics_reports', 'content_review_submissions' => 'content_review_submissions'] as $entity => $targetKey) {
                 if (isset($configuredCounts[$targetKey]) && $counts[$entity] !== (int) $configuredCounts[$targetKey]) {
                     $violations[] = "Dataset {$manifest->dataset_id} has {$counts[$entity]} {$entity}; configured target is {$configuredCounts[$targetKey]}.";
                 }

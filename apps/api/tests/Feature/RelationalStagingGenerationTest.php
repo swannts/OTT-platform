@@ -34,6 +34,7 @@ class RelationalStagingGenerationTest extends TestCase
             'staging-data.isolated_cache_prefix' => 'ott_staging_feature_test',
             'cache.prefix' => 'ott_staging_feature_test',
             'cache.default' => 'file',
+            'cache.stores.file.path' => sys_get_temp_dir().'/ott-staging-feature-cache-'.getmypid(),
             'staging-data.queue_isolated' => true,
             'queue.default' => 'database',
             'queue.connections.database.connection' => null,
@@ -65,7 +66,7 @@ class RelationalStagingGenerationTest extends TestCase
                 'cast_crew' => 12,
                 'subscriptions' => 24,
                 'payments' => 30,
-                'media_assets' => 2,
+                'media_assets' => 0,
                 'blogs' => 20,
                 'search_history' => 5,
                 'support_tickets' => 10,
@@ -74,6 +75,7 @@ class RelationalStagingGenerationTest extends TestCase
                 'incidents' => 6,
                 'audit_logs' => 12,
                 'analytics_reports' => 5,
+                'content_review_submissions' => 6,
             ], JSON_THROW_ON_ERROR),
         ];
 
@@ -96,12 +98,12 @@ class RelationalStagingGenerationTest extends TestCase
         $this->assertSame(11, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'content_license_window')->count());
         $this->assertSame(19, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'content_license_territory')->count());
         $mediaAssetIds = DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'media_asset')->pluck('record_id');
-        $this->assertCount(2, $mediaAssetIds);
+        $this->assertCount(0, $mediaAssetIds);
         foreach (MediaAsset::query()->whereIn('id', $mediaAssetIds)->with('assetTracks')->get() as $asset) {
             $this->assertTrue(app(MediaReadinessService::class)->inspect($asset)['ready']);
             $this->assertSame($asset->sha256, hash_file('sha256', Storage::disk('private')->path($asset->source_path)));
         }
-        $this->assertSame(2, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'entertainment_media_link')->count());
+        $this->assertSame(0, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'entertainment_media_link')->count());
         $this->assertSame(20, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'blog')->count());
         $this->assertSame(18, DB::table('blogs')->where('status', 1)->whereNotNull('published_at')->count());
         $this->assertSame(2, DB::table('blogs')->where('status', 0)->whereNull('published_at')->count());
@@ -123,6 +125,11 @@ class RelationalStagingGenerationTest extends TestCase
         $this->assertSame(12, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'admin_audit_log')->count());
         $this->assertSame(5, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'analytics_report_run')->count());
         $this->assertSame(5, DB::table('analytics_report_runs')->where('status', 'ready')->whereNotNull('result')->count());
+        $this->assertSame(6, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'content_review_submission')->count());
+        $this->assertSame(1, DB::table('admin_content_review_submissions')->where('status', 'in_review')->count());
+        $this->assertSame(1, DB::table('admin_content_review_submissions')->where('status', 'rejected')->count());
+        $this->assertSame(4, DB::table('admin_content_review_submissions')->where('status', 'approved')->count());
+        $this->assertSame(0, DB::table('staging_dataset_records as owners')->join('entertainments', 'entertainments.id', '=', 'owners.record_id')->where('owners.dataset_id', 'feature-staging-small')->where('owners.entity_type', 'entertainment')->where('entertainments.status', 1)->count());
         $this->assertSame(0, DB::table('operations_incidents')->where('title', 'not a staging incident')->count());
         $this->assertSame(0, DB::table('verified_payments')->count());
         $this->assertSame(0, DB::table('subscriptions')->where('status', 'active')->where('is_trial', 0)->whereNull('payment_id')->count());
@@ -151,5 +158,6 @@ class RelationalStagingGenerationTest extends TestCase
         $this->assertSame(6, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'operations_incident')->count());
         $this->assertSame(12, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'admin_audit_log')->count());
         $this->assertSame(5, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'analytics_report_run')->count());
+        $this->assertSame(6, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'content_review_submission')->count());
     }
 }

@@ -30,6 +30,12 @@ class StagingDataFoundationTest extends TestCase
         StagingProfile::fromConfig('standard', 0, 1000);
     }
 
+    public function test_content_review_target_requires_catalog_titles(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        StagingProfile::fromConfig('small', 12, 100, ['movies' => 0, 'series' => 0]);
+    }
+
     public function test_generation_context_has_repeatable_randomness_and_fixed_history_start(): void
     {
         $profile = StagingProfile::fromConfig('small', 12, 100);

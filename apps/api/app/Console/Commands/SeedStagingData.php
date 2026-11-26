@@ -17,6 +17,7 @@ use App\Support\Staging\StagingMarketingGenerator;
 use App\Support\Staging\StagingNotificationGenerator;
 use App\Support\Staging\StagingOperationsHistoryGenerator;
 use App\Support\Staging\StagingAnalyticsReportGenerator;
+use App\Support\Staging\StagingContentReviewGenerator;
 use App\Services\AdminAnalyticsService;
 use App\Support\Staging\StagingGenerationContext;
 use App\Support\Staging\StagingProfile;
@@ -64,6 +65,7 @@ class SeedStagingData extends Command
         StagingNotificationGenerator $notificationGenerator,
         StagingOperationsHistoryGenerator $operationsGenerator,
         StagingAnalyticsReportGenerator $analyticsReportGenerator,
+        StagingContentReviewGenerator $contentReviewGenerator,
         AdminAnalyticsService $analyticsService,
     ): int {
         try {
@@ -121,7 +123,7 @@ class SeedStagingData extends Command
             ['Configured target movies', (string) $profile->counts['movies']],
             ['Configured target series', (string) $profile->counts['series']],
             ['Configured target episodes', (string) $profile->counts['episodes']],
-            ['Currently implemented generation', 'RBAC, staff, customers, profiles, devices, bilingual catalog, series hierarchy, editorial articles, coupons, search history, support tickets, marketing consent and campaigns, in-app notifications, synthetic operations incidents and audit history, shared cast/crew credits, licensing, playable local media fixtures, plans, subscriptions, and synthetic payment attempts'],
+            ['Currently implemented generation', 'RBAC, staff, customers, profiles, devices, bilingual catalog, series hierarchy, editorial articles, revisioned content review submissions, coupons, search history, support tickets, marketing consent and campaigns, in-app notifications, synthetic operations incidents and audit history, shared cast/crew credits, licensing, playable local media fixtures, plans, subscriptions, and synthetic payment attempts'],
         ]);
 
         if ($violations !== []) {
@@ -159,7 +161,7 @@ class SeedStagingData extends Command
                 'history_months' => $historyMonths,
                 'batch_size' => $profile->batchSize,
                 'counts' => $profile->counts,
-                'implemented_domains' => ['rbac', 'staff', 'customers', 'profiles', 'devices', 'genres', 'movies', 'series', 'seasons', 'episodes', 'blogs', 'coupons', 'search_history', 'cast_crew', 'talent_mappings', 'content_licenses', 'media_fixtures', 'plans', 'subscriptions', 'payments'],
+                'implemented_domains' => ['rbac', 'staff', 'customers', 'profiles', 'devices', 'genres', 'movies', 'series', 'seasons', 'episodes', 'blogs', 'coupons', 'search_history', 'content_review_submissions', 'cast_crew', 'talent_mappings', 'content_licenses', 'media_fixtures', 'plans', 'subscriptions', 'payments'],
             ];
             $manifest = StagingDatasetManifest::query()->where('dataset_id', $datasetId)->first();
             $savedInputs = (array) ($manifest?->configuration ?? []);
@@ -199,6 +201,7 @@ class SeedStagingData extends Command
                 $notificationResults = $notificationGenerator->generate($context);
                 $operationsResults = $operationsGenerator->generate($context);
                 $analyticsReportCount = $analyticsReportGenerator->generate($context, $analyticsService);
+                $contentReviewResults = $contentReviewGenerator->generate($context);
                 $recordCounts = DB::table('staging_dataset_records')
                     ->where('dataset_id', $datasetId)
                     ->select('entity_type', DB::raw('count(*) as records'))
@@ -240,6 +243,7 @@ class SeedStagingData extends Command
                     'incidents' => $recordCounts['operations_incident'] ?? 0,
                     'audit_logs' => $recordCounts['admin_audit_log'] ?? 0,
                     'analytics_reports' => $recordCounts['analytics_report_run'] ?? 0,
+                    'content_review_submissions' => $recordCounts['content_review_submission'] ?? 0,
                 ];
                 $recordCounts['movies'] = $catalogResults['movies'];
                 $recordCounts['series'] = $catalogResults['series'];
@@ -290,7 +294,8 @@ class SeedStagingData extends Command
                 $this->info(sprintf('Dataset in-app notifications: %d historical records (%d unread, %d archived); no mail or push is dispatched.', $notificationResults['notifications'], $notificationResults['unread'], $notificationResults['archived']));
                 $this->info(sprintf('Dataset operations: %d historical synthetic incidents (%d open, %d acknowledged, %d resolved) and %d explicitly labeled staging audit events; no alert is sent.', $operationsResults['incidents'], $operationsResults['open'], $operationsResults['acknowledged'], $operationsResults['resolved'], $operationsResults['audit_logs']));
                 $this->info(sprintf('Dataset analytics: %d ready report snapshots derived from the generated records.', $analyticsReportCount));
-                $this->warn('This milestone remains partial: refunds/reconciliation, playback, watchlists/reviews, campaign deliveries/banners, playback sessions, and search indexing are not yet generated. Catalog entries remain unpublished; synthetic transactions never contact payment providers.');
+                $this->info(sprintf('Dataset content review: %d historical revision submissions (%d pending, %d approved, %d rejected); no catalog content was published.', $contentReviewResults['content_review_submissions'], $contentReviewResults['in_review'], $contentReviewResults['approved'], $contentReviewResults['rejected']));
+                $this->warn('This milestone remains partial: refunds/reconciliation, playback, customer watchlists/ratings, campaign deliveries/banners, playback sessions, and search indexing are not yet generated. Content review submissions do not approve or publish titles; synthetic transactions never contact payment providers.');
 
                 return self::SUCCESS;
             } catch (Throwable $exception) {
