@@ -74,6 +74,8 @@ class RelationalStagingGenerationTest extends TestCase
         $this->assertSame(30, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'subscription_transaction')->count());
         $this->assertSame(12, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'cast_crew')->count());
         $this->assertSame(48, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'entertainment_talent_mapping')->count());
+        $this->assertSame(11, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'content_license_window')->count());
+        $this->assertSame(19, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'content_license_territory')->count());
         $this->assertSame(0, DB::table('verified_payments')->count());
         $this->assertSame(0, DB::table('subscriptions')->where('status', 'active')->where('is_trial', 0)->whereNull('payment_id')->count());
 
@@ -87,5 +89,7 @@ class RelationalStagingGenerationTest extends TestCase
         $this->assertSame(24, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'subscription')->count());
         $this->assertSame(30, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'subscription_transaction')->count());
         $this->assertSame(48, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'entertainment_talent_mapping')->count());
+        $this->assertSame(11, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'content_license_window')->count());
+        $this->assertSame(19, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-small')->where('entity_type', 'content_license_territory')->count());
     }
 }

@@ -47,8 +47,10 @@ final class StagingDataIntegrityValidator
                 'subscriptions' => $groupedCounts['subscription'] ?? 0,
                 'payments' => $groupedCounts['subscription_transaction'] ?? 0,
                 'cast_crew' => $groupedCounts['cast_crew'] ?? 0,
+                'license_windows' => $groupedCounts['content_license_window'] ?? 0,
+                'license_territories' => $groupedCounts['content_license_territory'] ?? 0,
             ];
-            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'cast_crew', 'entertainment_talent_mapping', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction'];
+            $supportedTypes = ['staff_user', 'customer', 'user_multi_profile', 'device', 'genre', 'entertainment', 'entertainment_genre_mapping', 'season', 'episode', 'cast_crew', 'entertainment_talent_mapping', 'content_license_window', 'content_license_territory', 'plan', 'planlimitation_mapping', 'subscription', 'subscription_transaction'];
             $unknownTypes = array_diff(array_keys($groupedCounts), $supportedTypes);
             foreach ($unknownTypes as $type) {
                 $violations[] = "Dataset {$manifest->dataset_id} has an unsupported ownership type {$type}.";
@@ -298,6 +300,41 @@ final class StagingDataIntegrityValidator
             if ($invalidTalent || $invalidTalentMappings) {
                 $violations[] = "Dataset {$manifest->dataset_id} has {$invalidTalent} invalid fictional cast/crew records and {$invalidTalentMappings} invalid title credits.";
             }
+            $invalidLicenseWindows = DB::table('staging_dataset_records as records')
+                ->leftJoin('content_license_windows as windows', 'windows.id', '=', 'records.record_id')
+                ->leftJoin('staging_dataset_records as content_owner', function ($join) use ($manifest): void {
+                    $join->on('content_owner.record_id', '=', 'windows.content_id')
+                        ->where('content_owner.dataset_id', '=', $manifest->dataset_id)
+                        ->where('content_owner.entity_type', '=', 'entertainment');
+                })
+                ->where('records.dataset_id', $manifest->dataset_id)
+                ->where('records.entity_type', 'content_license_window')
+                ->where(function ($query): void {
+                    $query->whereNull('windows.id')->orWhere('windows.content_type', '!=', 'entertainment')
+                        ->orWhereNull('content_owner.id')->orWhereNull('windows.starts_at')->orWhereNull('windows.ends_at')
+                        ->orWhereColumn('windows.ends_at', '<=', 'windows.starts_at');
+                })->count();
+            $invalidLicenseTerritories = DB::table('staging_dataset_records as records')
+                ->leftJoin('staging_dataset_records as content_owner', function ($join) use ($manifest): void {
+                    $join->on('content_owner.dataset_id', '=', 'records.dataset_id')
+                        ->where('content_owner.dataset_id', '=', $manifest->dataset_id)
+                        ->where('content_owner.entity_type', '=', 'entertainment')
+                        ->whereRaw("content_owner.entity_key = SUBSTRING_INDEX(records.entity_key, ':', 1)");
+                })
+                ->leftJoin('content_license_territories as territories', function ($join): void {
+                    $join->on('territories.content_id', '=', 'content_owner.record_id')
+                        ->where('territories.content_type', '=', 'entertainment')
+                        ->whereRaw("territories.country_code = SUBSTRING_INDEX(records.entity_key, ':', -1)");
+                })
+                ->where('records.dataset_id', $manifest->dataset_id)
+                ->where('records.entity_type', 'content_license_territory')
+                ->where(function ($query): void {
+                    $query->whereNull('territories.country_code')->orWhereNull('content_owner.id')
+                        ->orWhereColumn('territories.content_id', '!=', 'content_owner.record_id');
+                })->count();
+            if ($invalidLicenseWindows || $invalidLicenseTerritories) {
+                $violations[] = "Dataset {$manifest->dataset_id} has {$invalidLicenseWindows} invalid content-license windows and {$invalidLicenseTerritories} invalid territorial rules.";
+            }
             $roleNames = array_keys(RbacRegistry::roles());
             DB::table('staging_dataset_records')
                 ->where('dataset_id', $manifest->dataset_id)
@@ -378,7 +415,7 @@ final class StagingDataIntegrityValidator
         return [
             'valid' => $violations === [],
             'complete' => $complete,
-            'coverage' => 'manifest, staff role, customer identity, profile and device ownership, unpublished bilingual catalog, genre mappings, fictional cast/crew credits, series hierarchy, plans, subscription lifecycle, and synthetic payment attempts; remaining business-domain checks are pending',
+            'coverage' => 'manifest, staff role, customer identity, profile and device ownership, unpublished bilingual catalog, genre mappings, fictional cast/crew credits, licensing windows and territories, series hierarchy, plans, subscription lifecycle, and synthetic payment attempts; remaining business-domain checks are pending',
             'checked_at' => now()->toIso8601String(),
             'datasets' => $datasets,
             'violations' => array_values(array_unique($violations)),

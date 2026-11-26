@@ -7,6 +7,7 @@ use App\Support\Staging\StagingDataSafety;
 use App\Support\Staging\StagingCustomerGenerator;
 use App\Support\Staging\StagingCatalogGenerator;
 use App\Support\Staging\StagingCastCrewGenerator;
+use App\Support\Staging\StagingContentLicensingGenerator;
 use App\Support\Staging\StagingGenerationContext;
 use App\Support\Staging\StagingProfile;
 use App\Support\Staging\StagingStaffGenerator;
@@ -42,6 +43,7 @@ class SeedStagingData extends Command
         StagingCustomerGenerator $customerGenerator,
         StagingCatalogGenerator $catalogGenerator,
         StagingCastCrewGenerator $castCrewGenerator,
+        StagingContentLicensingGenerator $licensingGenerator,
         StagingSubscriptionGenerator $subscriptionGenerator,
     ): int {
         try {
@@ -99,7 +101,7 @@ class SeedStagingData extends Command
             ['Configured target movies', (string) $profile->counts['movies']],
             ['Configured target series', (string) $profile->counts['series']],
             ['Configured target episodes', (string) $profile->counts['episodes']],
-            ['Currently implemented generation', 'RBAC, staff, customers, profiles, devices, bilingual catalog, series hierarchy, shared cast/crew credits, plans, subscriptions, and synthetic payment attempts'],
+            ['Currently implemented generation', 'RBAC, staff, customers, profiles, devices, bilingual catalog, series hierarchy, shared cast/crew credits, territory licenses, plans, subscriptions, and synthetic payment attempts'],
         ]);
 
         if ($violations !== []) {
@@ -137,7 +139,7 @@ class SeedStagingData extends Command
                 'history_months' => $historyMonths,
                 'batch_size' => $profile->batchSize,
                 'counts' => $profile->counts,
-                'implemented_domains' => ['rbac', 'staff', 'customers', 'profiles', 'devices', 'genres', 'movies', 'series', 'seasons', 'episodes', 'cast_crew', 'talent_mappings', 'plans', 'subscriptions', 'payments'],
+                'implemented_domains' => ['rbac', 'staff', 'customers', 'profiles', 'devices', 'genres', 'movies', 'series', 'seasons', 'episodes', 'cast_crew', 'talent_mappings', 'content_licenses', 'plans', 'subscriptions', 'payments'],
             ];
             $manifest = StagingDatasetManifest::query()->where('dataset_id', $datasetId)->first();
             $savedInputs = (array) ($manifest?->configuration ?? []);
@@ -166,6 +168,7 @@ class SeedStagingData extends Command
                 $customerResults = $customerGenerator->generate($context, (string) config('staging-data.customer_password'));
                 $catalogResults = $catalogGenerator->generate($context);
                 $castCrewResults = $castCrewGenerator->generate($context);
+                $licensingResults = $licensingGenerator->generate($context);
                 $subscriptionResults = $subscriptionGenerator->generate($context);
                 $recordCounts = DB::table('staging_dataset_records')
                     ->where('dataset_id', $datasetId)
@@ -190,6 +193,8 @@ class SeedStagingData extends Command
                     'payments' => $recordCounts['subscription_transaction'] ?? 0,
                     'cast_crew' => $recordCounts['cast_crew'] ?? 0,
                     'cast_crew_mappings' => $recordCounts['entertainment_talent_mapping'] ?? 0,
+                    'license_windows' => $recordCounts['content_license_window'] ?? 0,
+                    'license_territories' => $recordCounts['content_license_territory'] ?? 0,
                 ];
                 $recordCounts['movies'] = $catalogResults['movies'];
                 $recordCounts['series'] = $catalogResults['series'];
@@ -225,6 +230,11 @@ class SeedStagingData extends Command
                     'Dataset credits: %d fictional cast/crew profiles and %d title credits shared across content.',
                     $castCrewResults['cast_crew'],
                     $castCrewResults['mappings'],
+                ));
+                $this->info(sprintf(
+                    'Dataset licensing: %d content windows and %d territory restrictions.',
+                    $licensingResults['windows'],
+                    $licensingResults['territories'],
                 ));
                 $this->warn('This milestone remains partial: media assets, refunds/reconciliation, playback, engagement, marketing, support, notifications, and analytics are not yet generated. Catalog entries are unpublished and have no media attached; synthetic transactions never contact payment providers.');
 
