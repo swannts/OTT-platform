@@ -2,6 +2,7 @@
 
 namespace App\Support\Staging;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -12,6 +13,30 @@ final class StagingBannerGenerator
         $target = $context->profile->counts['banners'];
         if ($target === 0) return 0;
 
+        // Banner records are ignored by the public API unless this global
+        // mobile setting exists and is enabled. Keep an explicit admin choice
+        // to disable banners, but make generated staging banners visible when
+        // the setting has never been configured.
+        $settingChanged = false;
+        $bannerSetting = DB::table('mobile_settings')->where('slug', 'banner')->whereNull('deleted_at')->first();
+        if (! $bannerSetting) {
+            DB::table('mobile_settings')->insert([
+                'name' => 'Home Banners',
+                'slug' => 'banner',
+                'position' => 1,
+                'value' => '1',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            $settingChanged = true;
+        } elseif (($bannerSetting->value === null || $bannerSetting->value === '') && empty($bannerSetting->type)) {
+            DB::table('mobile_settings')->where('id', $bannerSetting->id)->update([
+                'value' => '1',
+                'updated_at' => now(),
+            ]);
+            $settingChanged = true;
+        }
+
         $datasetPart = StagingIdentifiers::datasetPart($context->datasetId);
         $titles = DB::table('staging_dataset_records as owners')
             ->join('entertainments as content', 'content.id', '=', 'owners.record_id')
@@ -19,6 +44,29 @@ final class StagingBannerGenerator
             ->where('content.status', 1)->whereNotNull('content.poster_url')->whereNull('content.deleted_at')
             ->orderBy('content.id')->get(['content.id', 'content.name', 'content.name_bn', 'content.type', 'content.poster_url']);
         if ($titles->isEmpty()) throw new RuntimeException('Staging home banners require published owned titles with generated poster assets.');
+
+        $moduleNames = ['movie' => 'movie', 'tvshow' => 'tvshow', 'tv_show' => 'tvshow', 'video' => 'video', 'livetv' => 'livetv'];
+        foreach ($titles->pluck('type')->unique() as $contentType) {
+            $module = $moduleNames[$contentType] ?? null;
+            if (! $module || DB::table('settings')->where('name', $module)->whereNull('deleted_at')->exists()) {
+                continue;
+            }
+
+            DB::table('settings')->insert([
+                'name' => $module,
+                'val' => '1',
+                'type' => 'module_settings',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            Cache::forget('module_enable_status');
+            $settingChanged = true;
+        }
+
+        if ($settingChanged) {
+            Cache::forget('setting');
+            clearBannerDataCache();
+        }
 
         $rows = [];
         $owners = [];

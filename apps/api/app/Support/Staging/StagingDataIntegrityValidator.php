@@ -136,7 +136,7 @@ final class StagingDataIntegrityValidator
                     $join->on('profile_owners.entity_key', '=', 'profiles.id')->where('profile_owners.dataset_id', '=', $manifest->dataset_id)->where('profile_owners.entity_type', '=', 'user_multi_profile');
                 })
                 ->where('owners.dataset_id', $manifest->dataset_id)->where('owners.entity_type', 'continue_watch')
-                ->where(function ($query): void {
+                ->where(function ($query) use ($manifest): void {
                     $query->whereNull('continue_watch.id')->orWhereNull('content.id')->orWhereNull('assets.id')
                         ->orWhereNull('content_owners.record_id')->orWhereNull('profile_owners.record_id')->orWhereNull('continue_watch.total_watched_time')
                         ->orWhereColumn('profiles.user_id', '!=', 'continue_watch.user_id')

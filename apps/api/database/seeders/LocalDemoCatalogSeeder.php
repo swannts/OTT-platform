@@ -211,6 +211,17 @@ class LocalDemoCatalogSeeder extends Seeder
             'popular-movies' => ['Popular Demo Picks', array_slice($contentIds, 0, 5), 7],
         ] as $slug => [$name, $ids, $position]) {
             $setting = DB::table('mobile_settings')->where('slug', $slug)->first();
+            $configuredIds = json_decode((string) ($setting->value ?? '[]'), true);
+            $hasActiveConfiguredContent = is_array($configuredIds) && DB::table('entertainments')
+                ->whereIn('id', $configuredIds)
+                ->where('type', 'movie')
+                ->where('status', 1)
+                ->whereNull('deleted_at')
+                ->where(fn ($query) => $query->whereNull('release_date')->orWhere('release_date', '<=', $now->toDateString()))
+                ->exists();
+
+            // Keep working admin curation intact. Repair only missing or stale
+            // local selections so seeded demo titles can populate the rows.
             if (! $setting) {
                 DB::table('mobile_settings')->insert([
                     'name' => $name,
@@ -220,7 +231,7 @@ class LocalDemoCatalogSeeder extends Seeder
                     'created_at' => $now,
                     'updated_at' => $now,
                 ]);
-            } elseif (empty($setting->value) && empty($setting->type)) {
+            } elseif (! $hasActiveConfiguredContent && empty($setting->type)) {
                 DB::table('mobile_settings')->where('id', $setting->id)->update([
                     'value' => json_encode($ids, JSON_THROW_ON_ERROR),
                     'updated_at' => $now,
@@ -248,6 +259,8 @@ class LocalDemoCatalogSeeder extends Seeder
         \Illuminate\Support\Facades\Cache::forget('setting');
         \Illuminate\Support\Facades\Cache::forget('home_banners');
         \App\Models\Setting::flushCache();
+        clearDashboardCache();
+        clearPayPerViewCache();
     }
 
     private function seedReferenceData(\Illuminate\Support\Carbon $now): void

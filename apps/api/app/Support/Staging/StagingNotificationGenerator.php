@@ -67,10 +67,20 @@ final class StagingNotificationGenerator
         }
         $actual = DB::table('staging_dataset_records')->where('dataset_id', $context->datasetId)->where('entity_type', 'notification')->count();
         if ($actual !== $target) throw new RuntimeException("Staging notifications generated {$actual} of {$target} configured records.");
-        $ids = DB::table('staging_dataset_records')->where('dataset_id', $context->datasetId)->where('entity_type', 'notification')->pluck('record_id');
+        $ownedNotifications = DB::table('staging_dataset_records as owners')
+            ->where('owners.dataset_id', $context->datasetId)
+            ->where('owners.entity_type', 'notification');
+
         return ['notifications' => $actual,
-            'unread' => DB::table('notifications')->whereIn('id', $ids)->whereNull('read_at')->whereNull('archived_at')->count(),
-            'archived' => DB::table('notifications')->whereIn('id', $ids)->whereNotNull('archived_at')->count()];
+            'unread' => (clone $ownedNotifications)
+                ->join('notifications', 'notifications.id', '=', 'owners.record_id')
+                ->whereNull('notifications.read_at')
+                ->whereNull('notifications.archived_at')
+                ->count(),
+            'archived' => (clone $ownedNotifications)
+                ->join('notifications', 'notifications.id', '=', 'owners.record_id')
+                ->whereNotNull('notifications.archived_at')
+                ->count()];
     }
 
     private function createdAt(StagingGenerationContext $context, int $ordinal, CarbonImmutable $accountCreatedAt): CarbonImmutable

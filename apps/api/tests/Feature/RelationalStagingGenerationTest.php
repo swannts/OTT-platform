@@ -35,7 +35,7 @@ class RelationalStagingGenerationTest extends TestCase
             'staging-data.enabled' => true,
             'staging-data.dataset_id' => 'feature-staging-search-test',
             'staging-data.allowed_database' => $testDatabase,
-            'staging-data.allowed_database_host' => '127.0.0.1',
+            'staging-data.allowed_database_host' => getenv('STAGING_TEST_DATABASE_HOST') ?: config('database.connections.mysql.host'),
             'staging-data.isolated_cache_prefix' => 'ott_staging_feature_test',
             'cache.prefix' => 'ott_staging_feature_test',
             'cache.default' => 'file',
@@ -126,8 +126,16 @@ class RelationalStagingGenerationTest extends TestCase
             ], JSON_THROW_ON_ERROR),
         ];
 
+        // Verify that generated content remains visible when a fresh staging
+        // database has no homepage-banner or content-module configuration.
+        DB::table('mobile_settings')->where('slug', 'banner')->delete();
+        DB::table('settings')->whereIn('name', ['movie', 'tvshow'])->delete();
+
         $exitCode = Artisan::call('ott:seed-staging', $arguments);
         $this->assertSame(0, $exitCode, Artisan::output());
+        $this->assertDatabaseHas('mobile_settings', ['slug' => 'banner', 'value' => '1']);
+        $this->assertDatabaseHas('settings', ['name' => 'movie', 'val' => '1']);
+        $this->assertDatabaseHas('settings', ['name' => 'tvshow', 'val' => '1']);
 
         $this->assertSame(12, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-search-test')->where('entity_type', 'staff_user')->count());
         $this->assertSame(20, DB::table('staging_dataset_records')->where('dataset_id', 'feature-staging-search-test')->where('entity_type', 'customer')->count());

@@ -249,6 +249,7 @@ class SeedStagingData extends Command
                     'episodes' => $recordCounts['episode'] ?? 0,
                     'genre_mappings' => $recordCounts['entertainment_genre_mapping'] ?? 0,
                     'plans' => $recordCounts['plan'] ?? 0,
+                    'planlimitation_mappings' => $recordCounts['planlimitation_mapping'] ?? 0,
                     'subscriptions' => $recordCounts['subscription'] ?? 0,
                     'payments' => $recordCounts['subscription_transaction'] ?? 0,
                     'cast_crew' => $recordCounts['cast_crew'] ?? 0,

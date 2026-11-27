@@ -276,42 +276,41 @@ class DashboardController extends Controller
     }
 
 
-public function getTrandingData(Request $request){
+public function getTrandingData(Request $request)
+{
+    $configuredIds = json_decode((string) MobileSetting::getValueBySlug('popular-movies'), true);
+    $movieQuery = Entertainment::query()
+        ->with(['entertainmentGenerMappings.genre', 'plan'])
+        ->where('type', 'movie')
+        ->where('status', 1)
+        ->whereNull('deleted_at')
+        ->where(function ($query) {
+            $query->whereNull('release_date')
+                ->orWhere('release_date', '<=', now());
+        });
 
-
-    if ($request->has('is_ajax') && $request->is_ajax == 1) {
-
-        $popularMovieIds = MobileSetting::getValueBySlug(slug: 'popular-movies');
-        $movieList = Entertainment::whereIn('id',json_decode($popularMovieIds));
-
-        isset(request()->is_restricted) && $movieList = $movieList->where('is_restricted', request()->is_restricted);
-        (!empty(getCurrentProfileSession('is_child_profile')) && getCurrentProfileSession('is_child_profile') != 0) &&
-            $movieList = $movieList->where('is_restricted',0);
-
-        $movieList = $movieList->where('status',1)
-                        ->where(function($query) {
-                            $query->whereNull('release_date')
-                                ->orWhere('release_date', '<=', now());
-                        })
-                    ->get();
-
-        $html = '';
-        if($request->has('section')&& $request->section == 'tranding_movie'){
-            $movieData = (isenablemodule('movie') == 1) ? CommonContentResourceV3::collection($movieList) : [];
-            if(!empty( $movieData)){
-
-                foreach( $movieData->toArray(request()) as $index => $movie){
-                    $html .= view('frontend::components.card.card_entertainment',['value' => $movie])->render();
-                }
-            }
-        }
-
-
-    return ApiResponse::success(null, __('movie.tvshow_list'), 200, ['html' => $html]);
+    if (is_array($configuredIds) && $configuredIds !== []) {
+        $movieQuery->whereIn('id', $configuredIds);
+    } else {
+        $movieQuery->limit(20);
     }
 
+    if ($request->has('is_restricted')) {
+        $movieQuery->where('is_restricted', $request->input('is_restricted'));
+    }
 
+    if (! empty(getCurrentProfileSession('is_child_profile')) && getCurrentProfileSession('is_child_profile') != 0) {
+        $movieQuery->where('is_restricted', 0);
+    }
 
+    $movieList = $movieQuery->latest('id')->get();
+    $movieModuleEnabled = isenablemodule('movie') == 1;
+
+    $movieData = $movieModuleEnabled
+        ? MoviesResource::collection($movieList)->toArray($request)
+        : [];
+
+    return ApiResponse::success($movieData, __('frontend.trending_movie'));
 }
 
        public function DashboardDetailV2(Request $request)
