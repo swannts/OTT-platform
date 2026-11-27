@@ -58,6 +58,7 @@ func main() {
 
 	// 4. Initialize Handlers
 	mediaH := handlers.NewMediaHandler(db, cfg.StoragePath, cfg.PrivateStoragePath)
+	mediaH.SetTranscodeSettings(cfg.TranscodeHeights, cfg.TranscodeBitrates, cfg.H264Preset)
 	notifyH := handlers.NewNotificationHandler()
 	cronH := handlers.NewCronHandler(db)
 	consumersReady := true

@@ -126,11 +126,24 @@ Route::prefix('admin')->group(function () {
         Route::put('content/{contentType}/{contentId}/license-window', [\App\Http\Controllers\API\AdminContentLicensingController::class, 'update'])->middleware('explicit.permission:content.schedule');
 
         Route::get('media/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'media'])->middleware('explicit.permission:media.view');
+        Route::get('media/storage', [\App\Http\Controllers\API\AdminMediaController::class, 'storage'])->middleware('explicit.permission:media.storage.view');
         Route::get('media/assets', [\App\Http\Controllers\API\AdminMediaController::class, 'index'])->middleware('explicit.permission:media.view');
+        Route::get('media/archived', [\App\Http\Controllers\API\AdminMediaController::class, 'archived'])->middleware('explicit.permission:media.view');
+        Route::get('media/content-options', [\App\Http\Controllers\API\AdminMediaController::class, 'contentOptions'])->middleware('explicit.permission:content.view');
+        Route::get('media/assets/{asset}/preview', [\App\Http\Controllers\API\AdminMediaController::class, 'preview'])->middleware('explicit.permission:media.preview');
         Route::get('media/assets/{asset}', [\App\Http\Controllers\API\AdminMediaController::class, 'show'])->middleware('explicit.permission:media.view');
+        Route::patch('media/assets/{asset}', [\App\Http\Controllers\API\AdminMediaController::class, 'update'])->middleware('explicit.permission:media.update');
+        Route::get('media/assets/{asset}/versions', [\App\Http\Controllers\API\AdminMediaController::class, 'versions'])->middleware('explicit.permission:media.view');
+        Route::post('media/assets/{asset}/versions/activate', [\App\Http\Controllers\API\AdminMediaController::class, 'activateVersion'])->middleware('explicit.permission:media.version.activate');
+        Route::post('media/assets/{asset}/versions/{version}/rollback', [\App\Http\Controllers\API\AdminMediaController::class, 'rollbackVersion'])->middleware('explicit.permission:media.version.rollback');
         Route::get('media/assets/{asset}/quality', [\App\Http\Controllers\API\AdminMediaController::class, 'quality'])->middleware('explicit.permission:media.view');
+        Route::post('media/assets/{asset}/quality/review', [\App\Http\Controllers\API\AdminMediaController::class, 'reviewQuality'])->middleware('explicit.permission:media.quality.review');
+        Route::get('media/processing-jobs', [\App\Http\Controllers\API\AdminMediaController::class, 'processingJobs'])->middleware('explicit.permission:media.view');
+        Route::post('media/processing-jobs/{job}/cancel', [\App\Http\Controllers\API\AdminMediaController::class, 'cancelProcessingJob'])->middleware('explicit.permission:media.processing.manage');
+        Route::post('media/assets/{asset}/restore', [\App\Http\Controllers\API\AdminMediaController::class, 'restore'])->middleware('explicit.permission:media.archive.restore');
         Route::put('media/assets/{asset}/content', [\App\Http\Controllers\API\AdminMediaController::class, 'attachToContent']);
         Route::post('media/uploads', [\App\Http\Controllers\API\AdminMediaController::class, 'beginUpload'])->middleware(['explicit.permission:media.upload', 'throttle:20,1']);
+        Route::delete('media/uploads/{session}', [\App\Http\Controllers\API\AdminMediaController::class, 'cancelUpload'])->middleware('explicit.permission:media.upload');
         Route::put('media/uploads/{session}/chunks/{index}', [\App\Http\Controllers\API\AdminMediaController::class, 'uploadChunk'])->whereNumber('index')->middleware(['explicit.permission:media.upload', 'throttle:120,1']);
         Route::post('media/uploads/{session}/complete', [\App\Http\Controllers\API\AdminMediaController::class, 'completeUpload'])->middleware(['explicit.permission:media.upload', 'throttle:5,1']);
         Route::post('media/assets/{asset}/retry', [\App\Http\Controllers\API\AdminMediaController::class, 'retry'])->middleware(['explicit.permission:media.transcode.retry', 'throttle:5,1']);
@@ -218,6 +231,9 @@ Route::prefix('admin')->group(function () {
         });
     });
 });
+
+Route::get('admin/media/assets/{asset}/preview/{file}', [\App\Http\Controllers\API\AdminMediaController::class, 'previewFile'])
+    ->where('file', '.*')->middleware('signed')->name('admin.media.preview.file');
 
 Route::post('/store-access-token', [SettingController::class, 'storeToken']);
 Route::post('/token-revoke', [SettingController::class, 'revokeToken']);

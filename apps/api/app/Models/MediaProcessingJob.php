@@ -12,6 +12,8 @@ class MediaProcessingJob extends Model
     protected $casts = [
         'started_at' => 'datetime',
         'completed_at' => 'datetime',
+        'progress' => 'integer',
+        'priority' => 'integer',
     ];
 
     public function asset(): BelongsTo

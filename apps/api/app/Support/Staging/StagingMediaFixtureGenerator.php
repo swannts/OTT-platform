@@ -96,6 +96,8 @@ final class StagingMediaFixtureGenerator
             DB::transaction(function () use ($context, $title, $number, $base, $sourcePath, $renditionPath, $publicPosterPath, $size, $sha256, $metadata, $now): void {
                 $assetId = DB::table('media_assets')->insertGetId([
                     'uploaded_by' => null,
+                    'display_name' => 'Staging media fixture '.$number,
+                    'category' => 'movie',
                     'original_name' => 'staging-fixture-'.$number.'.mp4',
                     'disk' => 'private',
                     'source_path' => $sourcePath,
@@ -105,6 +107,8 @@ final class StagingMediaFixtureGenerator
                     'size_bytes' => $size,
                     'sha256' => $sha256,
                     'status' => 'ready',
+                    'quality_status' => 'pending_inspection',
+                    'is_active_version' => true,
                     'metadata' => json_encode($metadata, JSON_THROW_ON_ERROR),
                     'tracks' => json_encode([['kind' => 'subtitle', 'language' => 'en']], JSON_THROW_ON_ERROR),
                     'ready_at' => $now,

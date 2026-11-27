@@ -22,10 +22,18 @@ type transcodeRequest struct {
 }
 
 type mediaTrack struct {
-	ID       int64
-	Kind     string
-	Language string
-	Path     string
+	ID              int64
+	Kind            string
+	Language        string
+	DisplayName     string
+	Role            string
+	IsDefault       bool
+	IsForced        bool
+	IsAccessibility bool
+	IsOriginal      bool
+	IsDubbed        bool
+	SortOrder       int
+	Path            string
 }
 
 type probeResult struct {
@@ -52,13 +60,13 @@ func (h *MediaHandler) handleTranscode(payload json.RawMessage) error {
 		return errors.New("transcode request requires a database, asset id, and job id")
 	}
 
-	var sourcePath, disk, status string
+	var sourcePath, disk, status, assetStatus, renditionPath string
 	err := h.db.QueryRow(`
-		SELECT a.source_path, a.disk, j.status
+		SELECT a.source_path, a.disk, j.status, a.status, COALESCE(a.rendition_path, '')
 		FROM media_processing_jobs j
 		JOIN media_assets a ON a.id = j.media_asset_id
 		WHERE j.id = ? AND a.id = ? AND j.type = 'transcode' AND a.deleted_at IS NULL
-	`, request.JobID, request.AssetID).Scan(&sourcePath, &disk, &status)
+	`, request.JobID, request.AssetID).Scan(&sourcePath, &disk, &status, &assetStatus, &renditionPath)
 	if err != nil {
 		return fmt.Errorf("load transcode job: %w", err)
 	}
@@ -76,9 +84,9 @@ func (h *MediaHandler) handleTranscode(payload json.RawMessage) error {
 
 	result, err := h.db.Exec(`
 		UPDATE media_processing_jobs SET status = 'processing', processing_token = ?, attempts = attempts + 1,
-			started_at = NOW(), failure_code = NULL, updated_at = NOW()
+			started_at = NOW(), stage = 'claiming', progress = 1, worker_name = ?, failure_code = NULL, failure_message = NULL, updated_at = NOW()
 		WHERE id = ? AND (status = 'queued' OR (status = 'processing' AND updated_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE)))
-	`, processingToken, request.JobID)
+	`, processingToken, workerName(), request.JobID)
 	if err != nil {
 		return fmt.Errorf("claim transcode job: %w", err)
 	}
@@ -86,8 +94,11 @@ func (h *MediaHandler) handleTranscode(payload json.RawMessage) error {
 	if claimed != 1 {
 		return nil
 	}
-	if _, err := h.db.Exec(`UPDATE media_assets SET status = 'processing', failure_code = NULL, updated_at = NOW() WHERE id = ? AND deleted_at IS NULL`, request.AssetID); err != nil {
-		return fmt.Errorf("mark media asset processing: %w", err)
+	preserveActive := assetStatus == "ready" && renditionPath != ""
+	if !preserveActive {
+		if _, err := h.db.Exec(`UPDATE media_assets SET status = 'processing', failure_code = NULL, updated_at = NOW() WHERE id = ? AND deleted_at IS NULL`, request.AssetID); err != nil {
+			return fmt.Errorf("mark media asset processing: %w", err)
+		}
 	}
 
 	outputDir := ""
@@ -106,9 +117,15 @@ func (h *MediaHandler) handleTranscode(payload json.RawMessage) error {
 		if owned != 1 {
 			return nil // lease was reclaimed; this worker no longer owns the job
 		}
-		_, updateErr = h.db.Exec(`UPDATE media_assets SET status = 'failed', failure_code = ?, updated_at = NOW() WHERE id = ? AND deleted_at IS NULL`, code, request.AssetID)
+		if !preserveActive {
+			_, updateErr = h.db.Exec(`UPDATE media_assets SET status = 'failed', failure_code = ?, updated_at = NOW() WHERE id = ? AND deleted_at IS NULL`, code, request.AssetID)
+			if updateErr != nil {
+				return fmt.Errorf("mark failed media asset: %w", updateErr)
+			}
+		}
+		_, updateErr = h.db.Exec(`UPDATE media_processing_jobs SET failure_message = ? WHERE id = ? AND status = 'failed'`, publicFailureMessage(code), request.JobID)
 		if updateErr != nil {
-			return fmt.Errorf("mark failed media asset: %w", updateErr)
+			return fmt.Errorf("store sanitized transcode failure message: %w", updateErr)
 		}
 		_, updateErr = h.db.Exec(`INSERT INTO admin_audit_logs (actor_id, action, resource_type, resource_id, request_id, after_values, outcome, created_at) VALUES (NULL, 'media.transcode.failed', ?, ?, ?, ?, 'failure', NOW())`, "App\\Models\\MediaAsset", fmt.Sprint(request.AssetID), fmt.Sprintf("worker-job-%d", request.JobID), fmt.Sprintf(`{"failure_code":%q}`, code))
 		if updateErr != nil {
@@ -130,25 +147,33 @@ func (h *MediaHandler) handleTranscode(payload json.RawMessage) error {
 		return failure("source_unavailable", errors.New("private media source is unavailable"))
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Hour)
+	timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), 6*time.Hour)
+	ctx, cancel := context.WithCancel(timeoutCtx)
+	defer timeoutCancel()
 	defer cancel()
 	leaseDone := make(chan struct{})
 	go func() {
 		defer close(leaseDone)
-		ticker := time.NewTicker(time.Minute)
+		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				if _, heartbeatErr := h.db.Exec(`UPDATE media_processing_jobs SET updated_at = NOW() WHERE id = ? AND status = 'processing' AND processing_token = ?`, request.JobID, processingToken); heartbeatErr != nil {
+				heartbeat, heartbeatErr := h.db.Exec(`UPDATE media_processing_jobs SET updated_at = NOW() WHERE id = ? AND status = 'processing' AND processing_token = ?`, request.JobID, processingToken)
+				if heartbeatErr != nil {
 					log.Error().Err(heartbeatErr).Int64("job_id", request.JobID).Msg("Media processing lease heartbeat failed")
+				} else if affected, rowsErr := heartbeat.RowsAffected(); rowsErr == nil && affected == 0 {
+					cancel()
 				}
 			}
 		}
 	}()
 	defer func() { cancel(); <-leaseDone }()
+	if !h.reportProgress(request.JobID, processingToken, "probing_source", 5) {
+		return nil
+	}
 	metadata, err := probeMedia(ctx, source)
 	if err != nil {
 		return failure("probe_failed", err)
@@ -178,11 +203,23 @@ func (h *MediaHandler) handleTranscode(payload json.RawMessage) error {
 	if err := os.MkdirAll(outputDir, 0750); err != nil {
 		return failure("output_unavailable", err)
 	}
-	if err := transcodeHLS(ctx, source, outputDir, metadata, tracks); err != nil {
+	if !h.reportProgress(request.JobID, processingToken, "packaging_hls", 15) {
+		_ = os.RemoveAll(outputDir)
+		return nil
+	}
+	if err := transcodeHLS(ctx, source, outputDir, metadata, tracks, h.transcodeHeights, h.transcodeBitrates, h.h264Preset); err != nil {
 		return failure("hls_packaging_failed", err)
 	}
-	if err := transcodeDASH(ctx, source, outputDir, metadata, tracks); err != nil {
+	if !h.reportProgress(request.JobID, processingToken, "packaging_dash", 65) {
+		_ = os.RemoveAll(outputDir)
+		return nil
+	}
+	if err := transcodeDASH(ctx, source, outputDir, metadata, tracks, h.h264Preset); err != nil {
 		return failure("dash_packaging_failed", err)
+	}
+	if !h.reportProgress(request.JobID, processingToken, "generating_poster", 90) {
+		_ = os.RemoveAll(outputDir)
+		return nil
 	}
 	if err := makePoster(ctx, source, outputDir); err != nil {
 		return failure("poster_generation_failed", err)
@@ -195,15 +232,22 @@ func (h *MediaHandler) handleTranscode(payload json.RawMessage) error {
 	if err != nil {
 		return fmt.Errorf("begin media completion transaction: %w", err)
 	}
-	if _, err := tx.Exec(`
-		UPDATE media_assets SET status = 'ready', metadata = ?, rendition_path = ?, ready_at = NOW(), failure_code = NULL, updated_at = NOW()
-		WHERE id = ? AND status = 'processing' AND deleted_at IS NULL
-	`, encoded, outputRel, request.AssetID); err != nil {
+	result, err = tx.Exec(`
+		UPDATE media_assets SET status = 'ready', metadata = ?, rendition_path = ?, ready_at = NOW(), failure_code = NULL, quality_status = 'awaiting_manual_review', updated_at = NOW()
+		WHERE id = ? AND deleted_at IS NULL AND (status = 'processing' OR (status = 'ready' AND ? = 1))
+	`, encoded, outputRel, request.AssetID, preserveActive)
+	if err != nil {
 		_ = tx.Rollback()
 		return fmt.Errorf("store media metadata: %w", err)
 	}
+	assetOwned, _ := result.RowsAffected()
+	if assetOwned != 1 {
+		_ = tx.Rollback()
+		_ = os.RemoveAll(outputDir)
+		return nil
+	}
 	result, err = tx.Exec(`
-		UPDATE media_processing_jobs SET status = 'completed', processing_token = NULL, completed_at = NOW(), failure_code = NULL, updated_at = NOW()
+		UPDATE media_processing_jobs SET status = 'completed', stage = 'complete', progress = 100, processing_token = NULL, completed_at = NOW(), failure_code = NULL, failure_message = NULL, updated_at = NOW()
 		WHERE id = ? AND status = 'processing' AND processing_token = ?
 	`, request.JobID, processingToken)
 	if err != nil {
@@ -227,7 +271,7 @@ func (h *MediaHandler) handleTranscode(payload json.RawMessage) error {
 }
 
 func (h *MediaHandler) loadTracks(assetID int64) ([]mediaTrack, error) {
-	rows, err := h.db.Query(`SELECT id, kind, language, path FROM media_asset_tracks WHERE media_asset_id = ? AND deleted_at IS NULL ORDER BY id`, assetID)
+	rows, err := h.db.Query(`SELECT id, kind, language, COALESCE(display_name, original_name), role, is_default, is_forced, is_accessibility, is_original, is_dubbed, sort_order, path FROM media_asset_tracks WHERE media_asset_id = ? AND deleted_at IS NULL ORDER BY sort_order, id`, assetID)
 	if err != nil {
 		return nil, fmt.Errorf("query media asset tracks: %w", err)
 	}
@@ -236,7 +280,7 @@ func (h *MediaHandler) loadTracks(assetID int64) ([]mediaTrack, error) {
 	tracks := make([]mediaTrack, 0, 8)
 	for rows.Next() {
 		var track mediaTrack
-		if err := rows.Scan(&track.ID, &track.Kind, &track.Language, &track.Path); err != nil {
+		if err := rows.Scan(&track.ID, &track.Kind, &track.Language, &track.DisplayName, &track.Role, &track.IsDefault, &track.IsForced, &track.IsAccessibility, &track.IsOriginal, &track.IsDubbed, &track.SortOrder, &track.Path); err != nil {
 			return nil, fmt.Errorf("read media asset track: %w", err)
 		}
 		if track.Kind != "audio" && track.Kind != "subtitle" {
@@ -245,6 +289,46 @@ func (h *MediaHandler) loadTracks(assetID int64) ([]mediaTrack, error) {
 		tracks = append(tracks, track)
 	}
 	return tracks, rows.Err()
+}
+
+func (h *MediaHandler) reportProgress(jobID int64, token, stage string, progress int) bool {
+	result, err := h.db.Exec(`UPDATE media_processing_jobs SET stage = ?, progress = ?, updated_at = NOW() WHERE id = ? AND status = 'processing' AND processing_token = ?`, stage, progress, jobID, token)
+	if err != nil {
+		log.Error().Err(err).Int64("job_id", jobID).Msg("Could not report media processing progress")
+		return true
+	}
+	affected, err := result.RowsAffected()
+	return err != nil || affected == 1
+}
+
+func workerName() string {
+	name, err := os.Hostname()
+	if err != nil || strings.TrimSpace(name) == "" {
+		return "media-worker"
+	}
+	return name
+}
+
+func publicFailureMessage(code string) string {
+	messages := map[string]string{
+		"unsupported_storage":      "The configured storage provider is not supported by the media worker.",
+		"invalid_source_path":      "The source file path is invalid.",
+		"source_unavailable":       "The private source file is unavailable.",
+		"probe_failed":             "Media metadata could not be read.",
+		"invalid_media_metadata":   "The source does not contain valid playable streams.",
+		"track_load_failed":        "One or more audio or subtitle tracks could not be loaded.",
+		"invalid_track_path":       "An audio or subtitle track path is invalid.",
+		"track_unavailable":        "An audio or subtitle track is unavailable.",
+		"output_unavailable":       "A private rendition directory could not be created.",
+		"hls_packaging_failed":     "HLS renditions could not be generated.",
+		"dash_packaging_failed":    "DASH renditions could not be generated.",
+		"poster_generation_failed": "The video poster could not be generated.",
+		"metadata_encoding_failed": "Media metadata could not be saved.",
+	}
+	if message, ok := messages[code]; ok {
+		return message
+	}
+	return "Media processing failed. Review the failure code and retry after correcting the source or configuration."
 }
 
 func safeMediaPath(root, relative string) (string, error) {
@@ -285,7 +369,7 @@ func probeMedia(ctx context.Context, source string) (probeResult, error) {
 	return result, nil
 }
 
-func transcodeHLS(ctx context.Context, source, outputDir string, metadata probeResult, tracks []mediaTrack) error {
+func transcodeHLS(ctx context.Context, source, outputDir string, metadata probeResult, tracks []mediaTrack, heights []int, bitrates map[int]int, preset string) error {
 	maxHeight := 0
 	for _, stream := range metadata.Streams {
 		if stream.CodecType == "video" && stream.Height > maxHeight {
@@ -295,7 +379,14 @@ func transcodeHLS(ctx context.Context, source, outputDir string, metadata probeR
 	if maxHeight < 1 {
 		return errors.New("source has no video stream")
 	}
-	qualities := []struct{ height, bandwidth int }{{480, 900000}, {720, 2800000}, {1080, 5000000}}
+	qualities := make([]struct{ height, bandwidth int }, 0, len(heights))
+	for _, height := range heights {
+		bitrate := bitrates[height]
+		if bitrate <= 0 {
+			bitrate = max(400, height*4)
+		}
+		qualities = append(qualities, struct{ height, bandwidth int }{height, bitrate * 1000})
+	}
 	selected := make([]struct{ height, bandwidth int }, 0, len(qualities))
 	for _, quality := range qualities {
 		if quality.height <= maxHeight {
@@ -336,6 +427,15 @@ func transcodeHLS(ctx context.Context, source, outputDir string, metadata probeR
 	}
 
 	master := []string{"#EXTM3U", "#EXT-X-VERSION:3"}
+	defaultAudioName := ""
+	if len(audioNames) > 0 {
+		defaultAudioName = audioNames[0]
+	}
+	for _, track := range tracks {
+		if track.Kind == "audio" && track.IsDefault {
+			defaultAudioName = fmt.Sprintf("track-%d", track.ID)
+		}
+	}
 	for index, name := range audioNames {
 		language := "und"
 		if index < len(metadata.Streams) {
@@ -353,27 +453,46 @@ func transcodeHLS(ctx context.Context, source, outputDir string, metadata probeR
 			}
 		}
 		defaultAttr := "NO"
-		if index == 0 {
+		if name == defaultAudioName || (defaultAudioName == "" && index == 0) {
 			defaultAttr = "YES"
 		}
-		master = append(master, fmt.Sprintf("#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=\"audios\",NAME=\"%s\",LANGUAGE=\"%s\",DEFAULT=%s,AUTOSELECT=YES,URI=\"%s.m3u8\"", language, language, defaultAttr, name))
+		trackName := language
+		for _, track := range tracks {
+			if track.Kind == "audio" && fmt.Sprintf("track-%d", track.ID) == name && track.DisplayName != "" {
+				trackName = track.DisplayName
+			}
+		}
+		master = append(master, fmt.Sprintf("#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=\"audios\",NAME=\"%s\",LANGUAGE=\"%s\",DEFAULT=%s,AUTOSELECT=YES,URI=\"%s.m3u8\"", hlsAttribute(trackName), hlsAttribute(language), defaultAttr, name))
 	}
 	for _, name := range subtitleNames {
 		language := "und"
+		trackName := "und"
+		forced := "NO"
+		characteristics := ""
 		for _, track := range tracks {
 			if track.Kind == "subtitle" && fmt.Sprintf("track-%d", track.ID) == name {
 				language = track.Language
+				trackName = track.DisplayName
+				if track.IsForced {
+					forced = "YES"
+				}
+				if track.IsAccessibility {
+					characteristics = ",CHARACTERISTICS=\"public.accessibility.transcribes-spoken-dialog\""
+				}
 				break
 			}
 		}
-		master = append(master, fmt.Sprintf("#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID=\"subs\",NAME=\"%s\",LANGUAGE=\"%s\",DEFAULT=NO,AUTOSELECT=YES,URI=\"%s.m3u8\"", language, language, name))
+		if trackName == "" {
+			trackName = language
+		}
+		master = append(master, fmt.Sprintf("#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID=\"subs\",NAME=\"%s\",LANGUAGE=\"%s\",DEFAULT=NO,AUTOSELECT=YES,FORCED=%s%s,URI=\"%s.m3u8\"", hlsAttribute(trackName), hlsAttribute(language), forced, characteristics, name))
 	}
 	for _, quality := range selected {
 		name := fmt.Sprintf("%dp", quality.height)
 		playlist := filepath.Join(outputDir, name+".m3u8")
 		segments := filepath.Join(outputDir, name+"_%05d.ts")
 		filter := fmt.Sprintf("scale=-2:%d:force_original_aspect_ratio=decrease", quality.height)
-		args := []string{"-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-i", source, "-map", "0:v:0", "-an", "-vf", filter, "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p", "-b:v", fmt.Sprintf("%dk", quality.bandwidth/1000), "-f", "hls", "-hls_time", "6", "-hls_playlist_type", "vod", "-hls_segment_filename", segments, playlist}
+		args := []string{"-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-i", source, "-map", "0:v:0", "-an", "-vf", filter, "-c:v", "libx264", "-preset", preset, "-pix_fmt", "yuv420p", "-b:v", fmt.Sprintf("%dk", quality.bandwidth/1000), "-f", "hls", "-hls_time", "6", "-hls_playlist_type", "vod", "-hls_segment_filename", segments, playlist}
 		if err := runMediaCommand(ctx, "ffmpeg", args...); err != nil {
 			return fmt.Errorf("encode %s rendition: %w", name, err)
 		}
@@ -402,7 +521,11 @@ func packageHLSAudio(ctx context.Context, source, playlist, segments, streamMap 
 	return runMediaCommand(ctx, "ffmpeg", "-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-i", source, "-map", streamMap, "-vn", "-c:a", "aac", "-b:a", "128k", "-f", "hls", "-hls_time", "6", "-hls_playlist_type", "vod", "-hls_segment_filename", segments, playlist)
 }
 
-func transcodeDASH(ctx context.Context, source, outputDir string, metadata probeResult, tracks []mediaTrack) error {
+func hlsAttribute(value string) string {
+	return strings.NewReplacer("\r", " ", "\n", " ", "\"", "'").Replace(value)
+}
+
+func transcodeDASH(ctx context.Context, source, outputDir string, metadata probeResult, tracks []mediaTrack, preset string) error {
 	args := []string{"-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-i", source}
 	type externalAudioInput struct {
 		index    int
@@ -418,7 +541,7 @@ func transcodeDASH(ctx context.Context, source, outputDir string, metadata probe
 		audioInputs = append(audioInputs, externalAudioInput{index: inputIndex, language: track.Language})
 		inputIndex++
 	}
-	args = append(args, "-map", "0:v:0", "-map", "0:a?", "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p", "-c:a", "aac")
+	args = append(args, "-map", "0:v:0", "-map", "0:a?", "-c:v", "libx264", "-preset", preset, "-pix_fmt", "yuv420p", "-c:a", "aac")
 	sourceAudioCount := 0
 	for _, stream := range metadata.Streams {
 		if stream.CodecType == "audio" {
