@@ -212,6 +212,7 @@ class AdminFinanceController extends Controller
         $refund = DB::transaction(function () use ($refund): RefundRequest {
             $locked = RefundRequest::query()->with('payment')->lockForUpdate()->findOrFail($refund->id);
             abort_unless(in_array($locked->status, ['approved', 'processing'], true), 409, 'Only approved refunds can be executed.');
+            abort_unless(in_array($locked->payment?->gateway, ['stripe', 'razorpay', 'paystack'], true), 422, 'Refund execution is not supported for this payment provider.');
             $locked->forceFill(['status' => 'processing', 'failure_code' => null, 'failure_message' => null])->save();
             return $locked;
         });
@@ -416,24 +417,28 @@ class AdminFinanceController extends Controller
             return ['id' => $data['id'] ?? null, 'status' => $data['status'] ?? 'pending'];
         }
 
-        $secret = (string) GetpaymentMethod('paystack_secretkey');
-        abort_if($secret === '', 503, 'Paystack refunds are not configured.');
-        $response = Http::withToken($secret)->post('https://api.paystack.co/refund', [
-            'transaction' => $payment->provider_reference,
-            'amount' => (int) $refund->amount_minor,
-            'currency' => strtoupper($payment->currency),
-            'reference' => $key,
-            'merchant_note' => 'Approved OTT refund request '.$refund->id,
-        ]);
-        if ($response->status() === 409) {
-            $existing = Http::withToken($secret)->get('https://api.paystack.co/refund', ['reference' => $key]);
-            if (!$existing->successful() || !($existing->json('status') ?? false)) throw new \RuntimeException('Existing Paystack refund status could not be confirmed.');
-            $data = $existing->json('data.0', []);
-        } else {
-            if (!$response->successful() || !($response->json('status') ?? false)) throw new \RuntimeException('Paystack did not confirm the refund request.');
-            $data = $response->json('data', []);
+        if ($payment->gateway === 'paystack') {
+            $secret = (string) GetpaymentMethod('paystack_secretkey');
+            abort_if($secret === '', 503, 'Paystack refunds are not configured.');
+            $response = Http::withToken($secret)->post('https://api.paystack.co/refund', [
+                'transaction' => $payment->provider_reference,
+                'amount' => (int) $refund->amount_minor,
+                'currency' => strtoupper($payment->currency),
+                'reference' => $key,
+                'merchant_note' => 'Approved OTT refund request '.$refund->id,
+            ]);
+            if ($response->status() === 409) {
+                $existing = Http::withToken($secret)->get('https://api.paystack.co/refund', ['reference' => $key]);
+                if (!$existing->successful() || !($existing->json('status') ?? false)) throw new \RuntimeException('Existing Paystack refund status could not be confirmed.');
+                $data = $existing->json('data.0', []);
+            } else {
+                if (!$response->successful() || !($response->json('status') ?? false)) throw new \RuntimeException('Paystack did not confirm the refund request.');
+                $data = $response->json('data', []);
+            }
+            return ['id' => isset($data['id']) ? (string) $data['id'] : null, 'status' => $data['status'] ?? 'pending'];
         }
-        return ['id' => isset($data['id']) ? (string) $data['id'] : null, 'status' => $data['status'] ?? 'pending'];
+
+        throw new \RuntimeException('This payment provider cannot execute refunds through the configured API.');
     }
 
     private function fetchProviderPayment(VerifiedPayment $payment): array
