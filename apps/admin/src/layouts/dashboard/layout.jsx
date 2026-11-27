@@ -21,7 +21,6 @@ import { NavVertical } from './nav-vertical';
 import { NavHorizontal } from './nav-horizontal';
 import { _account } from '../config-nav-account';
 import { HeaderBase } from '../core/header-base';
-import { _workspaces } from '../config-nav-workspace';
 import { LayoutSection } from '../core/layout-section';
 import { navData as dashboardNavData } from '../config-nav-dashboard';
 import { useAuthContext } from 'src/auth/hooks';
@@ -82,12 +81,12 @@ export function DashboardLayout({ sx, children, data }) {
               nav: navData,
               account: _account,
               contacts: _contacts,
-              workspaces: _workspaces,
             }}
             slotsDisplay={{
               signIn: false,
               purchase: false,
               helpLink: false,
+              workspaces: false,
             }}
             slots={{
               topArea: (

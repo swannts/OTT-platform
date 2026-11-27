@@ -4,28 +4,24 @@ import { useState, useCallback } from 'react';
 
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
-import Avatar from '@mui/material/Avatar';
 import Drawer from '@mui/material/Drawer';
-import Tooltip from '@mui/material/Tooltip';
 import MenuItem from '@mui/material/MenuItem';
 import { useTheme } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
+import Skeleton from '@mui/material/Skeleton';
 
 import { paths } from 'src/routes/paths';
 import { useRouter, usePathname } from 'src/routes/hooks';
-
-import { _mock } from 'src/_mock';
-import { varAlpha } from 'src/theme/styles';
 
 import { Label } from 'src/components/label';
 import { Iconify } from 'src/components/iconify';
 import { Scrollbar } from 'src/components/scrollbar';
 import { AnimateAvatar } from 'src/components/animate';
 
-import { useMockedUser } from 'src/auth/hooks';
+import { useAuthContext } from 'src/auth/hooks';
+import { hasPermission } from 'src/features/rbac/permissions';
 
-import { UpgradeBlock } from './nav-upgrade';
 import { AccountButton } from './account-button';
 import { SignOutButton } from './sign-out-button';
 
@@ -38,7 +34,12 @@ export function AccountDrawer({ data = [], sx, ...other }) {
 
   const pathname = usePathname();
 
-  const { user } = useMockedUser();
+  const { user, loading } = useAuthContext();
+  const displayName = user?.name || user?.full_name || user?.email || 'Admin user';
+  const avatarUrl = user?.avatar_url || user?.profile_image || user?.photoURL || undefined;
+  const accountItems = data.filter(
+    (item) => !item.permission || hasPermission(user, item.permission)
+  );
 
   const [open, setOpen] = useState(false);
 
@@ -58,29 +59,13 @@ export function AccountDrawer({ data = [], sx, ...other }) {
     [handleCloseDrawer, router]
   );
 
-  const renderAvatar = (
-    <AnimateAvatar
-      width={96}
-      slotProps={{
-        avatar: { src: user?.photoURL, alt: user?.displayName },
-        overlay: {
-          border: 2,
-          spacing: 3,
-          color: `linear-gradient(135deg, ${varAlpha(theme.vars.palette.primary.mainChannel, 0)} 25%, ${theme.vars.palette.primary.main} 100%)`,
-        },
-      }}
-    >
-      {user?.displayName?.charAt(0).toUpperCase()}
-    </AnimateAvatar>
-  );
-
   return (
     <>
       <AccountButton
         open={open}
         onClick={handleOpenDrawer}
-        photoURL={user?.photoURL}
-        displayName={user?.displayName}
+        photoURL={avatarUrl}
+        displayName={displayName}
         sx={sx}
         {...other}
       />
@@ -93,99 +78,105 @@ export function AccountDrawer({ data = [], sx, ...other }) {
         PaperProps={{ sx: { width: 320 } }}
       >
         <IconButton
+          aria-label="Close account menu"
           onClick={handleCloseDrawer}
           sx={{ top: 12, left: 12, zIndex: 9, position: 'absolute' }}
         >
           <Iconify icon="mingcute:close-line" />
         </IconButton>
 
-        <Scrollbar>
-          <Stack alignItems="center" sx={{ pt: 8 }}>
-            {renderAvatar}
-
-            <Typography variant="subtitle1" noWrap sx={{ mt: 2 }}>
-              {user?.displayName}
-            </Typography>
-
-            <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }} noWrap>
-              {user?.email}
-            </Typography>
-          </Stack>
-
-          <Stack direction="row" spacing={1} flexWrap="wrap" justifyContent="center" sx={{ p: 3 }}>
-            {[...Array(3)].map((_, index) => (
-              <Tooltip
-                key={_mock.fullName(index + 1)}
-                title={`Switch to: ${_mock.fullName(index + 1)}`}
+        <Stack sx={{ height: 1, minHeight: 0 }}>
+          <Scrollbar sx={{ flex: '1 1 auto' }}>
+            {loading ? (
+              <Stack
+                alignItems="center"
+                spacing={1}
+                sx={{ pt: 8, px: 2 }}
+                aria-label="Loading account"
               >
-                <Avatar
-                  alt={_mock.fullName(index + 1)}
-                  src={_mock.image.avatar(index + 1)}
-                  onClick={() => {}}
-                />
-              </Tooltip>
-            ))}
-
-            <Tooltip title="Add account">
-              <IconButton
-                sx={{
-                  bgcolor: varAlpha(theme.vars.palette.grey['500Channel'], 0.08),
-                  border: `dashed 1px ${varAlpha(theme.vars.palette.grey['500Channel'], 0.32)}`,
-                }}
-              >
-                <Iconify icon="mingcute:add-line" />
-              </IconButton>
-            </Tooltip>
-          </Stack>
-
-          <Stack
-            sx={{
-              py: 3,
-              px: 2.5,
-              borderTop: `dashed 1px ${theme.vars.palette.divider}`,
-              borderBottom: `dashed 1px ${theme.vars.palette.divider}`,
-            }}
-          >
-            {data.map((option) => {
-              const rootLabel = pathname.includes('/dashboard') ? 'Home' : 'Dashboard';
-
-              const rootHref = pathname.includes('/dashboard') ? '/' : paths.dashboard.root;
-
-              return (
-                <MenuItem
-                  key={option.label}
-                  onClick={() => handleClickItem(option.label === 'Home' ? rootHref : option.href)}
-                  sx={{
-                    py: 1,
-                    color: 'text.secondary',
-                    '& svg': { width: 24, height: 24 },
-                    '&:hover': { color: 'text.primary' },
-                  }}
+                <Skeleton variant="circular" width={88} height={88} />
+                <Skeleton variant="text" width={148} height={28} sx={{ mt: 1 }} />
+                <Skeleton variant="text" width={184} height={22} />
+                <Skeleton variant="rounded" width={84} height={24} />
+              </Stack>
+            ) : (
+              <Stack alignItems="center" sx={{ pt: 8, px: 2 }}>
+                <AnimateAvatar
+                  width={88}
+                  slotProps={{ avatar: { src: avatarUrl, alt: displayName } }}
                 >
-                  {option.icon}
+                  {displayName.charAt(0).toUpperCase()}
+                </AnimateAvatar>
 
-                  <Box component="span" sx={{ ml: 2 }}>
-                    {option.label === 'Home' ? rootLabel : option.label}
-                  </Box>
+                <Typography variant="subtitle1" noWrap sx={{ mt: 2 }}>
+                  {displayName}
+                </Typography>
 
-                  {option.info && (
-                    <Label color="error" sx={{ ml: 1 }}>
-                      {option.info}
-                    </Label>
-                  )}
-                </MenuItem>
-              );
-            })}
-          </Stack>
+                <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }} noWrap>
+                  {user?.email}
+                </Typography>
+                {user?.role && (
+                  <Label color="primary" variant="soft" sx={{ mt: 1, textTransform: 'capitalize' }}>
+                    {user.role.replaceAll('_', ' ').replaceAll('-', ' ')}
+                  </Label>
+                )}
+              </Stack>
+            )}
 
-          <Box sx={{ px: 2.5, py: 3 }}>
-            <UpgradeBlock />
+            <Stack
+              sx={{
+                py: 3,
+                px: 2.5,
+                borderTop: `dashed 1px ${theme.vars.palette.divider}`,
+                borderBottom: `dashed 1px ${theme.vars.palette.divider}`,
+              }}
+            >
+              {loading
+                ? [0, 1, 2, 3, 4].map((item) => (
+                    <Stack
+                      key={item}
+                      direction="row"
+                      alignItems="center"
+                      spacing={2}
+                      sx={{ px: 1.5, py: 1.5 }}
+                    >
+                      <Skeleton variant="rounded" width={24} height={24} />
+                      <Skeleton variant="text" width={`${48 + item * 7}%`} height={24} />
+                    </Stack>
+                  ))
+                : accountItems.map((option) => (
+                    <MenuItem
+                      key={option.label}
+                      selected={
+                        pathname === option.href ||
+                        (option.href !== paths.dashboard.root &&
+                          pathname.startsWith(`${option.href}/`))
+                      }
+                      onClick={() => handleClickItem(option.href)}
+                      sx={{
+                        py: 1,
+                        color: 'text.secondary',
+                        '& svg': { width: 24, height: 24 },
+                        '&:hover': { color: 'text.primary' },
+                      }}
+                    >
+                      {option.icon}
+
+                      <Box component="span" sx={{ ml: 2 }}>
+                        {option.label}
+                      </Box>
+                    </MenuItem>
+                  ))}
+            </Stack>
+          </Scrollbar>
+          <Box sx={{ p: 2.5, pt: 1.5 }}>
+            {loading ? (
+              <Skeleton variant="rounded" height={48} />
+            ) : (
+              <SignOutButton onClose={handleCloseDrawer} />
+            )}
           </Box>
-        </Scrollbar>
-
-        <Box sx={{ p: 2.5 }}>
-          <SignOutButton onClose={handleCloseDrawer} />
-        </Box>
+        </Stack>
       </Drawer>
     </>
   );

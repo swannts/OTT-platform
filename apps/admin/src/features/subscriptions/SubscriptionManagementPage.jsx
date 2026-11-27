@@ -9,13 +9,17 @@ import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
+import Grid from '@mui/material/Grid';
 import MenuItem from '@mui/material/MenuItem';
+import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
+import Tab from '@mui/material/Tab';
+import Tabs from '@mui/material/Tabs';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 
@@ -23,11 +27,24 @@ import { DashboardContent } from 'src/layouts/dashboard';
 import { useAuthContext } from 'src/auth/hooks';
 import { hasPermission } from 'src/features/rbac/permissions';
 import { RbacPageHeader } from 'src/features/rbac/components/RbacPageHeader';
+import { Iconify } from 'src/components/iconify';
 import { subscriptionsApi } from './subscriptions.api';
 
 const emptyPlan = { name: '', price: '', level: '1', duration: 'month', duration_value: '1', trial_days: '0', description: '', status: true };
 const errorMessage = (error) => error?.response?.data?.message || 'The subscription request could not be completed.';
 const numberOrNull = (value) => value === '' || value === null || value === undefined ? null : Number(value);
+
+function SubscriptionTableSkeletonRows({ columns, rows = 4 }) {
+  return Array.from({ length: rows }, (_, rowIndex) => (
+    <TableRow key={`loading-row-${rowIndex}`} aria-hidden="true">
+      {Array.from({ length: columns }, (_, columnIndex) => (
+        <TableCell key={`loading-cell-${columnIndex}`}>
+          <Skeleton variant="text" width={columnIndex === 0 ? '78%' : '58%'} />
+        </TableCell>
+      ))}
+    </TableRow>
+  ));
+}
 
 export function SubscriptionManagementPage() {
   const { user } = useAuthContext();
@@ -44,11 +61,14 @@ export function SubscriptionManagementPage() {
   const [busy, setBusy] = useState(false);
   const [simulation, setSimulation] = useState({ plan_id: '', required_plan_level: '1', profile_count: '1', device_count: '1', stream_count: '1', requested_video_quality: '720' });
   const [simulationResult, setSimulationResult] = useState(null);
+  const [simulating, setSimulating] = useState(false);
+  const [activeSection, setActiveSection] = useState('plans');
 
   const canView = hasPermission(user, 'subscriptions.view');
   const canCreate = hasPermission(user, 'subscriptions.plans.create');
   const canUpdate = hasPermission(user, 'subscriptions.plans.update');
   const canArchive = hasPermission(user, 'subscriptions.plans.archive');
+  const canActOnPlans = canUpdate || canArchive;
   const canManageCoupons = hasPermission(user, 'subscriptions.coupons.manage');
   const canManageTrials = hasPermission(user, 'subscriptions.trials.manage');
   const canViewSubscribers = hasPermission(user, 'subscriptions.subscribers.view');
@@ -115,6 +135,11 @@ export function SubscriptionManagementPage() {
     setBusy(true); setError(''); setNotice('');
     const form = new FormData(event.currentTarget);
     const values = Object.fromEntries(form.entries());
+    delete values['name_translations.bn'];
+    values.name_translations = {
+      en: String(form.get('name') || '').trim(),
+      bn: String(form.get('name_translations.bn') || '').trim(),
+    };
     values.price = Number(values.price);
     values.level = Number(values.level);
     values.duration_value = Number(values.duration_value);
@@ -144,7 +169,7 @@ export function SubscriptionManagementPage() {
   };
 
   const runSimulation = async (event) => {
-    event.preventDefault(); setSimulationResult(null); setError('');
+    event.preventDefault(); setSimulationResult(null); setError(''); setSimulating(true);
     try {
       const response = await subscriptionsApi.simulate({
         ...simulation,
@@ -157,6 +182,7 @@ export function SubscriptionManagementPage() {
       });
       setSimulationResult(response.data);
     } catch (cause) { setError(errorMessage(cause)); }
+    finally { setSimulating(false); }
   };
 
   const saveCoupon = async (event) => {
@@ -194,59 +220,98 @@ export function SubscriptionManagementPage() {
 
   return (
     <DashboardContent>
-      <RbacPageHeader title="Subscription plans" description="Manage plan catalog and preview entitlement limits. Editing a plan does not rewrite existing subscriber snapshots." action={canCreate ? <Button variant="contained" onClick={() => setEditing({ ...emptyPlan })}>Create plan</Button> : null} />
+      <RbacPageHeader title="Subscriptions" description="Manage plans, subscriber activity, coupons, and entitlement rules." action={activeSection === 'plans' && canCreate ? <Button variant="contained" onClick={() => setEditing({ ...emptyPlan })}>Create plan</Button> : activeSection === 'coupons' && canManageCoupons ? <Button variant="contained" onClick={() => setEditingCoupon({ code: '', discount: '', discount_type: 'percentage', status: true, subscription_plan_ids: [] })}>Create coupon</Button> : null} />
       <Stack spacing={2}>
         {error && <Alert severity="error">{error}</Alert>}
         {notice && <Alert severity="success">{notice}</Alert>}
-        <Alert severity="info">A plan change replaces the active subscription immediately after the payment provider verifies the new purchase. Unverified checkout requests never change access.</Alert>
+        <Card sx={{ px: 1 }}>
+          <Tabs value={activeSection} onChange={(_, value) => setActiveSection(value)} variant="scrollable" allowScrollButtonsMobile aria-label="Subscription management sections">
+            <Tab value="plans" label="Plans" />
+            {canViewSubscribers && <Tab value="subscribers" label="Subscribers" />}
+            <Tab value="performance" label="Performance" />
+            {canManageCoupons && <Tab value="coupons" label="Coupons" />}
+            <Tab value="entitlements" label="Entitlement simulator" />
+          </Tabs>
+        </Card>
+        {activeSection === 'plans' && <>
+        <Alert severity="info">Plan changes apply after payment verification. Existing subscriber entitlements remain unchanged.</Alert>
         <Card><CardContent>
           <Typography variant="h6" sx={{ mb: 2 }}>Plans</Typography>
-          {loading ? <Typography color="text.secondary">Loading plans…</Typography> : plans.length === 0 ? <Typography color="text.secondary">No plans found.</Typography> : (
-            <Table size="small"><TableHead><TableRow><TableCell>Name</TableCell><TableCell>Base price</TableCell><TableCell>Regional prices</TableCell><TableCell>Billing</TableCell><TableCell>Level</TableCell><TableCell>Subscribers</TableCell><TableCell>Status</TableCell><TableCell align="right">Actions</TableCell></TableRow></TableHead>
-              <TableBody>{plans.map((plan) => <TableRow key={plan.id} hover>
-                <TableCell><Typography variant="subtitle2">{plan.name}</Typography><Typography variant="caption" color="text.secondary">{plan.identifier}</Typography></TableCell>
+          {loading || plans.length > 0 ? (
+            <Table size="small"><TableHead><TableRow><TableCell>Name</TableCell><TableCell>Base price</TableCell><TableCell>Regional prices</TableCell><TableCell>Billing</TableCell><TableCell>Level</TableCell><TableCell>Subscribers</TableCell><TableCell>Status</TableCell>{canActOnPlans && <TableCell align="right">Actions</TableCell>}</TableRow></TableHead>
+              <TableBody>{loading ? <SubscriptionTableSkeletonRows columns={canActOnPlans ? 8 : 7} /> : plans.map((plan) => <TableRow key={plan.id} hover>
+                <TableCell><Typography variant="subtitle2">{plan.name_translations?.en || plan.name}</Typography>{plan.name_translations?.bn && <Typography variant="caption" color="text.secondary" display="block">{plan.name_translations.bn}</Typography>}<Typography variant="caption" color="text.secondary">{plan.identifier}</Typography></TableCell>
                 <TableCell>{plan.price}</TableCell><TableCell>{plan.regional_prices?.length || 0} countries</TableCell><TableCell>{plan.duration_value} {plan.duration}{plan.duration_value === 1 ? '' : 's'}</TableCell><TableCell>{plan.level}</TableCell><TableCell>{plan.subscriptions_count ?? 0}</TableCell><TableCell>{plan.status ? 'Active' : 'Archived'}</TableCell>
-                <TableCell align="right"><Stack direction="row" justifyContent="flex-end" spacing={1}>{canUpdate && <Button size="small" onClick={() => setEditing({ ...plan, price: String(plan.price ?? ''), level: String(plan.level), duration_value: String(plan.duration_value), trial_days: String(plan.trial_days ?? 0), device_limit: String(plan.entitlements?.['device-limit'] ?? ''), profile_limit: String(plan.entitlements?.['profile-limit'] ?? ''), simultaneous_streams: String(plan.entitlements?.['simultaneous-streams'] ?? ''), max_video_quality: String(plan.entitlements?.['max-video-quality'] ?? '') })}>Edit</Button>}{canArchive && plan.status && <Button size="small" color="warning" disabled={busy} onClick={() => archive(plan)}>Archive</Button>}</Stack></TableCell>
+                {canActOnPlans && <TableCell align="right"><Stack direction="row" justifyContent="flex-end" spacing={1}>{canUpdate && <Button size="small" onClick={() => setEditing({ ...plan, price: String(plan.price ?? ''), level: String(plan.level), duration_value: String(plan.duration_value), trial_days: String(plan.trial_days ?? 0), device_limit: String(plan.entitlements?.['device-limit'] ?? ''), profile_limit: String(plan.entitlements?.['profile-limit'] ?? ''), simultaneous_streams: String(plan.entitlements?.['simultaneous-streams'] ?? ''), max_video_quality: String(plan.entitlements?.['max-video-quality'] ?? '') })}>Edit</Button>}{canArchive && Boolean(plan.status) && <Button size="small" color="warning" disabled={busy} onClick={() => archive(plan)}>Archive</Button>}</Stack></TableCell>}
               </TableRow>)}</TableBody>
             </Table>
-          )}
+          ) : <Typography color="text.secondary">No plans found.</Typography>}
         </CardContent></Card>
-        {canViewSubscribers && <Card><CardContent>
+        </>}
+        {activeSection === 'subscribers' && canViewSubscribers && <Card><CardContent>
           <Typography variant="h6" sx={{ mb: 2 }}>Recent subscribers</Typography>
-          {subscribers.length === 0 ? <Typography color="text.secondary">No subscriber records found.</Typography> : (
-            <Table size="small"><TableHead><TableRow><TableCell>Account</TableCell><TableCell>Plan</TableCell><TableCell>Status</TableCell><TableCell>Started</TableCell><TableCell>Expires</TableCell></TableRow></TableHead>
-              <TableBody>{subscribers.map((subscriber) => <TableRow key={subscriber.id}><TableCell>#{subscriber.user_id}</TableCell><TableCell>{subscriber.name}</TableCell><TableCell>{subscriber.status}</TableCell><TableCell>{subscriber.start_date ? new Date(subscriber.start_date).toLocaleDateString() : '—'}</TableCell><TableCell>{subscriber.end_date ? new Date(subscriber.end_date).toLocaleDateString() : '—'}</TableCell></TableRow>)}</TableBody>
-            </Table>
-          )}
+          {loading || subscribers.length > 0 ? <Table size="small"><TableHead><TableRow><TableCell>Account</TableCell><TableCell>Plan</TableCell><TableCell>Status</TableCell><TableCell>Started</TableCell><TableCell>Expires</TableCell></TableRow></TableHead>
+            <TableBody>{loading ? <SubscriptionTableSkeletonRows columns={5} rows={3} /> : subscribers.map((subscriber) => <TableRow key={subscriber.id}><TableCell>#{subscriber.user_id}</TableCell><TableCell>{subscriber.name}</TableCell><TableCell>{subscriber.status}</TableCell><TableCell>{subscriber.start_date ? new Date(subscriber.start_date).toLocaleDateString() : '—'}</TableCell><TableCell>{subscriber.end_date ? new Date(subscriber.end_date).toLocaleDateString() : '—'}</TableCell></TableRow>)}</TableBody>
+          </Table> : <Typography color="text.secondary">No subscriber records found.</Typography>}
         </CardContent></Card>}
-        <Card><CardContent>
+        {activeSection === 'performance' && <Card><CardContent>
           <Typography variant="h6" sx={{ mb: 2 }}>Plan comparison and performance</Typography>
-          {performance.length === 0 ? <Typography color="text.secondary">No subscription performance data yet.</Typography> : (
-            <Table size="small"><TableHead><TableRow><TableCell>Plan</TableCell><TableCell>Price</TableCell><TableCell>Entitlement level</TableCell><TableCell>Active subscribers</TableCell><TableCell>Paid transactions</TableCell><TableCell>Gross revenue</TableCell></TableRow></TableHead>
-              <TableBody>{performance.map((plan) => <TableRow key={plan.id}><TableCell>{plan.name}</TableCell><TableCell>{plan.price} / {plan.duration_value} {plan.duration}</TableCell><TableCell>{plan.level}</TableCell><TableCell>{plan.active_subscribers}</TableCell><TableCell>{plan.paid_transactions}</TableCell><TableCell>{Object.entries(plan.revenue_by_currency || {}).map(([currency, amount]) => `${currency}: ${amount}`).join(' · ') || '—'}</TableCell></TableRow>)}</TableBody>
-            </Table>
-          )}
+          {loading || performance.length > 0 ? <Table size="small"><TableHead><TableRow><TableCell>Plan</TableCell><TableCell>Price</TableCell><TableCell>Entitlement level</TableCell><TableCell>Active subscribers</TableCell><TableCell>Paid transactions</TableCell><TableCell>Gross revenue</TableCell></TableRow></TableHead>
+            <TableBody>{loading ? <SubscriptionTableSkeletonRows columns={6} /> : performance.map((plan) => <TableRow key={plan.id}><TableCell>{plan.name}</TableCell><TableCell>{plan.price} / {plan.duration_value} {plan.duration}</TableCell><TableCell>{plan.level}</TableCell><TableCell>{plan.active_subscribers}</TableCell><TableCell>{plan.paid_transactions}</TableCell><TableCell>{Object.entries(plan.revenue_by_currency || {}).map(([currency, amount]) => `${currency}: ${amount}`).join(' · ') || '—'}</TableCell></TableRow>)}</TableBody>
+          </Table> : <Typography color="text.secondary">No subscription performance data yet.</Typography>}
           <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>Amounts are grouped by recorded transaction currency. Older transactions without a stored currency are labeled UNRECORDED; no conversion is applied.</Typography>
-        </CardContent></Card>
-        {canManageCoupons && <Card><CardContent>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}><Typography variant="h6">Coupons</Typography><Button variant="outlined" onClick={() => setEditingCoupon({ code: '', discount: '', discount_type: 'percentage', status: true, subscription_plan_ids: [] })}>Create coupon</Button></Stack>
-          {coupons.length === 0 ? <Typography color="text.secondary">No coupons found.</Typography> : <Table size="small"><TableHead><TableRow><TableCell>Code</TableCell><TableCell>Discount</TableCell><TableCell>Plans</TableCell><TableCell>Uses / cap</TableCell><TableCell>Status</TableCell><TableCell align="right">Actions</TableCell></TableRow></TableHead><TableBody>{coupons.map((coupon) => <TableRow key={coupon.id}><TableCell>{coupon.code}</TableCell><TableCell>{coupon.discount_type === 'percentage' ? `${coupon.discount}%` : coupon.discount}</TableCell><TableCell>{(coupon.subscription_plans || []).map((plan) => plan.name).join(', ')}</TableCell><TableCell>{coupon.redemptions_count ?? 0} / {coupon.max_redemptions ?? '∞'}<Typography display="block" variant="caption" color="text.secondary">{coupon.pending_reservations_count ?? 0} reserved · {coupon.per_user_limit ?? '∞'} per account</Typography></TableCell><TableCell>{coupon.status ? 'Active' : 'Inactive'}</TableCell><TableCell align="right"><Stack direction="row" justifyContent="flex-end"><Button size="small" onClick={() => setEditingCoupon({ ...coupon, subscription_plan_ids: (coupon.subscription_plans || []).map((plan) => String(plan.id)) })}>Edit</Button>{coupon.status && <Button size="small" color="warning" disabled={busy} onClick={() => archiveCoupon(coupon)}>Deactivate</Button>}</Stack></TableCell></TableRow>)}</TableBody></Table>}
         </CardContent></Card>}
-        <Card><CardContent>
-          <Typography variant="h6" sx={{ mb: 2 }}>Entitlement simulator</Typography>
-          <Stack component="form" onSubmit={runSimulation} direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'flex-start' }}>
-            <TextField select required label="Plan" value={simulation.plan_id} onChange={(event) => setSimulation({ ...simulation, plan_id: event.target.value })} sx={{ minWidth: 220 }}>{plans.map((plan) => <MenuItem key={plan.id} value={plan.id}>{plan.name}</MenuItem>)}</TextField>
-            {['required_plan_level', 'profile_count', 'device_count', 'stream_count'].map((key) => <TextField key={key} type="number" label={key.replaceAll('_', ' ')} value={simulation[key]} onChange={(event) => setSimulation({ ...simulation, [key]: event.target.value })} inputProps={{ min: 0 }} />)}
-            <TextField select label="Quality" value={simulation.requested_video_quality} onChange={(event) => setSimulation({ ...simulation, requested_video_quality: event.target.value })}>{[480, 720, 1080, 1440, 2160].map((quality) => <MenuItem key={quality} value={String(quality)}>{quality}p</MenuItem>)}</TextField>
-            <Button type="submit" variant="outlined">Simulate</Button>
+        {activeSection === 'coupons' && canManageCoupons && <Card><CardContent>
+          <Typography variant="h6" sx={{ mb: 2 }}>Coupons</Typography>
+          {loading || coupons.length > 0 ? <Table size="small"><TableHead><TableRow><TableCell>Code</TableCell><TableCell>Discount</TableCell><TableCell>Plans</TableCell><TableCell>Uses / cap</TableCell><TableCell>Status</TableCell><TableCell align="right">Actions</TableCell></TableRow></TableHead><TableBody>{loading ? <SubscriptionTableSkeletonRows columns={6} /> : coupons.map((coupon) => <TableRow key={coupon.id}><TableCell>{coupon.code}</TableCell><TableCell>{coupon.discount_type === 'percentage' ? `${coupon.discount}%` : coupon.discount}</TableCell><TableCell>{(coupon.subscription_plans || []).map((plan) => plan.name).join(', ')}</TableCell><TableCell>{coupon.redemptions_count ?? 0} / {coupon.max_redemptions ?? '∞'}<Typography display="block" variant="caption" color="text.secondary">{coupon.pending_reservations_count ?? 0} reserved · {coupon.per_user_limit ?? '∞'} per account</Typography></TableCell><TableCell>{coupon.status ? 'Active' : 'Inactive'}</TableCell><TableCell align="right"><Stack direction="row" justifyContent="flex-end"><Button size="small" onClick={() => setEditingCoupon({ ...coupon, subscription_plan_ids: (coupon.subscription_plans || []).map((plan) => String(plan.id)) })}>Edit</Button>{Boolean(coupon.status) && <Button size="small" color="warning" disabled={busy} onClick={() => archiveCoupon(coupon)}>Deactivate</Button>}</Stack></TableCell></TableRow>)}</TableBody></Table> : <Typography color="text.secondary">No coupons found.</Typography>}
+        </CardContent></Card>}
+        {activeSection === 'entitlements' && <Card><CardContent sx={{ p: { xs: 2, md: 3 } }}>
+          <Stack spacing={0.5} sx={{ mb: 2.5 }}>
+            <Typography variant="h6">Entitlement simulator</Typography>
+            <Typography variant="body2" color="text.secondary">Check whether a plan can satisfy a member’s access and playback requirements.</Typography>
           </Stack>
-          {simulationResult && <Alert sx={{ mt: 2 }} severity={simulationResult.eligible ? 'success' : 'warning'}>Eligible: {simulationResult.eligible ? 'yes' : 'no'} · {Object.entries(simulationResult.checks).map(([key, value]) => `${key.replaceAll('_', ' ')} ${value ? 'pass' : 'fail'}`).join(' · ')}</Alert>}
-        </CardContent></Card>
+          <Stack component="form" onSubmit={runSimulation} spacing={2.5}>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6} md={4}>
+                <TextField select required fullWidth label="Plan to test" value={simulation.plan_id} onChange={(event) => { setSimulation({ ...simulation, plan_id: event.target.value }); setSimulationResult(null); }}>
+                  {plans.map((plan) => <MenuItem key={plan.id} value={plan.id}>{plan.name_translations?.en || plan.name}</MenuItem>)}
+                </TextField>
+              </Grid>
+              {[
+                { key: 'required_plan_level', label: 'Required plan level', min: 0 },
+                { key: 'profile_count', label: 'Profiles needed', min: 1 },
+                { key: 'device_count', label: 'Devices needed', min: 1 },
+                { key: 'stream_count', label: 'Concurrent streams', min: 1 },
+              ].map(({ key, label, min }) => (
+                <Grid item xs={6} sm={3} md={2} key={key}>
+                  <TextField fullWidth type="number" label={label} value={simulation[key]} onChange={(event) => { setSimulation({ ...simulation, [key]: event.target.value }); setSimulationResult(null); }} inputProps={{ min, required: true }} />
+                </Grid>
+              ))}
+            </Grid>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }} justifyContent="space-between" sx={{ pt: 2, borderTop: 1, borderColor: 'divider' }}>
+              <TextField select label="Requested video quality" value={simulation.requested_video_quality} onChange={(event) => { setSimulation({ ...simulation, requested_video_quality: event.target.value }); setSimulationResult(null); }} sx={{ width: { xs: '100%', sm: 260 } }}>
+                {[480, 720, 1080, 1440, 2160].map((quality) => <MenuItem key={quality} value={String(quality)}>{quality}p</MenuItem>)}
+              </TextField>
+              <Button type="submit" variant="contained" startIcon={<Iconify icon="solar:play-bold" />} disabled={simulating || loading || plans.length === 0 || !simulation.plan_id} sx={{ minWidth: 156, minHeight: 44 }}>
+                {simulating ? 'Checking…' : 'Run simulation'}
+              </Button>
+            </Stack>
+          </Stack>
+          {simulationResult && <Alert sx={{ mt: 2.5 }} severity={simulationResult.eligible ? 'success' : 'warning'}>
+            <Stack spacing={1}>
+              <Typography variant="subtitle2">{simulationResult.eligible ? 'This plan meets the requested entitlements' : 'This plan does not meet all requirements'}</Typography>
+              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                {Object.entries(simulationResult.checks).map(([key, value]) => <Typography key={key} variant="caption" sx={{ px: 1, py: 0.5, borderRadius: 1, bgcolor: 'background.paper', textTransform: 'capitalize' }}>{key.replaceAll('_', ' ')} · {value ? 'Pass' : 'Fail'}</Typography>)}
+              </Stack>
+            </Stack>
+          </Alert>}
+        </CardContent></Card>}
       </Stack>
       <Dialog open={Boolean(editing)} onClose={() => !busy && setEditing(null)} fullWidth maxWidth="md">
         <DialogTitle>{editing?.id ? 'Edit plan' : 'Create plan'}</DialogTitle>
         <form onSubmit={save}><DialogContent><Stack spacing={2} sx={{ pt: 1}}>
-          <TextField name="name" label="Plan name" defaultValue={editing?.name ?? ''} required inputProps={{ maxLength: 120 }} />
+          <TextField name="name" label="Plan name (English)" defaultValue={editing?.name_translations?.en ?? editing?.name ?? ''} required inputProps={{ maxLength: 120 }} />
+          <TextField name="name_translations.bn" label="Plan name (বাংলা)" defaultValue={editing?.name_translations?.bn ?? ''} inputProps={{ maxLength: 120 }} />
           <TextField name="price" label="Base price" type="number" defaultValue={editing?.price ?? ''} required inputProps={{ min: 0, step: '0.01' }} />
           <Stack spacing={1}>
             <Stack direction="row" alignItems="center" justifyContent="space-between">
@@ -291,7 +356,7 @@ export function SubscriptionManagementPage() {
           <TextField name="code" label="Coupon code" defaultValue={editingCoupon?.code ?? ''} required inputProps={{ maxLength: 64 }} />
           <Stack direction="row" spacing={2}><TextField name="discount_type" label="Discount type" select defaultValue={editingCoupon?.discount_type ?? 'percentage'} fullWidth><MenuItem value="percentage">Percentage</MenuItem><MenuItem value="fixed">Fixed amount</MenuItem></TextField><TextField name="discount" label="Discount" type="number" defaultValue={editingCoupon?.discount ?? ''} required inputProps={{ min: 0, step: '0.01' }} /></Stack>
           <Stack direction="row" spacing={2}><TextField name="max_redemptions" label="Total uses (blank is unlimited)" type="number" defaultValue={editingCoupon?.max_redemptions ?? ''} inputProps={{ min: 1, max: 10000000 }} fullWidth /><TextField name="per_user_limit" label="Uses per account (blank is unlimited)" type="number" defaultValue={editingCoupon?.per_user_limit ?? ''} inputProps={{ min: 1, max: 1000 }} fullWidth /></Stack>
-          <TextField name="subscription_plan_ids" label="Eligible plans" select SelectProps={{ multiple: true }} defaultValue={editingCoupon?.subscription_plan_ids ?? []} required>{plans.filter((plan) => plan.status).map((plan) => <MenuItem key={plan.id} value={String(plan.id)}>{plan.name}</MenuItem>)}</TextField>
+          <TextField name="subscription_plan_ids" label="Eligible plans" select SelectProps={{ multiple: true }} defaultValue={editingCoupon?.subscription_plan_ids ?? []} required>{plans.filter((plan) => plan.status).map((plan) => <MenuItem key={plan.id} value={String(plan.id)}>{plan.name_translations?.en || plan.name}{plan.name_translations?.bn ? ` (${plan.name_translations.bn})` : ''}</MenuItem>)}</TextField>
           <Stack direction="row" spacing={2}><TextField name="start_date" type="date" label="Starts" defaultValue={editingCoupon?.start_date?.slice?.(0, 10) ?? ''} InputLabelProps={{ shrink: true }} fullWidth /><TextField name="expire_date" type="date" label="Expires" defaultValue={editingCoupon?.expire_date?.slice?.(0, 10) ?? ''} InputLabelProps={{ shrink: true }} fullWidth /></Stack>
           <TextField name="description" label="Description" defaultValue={editingCoupon?.description ?? ''} multiline minRows={2} />
           <TextField name="status" label="Status" select defaultValue={editingCoupon?.status ? 'true' : 'false'}><MenuItem value="true">Active</MenuItem><MenuItem value="false">Inactive</MenuItem></TextField>

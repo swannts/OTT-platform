@@ -6,9 +6,9 @@ import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Grid from '@mui/material/Unstable_Grid2';
+import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import CircularProgress from '@mui/material/CircularProgress';
 import { DashboardContent } from 'src/layouts/dashboard';
 
 const metrics = [
@@ -23,6 +23,7 @@ const metrics = [
 export function OttDashboardView() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch('/api/admin/dashboard', { cache: 'no-store' })
@@ -31,7 +32,8 @@ export function OttDashboardView() {
         if (!response.ok) throw new Error(body.message || 'Could not load OTT metrics.');
         setData(body);
       })
-      .catch((reason) => setError(reason.message));
+      .catch((reason) => setError(reason.message))
+      .finally(() => setLoading(false));
   }, []);
 
   return (
@@ -42,7 +44,23 @@ export function OttDashboardView() {
           <Typography color="text.secondary">Live platform totals from Laravel.</Typography>
         </Box>
         {error && <Alert severity="error">{error}</Alert>}
-        {!data && !error && <CircularProgress size={28} aria-label="Loading OTT overview" />}
+        {loading && !error && (
+          <Grid container spacing={3} aria-label="Loading OTT overview" aria-busy="true">
+            {metrics.map(([title], index) => (
+              <Grid key={title} xs={12} sm={6} md={4}>
+                <Card>
+                  <CardContent>
+                    <Stack spacing={1}>
+                      <Skeleton variant="text" width="42%" height={24} />
+                      <Skeleton variant="rounded" width="58%" height={42} />
+                      <Skeleton variant="text" width={index % 2 === 0 ? '72%' : '60%'} />
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        )}
         {data && (
           <Grid container spacing={3}>
             {metrics.map(([title, key, detail]) => (

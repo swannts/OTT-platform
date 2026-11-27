@@ -13,6 +13,7 @@ import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
+import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
@@ -62,6 +63,8 @@ export function TechnicalOperationsPage() {
   const [logs, setLogs] = useState([]);
   const [jobs, setJobs] = useState([]);
   const [incidents, setIncidents] = useState([]);
+  const [incidentPage, setIncidentPage] = useState(0);
+  const [incidentMeta, setIncidentMeta] = useState({ last_page: 1, total: 0 });
   const [playback, setPlayback] = useState([]);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -71,9 +74,8 @@ export function TechnicalOperationsPage() {
       ...(canHealth ? [rbacApi.operationsHealth()] : []),
       ...(canLogs ? [rbacApi.operationsLogs({ per_page: 50 })] : []),
       ...(canJobs ? [rbacApi.operationsJobs({ per_page: 50 })] : []),
-      ...(canIncidents ? [rbacApi.operationsIncidents({ per_page: 50 })] : []),
       ...(canPlayback ? [rbacApi.operationsPlayback()] : []),
-    ]), [canHealth, canIncidents, canJobs, canLogs, canPlayback]);
+    ]), [canHealth, canJobs, canLogs, canPlayback]);
 
   const applyOperations = useCallback((requests) => {
     let index = 0;
@@ -81,21 +83,35 @@ export function TechnicalOperationsPage() {
     if (canHealth) { const result = requests[index++]; if (result.status === 'fulfilled') setHealth(result.value.data); else failures.push('service health'); }
     if (canLogs) { const result = requests[index++]; if (result.status === 'fulfilled') setLogs(result.value.data || []); else failures.push('sanitized operations log'); }
     if (canJobs) { const result = requests[index++]; if (result.status === 'fulfilled') setJobs(result.value.data || []); else failures.push('failed jobs'); }
-    if (canIncidents) { const result = requests[index++]; if (result.status === 'fulfilled') setIncidents(result.value.data || []); else failures.push('incidents'); }
     if (canPlayback) { const result = requests[index++]; if (result.status === 'fulfilled') setPlayback(result.value.data?.events || []); else failures.push('playback diagnostics'); }
     if (failures.length) setError(`Could not load ${failures.join(', ')}.`);
-  }, [canHealth, canJobs, canIncidents, canLogs, canPlayback]);
+  }, [canHealth, canJobs, canLogs, canPlayback]);
+
+  const loadIncidents = useCallback(async (page = incidentPage) => {
+    if (!canIncidents) return;
+    try {
+      const result = await rbacApi.operationsIncidents({ page: page + 1, per_page: 5 });
+      setIncidents(result.data || []);
+      setIncidentMeta(result.meta || { last_page: 1, total: result.data?.length || 0 });
+    } catch {
+      setError((current) => current || 'Could not load incidents.');
+    }
+  }, [canIncidents, incidentPage]);
 
   const refresh = useCallback(async () => {
     setError('');
     applyOperations(await loadOperations());
-  }, [applyOperations, loadOperations]);
+    await loadIncidents();
+  }, [applyOperations, loadIncidents, loadOperations]);
 
   useEffect(() => {
     let active = true;
     loadOperations()
-      .then((requests) => {
-        if (active) applyOperations(requests);
+      .then(async (requests) => {
+        if (active) {
+          applyOperations(requests);
+          await loadIncidents();
+        }
       })
       .catch(() => {
         if (active) setError('The operations overview could not be loaded.');
@@ -103,7 +119,7 @@ export function TechnicalOperationsPage() {
     return () => {
       active = false;
     };
-  }, [applyOperations, loadOperations]);
+  }, [applyOperations, loadIncidents, loadOperations]);
 
   const runAction = async (action) => {
     setBusy(true);
@@ -219,6 +235,9 @@ export function TechnicalOperationsPage() {
             {incident.status !== 'resolved' && <Button size="small" disabled={busy} onClick={() => runAction(() => rbacApi.updateOperationsIncident(incident.id, { status: 'resolved' }))}>Resolve</Button>}
           </Stack>
         </Stack>)}{incidents.length === 0 && <Typography color="text.secondary">No incidents recorded.</Typography>}</Stack>
+        <TablePagination component="div" count={incidentMeta.total} page={incidentPage}
+          onPageChange={(_, nextPage) => { setIncidentPage(nextPage); loadIncidents(nextPage); }}
+          rowsPerPage={5} rowsPerPageOptions={[5]} labelRowsPerPage="Incidents per page:" />
       </CardContent></Card></Grid>
     </Grid>}
   </DashboardContent>;

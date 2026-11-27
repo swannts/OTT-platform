@@ -33,7 +33,7 @@ export function Main({ children, isNavHorizontal, sx, ...other }) {
 
 // ----------------------------------------------------------------------
 
-export function DashboardContent({ sx, children, disablePadding, maxWidth = 'lg', ...other }) {
+export function DashboardContent({ sx, children, disablePadding, ...other }) {
   const theme = useTheme();
 
   const settings = useSettingsContext();
@@ -42,8 +42,9 @@ export function DashboardContent({ sx, children, disablePadding, maxWidth = 'lg'
 
   return (
     <Container
+      {...other}
       className={layoutClasses.content}
-      maxWidth={settings.compactLayout ? maxWidth : false}
+      maxWidth={settings.compactLayout ? 'xl' : false}
       sx={{
         display: 'flex',
         flex: '1 1 auto',
@@ -64,7 +65,6 @@ export function DashboardContent({ sx, children, disablePadding, maxWidth = 'lg'
         }),
         ...sx,
       }}
-      {...other}
     >
       {children}
     </Container>

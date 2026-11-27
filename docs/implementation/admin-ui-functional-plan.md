@@ -63,6 +63,9 @@ country/time licensing boundaries and permission enforcement.
 
 - Verify plan and regional-price CRUD, archive behavior, coupon creation and
   redemption limits, subscriber lookup, and entitlement simulation.
+- Follow the focused [Subscription Manager improvement plan](subscription-manager-improvement-plan.md)
+  for subscriber lookup, trial-policy depth, lifecycle boundaries, and
+  subscription-versus-finance metric permissions.
 - Verify payment filtering/details/export, invoice access, reconciliation,
   refunds, disputes, and failed provider events.
 - Keep provider-backed actions gated by configured credentials and expose a clear
