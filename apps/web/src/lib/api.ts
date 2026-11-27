@@ -397,7 +397,16 @@ class ApiClient {
     const items = (res && !Array.isArray(res) && Array.isArray((res as { slider?: unknown[] }).slider))
       ? (res as { slider: unknown[] }).slider
       : (Array.isArray(res) ? res : []);
-    return items.map(normalizeMediaItem);
+    const seen = new Set<string>();
+
+    return items.flatMap((rawItem, index) => {
+      const item = normalizeMediaItem(rawItem);
+      const id = String(item.id ?? '').trim();
+      const identity = id ? `${item.type}:${id}` : `banner-row:${index}`;
+      if (seen.has(identity)) return [];
+      seen.add(identity);
+      return [item];
+    });
   }
 
   async getDashboard(signal?: AbortSignal): Promise<{ data?: DashboardData } & DashboardData> {
@@ -686,8 +695,8 @@ class ApiClient {
   }
 
   // ── Subscriptions & Pricing ───────────────────────────────────────────────
-  async getPlans(): Promise<Plan[]> {
-    return this.request<Plan[]>('/v3/subscription/plans');
+  async getPlans(locale?: string): Promise<Plan[]> {
+    return this.request<Plan[]>('/v3/subscription/plans', { locale });
   }
 
   async calculatePrice(planId: number, couponCode?: string): Promise<PriceCalculation> {

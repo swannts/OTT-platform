@@ -4,7 +4,8 @@ import { getPricingPlansDal } from '@/server/dal';
 import { PricingSection } from '@/features/pricing';
 import { api } from '@/lib/api';
 
-export const revalidate = 300; // Cache pricing for 5 minutes
+// Plan localization is selected from the visitor's locale cookie.
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata(): Promise<Metadata> {
   const seo = await api.getSeoSettings().catch(() => null);
@@ -52,7 +53,7 @@ export default async function PricingPage() {
       offerCount: plans.length,
       offers: plans.map((p) => ({
         '@type': 'Offer',
-        name: p.name,
+        name: p.localized_name || p.name,
         price: p.price,
         priceCurrency: 'USD',
         description: p.description,

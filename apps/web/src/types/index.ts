@@ -257,6 +257,8 @@ export interface Plan {
   plan_id: number;
   id?: number | string;
   name: string;
+  name_translations?: Partial<Record<'en' | 'bn', string>>;
+  localized_name?: string;
   identifier: string;
   price: number;
   discount?: number;

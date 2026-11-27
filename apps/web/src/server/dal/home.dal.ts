@@ -27,13 +27,28 @@ async function loadHomeInitialData(): Promise<{ data: HomeInitialData; complete:
   };
 
   try {
-    const [bannerRes, dashRes, liveRes] = await Promise.allSettled([
-      api.getBannerData('home'),
+    // The hero is the first visible homepage content, so request its slides
+    // before starting the lower-page catalog requests.
+    const bannerRes = await api.getBannerData('home')
+      .then((value) => ({ status: 'fulfilled', value }) as const)
+      .catch((reason: unknown) => ({ status: 'rejected', reason }) as const);
+
+    const [dashRes, liveRes, tvShowsRes] = await Promise.allSettled([
       api.getDashboard(),
       api.getLiveTvDashboard(),
+      api.getTvShows({ page: 1 }),
     ]);
 
-    complete = [bannerRes, dashRes, liveRes].every((response) => response.status === 'fulfilled' && response.value != null);
+    complete =
+      bannerRes.status === 'fulfilled' &&
+      bannerRes.value != null &&
+      bannerRes.value.length > 0 &&
+      dashRes.status === 'fulfilled' &&
+      dashRes.value != null &&
+      liveRes.status === 'fulfilled' &&
+      liveRes.value != null &&
+      tvShowsRes.status === 'fulfilled' &&
+      tvShowsRes.value != null;
 
     if (bannerRes.status === 'fulfilled' && Array.isArray(bannerRes.value)) {
       result.banners = bannerRes.value.map(normalizeMediaItem);
@@ -69,6 +84,16 @@ async function loadHomeInitialData(): Promise<{ data: HomeInitialData; complete:
           complete = false;
         }
       }
+    }
+
+    if (tvShowsRes.status === 'fulfilled') {
+      const response = tvShowsRes.value;
+      const shows = Array.isArray(response)
+        ? response
+        : Array.isArray(response?.data)
+          ? response.data
+          : [];
+      if (shows.length > 0) result.tvShows = shows.map(normalizeMediaItem);
     }
 
     if (liveRes.status === 'fulfilled' && liveRes.value) {
@@ -131,7 +156,7 @@ const getCachedHomeInitialData = unstable_cache(async () => {
   const hasCatalogData = Object.values(data).some((section) => section.length > 0);
   if (!complete || !hasCatalogData) throw new UncacheableHomeDataError(data);
   return data;
-}, ['home-initial-data-v2'], {
+}, ['home-initial-data-v4'], {
   revalidate: 3600,
   tags: ['home-initial-data', 'dashboard-detail', 'banner-data-home', 'livetv-dashboard'],
 });

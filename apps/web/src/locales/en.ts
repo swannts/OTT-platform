@@ -165,6 +165,9 @@ export const en = {
   recommended_titles: 'Recommended Titles',
   home_catalog_empty_title: 'A library of meaningful stories is on its way',
   home_catalog_empty_description: 'There is no published content to show yet. Please check back soon.',
+  home_catalog_error_title: 'We could not load the library',
+  home_catalog_loading_description: 'Fetching the latest movies, series, and live channels.',
+  retry: 'Try again',
 
   // Hero Section
   hero_watch_now: 'Watch Now',

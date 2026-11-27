@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Plan, PlanLimitation } from '@/types';
 import { Crown, Check, Sparkles } from 'lucide-react';
 import { Heading, Text } from '@/components/ui';
-import { useLocaleText } from '@/providers';
+import { useLanguage, useLocaleText } from '@/providers';
 
 interface PricingSectionProps {
   initialPlans: Plan[];
@@ -12,7 +12,9 @@ interface PricingSectionProps {
 
 export default function PricingSection({ initialPlans }: PricingSectionProps) {
   const tr = useLocaleText();
+  const { locale } = useLanguage();
   const plans = initialPlans;
+  const getPlanName = (plan: Plan) => plan.name_translations?.[locale] || plan.localized_name || plan.name;
 
   return (
     <div className="min-h-screen pt-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pb-24 select-none">
@@ -31,6 +33,7 @@ export default function PricingSection({ initialPlans }: PricingSectionProps) {
       {/* Plan Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
         {plans.map((plan) => {
+          const planName = getPlanName(plan);
           const isFeatured = plan.identifier === 'premium' || plan.name?.toLowerCase().includes('vip');
           return (
             <div
@@ -48,7 +51,7 @@ export default function PricingSection({ initialPlans }: PricingSectionProps) {
 
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xl font-bold text-white">{plan.name}</h3>
+                  <h3 className="text-xl font-bold text-white">{planName}</h3>
                   {isFeatured && <Crown className="w-5 h-5 text-[#E5B869]" />}
                 </div>
 

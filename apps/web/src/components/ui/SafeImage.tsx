@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { DEFAULT_FALLBACK_IMAGE } from '@/constants';
@@ -43,13 +43,28 @@ export default function SafeImage({
   const cleanTarget = typeof src === 'string' && src.trim() ? src.trim() : fallbackSrc;
   const [failedSource, setFailedSource] = useState<string | null>(null);
   const [loadedSource, setLoadedSource] = useState<string | null>(null);
+  const [blurPlaceholder, setBlurPlaceholder] = useState<{ hash: string; dataUrl: string } | null>(null);
   const hasError = failedSource === cleanTarget;
   const imgSrc = hasError ? fallbackSrc : cleanTarget;
   const isLoaded = loadedSource === imgSrc;
-  const blurDataUrl = useMemo(
-    () => (blurhash ? blurHashToDataURL(blurhash, 32, 32) : null),
-    [blurhash]
-  );
+  const blurDataUrl = blurPlaceholder && blurPlaceholder.hash === blurhash ? blurPlaceholder.dataUrl : null;
+
+  // BlurHash decoding uses canvas, so generate the data URL after hydration.
+  // Keeping it out of render makes the server HTML match the first client render.
+  useEffect(() => {
+    if (!blurhash) return;
+
+    let cancelled = false;
+    const frame = window.requestAnimationFrame(() => {
+      const dataUrl = blurHashToDataURL(blurhash, 32, 32);
+      if (!cancelled) setBlurPlaceholder(dataUrl ? { hash: blurhash, dataUrl } : null);
+    });
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+    };
+  }, [blurhash]);
   // Safety Watchdog: If an image is cached or network stalls on page change,
   // never leave the user stuck on the blurhash color forever.
   useEffect(() => {

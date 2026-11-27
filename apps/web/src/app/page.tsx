@@ -3,9 +3,6 @@ import type { Metadata } from 'next';
 import { getHomeInitialDataDal } from '@/server/dal';
 import { HomeSection } from '@/features/home';
 
-// Render against the backend at request time so a build without backend access
-// cannot bake an empty hero into the production homepage. Public data remains
-// cached by the home DAL when the upstream requests succeed.
 export const revalidate = 0;
 
 export const metadata: Metadata = {
@@ -53,15 +50,7 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const {
-    banners,
-    top10,
-    latestMovies,
-    popularMovies,
-    payPerView,
-    tvShows,
-    liveChannels,
-  } = await getHomeInitialDataDal();
+  const initialContent = await getHomeInitialDataDal();
 
   // Schema.org Structured JSON-LD Data
   const jsonLd = {
@@ -100,15 +89,7 @@ export default async function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <HomeSection
-        initialBanners={banners}
-        initialTop10={top10}
-        initialLatestMovies={latestMovies}
-        initialPopularMovies={popularMovies}
-        initialPayPerView={payPerView}
-        initialTvShows={tvShows}
-        initialLiveChannels={liveChannels}
-      />
+      <HomeSection initialContent={initialContent} />
     </>
   );
 }

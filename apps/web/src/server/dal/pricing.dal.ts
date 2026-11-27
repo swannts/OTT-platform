@@ -1,9 +1,11 @@
 import { api } from '@/lib/api';
+import { cookies } from 'next/headers';
 import { Plan } from '@/types';
 
 export async function getPricingPlansDal(): Promise<Plan[]> {
   try {
-    const res = await api.getPlans();
+    const locale = (await cookies()).get('noor_locale')?.value === 'en' ? 'en' : 'bn';
+    const res = await api.getPlans(locale);
     if (Array.isArray(res) && res.length > 0) {
       return res;
     }

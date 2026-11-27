@@ -167,6 +167,9 @@ export const bn: Record<TranslationKey, string> = {
   recommended_titles: 'সুপারিশকৃত কনটেন্ট',
   home_catalog_empty_title: 'অর্থবহ গল্পের সংগ্রহ শিগগিরই আসছে',
   home_catalog_empty_description: 'এখনও কোনো কনটেন্ট প্রকাশ করা হয়নি। অনুগ্রহ করে পরে আবার দেখুন।',
+  home_catalog_error_title: 'লাইব্রেরি লোড করা যায়নি',
+  home_catalog_loading_description: 'সর্বশেষ সিনেমা, সিরিজ ও লাইভ চ্যানেল আনা হচ্ছে।',
+  retry: 'আবার চেষ্টা করুন',
 
   // Hero Section
   hero_watch_now: 'এখন দেখুন',

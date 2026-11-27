@@ -22,7 +22,16 @@ export default function HeroBanner({ items }: HeroBannerProps) {
   const [isPaused, setIsPaused] = useState(false);
   const fadeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const slides = items || [];
+  const seenSlideIds = new Set<string>();
+  const slides = (items || []).filter((slide) => {
+    const id = String(slide.id ?? '').trim();
+    if (!id) return true;
+
+    const identity = `${slide.type || 'movie'}:${id}`;
+    if (seenSlideIds.has(identity)) return false;
+    seenSlideIds.add(identity);
+    return true;
+  });
 
   // Smooth fade transition handler
   const transitionToSlide = useCallback(
@@ -118,7 +127,7 @@ export default function HeroBanner({ items }: HeroBannerProps) {
 
         return (
           <div
-            key={`hero-slide-bg-${slide.id ?? idx}`}
+            key={`hero-slide-bg-${slide.type ?? 'movie'}-${slide.id ?? 'unknown'}-${idx}`}
             className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
               isCurrent ? 'opacity-100 z-0' : 'opacity-0 -z-10 pointer-events-none'
             }`}
