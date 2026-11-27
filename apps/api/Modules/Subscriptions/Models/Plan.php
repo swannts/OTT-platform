@@ -16,7 +16,11 @@ class Plan extends BaseModel
 
     protected $table = 'plan';
 
-    protected $fillable = ['name', 'identifier','android_identifier','apple_identifier', 'level', 'duration', 'duration_value', 'trial_days', 'price', 'description', 'status', 'discount', 'discount_percentage', 'total_price'];
+    protected $fillable = ['name', 'name_translations', 'identifier','android_identifier','apple_identifier', 'level', 'duration', 'duration_value', 'trial_days', 'price', 'description', 'status', 'discount', 'discount_percentage', 'total_price'];
+
+    protected $casts = [
+        'name_translations' => 'array',
+    ];
 
     const CUSTOM_FIELD_MODEL = 'Modules\Subscriptions\Models\Plan';
 
@@ -68,4 +72,3 @@ class Plan extends BaseModel
 
 
 }
-

@@ -158,18 +158,47 @@ class AdminSupportController extends Controller
     public function tickets(Request $request): JsonResponse
     {
         $this->authorizeSupport($request, 'support.tickets.manage');
+        $filters = $request->validate([
+            'search' => ['sometimes', 'string', 'max:120'],
+            'status' => ['sometimes', 'in:open,in_progress,waiting_customer,escalated,resolved,closed'],
+            'priority' => ['sometimes', 'in:low,normal,high,urgent'],
+            'category' => ['sometimes', 'in:account,billing,playback,device,subscription,general'],
+            'assigned_to' => ['sometimes', 'regex:/^(unassigned|[1-9][0-9]*)$/'],
+            'escalated' => ['sometimes', 'in:0,1'],
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+        ]);
         $query = DB::table('support_tickets')->select(['id', 'public_id', 'customer_id', 'subject', 'category', 'priority', 'status', 'escalation_target', 'assigned_to', 'created_at']);
-        if ($request->filled('status')) {
-            $query->where('support_tickets.status', $request->string('status')->toString());
+        if (! empty($filters['search'])) {
+            $term = trim($filters['search']);
+            $query->where(function ($searchQuery) use ($term): void {
+                if (ctype_digit($term)) {
+                    $searchQuery->orWhere('support_tickets.id', (int) $term)
+                        ->orWhere('support_tickets.customer_id', (int) $term);
+                }
+                $searchQuery->orWhere('support_tickets.subject', 'like', '%'.$term.'%')
+                    ->orWhere('support_tickets.public_id', 'like', '%'.$term.'%');
+            });
         }
-        if ($request->filled('priority')) {
-            $query->where('support_tickets.priority', $request->string('priority')->toString());
+        foreach (['status', 'priority', 'category'] as $filter) {
+            if (isset($filters[$filter])) {
+                $query->where('support_tickets.'.$filter, $filters[$filter]);
+            }
         }
-        if ($request->filled('escalated')) {
-            $query->whereNotNull('support_tickets.escalation_target');
+        if (isset($filters['assigned_to'])) {
+            if ($filters['assigned_to'] === 'unassigned') {
+                $query->whereNull('support_tickets.assigned_to');
+            } else {
+                $query->where('support_tickets.assigned_to', (int) $filters['assigned_to']);
+            }
+        }
+        if (isset($filters['escalated'])) {
+            $filters['escalated'] === '1'
+                ? $query->whereNotNull('support_tickets.escalation_target')
+                : $query->whereNull('support_tickets.escalation_target');
         }
 
-        return response()->json($query->orderByDesc('support_tickets.created_at')->paginate(min(max($request->integer('per_page', 25), 1), 100)));
+        return response()->json($query->orderByDesc('support_tickets.created_at')->paginate($filters['per_page'] ?? 25));
     }
 
     public function assignees(Request $request): JsonResponse

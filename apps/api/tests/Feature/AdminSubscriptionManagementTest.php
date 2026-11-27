@@ -33,14 +33,22 @@ class AdminSubscriptionManagementTest extends TestCase
     {
         $manager = User::factory()->create();
         $manager->assignRole('subscription_manager');
+        $sessionPermissions = $this->actingAs($manager, 'sanctum')->getJson('/api/admin/me')
+            ->assertOk()->json('user.permissions');
+        $this->assertContains('subscriptions.plans.update', $sessionPermissions);
+        $this->assertContains('subscriptions.plans.archive', $sessionPermissions);
         $created = $this->actingAs($manager, 'sanctum')->postJson('/api/admin/subscriptions/plans', [
-            'name' => 'Family monthly', 'identifier' => 'family-monthly-'.Str::lower(Str::random(5)),
+            'name' => 'Family monthly', 'name_translations' => ['en' => 'Family monthly', 'bn' => 'পরিবার মাসিক'],
+            'identifier' => 'family-monthly-'.Str::lower(Str::random(5)),
             'price' => 9.99, 'level' => 3, 'duration' => 'month', 'duration_value' => 1,
             'description' => 'Family access', 'status' => true,
             'limits' => ['device_limit' => 4, 'profile_limit' => 5, 'simultaneous_streams' => 2],
-        ])->assertCreated()->assertJsonPath('data.entitlements.device-limit', 4)
+        ])->assertCreated()->assertJsonPath('data.name_translations.bn', 'পরিবার মাসিক')->assertJsonPath('data.entitlements.device-limit', 4)
             ->assertJsonPath('data.entitlements.profile-limit', 5)
             ->assertJsonPath('data.entitlements.simultaneous-streams', 2)->json('data');
+
+        $this->getJson('/api/v3/subscription/plans', ['app-locale' => 'bn'])
+            ->assertOk()->assertJsonFragment(['localized_name' => 'পরিবার মাসিক']);
 
         $subscriber = User::factory()->create();
         Subscription::query()->create([
@@ -52,6 +60,7 @@ class AdminSubscriptionManagementTest extends TestCase
 
         $this->putJson('/api/admin/subscriptions/plans/'.$created['id'], ['price' => 12.99, 'level' => 4])
             ->assertOk()->assertJsonPath('data.price', 12.99);
+        $this->assertDatabaseHas('plan', ['id' => $created['id'], 'name_translations->bn' => 'পরিবার মাসিক']);
         $this->assertDatabaseHas('subscriptions', ['plan_id' => $created['id'], 'name' => 'Family monthly', 'amount' => 9.99, 'level' => 3]);
 
         $this->postJson('/api/admin/subscriptions/plans/'.$created['id'].'/archive')->assertOk();

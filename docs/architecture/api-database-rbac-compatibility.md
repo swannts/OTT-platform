@@ -30,6 +30,13 @@ The `swann` database name and persistent Docker volume names remain unchanged
 for existing local data. They must only be renamed through an explicit data
 migration and restore plan.
 
+Subscription plans keep the existing `name` field as the English-compatible
+fallback and may store localized display names in the additive
+`plan.name_translations` JSON column. Supported keys follow
+`config('app.available_locales')`; customer plan responses expose both the
+translation map and a locale-resolved `localized_name` while preserving
+`name` for older clients.
+
 ## Canonical administrative RBAC
 
 `apps/api/app/Support/Rbac/RbacRegistry.php` is the source of truth for the

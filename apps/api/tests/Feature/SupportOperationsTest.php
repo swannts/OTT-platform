@@ -30,6 +30,11 @@ class SupportOperationsTest extends TestCase
             'category' => 'playback', 'priority' => 'high', 'assigned_to' => $support->id,
         ])->assertCreated()->assertJsonPath('data.status', 'open')->json('data');
 
+        $this->getJson('/api/admin/support/tickets?search=Cannot%20watch&status=open&priority=high&category=playback&assigned_to='.$support->id)
+            ->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.id', $ticket['id']);
+        $this->getJson('/api/admin/support/tickets?search=missing-ticket-term')
+            ->assertOk()->assertJsonPath('total', 0);
+
         $this->postJson('/api/admin/support/tickets/'.$ticket['id'].'/notes', ['note' => 'Verified the device and asked for a retry.'])
             ->assertCreated()->assertJsonPath('data.is_internal', 1);
         $this->postJson('/api/admin/support/tickets/'.$ticket['id'].'/escalate', ['target' => 'technical_operations', 'reason' => 'Repeated manifest failures.'])

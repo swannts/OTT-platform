@@ -14,10 +14,14 @@ class PlanResource extends JsonResource
      */
     public function toArray($request)
     {
+        $requestedLocale = strtolower((string) ($request->header('app-locale') ?? $request->header('global-localization') ?? $request->header('X-Locale') ?? app()->getLocale()));
+        $locale = array_key_exists($requestedLocale, config('app.available_locales', [])) ? $requestedLocale : config('app.fallback_locale', 'en');
 
         return [
             'plan_id' => $this->id,
             'name' => $this->name,
+            'name_translations' => $this->name_translations ?? [],
+            'localized_name' => data_get($this->name_translations, $locale) ?: $this->name,
             'identifier' => $this->identifier,
             'price' => $this->display_price ?? $this->price,
             'currency' => $this->display_currency ?? (GetcurrentCurrency() ?: null),

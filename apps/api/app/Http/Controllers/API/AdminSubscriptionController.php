@@ -45,6 +45,9 @@ class AdminSubscriptionController extends Controller
         if ($request->exists('trial_days')) abort_unless(ExplicitPermission::allows($request->user(), 'subscriptions.trials.manage'), 403);
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
+            'name_translations' => ['sometimes', 'array:en,bn'],
+            'name_translations.en' => ['nullable', 'string', 'max:120'],
+            'name_translations.bn' => ['nullable', 'string', 'max:120'],
             'identifier' => ['sometimes', 'nullable', 'string', 'max:120', 'alpha_dash', 'unique:plan,identifier'],
             'price' => ['required', 'numeric', 'min:0', 'max:99999999'],
             'level' => ['required', 'integer', 'min:0', 'max:10000'],
@@ -65,6 +68,9 @@ class AdminSubscriptionController extends Controller
         ]);
         $this->validatePrimaryPricePrecision($data['price']);
         $this->validateRegionalPricePrecision($data['regional_prices'] ?? []);
+        if (isset($data['name_translations'])) {
+            $data['name_translations'] = array_filter($data['name_translations'], static fn ($value): bool => is_string($value) && trim($value) !== '');
+        }
         $data['identifier'] = $data['identifier'] ?? Str::slug($data['name']).'-'.Str::lower(Str::random(6));
         $data['status'] = (bool) ($data['status'] ?? false);
         $limits = $data['limits'] ?? null;
@@ -93,6 +99,9 @@ class AdminSubscriptionController extends Controller
         if ($request->exists('trial_days')) abort_unless(ExplicitPermission::allows($request->user(), 'subscriptions.trials.manage'), 403);
         $data = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:120'],
+            'name_translations' => ['sometimes', 'array:en,bn'],
+            'name_translations.en' => ['nullable', 'string', 'max:120'],
+            'name_translations.bn' => ['nullable', 'string', 'max:120'],
             'identifier' => ['sometimes', 'required', 'string', 'max:120', 'alpha_dash', 'unique:plan,identifier,'.$plan->id],
             'price' => ['sometimes', 'required', 'numeric', 'min:0', 'max:99999999'],
             'level' => ['sometimes', 'required', 'integer', 'min:0', 'max:10000'],
@@ -110,6 +119,9 @@ class AdminSubscriptionController extends Controller
             'regional_prices.*.currency_code' => ['required', 'string', 'regex:/^[A-Z]{3}$/', Rule::exists('currencies', 'currency_code')->where(fn ($query) => $query->whereNull('deleted_at')->whereIn('no_of_decimal', [0, 2]))],
             'regional_prices.*.amount' => ['required', 'numeric', 'decimal:0,2', 'min:0', 'max:99999999'],
         ]);
+        if (isset($data['name_translations'])) {
+            $data['name_translations'] = array_filter($data['name_translations'], static fn ($value): bool => is_string($value) && trim($value) !== '');
+        }
         if (array_key_exists('price', $data)) $this->validatePrimaryPricePrecision($data['price']);
         $this->validateRegionalPricePrecision($data['regional_prices'] ?? []);
         $limits = $data['limits'] ?? null;
@@ -320,7 +332,7 @@ class AdminSubscriptionController extends Controller
 
     private function snapshot(Plan $plan): array
     {
-        return array_merge($plan->only(['name', 'identifier', 'price', 'level', 'duration', 'duration_value', 'trial_days', 'description', 'status']), [
+        return array_merge($plan->only(['name', 'name_translations', 'identifier', 'price', 'level', 'duration', 'duration_value', 'trial_days', 'description', 'status']), [
             'entitlements' => $this->planLimits($plan),
             'regional_prices' => $plan->regionalPrices()->get(['country_code', 'currency_code', 'amount'])
                 ->map(static fn ($price): array => ['country_code' => $price->country_code, 'currency_code' => $price->currency_code, 'amount' => (float) $price->amount])->values()->all(),
