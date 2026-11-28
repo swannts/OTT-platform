@@ -9,9 +9,11 @@ import { useLanguage , useLocaleText} from '@/providers';
 
 interface LiveNowSectionProps {
   channels?: LiveChannel[];
+  premiumCard?: { enabled: boolean; title: string; description: string; image_url: string; cta: string; url: string };
+  title?: string;
 }
 
-export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
+export default function LiveNowSection({ channels = [], premiumCard, title }: LiveNowSectionProps) {
   const tr = useLocaleText();
   const { t, locale } = useLanguage();
 
@@ -54,7 +56,7 @@ export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
         <div className="flex items-center">
           <span className="w-1 h-5 bg-[#E5B869] rounded-full inline-block mr-2.5 flex-shrink-0" />
           <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-            {t('live_now', 'Live Now')}
+            {title || t('live_now', 'Live Now')}
           </h2>
         </div>
         <Link
@@ -152,14 +154,13 @@ export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
         </div>
 
         {/* 3. Go Premium Promo Card (Luxury Golden Islamic Card) */}
-        <div className="group lg:col-span-4 relative rounded-2xl overflow-hidden border border-[#E5B869]/40 p-5 sm:p-6 flex flex-col justify-between shadow-2xl transition-all duration-300 hover:border-[#E5B869]/70 bg-gradient-to-br from-[#071c18] via-[#051411] to-[#040d0b] min-h-[160px] sm:min-h-[190px] cursor-pointer">
-          <Link href="/pricing" className="absolute inset-0 z-0 cursor-pointer" aria-label={tr("Go Premium")} />
+        {premiumCard?.enabled !== false && <div className="group lg:col-span-4 relative rounded-2xl overflow-hidden border border-[#E5B869]/40 p-5 sm:p-6 flex flex-col justify-between shadow-2xl transition-all duration-300 hover:border-[#E5B869]/70 bg-gradient-to-br from-[#071c18] via-[#051411] to-[#040d0b] min-h-[160px] sm:min-h-[190px] cursor-pointer">
+          <Link href={premiumCard?.url || '/pricing'} className="absolute inset-0 z-0 cursor-pointer" aria-label={premiumCard?.title || tr("Go Premium")} />
           {/* Mosque Minarets Silhouette Overlay positioned to the right */}
           <div
             className="absolute inset-y-0 right-0 w-3/5 opacity-40 pointer-events-none bg-cover bg-center mix-blend-screen"
             style={{
-              backgroundImage:
-                'url(https://images.unsplash.com/photo-1518684079-3c830dcef090?w=600&auto=format&fit=crop&q=80)',
+              backgroundImage: `url(${premiumCard?.image_url || 'https://images.unsplash.com/photo-1518684079-3c830dcef090?w=600&auto=format&fit=crop&q=80'})`,
             }}
           />
           <div className="absolute inset-0 bg-gradient-to-r from-[#071c18] via-[#071c18]/80 to-transparent pointer-events-none" />
@@ -168,22 +169,22 @@ export default function LiveNowSection({ channels = [] }: LiveNowSectionProps) {
             <div className="flex items-center space-x-2 text-[#E5B869] mb-2">
               <Crown className="w-5 h-5 fill-[#E5B869]/30 text-[#E5B869]" />
               <h3 className="font-serif-title text-lg sm:text-xl font-bold tracking-tight text-white">
-                {tr("Go Premium")}</h3>
+                {premiumCard?.title || tr("Go Premium")}</h3>
             </div>
             <p className="text-xs text-gray-300 leading-relaxed max-w-[220px]">
-              {tr("Unlock exclusive content, ad-free experience and more.")}</p>
+              {premiumCard?.description || tr("Unlock exclusive content, ad-free experience and more.")}</p>
           </div>
 
           <div className="pt-3 relative z-10">
             <Link
-              href="/pricing"
+              href={premiumCard?.url || '/pricing'}
               className="inline-flex items-center space-x-1.5 bg-[#E5B869] hover:bg-[#f3cf8a] text-black font-bold text-xs px-5 py-2.5 rounded-full shadow-lg shadow-[#E5B869]/25 transition-transform active:scale-95"
             >
-              <span>{tr("Upgrade Now")}</span>
+              <span>{premiumCard?.cta || tr("Upgrade Now")}</span>
               <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
             </Link>
           </div>
-        </div>
+        </div>}
       </div>
     </div>
   );

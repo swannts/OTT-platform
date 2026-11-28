@@ -42,6 +42,21 @@ interface ApiRequestOptions {
   locale?: string;
 }
 
+export interface HomepageConfig {
+  sections: Array<{
+    key: string;
+    enabled: boolean;
+    title: string;
+    title_bn: string;
+    content_ids: string[] | null;
+    items?: unknown[];
+    more_href?: string;
+    ranked?: boolean;
+  }>;
+  premium_card: { enabled: boolean; title: string; description: string; image_url: string; cta: string; url: string };
+  latest_movies: MediaItem[];
+}
+
 export function normalizeMediaItem(raw: unknown): MediaItem {
   if (!raw || typeof raw !== 'object') {
     return {
@@ -83,7 +98,7 @@ export function normalizeMediaItem(raw: unknown): MediaItem {
     description_en: (details.description_en as string) || (r.description_en as string) || undefined,
     poster_image: (r.poster_image as string) || (r.poster_url as string) || (r.thumbnail_image as string) || (r.poster_tv_image as string),
     thumbnail_image: (r.poster_tv_image as string) || (r.thumbnail_image as string) || (r.poster_image as string),
-    banner_image: (r.poster_tv_image as string) || (r.poster_image as string) || (r.banner_image as string),
+    banner_image: (r.banner_image as string) || (r.file_url as string) || undefined,
     duration: (details.duration as string) || (r.duration as string) || '',
     release_year: details.release_date
       ? String(details.release_date).substring(0, 4)
@@ -389,10 +404,10 @@ class ApiClient {
   }
 
   // ── Discovery & Catalog ───────────────────────────────────────────────────
-  async getBannerData(bannerFor: string = 'home', signal?: AbortSignal): Promise<MediaItem[]> {
+  async getBannerData(bannerFor: string = 'home', signal?: AbortSignal, locale?: string): Promise<MediaItem[]> {
     const res = await this.request<{ slider?: unknown[]; [key: string]: unknown } | unknown[]>(
       `/v3/banner-data?banner_for=${encodeURIComponent(bannerFor)}`,
-      { signal }
+      { signal, locale }
     );
     const items = (res && !Array.isArray(res) && Array.isArray((res as { slider?: unknown[] }).slider))
       ? (res as { slider: unknown[] }).slider
@@ -401,28 +416,49 @@ class ApiClient {
 
     return items.flatMap((rawItem, index) => {
       const item = normalizeMediaItem(rawItem);
-      const id = String(item.id ?? '').trim();
-      const identity = id ? `${item.type}:${id}` : `banner-row:${index}`;
+      const banner = rawItem && typeof rawItem === 'object'
+        ? rawItem as Record<string, unknown>
+        : {};
+      // Banner rows are campaigns in their own right. Multiple active banners
+      // may intentionally point to the same catalog title, so dedupe by the
+      // banner record ID rather than the linked content ID normalized above.
+      const bannerId =
+        rawItem && typeof rawItem === 'object' && 'id' in rawItem
+          ? String((rawItem as { id?: unknown }).id ?? '').trim()
+          : '';
+      const identity = bannerId ? `banner:${bannerId}` : `banner-row:${index}`;
       if (seen.has(identity)) return [];
       seen.add(identity);
-      return [item];
+      return [{
+        ...item,
+        name: typeof banner.name === 'string' && banner.name ? banner.name : item.name,
+        title: typeof banner.title === 'string' && banner.title ? banner.title : item.title,
+        name_en: typeof banner.name_en === 'string' && banner.name_en ? banner.name_en : item.name_en,
+        name_bn: typeof banner.name_bn === 'string' && banner.name_bn ? banner.name_bn : item.name_bn,
+        banner_id: bannerId || undefined,
+      }];
     });
   }
 
-  async getDashboard(signal?: AbortSignal): Promise<{ data?: DashboardData } & DashboardData> {
-    return this.request<{ data?: DashboardData } & DashboardData>('/v3/dashboard-detail', { signal });
+  async getHomepageConfig(signal?: AbortSignal, locale?: string): Promise<HomepageConfig> {
+    const response = await this.request<{ data: HomepageConfig }>('/v3/homepage-config', { signal, locale });
+    return response.data;
+  }
+
+  async getDashboard(signal?: AbortSignal, locale?: string): Promise<{ data?: DashboardData } & DashboardData> {
+    return this.request<{ data?: DashboardData } & DashboardData>('/v3/dashboard-detail', { signal, locale });
   }
 
   async getDashboardDetailData(page: number = 1): Promise<DashboardData> {
     return this.request<DashboardData>(`/v3/dashboard-detail-data?page=${page}`);
   }
 
-  async getMovies(params: { page?: number; genre_id?: number; search?: string } = {}, signal?: AbortSignal): Promise<{ data?: MediaItem[]; [key: string]: unknown } | MediaItem[]> {
+  async getMovies(params: { page?: number; genre_id?: number; search?: string } = {}, signal?: AbortSignal, locale?: string): Promise<{ data?: MediaItem[]; [key: string]: unknown } | MediaItem[]> {
     const q = new URLSearchParams();
     if (params.page) q.append('page', params.page.toString());
     if (params.genre_id) q.append('genre_id', params.genre_id.toString());
     if (params.search) q.append('search', params.search);
-    return this.request<{ data?: MediaItem[]; [key: string]: unknown } | MediaItem[]>(`/v3/movie-list?${q.toString()}`, { signal });
+    return this.request<{ data?: MediaItem[]; [key: string]: unknown } | MediaItem[]>(`/v3/movie-list?${q.toString()}`, { signal, locale });
   }
 
   async getTvShows(params: {
@@ -431,7 +467,7 @@ class ApiClient {
     per_page?: number;
     genre_id?: number;
     search?: string;
-  } = {}, signal?: AbortSignal): Promise<{
+  } = {}, signal?: AbortSignal, locale?: string): Promise<{
     data?: MediaItem[];
     has_more?: boolean;
     hasMore?: boolean;
@@ -451,7 +487,7 @@ class ApiClient {
       hasMore?: boolean;
       next_cursor?: string | null;
       [key: string]: unknown;
-    } | MediaItem[]>(`/v3/tvshow-list?${q.toString()}`, { signal });
+    } | MediaItem[]>(`/v3/tvshow-list?${q.toString()}`, { signal, locale });
   }
 
   async getContentDetails(id: number | string, type: 'movie' | 'tvshow' | 'episode' | 'video', signal?: AbortSignal): Promise<ContentDetails> {
@@ -647,8 +683,8 @@ class ApiClient {
     return this.request<{ data?: Episode[]; [key: string]: unknown } | Episode[]>(`/v3/episode-list?${q.toString()}`, { signal });
   }
 
-  async getLiveTvDashboard(signal?: AbortSignal): Promise<{ slider: LiveChannel[]; category_data: LiveCategory[] }> {
-    return this.request<{ slider: LiveChannel[]; category_data: LiveCategory[] }>('/v3/livetv-dashboard', { signal });
+  async getLiveTvDashboard(signal?: AbortSignal, locale?: string): Promise<{ slider: LiveChannel[]; category_data: LiveCategory[] }> {
+    return this.request<{ slider: LiveChannel[]; category_data: LiveCategory[] }>('/v3/livetv-dashboard', { signal, locale });
   }
 
   async getLiveTvDetails(channelId: number | string): Promise<LiveTvPlaybackDetails> {

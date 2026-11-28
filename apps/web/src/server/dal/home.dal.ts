@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { unstable_cache } from 'next/cache';
-import { api, normalizeMediaItem } from '@/lib/api';
+import { api, normalizeMediaItem, type HomepageConfig } from '@/lib/api';
 import { MediaItem, LiveChannel, LiveCategory } from '@/types';
 
 export interface HomeInitialData {
@@ -12,9 +12,10 @@ export interface HomeInitialData {
   payPerView: MediaItem[];
   tvShows: MediaItem[];
   liveChannels: LiveChannel[];
+  homepageConfig: HomepageConfig;
 }
 
-async function loadHomeInitialData(): Promise<{ data: HomeInitialData; complete: boolean }> {
+async function loadHomeInitialData(locale: 'en' | 'bn'): Promise<{ data: HomeInitialData; complete: boolean }> {
   let complete = true;
   const result: HomeInitialData = {
     banners: [],
@@ -24,19 +25,21 @@ async function loadHomeInitialData(): Promise<{ data: HomeInitialData; complete:
     payPerView: [],
     tvShows: [],
     liveChannels: [],
+    homepageConfig: { sections: [], premium_card: { enabled: true, title: 'Go Premium', description: 'Unlock exclusive content, ad-free experience and more.', image_url: '', cta: 'Upgrade Now', url: '/pricing' }, latest_movies: [] },
   };
 
   try {
     // The hero is the first visible homepage content, so request its slides
     // before starting the lower-page catalog requests.
-    const bannerRes = await api.getBannerData('home')
+    const bannerRes = await api.getBannerData('home', undefined, locale)
       .then((value) => ({ status: 'fulfilled', value }) as const)
       .catch((reason: unknown) => ({ status: 'rejected', reason }) as const);
 
-    const [dashRes, liveRes, tvShowsRes] = await Promise.allSettled([
-      api.getDashboard(),
-      api.getLiveTvDashboard(),
-      api.getTvShows({ page: 1 }),
+    const [dashRes, liveRes, tvShowsRes, configRes] = await Promise.allSettled([
+      api.getDashboard(undefined, locale),
+      api.getLiveTvDashboard(undefined, locale),
+      api.getTvShows({ page: 1 }, undefined, locale),
+      api.getHomepageConfig(undefined, locale),
     ]);
 
     complete =
@@ -48,7 +51,10 @@ async function loadHomeInitialData(): Promise<{ data: HomeInitialData; complete:
       liveRes.status === 'fulfilled' &&
       liveRes.value != null &&
       tvShowsRes.status === 'fulfilled' &&
-      tvShowsRes.value != null;
+      tvShowsRes.value != null &&
+      configRes.status === 'fulfilled';
+
+    if (configRes.status === 'fulfilled' && configRes.value) result.homepageConfig = configRes.value;
 
     if (bannerRes.status === 'fulfilled' && Array.isArray(bannerRes.value)) {
       result.banners = bannerRes.value.map(normalizeMediaItem);
@@ -75,7 +81,7 @@ async function loadHomeInitialData(): Promise<{ data: HomeInitialData; complete:
       // dashboard omits that section. Do not relabel latest titles as Top 10.
       if (result.latestMovies.length === 0) {
         try {
-          const mRes = await api.getMovies({ page: 1 });
+          const mRes = await api.getMovies({ page: 1 }, undefined, locale);
           const mList = Array.isArray(mRes) ? mRes : (mRes as { data?: unknown[] })?.data || [];
           if (Array.isArray(mList) && mList.length > 0) {
             result.latestMovies = mList.map(normalizeMediaItem);
@@ -84,6 +90,11 @@ async function loadHomeInitialData(): Promise<{ data: HomeInitialData; complete:
           complete = false;
         }
       }
+    }
+
+    const trendingConfig = result.homepageConfig.sections.find((section) => section.key === 'latest-movies');
+    if (Array.isArray(trendingConfig?.content_ids)) {
+      result.latestMovies = result.homepageConfig.latest_movies.map(normalizeMediaItem);
     }
 
     if (tvShowsRes.status === 'fulfilled') {
@@ -151,21 +162,22 @@ class UncacheableHomeDataError extends Error {
   }
 }
 
-const getCachedHomeInitialData = unstable_cache(async () => {
-  const { data, complete } = await loadHomeInitialData();
-  const hasCatalogData = Object.values(data).some((section) => section.length > 0);
+const getCachedHomeInitialData = unstable_cache(async (locale: 'en' | 'bn') => {
+  const { data, complete } = await loadHomeInitialData(locale);
+  const hasCatalogData = [data.banners, data.top10, data.latestMovies, data.popularMovies, data.payPerView, data.tvShows, data.liveChannels]
+    .some((section) => section.length > 0);
   if (!complete || !hasCatalogData) throw new UncacheableHomeDataError(data);
   return data;
-}, ['home-initial-data-v4'], {
-  revalidate: 3600,
+}, ['home-initial-data-v9'], {
+  revalidate: 60,
   tags: ['home-initial-data', 'dashboard-detail', 'banner-data-home', 'livetv-dashboard'],
 });
 
-export async function getHomeInitialDataDal(): Promise<HomeInitialData> {
+export async function getHomeInitialDataDal(locale: 'en' | 'bn' = 'bn'): Promise<HomeInitialData> {
   try {
-    return await getCachedHomeInitialData();
+    return await getCachedHomeInitialData(locale);
   } catch (error) {
     if (error instanceof UncacheableHomeDataError) return error.data;
-    return (await loadHomeInitialData()).data;
+    return (await loadHomeInitialData(locale)).data;
   }
 }

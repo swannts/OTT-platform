@@ -19,7 +19,7 @@ class Banner extends BaseModel
     use SoftDeletes;
 
     protected $table = 'banners';
-    protected $fillable = ['title', 'file_url','poster_url','type', 'type_id','type_name','description', 'status', 'created_by','banner_for','poster_tv_url','starts_at','ends_at','click_url'];
+    protected $fillable = ['title', 'file_url','poster_url','type', 'type_id','type_name','type_name_bn','description','description_bn', 'status', 'created_by','banner_for','poster_tv_url','starts_at','ends_at','click_url'];
     const CUSTOM_FIELD_MODEL = 'Modules\Banner\Models\Banner';
 
     public function scopeCurrentlyVisible(Builder $query): Builder

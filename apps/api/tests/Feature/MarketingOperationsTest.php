@@ -15,8 +15,12 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 use Modules\Banner\Models\Banner;
+use Modules\Banner\Transformers\SliderResourceV3;
 use Tests\TestCase;
 
 class MarketingOperationsTest extends TestCase
@@ -27,6 +31,54 @@ class MarketingOperationsTest extends TestCase
     {
         parent::setUp();
         $this->seed(RbacFoundationSeeder::class);
+    }
+
+    public function test_banner_resource_uses_bilingual_custom_display_titles(): void
+    {
+        $banner = new Banner([
+            'title' => 'Internal campaign name',
+            'banner_for' => 'promotional',
+            'type_name' => 'Customer-facing title',
+            'type_name_bn' => 'দর্শকের জন্য শিরোনাম',
+        ]);
+
+        $data = (new SliderResourceV3($banner))->toArray(request());
+
+        $this->assertSame('Customer-facing title', $data['name_en']);
+        $this->assertSame('দর্শকের জন্য শিরোনাম', $data['name_bn']);
+        $this->assertSame('Customer-facing title', $data['name']);
+    }
+
+    public function test_public_homepage_config_uses_persisted_section_order_visibility_and_localized_headings(): void
+    {
+        DB::table('web_homepage_configs')->updateOrInsert(['id' => 1], [
+            'config' => json_encode([
+                'sections' => [
+                    ['key' => 'popular-movies', 'enabled' => false, 'title' => 'Curated Films', 'title_bn' => 'নির্বাচিত চলচ্চিত্র'],
+                    ['key' => 'latest-movies', 'enabled' => true, 'title' => 'Fresh Picks', 'title_bn' => 'নতুন পছন্দ'],
+                ],
+                'premium_card' => ['enabled' => true, 'title' => 'Premium', 'description' => 'Premium access', 'image_url' => '', 'cta' => 'Upgrade', 'url' => '/pricing'],
+            ], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+            'updated_at' => now(),
+        ]);
+
+        $this->getJson('/api/v3/homepage-config')
+            ->assertOk()
+            ->assertJsonStructure(['data' => ['sections' => [['items', 'more_href', 'ranked']]]])
+            ->assertJsonPath('data.sections.0.key', 'popular-movies')
+            ->assertJsonPath('data.sections.0.enabled', false)
+            ->assertJsonPath('data.sections.0.title', 'Curated Films')
+            ->assertJsonPath('data.sections.0.title_bn', 'নির্বাচিত চলচ্চিত্র')
+            ->assertJsonPath('data.sections.1.key', 'latest-movies')
+            ->assertJsonPath('data.sections.1.title', 'Fresh Picks');
+
+        $manager = User::factory()->create();
+        $manager->assignRole('marketing_manager');
+        $this->actingAs($manager, 'sanctum')->getJson('/api/admin/marketing/homepage')
+            ->assertOk()
+            ->assertJsonPath('data.sections.0.key', 'popular-movies')
+            ->assertJsonPath('data.sections.0.title', 'Curated Films')
+            ->assertJsonPath('data.sections.1.title_bn', 'নতুন পছন্দ');
     }
 
     public function test_campaign_requires_an_independent_approval_before_scheduling_and_publishing(): void
@@ -157,7 +209,14 @@ class MarketingOperationsTest extends TestCase
         $created = $this->actingAs($manager, 'sanctum')->postJson('/api/admin/marketing/banners', [
             'title' => 'Future banner', 'banner_for' => 'home', 'status' => true,
             'starts_at' => now()->addDay()->toIso8601String(), 'poster_url' => 'https://cdn.example.test/future.jpg',
+            'type_name' => 'Future banner title', 'type_name_bn' => 'ভবিষ্যৎ ব্যানারের শিরোনাম',
+            'description' => 'English description', 'description_bn' => 'বাংলা বিবরণ',
         ])->assertCreated()->assertJsonPath('data.status', true)->json('data');
+        $this->assertSame('Future banner title', $created['type_name']);
+        $this->assertSame('ভবিষ্যৎ ব্যানারের শিরোনাম', $created['type_name_bn']);
+        $this->assertSame('English description', $created['description']);
+        $this->assertSame('বাংলা বিবরণ', $created['description_bn']);
+        $this->assertDatabaseHas('banners', ['id' => $created['id'], 'type_name_bn' => 'ভবিষ্যৎ ব্যানারের শিরোনাম', 'description_bn' => 'বাংলা বিবরণ']);
         $this->assertDatabaseHas('admin_audit_logs', ['action' => 'marketing.banner.created']);
         $this->putJson('/api/admin/marketing/banners/'.$created['id'], [
             'title' => 'Future banner updated', 'banner_for' => 'home', 'status' => true,
@@ -165,13 +224,49 @@ class MarketingOperationsTest extends TestCase
         ])->assertOk()->assertJsonPath('data.title', 'Future banner updated');
         $this->assertDatabaseHas('admin_audit_logs', ['action' => 'marketing.banner.updated']);
         Banner::query()->create(['title' => 'Inactive', 'banner_for' => 'home', 'status' => false]);
-        Banner::query()->create(['title' => 'Visible', 'banner_for' => 'home', 'status' => true]);
+        Banner::query()->create(['title' => 'Visible', 'banner_for' => 'home', 'status' => true, 'file_url' => 'https://cdn.example.test/hero.jpg', 'description' => 'Visible description', 'description_bn' => 'বাংলা দৃশ্যমান বর্ণনা']);
 
-        $response = $this->getJson('/api/banners?status=0')->assertOk();
-        $titles = collect($response->json('data.data'))->pluck('title');
+        $response = $this->getJson('/api/banners?type=movie&per_page=1')->assertOk();
+        $bannerData = $response->json('data');
+        $this->assertIsArray($bannerData);
+        $this->assertTrue(array_is_list($bannerData));
+        $this->assertArrayNotHasKey('meta', $response->json());
+        $titles = collect($bannerData)->pluck('title');
+        $visible = collect($bannerData)->firstWhere('title', 'Visible');
+        $this->assertSame('বাংলা দৃশ্যমান বর্ণনা', $visible['description_bn']);
+        $this->assertSame('https://cdn.example.test/hero.jpg', $visible['file_url']);
         $this->assertTrue($titles->contains('Visible'));
         $this->assertFalse($titles->contains('Inactive'));
         $this->assertFalse($titles->contains('Future banner'));
+    }
+
+    public function test_marketing_manager_can_upload_banner_artwork_to_public_storage(): void
+    {
+        Storage::fake('public');
+        $manager = User::factory()->create();
+        $manager->assignRole('marketing_manager');
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/AAAAAElFTkSuQmCC');
+        $image = UploadedFile::fake()->createWithContent('banner.png', $png);
+
+        $response = $this->actingAs($manager, 'sanctum')->postJson('/api/admin/marketing/banners/artwork', ['image' => $image]);
+
+        $response->assertCreated();
+        $this->assertStringContainsString('/storage/marketing/banners/', $response->json('data.url'));
+        $this->assertCount(1, Storage::disk('public')->allFiles('marketing/banners'));
+    }
+
+    public function test_marketing_manager_can_soft_delete_a_banner(): void
+    {
+        $manager = User::factory()->create();
+        $manager->assignRole('marketing_manager');
+        $banner = Banner::query()->create(['title' => 'Retired banner', 'banner_for' => 'home', 'status' => true]);
+
+        $this->actingAs($manager, 'sanctum')->deleteJson('/api/admin/marketing/banners/'.$banner->id)
+            ->assertOk()->assertJsonPath('data.deleted', true)->assertJsonPath('data.id', $banner->id);
+
+        $this->assertSoftDeleted('banners', ['id' => $banner->id]);
+        $this->assertDatabaseHas('admin_audit_logs', ['action' => 'marketing.banner.deleted', 'resource_id' => $banner->id]);
+        $this->actingAs($manager, 'sanctum')->getJson('/api/admin/marketing/banners')->assertJsonMissing(['id' => $banner->id]);
     }
 
     public function test_marketing_tracking_records_opens_and_redirects_only_to_the_campaign_destination(): void

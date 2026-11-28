@@ -24,6 +24,13 @@ export default function HeroBanner({ items }: HeroBannerProps) {
 
   const seenSlideIds = new Set<string>();
   const slides = (items || []).filter((slide) => {
+    if (slide.banner_id != null && String(slide.banner_id).trim()) {
+      const identity = `banner:${slide.banner_id}`;
+      if (seenSlideIds.has(identity)) return false;
+      seenSlideIds.add(identity);
+      return true;
+    }
+
     const id = String(slide.id ?? '').trim();
     if (!id) return true;
 
@@ -119,29 +126,28 @@ export default function HeroBanner({ items }: HeroBannerProps) {
       {/* 1. Layered Cinematic Cross-Fading Background Images */}
       {slides.map((slide, idx) => {
         const isCurrent = idx === currentIndex;
-        const imgUrl =
-          (slide.banner_image && slide.banner_image.trim()) ||
-          (slide.poster_image && slide.poster_image.trim()) ||
-          (slide.thumbnail_image && slide.thumbnail_image.trim()) ||
-          'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?w=1920&auto=format&fit=crop&q=85';
+        const imgUrl = slide.banner_image?.trim();
 
         return (
           <div
-            key={`hero-slide-bg-${slide.type ?? 'movie'}-${slide.id ?? 'unknown'}-${idx}`}
+            key={`hero-slide-bg-${slide.banner_id ?? `${slide.type ?? 'movie'}-${slide.id ?? 'unknown'}`}`}
             className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
               isCurrent ? 'opacity-100 z-0' : 'opacity-0 -z-10 pointer-events-none'
             }`}
           >
-            <SafeImage
-              src={imgUrl}
-              alt={slide.name || 'Hero Backdrop'}
-              blurhash={slide.blurhash}
-              priority={isCurrent}
-              showSkeleton={isCurrent}
-              className={`w-full h-full object-cover object-center transform transition-transform duration-[12000ms] ease-out ${
-                isCurrent ? 'scale-105' : 'scale-100'
-              }`}
-            />
+            {imgUrl ? (
+              <SafeImage
+                src={imgUrl}
+                fallbackSrc={null}
+                alt={slide.name || 'Hero Backdrop'}
+                blurhash={slide.blurhash}
+                priority={isCurrent}
+                showSkeleton={isCurrent}
+                className={`w-full h-full object-cover object-center transform transition-transform duration-[12000ms] ease-out ${
+                  isCurrent ? 'scale-105' : 'scale-100'
+                }`}
+              />
+            ) : null}
           </div>
         );
       })}

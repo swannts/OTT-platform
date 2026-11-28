@@ -51,6 +51,7 @@ Route::get('marketing/unsubscribe/{token}', [\App\Http\Controllers\API\Marketing
 Route::post('marketing/unsubscribe/{token}', [\App\Http\Controllers\API\MarketingConsentController::class, 'unsubscribe'])->where('token', '[A-Fa-f0-9]{64}');
 
 Route::get('v3/branding', [APISettingController::class, 'branding']);
+Route::get('v3/homepage-config', [\App\Http\Controllers\API\AdminMarketingController::class, 'publicHomepageConfig']);
 
 // Public Global SEO Settings
 Route::get('v3/seo-settings', [\Modules\SEO\Http\Controllers\SEOController::class, 'getSeoSettingsApi']);
@@ -193,8 +194,13 @@ Route::prefix('admin')->group(function () {
         Route::get('marketing/campaigns/{campaign}/analytics', [\App\Http\Controllers\API\AdminMarketingController::class, 'analytics'])->middleware('explicit.permission:marketing.campaigns.manage');
         Route::get('marketing/segments', [\App\Http\Controllers\API\AdminMarketingController::class, 'segments'])->middleware('explicit.permission:marketing.campaigns.manage');
         Route::get('marketing/banners', [\App\Http\Controllers\API\AdminMarketingController::class, 'banners'])->middleware('explicit.permission:marketing.banners.manage');
+        Route::post('marketing/banners/artwork', [\App\Http\Controllers\API\AdminMarketingController::class, 'uploadBannerArtwork'])->middleware(['explicit.permission:marketing.banners.manage', 'throttle:20,1']);
+        Route::get('marketing/homepage', [\App\Http\Controllers\API\AdminMarketingController::class, 'homepageConfig'])->middleware('explicit.permission:marketing.banners.manage');
+        Route::get('marketing/homepage/catalog', [\App\Http\Controllers\API\AdminMarketingController::class, 'homepageCatalog'])->middleware('explicit.permission:marketing.banners.manage');
+        Route::put('marketing/homepage', [\App\Http\Controllers\API\AdminMarketingController::class, 'updateHomepageConfig'])->middleware('explicit.permission:marketing.banners.manage');
         Route::post('marketing/banners', [\App\Http\Controllers\API\AdminMarketingController::class, 'saveBanner'])->middleware('explicit.permission:marketing.banners.manage');
         Route::put('marketing/banners/{banner}', [\App\Http\Controllers\API\AdminMarketingController::class, 'saveBanner'])->middleware('explicit.permission:marketing.banners.manage');
+        Route::delete('marketing/banners/{banner}', [\App\Http\Controllers\API\AdminMarketingController::class, 'deleteBanner'])->middleware('explicit.permission:marketing.banners.manage');
         Route::get('analytics/overview', [\App\Http\Controllers\API\AdminAnalyticsController::class, 'dashboard']);
         Route::get('analytics/export', [\App\Http\Controllers\API\AdminAnalyticsController::class, 'exportCsv'])->middleware('explicit.permission:analytics.export');
         Route::get('analytics/reports', [\App\Http\Controllers\API\AdminAnalyticsController::class, 'reports'])->middleware('explicit.permission:analytics.export');

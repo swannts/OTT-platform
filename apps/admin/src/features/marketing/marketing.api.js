@@ -15,6 +15,15 @@ export const marketingApi = {
   analytics: (id) => axios.get(`${API}/campaigns/${id}/analytics`).then((response) => response.data.data),
   segments: () => axios.get(`${API}/segments`).then((response) => response.data.data),
   banners: () => axios.get(`${API}/banners?per_page=100`).then((response) => response.data.data),
+  uploadBannerArtwork: (file) => {
+    const body = new FormData();
+    body.append('image', file);
+    return axios.post(`${API}/banners/artwork`, body).then((response) => response.data.data);
+  },
   createBanner: (data) => axios.post(`${API}/banners`, data).then((response) => response.data.data),
   updateBanner: (id, data) => axios.put(`${API}/banners/${id}`, data).then((response) => response.data.data),
+  deleteBanner: (id) => axios.delete(`${API}/banners/${id}`).then((response) => response.data.data),
+  homepage: () => axios.get(`${API}/homepage`).then((response) => response.data.data),
+  homepageCatalog: (search = '') => axios.get(`${API}/homepage/catalog`, { params: { ...(search.trim() ? { search: search.trim() } : {}), per_page: 20 } }).then((response) => response.data.data),
+  updateHomepage: (data) => axios.put(`${API}/homepage`, data).then((response) => response.data.data),
 };

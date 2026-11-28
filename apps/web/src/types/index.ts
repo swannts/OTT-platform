@@ -41,6 +41,8 @@ export interface MediaItem {
   name_en?: string;
   name_bn?: string;
   title?: string;
+  /** Banner record ID; distinct from `id`, which identifies linked content. */
+  banner_id?: string | number;
   type: 'movie' | 'tvshow' | 'episode' | 'video' | 'livetv';
   description?: string;
   description_en?: string;
