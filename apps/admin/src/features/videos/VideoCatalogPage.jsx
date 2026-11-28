@@ -242,7 +242,10 @@ export function VideoCatalogPage() {
     }
   }, [applied, page, pageSize]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   const openCreate = () => { setEditing(null); setForm(emptyForm); setEditorOpen(true); };
   const openEdit = (video) => {

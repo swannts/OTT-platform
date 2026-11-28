@@ -93,7 +93,10 @@ export function MediaAssetDetailsPage() {
     }
   }, [assetId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   useEffect(() => {
     if (!permissions.has('media.preview') || !assetId || asset?.status !== 'ready') return undefined;
@@ -104,7 +107,10 @@ export function MediaAssetDetailsPage() {
   }, [asset?.status, assetId, permissions]);
 
   useEffect(() => {
-    if (!permissions.has('content.view') || contentSearch.trim().length < 2) { setContentOptions([]); return undefined; }
+    if (!permissions.has('content.view') || contentSearch.trim().length < 2) {
+      const timer = window.setTimeout(() => setContentOptions([]), 0);
+      return () => window.clearTimeout(timer);
+    }
     let active = true;
     const timer = window.setTimeout(() => {
       mediaApi.contentOptions(contentSearch.trim()).then((response) => {
