@@ -64,10 +64,10 @@ class SettingController extends Controller
 
     public function store(Request $request)
     {
+        $rules = Setting::getValidationRules();
+
         if ($request->wantsJson()) {
             $rules = Setting::getSelectedValidationRules(array_keys($request->all()));
-        } else {
-            $rules = Setting::getValidationRules();
         }
 
         $data = $this->validate($request, $rules);

@@ -8,6 +8,7 @@ use Modules\Entertainment\Models\Entertainment;
 use Modules\Subscriptions\Models\Subscription;
 use Modules\Subscriptions\Models\Plan;
 
+/** @mixin Entertainment */
 class CommonContentResourceV3 extends JsonResource
 {
     public function toArray($request)

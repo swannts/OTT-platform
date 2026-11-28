@@ -4,7 +4,9 @@ namespace Modules\Entertainment\Transformers\Backend;
 
 use Illuminate\Http\Resources\Json\JsonResource;
 use Modules\Subscriptions\Transformers\PlanResource;
+use Modules\Season\Models\Season;
 
+/** @mixin Season */
 class SeasonResourceV3 extends JsonResource
 {
     /**

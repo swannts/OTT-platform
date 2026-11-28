@@ -3,7 +3,9 @@
 namespace Modules\LiveTV\Transformers;
 
 use Illuminate\Http\Resources\Json\JsonResource;
+use Modules\LiveTV\Models\LiveTvChannel;
 
+/** @mixin LiveTvChannel */
 class LiveTvChannelResourceV3 extends JsonResource
 {
     /**

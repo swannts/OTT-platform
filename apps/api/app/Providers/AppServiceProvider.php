@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Services\ChatGTPService;
 use App\Services\ShortDrama\ShortDramaPluginInstaller;
+use App\Support\OpenApi\OpenApiExamplesTransformer;
+use Dedoc\Scramble\Scramble;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Schema;
@@ -46,6 +48,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot()
     {
         Schema::defaultStringLength(191);
+
+        Scramble::configure()
+            ->withDocumentTransformers(OpenApiExamplesTransformer::class);
 
         // Password policy (A07): min length, letters, numbers
         Password::defaults(function () {

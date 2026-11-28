@@ -7,7 +7,9 @@ use Modules\Subscriptions\Transformers\PlanResource;
 use Modules\Entertainment\Models\Watchlist;
 use Modules\Subscriptions\Models\Plan;
 use Modules\Entertainment\Models\Entertainment;
+use Modules\Video\Models\Video;
 
+/** @mixin Video */
 class VideoResourceV3 extends JsonResource
 {
     /**

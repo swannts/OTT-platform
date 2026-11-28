@@ -3,7 +3,9 @@
 namespace Modules\Genres\Transformers;
 
 use Illuminate\Http\Resources\Json\JsonResource;
+use Modules\Genres\Models\Genres;
 
+/** @mixin Genres */
 class GenresResource extends JsonResource
 {
     /**

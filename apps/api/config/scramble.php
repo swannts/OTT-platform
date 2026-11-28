@@ -55,7 +55,7 @@ return [
         'version' => env('API_VERSION', '1.0.0'),
 
         /*
-         * Description rendered on the home page of the API documentation (`/docs/api`).
+         * Description rendered on the home page of the API documentation (`/docs/swagger` and `/docs/api`).
          */
         'description' => 'NOOR OTT platform API. Authenticate protected endpoints with a Laravel Sanctum bearer token.',
     ],

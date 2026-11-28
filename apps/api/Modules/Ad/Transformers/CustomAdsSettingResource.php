@@ -4,7 +4,9 @@ namespace Modules\Ad\Transformers;
 
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Storage;
+use Modules\Ad\Models\CustomAdsSetting;
 
+/** @mixin CustomAdsSetting */
 class CustomAdsSettingResource extends JsonResource
 {
     /**
