@@ -45,6 +45,12 @@ export const navData = [
     items: [
       { title: 'Overview', path: paths.dashboard.root, icon: ICONS.dashboard },
       {
+        title: 'Video catalog',
+        path: '/dashboard/videos',
+        icon: ICONS.blog,
+        permission: 'content.view',
+      },
+      {
         title: 'Content approval',
         path: '/dashboard/content/review',
         icon: ICONS.blog,

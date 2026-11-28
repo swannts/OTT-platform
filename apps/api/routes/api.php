@@ -123,6 +123,12 @@ Route::prefix('admin')->group(function () {
         Route::post('content/reviews/{submission}/approve', [\App\Http\Controllers\API\AdminContentWorkflowController::class, 'approve'])->middleware('explicit.permission:content.approve');
         Route::post('content/reviews/{submission}/reject', [\App\Http\Controllers\API\AdminContentWorkflowController::class, 'reject'])->middleware('explicit.permission:content.reject');
         Route::post('content/reviews/{submission}/publish', [\App\Http\Controllers\API\AdminContentWorkflowController::class, 'publish'])->middleware('explicit.permission:content.publish');
+        Route::get('videos', [\App\Http\Controllers\API\AdminVideoCatalogController::class, 'index'])->middleware('explicit.permission:content.view');
+        Route::post('videos/artwork', [\App\Http\Controllers\API\AdminVideoCatalogController::class, 'uploadArtwork']);
+        Route::post('videos', [\App\Http\Controllers\API\AdminVideoCatalogController::class, 'store'])->middleware('explicit.permission:content.create');
+        Route::get('videos/{video}', [\App\Http\Controllers\API\AdminVideoCatalogController::class, 'show'])->middleware('explicit.permission:content.view');
+        Route::patch('videos/{video}', [\App\Http\Controllers\API\AdminVideoCatalogController::class, 'update'])->middleware('explicit.permission:content.update');
+        Route::delete('videos/{video}', [\App\Http\Controllers\API\AdminVideoCatalogController::class, 'destroy'])->middleware('explicit.permission:content.delete');
         Route::get('content/{contentType}/{contentId}/license-window', [\App\Http\Controllers\API\AdminContentLicensingController::class, 'show']);
         Route::put('content/{contentType}/{contentId}/license-window', [\App\Http\Controllers\API\AdminContentLicensingController::class, 'update'])->middleware('explicit.permission:content.schedule');
 
@@ -132,7 +138,7 @@ Route::prefix('admin')->group(function () {
         Route::get('media/archived', [\App\Http\Controllers\API\AdminMediaController::class, 'archived'])->middleware('explicit.permission:media.view');
         Route::get('media/content-options', [\App\Http\Controllers\API\AdminMediaController::class, 'contentOptions'])->middleware('explicit.permission:content.view');
         Route::get('media/assets/{asset}/preview', [\App\Http\Controllers\API\AdminMediaController::class, 'preview'])->middleware('explicit.permission:media.preview');
-        Route::get('media/assets/{asset}', [\App\Http\Controllers\API\AdminMediaController::class, 'show'])->middleware('explicit.permission:media.view');
+        Route::get('media/assets/{asset}', [\App\Http\Controllers\API\AdminMediaController::class, 'show']);
         Route::patch('media/assets/{asset}', [\App\Http\Controllers\API\AdminMediaController::class, 'update'])->middleware('explicit.permission:media.update');
         Route::get('media/assets/{asset}/versions', [\App\Http\Controllers\API\AdminMediaController::class, 'versions'])->middleware('explicit.permission:media.view');
         Route::post('media/assets/{asset}/versions/activate', [\App\Http\Controllers\API\AdminMediaController::class, 'activateVersion'])->middleware('explicit.permission:media.version.activate');

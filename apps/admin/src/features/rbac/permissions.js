@@ -28,6 +28,7 @@ export function requiredPermissionForPath(pathname) {
     '/dashboard/access/staff': 'admin.staff.view',
     '/dashboard/access/audit': 'audit.view',
     '/dashboard/content/licensing': 'content.view',
+    '/dashboard/videos': 'content.view',
     '/dashboard/media': 'media.view',
     '/dashboard/subscriptions': 'subscriptions.view',
     '/dashboard/finance': 'finance.payments.view',
@@ -39,6 +40,9 @@ export function requiredPermissionForPath(pathname) {
 
 export function requiredPermissionsForPath(pathname) {
   const normalizedPath = pathname.replace(/\/+$/, '') || '/';
+  if (/^\/dashboard\/media\/assets\/\d+$/.test(normalizedPath)) {
+    return ['media.view', 'media.preview'];
+  }
   if (normalizedPath === '/dashboard/content/review') {
     return ['content.submit', 'content.review', 'content.approve', 'content.publish'];
   }
