@@ -111,6 +111,8 @@ class SliderResourceV3 extends JsonResource
                 $data = [
                     "title" => $this->title,
                     "description" => $this->description,
+                    "description_bn" => $this->description_bn,
+                    "description_en" => $this->description,
                 ];
                 break;
 
@@ -132,12 +134,12 @@ class SliderResourceV3 extends JsonResource
         }
 
         $detailsData = $dataArray['details'] ?? (is_array($dataArray) ? $dataArray : []);
-        $resolvedName = $dataArray['name'] ?? $detailsData['name'] ?? $this->title ?? $this->name ?? null;
-        $resolvedNameBn = $dataArray['name_bn'] ?? $detailsData['name_bn'] ?? null;
-        $resolvedNameEn = $dataArray['name_en'] ?? $detailsData['name_en'] ?? null;
-        $resolvedDesc = $dataArray['description'] ?? $detailsData['description'] ?? $this->description ?? null;
-        $resolvedDescBn = $dataArray['description_bn'] ?? $detailsData['description_bn'] ?? null;
-        $resolvedDescEn = $dataArray['description_en'] ?? $detailsData['description_en'] ?? null;
+        $resolvedNameEn = $this->type_name ?: ($dataArray['name_en'] ?? $dataArray['name'] ?? $detailsData['name_en'] ?? $detailsData['name'] ?? $this->title ?? $this->name ?? null);
+        $resolvedNameBn = $this->type_name_bn ?: ($dataArray['name_bn'] ?? $detailsData['name_bn'] ?? null);
+        $resolvedName = $resolvedNameEn ?: $resolvedNameBn;
+        $resolvedDesc = $this->description ?? $dataArray['description'] ?? $detailsData['description'] ?? null;
+        $resolvedDescBn = $this->description_bn ?? $dataArray['description_bn'] ?? $detailsData['description_bn'] ?? null;
+        $resolvedDescEn = $this->description ?? $dataArray['description_en'] ?? $detailsData['description_en'] ?? null;
 
         return [
             'id' => $this->id,
@@ -148,6 +150,7 @@ class SliderResourceV3 extends JsonResource
             'description' => $resolvedDesc,
             'description_bn' => $resolvedDescBn,
             'description_en' => $resolvedDescEn,
+            'banner_image' => $this->file_url ? setBaseUrlWithFileName($this->file_url, 'image', 'banner') : null,
             'click_url' => $this->click_url,
             'poster_image' => setBaseUrlWithFileName($posterUrl,'image','banner'),
             'poster_tv_image' => $dataArray['poster_tv_image'] ?? null,

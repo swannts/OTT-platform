@@ -24,7 +24,7 @@ class ApiCacheInvalidationService
         }
 
         match ($module) {
-            'banner' => $this->forgetKeys(['banner_list', 'home_banners']),
+            'banner' => $this->clearBannerRelated(),
             'entertainment', 'movie', 'tvshow' => $this->clearEntertainmentRelated(),
             'genres' => $this->forgetKeys(['genres', 'genres_v2']),
             'livetv', 'livetvchannel' => $this->clearLiveTvDashboard(),
@@ -117,6 +117,12 @@ class ApiCacheInvalidationService
         $this->forgetKeys(['genres', 'genres_v2']);
         $this->clearDashboard();
         $this->clearPayPerView();
+    }
+
+    private function clearBannerRelated(): void
+    {
+        $this->forgetKeys(['banner_list', 'home_banners']);
+        $this->clearBannerData();
     }
 
     /**

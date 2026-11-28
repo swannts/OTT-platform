@@ -29,9 +29,10 @@ class DashboardSectionService
     /**
      * @return array<int, array<string, mixed>>
      */
-    public function getPayPerViewUnlockedContent(Request $request): array
+    public function getPayPerViewUnlockedContent(Request $request, ?int $limit = null): array
     {
         $userId = $request->query('user_id');
+        $limit = $limit === null ? null : max(1, min($limit, 100));
 
         $movies = $this->formatPpvCollection(
             MoviesResource::collection(
@@ -41,7 +42,7 @@ class DashboardSectionService
                         ->where('status', 1)
                         ->whereNull('deleted_at'),
                     $request
-                )->get()
+                )->when($limit !== null, fn (Builder $query) => $query->limit($limit))->get()
             ),
             $userId,
             $request
@@ -53,7 +54,7 @@ class DashboardSectionService
                     ->where('type', 'tvshow')
                     ->where('status', 1)
                     ->whereNull('deleted_at')
-                    ->get()
+                    ->when($limit !== null, fn (Builder $query) => $query->limit($limit))->get()
             ),
             $userId,
             $request
@@ -66,7 +67,7 @@ class DashboardSectionService
                         ->where('status', 1)
                         ->whereNull('deleted_at'),
                     $request
-                )->get()
+                )->when($limit !== null, fn (Builder $query) => $query->limit($limit))->get()
             ),
             $userId,
             $request
@@ -77,7 +78,7 @@ class DashboardSectionService
                 Season::where('access', 'pay-per-view')
                     ->where('status', 1)
                     ->whereNull('deleted_at')
-                    ->get()
+                    ->when($limit !== null, fn (Builder $query) => $query->limit($limit))->get()
             ),
             $userId,
             $request
@@ -90,7 +91,7 @@ class DashboardSectionService
                         ->where('status', 1)
                         ->whereNull('deleted_at'),
                     $request
-                )->get()
+                )->when($limit !== null, fn (Builder $query) => $query->limit($limit))->get()
             ),
             $userId,
             $request

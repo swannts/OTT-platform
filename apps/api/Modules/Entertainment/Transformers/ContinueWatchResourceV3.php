@@ -6,7 +6,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
 use Modules\Genres\Transformers\GenresResource;
 use Modules\Subscriptions\Transformers\PlanResource;
 use Modules\Subscriptions\Models\Plan;
+use Modules\Entertainment\Models\ContinueWatch;
 
+/** @mixin ContinueWatch */
 class ContinueWatchResourceV3 extends JsonResource
 {
     /**

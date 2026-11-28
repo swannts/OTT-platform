@@ -19,9 +19,10 @@ class ApiCacheInvalidationTest extends TestCase
         clearRelatedCache(['custom_key'], 'banner');
         $this->assertNull(Cache::get('banner_list'));
         $this->assertNull(Cache::get('home_banners'));
+        $this->assertSame(1, Cache::get('banner_data_cache_version'));
 
         clearBannerDataCache();
-        $this->assertSame(1, Cache::get('banner_data_cache_version'));
+        $this->assertSame(2, Cache::get('banner_data_cache_version'));
 
         clearSearchV3Cache();
         $this->assertSame(1, Cache::get('search_v3_cache_version'));
@@ -38,7 +39,7 @@ class ApiCacheInvalidationTest extends TestCase
         clearWatchlistCache();
         $this->assertSame(1, Cache::get('watchlist_cache_version'));
         $this->assertSame(2, Cache::get('dashboard_cache_version'));
-        $this->assertSame(2, Cache::get('banner_data_cache_version'));
+        $this->assertSame(3, Cache::get('banner_data_cache_version'));
 
         clearRelatedCache(['genres'], 'entertainment');
         $this->assertNull(Cache::get('genres'));

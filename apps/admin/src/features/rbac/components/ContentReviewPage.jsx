@@ -5,6 +5,10 @@ import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import Chip from '@mui/material/Chip';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import MenuItem from '@mui/material/MenuItem';
+import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
@@ -26,6 +30,7 @@ import { RbacPageHeader } from './RbacPageHeader';
 export function ContentReviewPage() {
   const { user } = useAuthContext();
   const [status, setStatus] = useState('in_review');
+  const [contentType, setContentType] = useState('entertainment');
   const [rows, setRows] = useState([]);
   const [contentId, setContentId] = useState('');
   const [loading, setLoading] = useState(true);
@@ -42,8 +47,8 @@ export function ContentReviewPage() {
     if (!(activeStatus === 'approved' ? canPublish : canReview)) {
       return null;
     }
-    return rbacApi.contentReviewQueue({ status: activeStatus, per_page: 50 });
-  }, [activeStatus, canPublish, canReview]);
+    return rbacApi.contentReviewQueue({ status: activeStatus, content_type: contentType, per_page: 50 });
+  }, [activeStatus, canPublish, canReview, contentType]);
 
   useEffect(() => {
     if (!(activeStatus === 'approved' ? canPublish : canReview)) return undefined;
@@ -64,7 +69,7 @@ export function ContentReviewPage() {
     return () => {
       active = false;
     };
-  }, [activeStatus, canPublish, canReview, load]);
+  }, [activeStatus, canPublish, canReview, contentType, load]);
 
   const run = async (operation, successMessage) => {
     setLoading(true);
@@ -91,14 +96,16 @@ export function ContentReviewPage() {
         {canSubmit && (
           <Card sx={{ p: 2 }}>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <FormControl size="small" sx={{ minWidth: 190 }}><InputLabel>Content type</InputLabel><Select label="Content type" value={contentType} onChange={(event) => setContentType(event.target.value)}><MenuItem value="entertainment">Movies and series</MenuItem><MenuItem value="video">Standalone videos</MenuItem></Select></FormControl>
               <TextField size="small" label="Catalog content ID" value={contentId} onChange={(event) => setContentId(event.target.value)} />
-              <Button variant="contained" disabled={!contentId.trim()} onClick={() => run(async () => { await rbacApi.submitContent(contentId.trim()); setContentId(''); }, 'Content submitted for review.')}>Submit revision</Button>
+              <Button variant="contained" disabled={!contentId.trim()} onClick={() => run(async () => { await rbacApi.submitContent(contentId.trim(), { content_type: contentType }); setContentId(''); }, 'Content submitted for review.')}>Submit revision</Button>
             </Stack>
           </Card>
         )}
         {(canReview || canPublish) && (
           <Card>
-            <Tabs
+            <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} spacing={1} sx={{ px: 2, pt: 1 }}>
+              <Tabs
               value={activeStatus}
               variant="standard"
               onChange={(_, value) => {
@@ -110,7 +117,9 @@ export function ContentReviewPage() {
             >
               {canReview && <Tab value="in_review" label="Needs review" />}
               {canPublish && <Tab value="approved" label="Approved" />}
-            </Tabs>
+              </Tabs>
+              <FormControl size="small" sx={{ minWidth: 190 }}><InputLabel>Catalog</InputLabel><Select label="Catalog" value={contentType} onChange={(event) => { setLoading(true); setContentType(event.target.value); }}><MenuItem value="entertainment">Movies and series</MenuItem><MenuItem value="video">Standalone videos</MenuItem></Select></FormControl>
+            </Stack>
             <TableContainer>
               <Table>
                 <TableHead><TableRow><TableCell>Content</TableCell><TableCell>Type</TableCell><TableCell>Revision</TableCell><TableCell>Submitted (UTC)</TableCell><TableCell>Status</TableCell><TableCell>Actions</TableCell></TableRow></TableHead>

@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import { getHomeInitialDataDal } from '@/server/dal';
 import { HomeSection } from '@/features/home';
 
@@ -50,7 +51,9 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const initialContent = await getHomeInitialDataDal();
+  const cookieStore = await cookies();
+  const locale = cookieStore.get('noor_locale')?.value === 'en' ? 'en' : 'bn';
+  const initialContent = await getHomeInitialDataDal(locale);
 
   // Schema.org Structured JSON-LD Data
   const jsonLd = {
@@ -89,7 +92,7 @@ export default async function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <HomeSection initialContent={initialContent} />
+      <HomeSection initialContent={initialContent} locale={locale} />
     </>
   );
 }

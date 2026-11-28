@@ -51,6 +51,7 @@ Route::get('marketing/unsubscribe/{token}', [\App\Http\Controllers\API\Marketing
 Route::post('marketing/unsubscribe/{token}', [\App\Http\Controllers\API\MarketingConsentController::class, 'unsubscribe'])->where('token', '[A-Fa-f0-9]{64}');
 
 Route::get('v3/branding', [APISettingController::class, 'branding']);
+Route::get('v3/homepage-config', [\App\Http\Controllers\API\AdminMarketingController::class, 'publicHomepageConfig']);
 
 // Public Global SEO Settings
 Route::get('v3/seo-settings', [\Modules\SEO\Http\Controllers\SEOController::class, 'getSeoSettingsApi']);
@@ -122,15 +123,34 @@ Route::prefix('admin')->group(function () {
         Route::post('content/reviews/{submission}/approve', [\App\Http\Controllers\API\AdminContentWorkflowController::class, 'approve'])->middleware('explicit.permission:content.approve');
         Route::post('content/reviews/{submission}/reject', [\App\Http\Controllers\API\AdminContentWorkflowController::class, 'reject'])->middleware('explicit.permission:content.reject');
         Route::post('content/reviews/{submission}/publish', [\App\Http\Controllers\API\AdminContentWorkflowController::class, 'publish'])->middleware('explicit.permission:content.publish');
+        Route::get('videos', [\App\Http\Controllers\API\AdminVideoCatalogController::class, 'index'])->middleware('explicit.permission:content.view');
+        Route::post('videos/artwork', [\App\Http\Controllers\API\AdminVideoCatalogController::class, 'uploadArtwork']);
+        Route::post('videos', [\App\Http\Controllers\API\AdminVideoCatalogController::class, 'store'])->middleware('explicit.permission:content.create');
+        Route::get('videos/{video}', [\App\Http\Controllers\API\AdminVideoCatalogController::class, 'show'])->middleware('explicit.permission:content.view');
+        Route::patch('videos/{video}', [\App\Http\Controllers\API\AdminVideoCatalogController::class, 'update'])->middleware('explicit.permission:content.update');
+        Route::delete('videos/{video}', [\App\Http\Controllers\API\AdminVideoCatalogController::class, 'destroy'])->middleware('explicit.permission:content.delete');
         Route::get('content/{contentType}/{contentId}/license-window', [\App\Http\Controllers\API\AdminContentLicensingController::class, 'show']);
         Route::put('content/{contentType}/{contentId}/license-window', [\App\Http\Controllers\API\AdminContentLicensingController::class, 'update'])->middleware('explicit.permission:content.schedule');
 
         Route::get('media/overview', [\App\Http\Controllers\API\AdminOperationsController::class, 'media'])->middleware('explicit.permission:media.view');
+        Route::get('media/storage', [\App\Http\Controllers\API\AdminMediaController::class, 'storage'])->middleware('explicit.permission:media.storage.view');
         Route::get('media/assets', [\App\Http\Controllers\API\AdminMediaController::class, 'index'])->middleware('explicit.permission:media.view');
-        Route::get('media/assets/{asset}', [\App\Http\Controllers\API\AdminMediaController::class, 'show'])->middleware('explicit.permission:media.view');
+        Route::get('media/archived', [\App\Http\Controllers\API\AdminMediaController::class, 'archived'])->middleware('explicit.permission:media.view');
+        Route::get('media/content-options', [\App\Http\Controllers\API\AdminMediaController::class, 'contentOptions'])->middleware('explicit.permission:content.view');
+        Route::get('media/assets/{asset}/preview', [\App\Http\Controllers\API\AdminMediaController::class, 'preview'])->middleware('explicit.permission:media.preview');
+        Route::get('media/assets/{asset}', [\App\Http\Controllers\API\AdminMediaController::class, 'show']);
+        Route::patch('media/assets/{asset}', [\App\Http\Controllers\API\AdminMediaController::class, 'update'])->middleware('explicit.permission:media.update');
+        Route::get('media/assets/{asset}/versions', [\App\Http\Controllers\API\AdminMediaController::class, 'versions'])->middleware('explicit.permission:media.view');
+        Route::post('media/assets/{asset}/versions/activate', [\App\Http\Controllers\API\AdminMediaController::class, 'activateVersion'])->middleware('explicit.permission:media.version.activate');
+        Route::post('media/assets/{asset}/versions/{version}/rollback', [\App\Http\Controllers\API\AdminMediaController::class, 'rollbackVersion'])->middleware('explicit.permission:media.version.rollback');
         Route::get('media/assets/{asset}/quality', [\App\Http\Controllers\API\AdminMediaController::class, 'quality'])->middleware('explicit.permission:media.view');
+        Route::post('media/assets/{asset}/quality/review', [\App\Http\Controllers\API\AdminMediaController::class, 'reviewQuality'])->middleware('explicit.permission:media.quality.review');
+        Route::get('media/processing-jobs', [\App\Http\Controllers\API\AdminMediaController::class, 'processingJobs'])->middleware('explicit.permission:media.view');
+        Route::post('media/processing-jobs/{job}/cancel', [\App\Http\Controllers\API\AdminMediaController::class, 'cancelProcessingJob'])->middleware('explicit.permission:media.processing.manage');
+        Route::post('media/assets/{asset}/restore', [\App\Http\Controllers\API\AdminMediaController::class, 'restore'])->middleware('explicit.permission:media.archive.restore');
         Route::put('media/assets/{asset}/content', [\App\Http\Controllers\API\AdminMediaController::class, 'attachToContent']);
         Route::post('media/uploads', [\App\Http\Controllers\API\AdminMediaController::class, 'beginUpload'])->middleware(['explicit.permission:media.upload', 'throttle:20,1']);
+        Route::delete('media/uploads/{session}', [\App\Http\Controllers\API\AdminMediaController::class, 'cancelUpload'])->middleware('explicit.permission:media.upload');
         Route::put('media/uploads/{session}/chunks/{index}', [\App\Http\Controllers\API\AdminMediaController::class, 'uploadChunk'])->whereNumber('index')->middleware(['explicit.permission:media.upload', 'throttle:120,1']);
         Route::post('media/uploads/{session}/complete', [\App\Http\Controllers\API\AdminMediaController::class, 'completeUpload'])->middleware(['explicit.permission:media.upload', 'throttle:5,1']);
         Route::post('media/assets/{asset}/retry', [\App\Http\Controllers\API\AdminMediaController::class, 'retry'])->middleware(['explicit.permission:media.transcode.retry', 'throttle:5,1']);
@@ -180,8 +200,13 @@ Route::prefix('admin')->group(function () {
         Route::get('marketing/campaigns/{campaign}/analytics', [\App\Http\Controllers\API\AdminMarketingController::class, 'analytics'])->middleware('explicit.permission:marketing.campaigns.manage');
         Route::get('marketing/segments', [\App\Http\Controllers\API\AdminMarketingController::class, 'segments'])->middleware('explicit.permission:marketing.campaigns.manage');
         Route::get('marketing/banners', [\App\Http\Controllers\API\AdminMarketingController::class, 'banners'])->middleware('explicit.permission:marketing.banners.manage');
+        Route::post('marketing/banners/artwork', [\App\Http\Controllers\API\AdminMarketingController::class, 'uploadBannerArtwork'])->middleware(['explicit.permission:marketing.banners.manage', 'throttle:20,1']);
+        Route::get('marketing/homepage', [\App\Http\Controllers\API\AdminMarketingController::class, 'homepageConfig'])->middleware('explicit.permission:marketing.banners.manage');
+        Route::get('marketing/homepage/catalog', [\App\Http\Controllers\API\AdminMarketingController::class, 'homepageCatalog'])->middleware('explicit.permission:marketing.banners.manage');
+        Route::put('marketing/homepage', [\App\Http\Controllers\API\AdminMarketingController::class, 'updateHomepageConfig'])->middleware('explicit.permission:marketing.banners.manage');
         Route::post('marketing/banners', [\App\Http\Controllers\API\AdminMarketingController::class, 'saveBanner'])->middleware('explicit.permission:marketing.banners.manage');
         Route::put('marketing/banners/{banner}', [\App\Http\Controllers\API\AdminMarketingController::class, 'saveBanner'])->middleware('explicit.permission:marketing.banners.manage');
+        Route::delete('marketing/banners/{banner}', [\App\Http\Controllers\API\AdminMarketingController::class, 'deleteBanner'])->middleware('explicit.permission:marketing.banners.manage');
         Route::get('analytics/overview', [\App\Http\Controllers\API\AdminAnalyticsController::class, 'dashboard']);
         Route::get('analytics/export', [\App\Http\Controllers\API\AdminAnalyticsController::class, 'exportCsv'])->middleware('explicit.permission:analytics.export');
         Route::get('analytics/reports', [\App\Http\Controllers\API\AdminAnalyticsController::class, 'reports'])->middleware('explicit.permission:analytics.export');
@@ -218,6 +243,9 @@ Route::prefix('admin')->group(function () {
         });
     });
 });
+
+Route::get('admin/media/assets/{asset}/preview/{file}', [\App\Http\Controllers\API\AdminMediaController::class, 'previewFile'])
+    ->where('file', '.*')->middleware('signed')->name('admin.media.preview.file');
 
 Route::post('/store-access-token', [SettingController::class, 'storeToken']);
 Route::post('/token-revoke', [SettingController::class, 'revokeToken']);

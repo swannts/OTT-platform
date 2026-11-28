@@ -17,6 +17,9 @@ type MediaHandler struct {
 	db                 *sql.DB
 	storagePath        string
 	privateStoragePath string
+	transcodeHeights   []int
+	transcodeBitrates  map[int]int
+	h264Preset         string
 }
 
 func NewMediaHandler(db *sql.DB, storagePath, privateStoragePath string) *MediaHandler {
@@ -24,6 +27,24 @@ func NewMediaHandler(db *sql.DB, storagePath, privateStoragePath string) *MediaH
 		db:                 db,
 		storagePath:        storagePath,
 		privateStoragePath: privateStoragePath,
+		transcodeHeights:   []int{360, 720, 1080},
+		transcodeBitrates:  map[int]int{240: 400, 360: 800, 480: 1400, 720: 2800, 1080: 5000, 1440: 10000, 2160: 20000},
+		h264Preset:         "veryfast",
+	}
+}
+
+func (h *MediaHandler) SetTranscodeSettings(heights []int, bitrates map[int]int, preset string) {
+	if len(heights) > 0 {
+		h.transcodeHeights = append([]int(nil), heights...)
+	}
+	if len(bitrates) > 0 {
+		h.transcodeBitrates = make(map[int]int, len(bitrates))
+		for height, bitrate := range bitrates {
+			h.transcodeBitrates[height] = bitrate
+		}
+	}
+	if preset != "" {
+		h.h264Preset = preset
 	}
 }
 

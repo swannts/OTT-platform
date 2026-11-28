@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { DEFAULT_FALLBACK_IMAGE } from '@/constants';
@@ -11,12 +11,13 @@ export const DEFAULT_ISLAMIC_FALLBACK = DEFAULT_FALLBACK_IMAGE;
 
 export interface SafeImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src' | 'width' | 'height'> {
   src?: string | null;
-  fallbackSrc?: string;
+  fallbackSrc?: string | null;
   blurhash?: string | null;
   aspectRatio?: 'poster' | 'backdrop' | 'square' | 'banner' | 'auto';
   containerClassName?: string;
   priority?: boolean;
   showSkeleton?: boolean;
+  unoptimized?: boolean;
 }
 
 const aspectClasses = {
@@ -30,24 +31,37 @@ const aspectClasses = {
 export default function SafeImage({
   src,
   alt = 'Image',
-  fallbackSrc = DEFAULT_ISLAMIC_FALLBACK,
+  fallbackSrc,
   blurhash,
   aspectRatio = 'auto',
   priority = false,
   showSkeleton = false,
+  unoptimized = false,
   sizes = '100vw',
   className,
   containerClassName,
   ...props
 }: SafeImageProps) {
-  const cleanTarget = typeof src === 'string' && src.trim() ? src.trim() : fallbackSrc;
+  const resolvedFallback = fallbackSrc === undefined ? DEFAULT_ISLAMIC_FALLBACK : fallbackSrc;
+  const cleanTarget = typeof src === 'string' && src.trim() ? src.trim() : resolvedFallback || '';
   const [failedSource, setFailedSource] = useState<string | null>(null);
   const [loadedSource, setLoadedSource] = useState<string | null>(null);
   const [blurPlaceholder, setBlurPlaceholder] = useState<{ hash: string; dataUrl: string } | null>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
   const hasError = failedSource === cleanTarget;
-  const imgSrc = hasError ? fallbackSrc : cleanTarget;
-  const isLoaded = loadedSource === imgSrc;
+  const imgSrc = hasError ? resolvedFallback || '' : cleanTarget;
+  const isLoaded = Boolean(imgSrc) && loadedSource === imgSrc;
+  const usesLocalhostSource = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i.test(cleanTarget);
   const blurDataUrl = blurPlaceholder && blurPlaceholder.hash === blurhash ? blurPlaceholder.dataUrl : null;
+
+  // An eager image can finish loading from the server-rendered HTML before
+  // React hydrates and installs onLoad. Detect that completed request here.
+  useEffect(() => {
+    const image = imageRef.current;
+    if (imgSrc && image?.complete && image.naturalWidth > 0) {
+      setLoadedSource(imgSrc);
+    }
+  }, [imgSrc]);
 
   // BlurHash decoding uses canvas, so generate the data URL after hydration.
   // Keeping it out of render makes the server HTML match the first client render.
@@ -68,30 +82,38 @@ export default function SafeImage({
   // Safety Watchdog: If an image is cached or network stalls on page change,
   // never leave the user stuck on the blurhash color forever.
   useEffect(() => {
+    if (!imgSrc) return;
     if (isLoaded) return;
 
     const timer = setTimeout(() => {
-      // If image didn't resolve in 2 seconds, gracefully show fallback and reveal
-      if (imgSrc !== fallbackSrc) {
+      // If the source does not resolve, use the configured fallback when present.
+      if (resolvedFallback && imgSrc !== resolvedFallback) {
         setFailedSource(cleanTarget);
-        setLoadedSource(fallbackSrc);
+        setLoadedSource(resolvedFallback);
+      } else if (!resolvedFallback) {
+        setFailedSource(cleanTarget);
       } else {
-        setLoadedSource(fallbackSrc);
+        setLoadedSource(resolvedFallback);
       }
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [imgSrc, isLoaded, fallbackSrc, cleanTarget]);
+  }, [imgSrc, isLoaded, resolvedFallback, cleanTarget]);
 
   const handleLoad = () => {
     setLoadedSource(imgSrc);
   };
 
   const handleError = () => {
-    if (imgSrc !== fallbackSrc) {
+    if (resolvedFallback && imgSrc !== resolvedFallback) {
       setFailedSource(cleanTarget);
+      setLoadedSource(resolvedFallback);
+    } else if (!resolvedFallback) {
+      setFailedSource(cleanTarget);
+      setLoadedSource(null);
+    } else {
+      setLoadedSource(resolvedFallback);
     }
-    setLoadedSource(fallbackSrc);
   };
 
   return (
@@ -128,23 +150,27 @@ export default function SafeImage({
       ) : null}
 
       {/* 3. Primary Image Layer */}
-      <Image
-        src={imgSrc}
-        alt={alt}
-        fill
-        sizes={sizes}
-        priority={priority}
-        onLoad={handleLoad}
-        onError={handleError}
-        decoding="async"
-        loading={priority ? 'eager' : (props.loading || 'lazy')}
-        className={cn(
-          'z-10 object-cover transition-opacity duration-300 ease-in-out',
-          isLoaded ? 'opacity-100' : 'opacity-0',
-          className
-        )}
-        {...props}
-      />
+      {imgSrc ? (
+        <Image
+          ref={imageRef}
+          src={imgSrc}
+          alt={alt}
+          fill
+          sizes={sizes}
+          priority={priority}
+          unoptimized={unoptimized || usesLocalhostSource}
+          onLoad={handleLoad}
+          onError={handleError}
+          decoding="async"
+          loading={priority ? 'eager' : (props.loading || 'lazy')}
+          className={cn(
+            'z-10 object-cover transition-opacity duration-300 ease-in-out',
+            isLoaded ? 'opacity-100' : 'opacity-0',
+            className
+          )}
+          {...props}
+        />
+      ) : null}
     </div>
   );
 }

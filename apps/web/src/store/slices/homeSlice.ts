@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { api, normalizeMediaItem } from '@/lib/api';
+import { api, normalizeMediaItem, type HomepageConfig } from '@/lib/api';
 import type { DashboardData, LiveCategory, LiveChannel, MediaItem } from '@/types';
 import { createAppAsyncThunk } from '../createAppAsyncThunk';
 
@@ -11,6 +11,7 @@ export interface HomeContent {
   payPerView: MediaItem[];
   tvShows: MediaItem[];
   liveChannels: LiveChannel[];
+  homepageConfig: HomepageConfig;
 }
 
 interface HomeState extends HomeContent {
@@ -28,6 +29,7 @@ const emptyHomeContent = (): HomeContent => ({
   payPerView: [],
   tvShows: [],
   liveChannels: [],
+  homepageConfig: { sections: [], premium_card: { enabled: true, title: 'Go Premium', description: 'Unlock exclusive content, ad-free experience and more.', image_url: '', cta: 'Upgrade Now', url: '/pricing' }, latest_movies: [] },
 });
 
 const initialState: HomeState = {
@@ -85,10 +87,11 @@ export const fetchHomePageContent = createAppAsyncThunk<HomeContent, void>(
       .then((value) => ({ status: 'fulfilled', value }) as const)
       .catch((reason: unknown) => ({ status: 'rejected', reason }) as const);
 
-    const [dashboardResult, liveResult, tvShowsResult] = await Promise.allSettled([
+    const [dashboardResult, liveResult, tvShowsResult, configResult] = await Promise.allSettled([
       api.getDashboard(signal),
       api.getLiveTvDashboard(signal),
       api.getTvShows({ page: 1 }, signal),
+      api.getHomepageConfig(signal),
     ]);
 
     const failures = [
@@ -96,8 +99,9 @@ export const fetchHomePageContent = createAppAsyncThunk<HomeContent, void>(
       errorMessage(dashboardResult, 'Could not load the content dashboard.'),
       errorMessage(liveResult, 'Could not load live channels.'),
       errorMessage(tvShowsResult, 'Could not load TV shows.'),
+      errorMessage(configResult, 'Could not load homepage layout.'),
     ].filter((message): message is string => Boolean(message));
-    const hasAnySuccessfulRequest = [bannerResult, dashboardResult, liveResult, tvShowsResult]
+    const hasAnySuccessfulRequest = [bannerResult, dashboardResult, liveResult, tvShowsResult, configResult]
       .some((result) => result.status === 'fulfilled');
 
     if (!hasAnySuccessfulRequest) {
@@ -107,8 +111,13 @@ export const fetchHomePageContent = createAppAsyncThunk<HomeContent, void>(
     const dashboard = dashboardResult.status === 'fulfilled'
       ? (dashboardResult.value.data || dashboardResult.value) as DashboardData
       : {};
-    let latestMovies = extractMediaList(dashboard.latest_movie);
-    if (latestMovies.length === 0) {
+    const trendingConfig = configResult.status === 'fulfilled'
+      ? configResult.value.sections.find((section) => section.key === 'latest-movies')
+      : undefined;
+    let latestMovies = Array.isArray(trendingConfig?.content_ids)
+      ? extractMediaList(configResult.status === 'fulfilled' ? configResult.value.latest_movies : [])
+      : extractMediaList(dashboard.latest_movie);
+    if (latestMovies.length === 0 && !Array.isArray(trendingConfig?.content_ids)) {
       try {
         const movies = await api.getMovies({ page: 1 }, signal);
         latestMovies = extractMediaList(movies);
@@ -129,6 +138,7 @@ export const fetchHomePageContent = createAppAsyncThunk<HomeContent, void>(
       payPerView: extractMediaList(dashboard.pay_per_view),
       tvShows,
       liveChannels: liveResult.status === 'fulfilled' ? extractLiveChannels(liveResult.value) : [],
+      homepageConfig: configResult.status === 'fulfilled' ? configResult.value : emptyHomeContent().homepageConfig,
     };
   },
   {

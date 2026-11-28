@@ -22,7 +22,7 @@ class CleanExpiredMediaUploads extends Command
             ->chunkById(100, function ($sessions) use (&$count): void {
                 foreach ($sessions as $session) {
                     Storage::disk('private')->deleteDirectory("media/uploads/{$session->id}");
-                    $session->delete();
+                    $session->update(['status' => 'expired']);
                     $count++;
                 }
             }, 'id');

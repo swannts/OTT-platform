@@ -14,14 +14,49 @@ class AdminOperationsController extends Controller
     public function media(Request $request): JsonResponse
     {
         abort_unless(ExplicitPermission::allows($request->user(), 'media.view'), 403);
+        $assetsAvailable = Schema::hasTable('media_assets');
+        $jobsAvailable = Schema::hasTable('media_processing_jobs');
+        $assetStatuses = $assetsAvailable
+            ? DB::table('media_assets')->whereNull('deleted_at')->selectRaw('status, COUNT(*) AS total')->groupBy('status')->pluck('total', 'status')
+            : collect();
+        $jobStatuses = $jobsAvailable
+            ? DB::table('media_processing_jobs')->selectRaw('status, COUNT(*) AS total')->groupBy('status')->pluck('total', 'status')
+            : collect();
+        $baseAssets = $assetsAvailable ? DB::table('media_assets')->whereNull('deleted_at') : null;
+        $storageByCategory = $assetsAvailable && Schema::hasColumn('media_assets', 'category')
+            ? DB::table('media_assets')->whereNull('deleted_at')->selectRaw('category, SUM(size_bytes) AS bytes')->groupBy('category')->pluck('bytes', 'category')
+            : null;
+        $hasDisplayName = $assetsAvailable && Schema::hasColumn('media_assets', 'display_name');
+        $recentUploadColumns = ['id', 'original_name', 'status', 'size_bytes', 'created_at'];
+        if ($hasDisplayName) $recentUploadColumns[] = 'display_name';
+        $recentFailureColumns = ['jobs.id', 'jobs.media_asset_id', 'jobs.failure_code', 'jobs.updated_at', 'assets.original_name'];
+        if ($hasDisplayName) $recentFailureColumns[] = 'assets.display_name';
+        $recentFailures = $jobsAvailable
+            ? DB::table('media_processing_jobs as jobs')->join('media_assets as assets', 'assets.id', '=', 'jobs.media_asset_id')
+                ->where('jobs.status', 'failed')->whereNull('assets.deleted_at')->orderByDesc('jobs.updated_at')->limit(8)
+                ->get($recentFailureColumns)
+            : null;
         return response()->json(['data' => [
             'published_videos' => $this->countWhere('videos', 'status', 1),
             'published_catalog_items' => $this->countWhere('entertainments', 'status', 1),
             'pending_reviews' => $this->countWhere('admin_content_review_submissions', 'status', 'in_review'),
-            'media_assets' => Schema::hasTable('media_assets') ? DB::table('media_assets')->whereNull('deleted_at')->count() : 0,
-            'processing_jobs' => $this->countWhere('media_processing_jobs', 'status', 'processing'),
-            'failed_media_jobs' => $this->countWhere('media_processing_jobs', 'status', 'failed'),
-            'private_media_storage_bytes' => Schema::hasTable('media_assets') ? (int) DB::table('media_assets')->whereNull('deleted_at')->sum('size_bytes') : 0,
+            'total_assets' => $assetsAvailable ? (int) (clone $baseAssets)->count() : null,
+            'uploaded_assets' => $assetStatuses['uploaded'] ?? ($assetsAvailable ? 0 : null),
+            'queued_assets' => $assetStatuses['queued'] ?? ($assetsAvailable ? 0 : null),
+            'processing_assets' => $assetStatuses['processing'] ?? ($assetsAvailable ? 0 : null),
+            'ready_assets' => $assetStatuses['ready'] ?? ($assetsAvailable ? 0 : null),
+            'failed_assets' => $assetStatuses['failed'] ?? ($assetsAvailable ? 0 : null),
+            'awaiting_quality_review' => $assetsAvailable && Schema::hasColumn('media_assets', 'quality_status')
+                ? (clone $baseAssets)->whereIn('quality_status', ['pending_inspection', 'awaiting_manual_review'])->count() : null,
+            'archived_assets' => $assetsAvailable ? DB::table('media_assets')->whereNotNull('deleted_at')->count() : null,
+            'active_processing_jobs' => $jobStatuses['processing'] ?? ($jobsAvailable ? 0 : null),
+            'queued_processing_jobs' => $jobStatuses['queued'] ?? ($jobsAvailable ? 0 : null),
+            'failed_processing_jobs' => $jobStatuses['failed'] ?? ($jobsAvailable ? 0 : null),
+            'source_storage_bytes_estimated' => $assetsAvailable ? (int) (clone $baseAssets)->sum('size_bytes') : null,
+            'storage_by_category_bytes_estimated' => $storageByCategory,
+            'recent_uploads' => $assetsAvailable ? (clone $baseAssets)->orderByDesc('created_at')->limit(8)->get($recentUploadColumns) : null,
+            'recent_processing_failures' => $recentFailures,
+            'storage_usage_kind' => 'application metadata estimate; not provider-reported object storage usage',
         ]]);
     }
 

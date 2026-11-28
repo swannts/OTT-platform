@@ -17,6 +17,7 @@ class MediaUploadSession extends Model
 
     protected $casts = [
         'expires_at' => 'datetime',
+        'chunk_checksums' => 'array',
     ];
 
     public function user(): BelongsTo

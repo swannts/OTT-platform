@@ -6868,7 +6868,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/banners?type=&per_page=",
+              "raw": "{{baseUrl}}/api/banners",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -6876,18 +6876,9 @@
                 "api",
                 "banners"
               ],
-              "query": [
-                {
-                  "key": "type",
-                  "value": ""
-                },
-                {
-                  "key": "per_page",
-                  "value": ""
-                }
-              ]
+              "query": []
             },
-            "description": "OpenAPI operation: banners.getBanners\n\nLaravel action: Modules\\Banner\\Http\\Controllers\\API\\BannersController@getBanners\n\nReplace placeholders with endpoint-specific valid values before sending."
+            "description": "OpenAPI operation: banners.getBanners\n\nReturns all currently active and in-window banners as a data array. This endpoint does not use type filters or pagination.\n\nLaravel action: Modules\\Banner\\Http\\Controllers\\API\\BannersController@getBanners"
           },
           "response": []
         }
