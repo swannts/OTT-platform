@@ -17,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -52,10 +53,9 @@ class AdminMediaController extends Controller
             'track_kind' => ['sometimes', 'string', 'in:audio,subtitle'],
         ]);
 
-        $query = MediaAsset::query()->with([
-            'assetTracks', 'latestProcessingJob', 'entertainments:id,name,name_bn,status,media_asset_id',
-            'episodes:id,name,status,media_asset_id', 'videos:id,name,status,media_asset_id',
-        ])
+        $query = MediaAsset::query()->with(array_merge([
+            'assetTracks', 'latestProcessingJob',
+        ], $this->availableContentRelations()))
             ->withCount('processingJobs');
         if (isset($filters['status'])) {
             $query->where('status', $filters['status']);
@@ -117,13 +117,21 @@ class AdminMediaController extends Controller
 
     public function show(Request $request, MediaAsset $asset): JsonResponse
     {
-        abort_unless(ExplicitPermission::allows($request->user(), 'media.view'), 403);
-        return response()->json(['data' => $this->assetPayload($asset->load([
-            'processingJobs', 'assetTracks', 'uploader:id,name,email', 'qualityReviewer:id,name,email',
-            'entertainments:id,name,name_bn,type,status,media_asset_id', 'replacement:id,version,status,quality_status',
-            'episodes:id,name,status,media_asset_id', 'videos:id,name,status,media_asset_id',
-            'replacements:id,replaces_asset_id,version,status,quality_status,quality_notes,created_at',
-        ]))]);
+        $canView = ExplicitPermission::allows($request->user(), 'media.view');
+        $canPreview = ExplicitPermission::allows($request->user(), 'media.preview');
+        abort_unless($canView || $canPreview, 403);
+        $payload = $this->assetPayload($asset->load(array_merge([
+            'processingJobs', 'assetTracks', 'uploader:id,username,first_name,last_name',
+        ], $this->availableVersionRelations(), $this->availableContentRelations())), $canPreview);
+        if (! $canView) {
+            $payload = array_intersect_key($payload, array_flip([
+                'id', 'display_name', 'original_name', 'category', 'mime_type', 'extension', 'size_bytes',
+                'status', 'thumbnail_url', 'version', 'duration_seconds', 'resolution', 'aspect_ratio',
+                'frame_rate', 'codec', 'audio_codec', 'bitrate', 'quality_status', 'is_active_version', 'created_at',
+            ]));
+        }
+
+        return response()->json(['data' => $payload]);
     }
 
     public function update(Request $request, MediaAsset $asset, AdminAuditLogger $audit): JsonResponse
@@ -268,7 +276,9 @@ class AdminMediaController extends Controller
             'type' => ['sometimes', 'string', 'max:32'], 'asset_id' => ['sometimes', 'integer', 'min:1'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'], 'page' => ['sometimes', 'integer', 'min:1'],
         ]);
-        $query = MediaProcessingJob::query()->with('asset:id,display_name,original_name,status')->orderByDesc('created_at');
+        $assetColumns = ['id', 'original_name', 'status'];
+        if (Schema::hasColumn('media_assets', 'display_name')) $assetColumns[] = 'display_name';
+        $query = MediaProcessingJob::query()->with(['asset:'.implode(',', $assetColumns)])->orderByDesc('created_at');
         foreach (['status' => 'status', 'type' => 'type', 'media_asset_id' => 'asset_id'] as $column => $filter) {
             if (isset($filters[$filter])) $query->where($column, $filters[$filter]);
         }
@@ -916,7 +926,10 @@ class AdminMediaController extends Controller
             'archive_reason' => $asset->archive_reason, 'is_active_version' => (bool) $asset->is_active_version,
             'previous_asset_id' => $asset->replaces_asset_id,
             'failure_code' => $asset->failure_code, 'ready_at' => $asset->ready_at?->toIso8601String(),
-            'uploader' => $asset->relationLoaded('uploader') ? $asset->uploader?->only(['id', 'name', 'email']) : null,
+            'uploader' => $asset->relationLoaded('uploader') && $asset->uploader ? [
+                'id' => $asset->uploader->id,
+                'name' => trim((string) $asset->uploader->full_name) ?: ($asset->uploader->username ?: 'Unknown'),
+            ] : null,
             'created_at' => $asset->created_at?->toIso8601String(),
             'content_attachments' => $attachments->values(),
             'latest_processing_job' => $asset->relationLoaded('latestProcessingJob') && $asset->latestProcessingJob ? [
@@ -933,6 +946,45 @@ class AdminMediaController extends Controller
             ])->values() : [],
             'asset_tracks' => $asset->relationLoaded('assetTracks') ? $asset->assetTracks->map(fn (MediaAssetTrack $track): array => $this->trackPayload($track))->values() : [],
         ];
+    }
+
+    /** @return array<string> */
+    private function availableContentRelations(): array
+    {
+        $relations = [];
+        foreach ([
+            'entertainments' => 'id,name,name_bn,type,status,media_asset_id',
+            'episodes' => 'id,name,status,media_asset_id',
+            'videos' => 'id,name,status,media_asset_id',
+        ] as $table => $columns) {
+            if (Schema::hasTable($table) && Schema::hasColumn($table, 'media_asset_id')) {
+                $relations[] = $table.':'.$columns;
+            }
+        }
+
+        return $relations;
+    }
+
+    /** @return array<string> */
+    private function availableVersionRelations(): array
+    {
+        if (! Schema::hasTable('media_assets')) return [];
+
+        $replacementColumns = ['id', 'version', 'status'];
+        $replacementsColumns = ['id', 'replaces_asset_id', 'version', 'status', 'created_at'];
+        if (Schema::hasColumn('media_assets', 'quality_status')) {
+            $replacementColumns[] = 'quality_status';
+            $replacementsColumns[] = 'quality_status';
+        }
+        if (Schema::hasColumn('media_assets', 'quality_notes')) $replacementsColumns[] = 'quality_notes';
+
+        $relations = [
+            'replacement:'.implode(',', $replacementColumns),
+            'replacements:'.implode(',', $replacementsColumns),
+        ];
+        if (Schema::hasColumn('media_assets', 'quality_reviewed_by')) $relations[] = 'qualityReviewer:id,name,email';
+
+        return $relations;
     }
 
     private function trackPayload(MediaAssetTrack $track): array

@@ -11,7 +11,6 @@ import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
-import Divider from '@mui/material/Divider';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
@@ -71,7 +70,8 @@ export function MediaAssetDetailsPage() {
     setError('');
     try {
       const [assetResponse, versionsResponse] = await Promise.all([
-        mediaApi.show(assetId), mediaApi.versions(assetId),
+        mediaApi.show(assetId),
+        permissions.has('media.view') ? mediaApi.versions(assetId) : Promise.resolve({ data: [] }),
       ]);
       setAsset(assetResponse.data);
       setAssetForm({ display_name: assetResponse.data?.display_name || '', description: assetResponse.data?.description || '', category: assetResponse.data?.category || 'video' });
@@ -81,7 +81,7 @@ export function MediaAssetDetailsPage() {
     } finally {
       setLoading(false);
     }
-  }, [assetId]);
+  }, [assetId, permissions]);
 
   const refreshAfterUpload = useCallback(async () => {
     try {
@@ -168,13 +168,13 @@ export function MediaAssetDetailsPage() {
   return (
     <DashboardContent>
       <Stack spacing={2.5}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} spacing={1}>
-          <Box>
-            <Button component={Link} href="/dashboard/media" size="small" sx={{ mb: 0.5, ml: -1 }}>← Media operations</Button>
+        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} flexWrap="wrap" spacing={1} sx={{ minWidth: 0 }}>
+          <Box sx={{ minWidth: 0, flex: '1 1 320px' }}>
+            <Button component={Link} href={permissions.has('media.view') ? '/dashboard/media' : '/dashboard'} size="small" sx={{ mb: 0.5, ml: -1 }}>{permissions.has('media.view') ? '← Media operations' : '← Dashboard'}</Button>
             <Typography variant="h4">{asset?.display_name || asset?.original_name || `Asset ${assetId}`}</Typography>
             <Typography variant="body2" color="text.secondary">{asset?.original_name} · Version {asset?.version} · {humanize(asset?.category)}</Typography>
           </Box>
-          <Stack direction="row" spacing={1} flexWrap="wrap">
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ minWidth: 0, maxWidth: '100%' }}>
             <Chip label={humanize(asset?.status)} color={asset?.status === 'ready' ? 'success' : asset?.status === 'failed' ? 'error' : 'default'} />
             <Chip label={`QC: ${humanize(asset?.quality_status)}`} variant="outlined" />
             {asset?.is_active_version && <Chip label="Active version" color="primary" variant="outlined" />}
@@ -183,11 +183,11 @@ export function MediaAssetDetailsPage() {
         {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
         {notice && <Alert severity="success" onClose={() => setNotice('')}>{notice}</Alert>}
 
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={7}>
-            <Card><CardContent>
+        <Grid container spacing={2} sx={{ minWidth: 0 }}>
+          <Grid item xs={12} md={7} sx={{ minWidth: 0 }}>
+            <Card sx={{ width: '100%', minWidth: 0 }}><CardContent sx={{ minWidth: 0 }}>
               <Typography variant="h6" sx={{ mb: 2 }}>Asset information</Typography>
-              <Grid container spacing={2}>
+              <Grid container spacing={2} sx={{ minWidth: 0 }}>
                 {[
                   ['Source size', formatBytes(asset?.size_bytes)], ['Resolution', asset?.resolution || 'Not available'],
                   ['Duration', asset?.duration_seconds ? `${Math.round(asset.duration_seconds)} seconds` : 'Not available'],
@@ -198,16 +198,16 @@ export function MediaAssetDetailsPage() {
                   ['Checksum', asset?.checksum || 'Not available'], ['Uploaded by', asset?.uploader?.name || 'Unknown'],
                   ['Uploaded', asset?.created_at ? new Date(asset.created_at).toLocaleString() : 'Unknown'],
                   ['Updated', asset?.updated_at ? new Date(asset.updated_at).toLocaleString() : 'Unknown'], ['Failure', asset?.failure_code || 'None'],
-                ].map(([label, value]) => <Grid item xs={6} sm={4} key={label}><Typography variant="caption" color="text.secondary">{label}</Typography><Typography variant="body2">{value}</Typography></Grid>)}
+                ].map(([label, value]) => <Grid item xs={6} sm={4} key={label} sx={{ minWidth: 0 }}><Typography variant="caption" color="text.secondary">{label}</Typography><Typography variant="body2" title={String(value)} sx={{ minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{value}</Typography></Grid>)}
               </Grid>
               {asset?.quality_notes && <Alert severity={asset.quality_status === 'rejected' ? 'error' : 'info'} sx={{ mt: 2 }}><Typography variant="subtitle2">Quality review</Typography>{asset.quality_notes}<Typography variant="caption" display="block">{asset.quality_reviewer?.name || 'Reviewer unavailable'} · {asset.quality_reviewed_at ? new Date(asset.quality_reviewed_at).toLocaleString() : 'Date unavailable'}</Typography></Alert>}
               {asset?.latest_processing_job && <Box sx={{ mt: 2, p: 1.5, bgcolor: 'background.neutral', borderRadius: 1.5 }}><Typography variant="subtitle2">Latest processing attempt</Typography><Typography variant="body2">{humanize(asset.latest_processing_job.stage)} · {asset.latest_processing_job.progress ?? 0}% · {humanize(asset.latest_processing_job.status)}</Typography>{asset.latest_processing_job.failure_message && <Typography variant="caption" color="error.main">{asset.latest_processing_job.failure_message}</Typography>}</Box>}
             </CardContent></Card>
           </Grid>
-          <Grid item xs={12} md={5}>
-            <Card><CardContent>
+          <Grid item xs={12} md={5} sx={{ minWidth: 0 }}>
+            <Card sx={{ width: '100%', minWidth: 0 }}><CardContent sx={{ minWidth: 0 }}>
               <Typography variant="h6" sx={{ mb: 1.5 }}>Authorized preview</Typography>
-              {preview?.manifest_url ? <Box component="video" controls preload="metadata" src={preview.manifest_url} poster={preview.poster_url} sx={{ display: 'block', width: '100%', bgcolor: 'common.black', borderRadius: 1.5, aspectRatio: '16 / 9' }} /> : <Alert severity="info">{permissions.has('media.preview') ? 'A private preview is available after a rendition has been generated.' : 'Your role does not include preview permission.'}</Alert>}
+              {preview?.manifest_url ? <Box component="video" controls preload="metadata" src={preview.manifest_url} poster={preview.poster_url} sx={{ display: 'block', width: '100%', maxWidth: '100%', minWidth: 0, bgcolor: 'common.black', borderRadius: 1.5, aspectRatio: '16 / 9' }} /> : <Alert severity="info" sx={{ minWidth: 0, '& .MuiAlert-message': { minWidth: 0, overflowWrap: 'anywhere' } }}>{permissions.has('media.preview') ? 'A private preview is available after a rendition has been generated.' : 'Your role does not include preview permission.'}</Alert>}
               {preview?.manifest_url && <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>Preview links expire after 2 minutes. HLS playback depends on browser support.</Typography>}
             </CardContent></Card>
           </Grid>
@@ -250,25 +250,68 @@ export function MediaAssetDetailsPage() {
         </CardContent></Card>
 
         <Card><CardContent>
-          <Typography variant="h6" sx={{ mb: 1.5 }}>Audio and subtitle tracks</Typography>
-          <Stack spacing={1.25} divider={<Divider flexItem />}>
-            {(asset?.asset_tracks || []).map((item) => <Stack key={item.id} direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} spacing={1}>
-              <Box><Typography variant="subtitle2">{item.display_name || item.original_name}</Typography><Typography variant="caption" color="text.secondary">{humanize(item.kind)} · {item.language} · {humanize(item.role)} · {formatBytes(item.size_bytes)}</Typography></Box>
-              {(item.kind === 'subtitle' ? permissions.has('media.subtitles.manage') : permissions.has('media.audio.manage')) && <Button size="small" color="error" disabled={busy} onClick={() => setTrackToRemove(item)}>Remove</Button>}
-            </Stack>)}
-            {!asset?.asset_tracks?.length && <Typography color="text.secondary" variant="body2">No additional audio or subtitle tracks are attached.</Typography>}
+          <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} spacing={1} sx={{ mb: 2 }}>
+            <Box>
+              <Typography variant="h6">Audio and subtitle tracks</Typography>
+              <Typography variant="body2" color="text.secondary">Manage language and accessibility options for this title.</Typography>
+            </Box>
+            <Chip size="small" variant="outlined" label={`${asset?.asset_tracks?.length || 0} ${asset?.asset_tracks?.length === 1 ? 'track' : 'tracks'}`} />
           </Stack>
-          {(permissions.has('media.subtitles.manage') || permissions.has('media.audio.manage')) && <Box component="form" onSubmit={addTrack} sx={{ mt: 2.5 }}><Stack spacing={1.5}>
-            <Typography variant="subtitle1">Add track</Typography>
-            <Grid container spacing={1.5}>
-              <Grid item xs={12} sm={3}><TextField select fullWidth size="small" label="Kind" value={track.kind} onChange={(event) => setTrack({ ...track, kind: event.target.value })}>{['subtitle', 'audio'].filter((kind) => kind === 'subtitle' ? permissions.has('media.subtitles.manage') : permissions.has('media.audio.manage')).map((kind) => <MenuItem key={kind} value={kind}>{humanize(kind)}</MenuItem>)}</TextField></Grid>
-              <Grid item xs={12} sm={2}><TextField fullWidth size="small" required label="Language" value={track.language} onChange={(event) => setTrack({ ...track, language: event.target.value })} inputProps={{ pattern: '[A-Za-z]{2,3}([-_][A-Za-z0-9]{2,8})?' }} /></Grid>
-              <Grid item xs={12} sm={3}><TextField fullWidth size="small" label="Display name" value={track.display_name} onChange={(event) => setTrack({ ...track, display_name: event.target.value })} /></Grid>
-              <Grid item xs={12} sm={2}><TextField select fullWidth size="small" label="Role" value={track.role} onChange={(event) => setTrack({ ...track, role: event.target.value })}>{TRACK_ROLES.map((role) => <MenuItem key={role} value={role}>{humanize(role)}</MenuItem>)}</TextField></Grid>
-              <Grid item xs={12} sm={2}><Button fullWidth component="label" variant="outlined">Choose file<input hidden type="file" accept={track.kind === 'subtitle' ? '.vtt,.srt' : 'audio/*,.m4a,.aac,.mp3,.wav,.ogg'} onChange={(event) => setTrack({ ...track, file: event.target.files?.[0] || null })} /></Button></Grid>
-              <Grid item xs={12}><Typography variant="caption" color="text.secondary">{track.file?.name || 'No file selected'}</Typography><Stack direction="row" flexWrap="wrap" gap={1}>{[['is_default', 'Default'], ['is_forced', 'Forced'], ['is_accessibility', 'Accessibility'], ['is_original', 'Original'], ['is_dubbed', 'Dubbed']].map(([key, label]) => <FormControlLabel key={key} control={<Switch size="small" checked={track[key]} onChange={(event) => setTrack({ ...track, [key]: event.target.checked })} />} label={label} />)}</Stack><Button type="submit" variant="contained" disabled={busy || (track.kind === 'subtitle' ? !permissions.has('media.subtitles.manage') : !permissions.has('media.audio.manage'))}>Upload track</Button></Grid>
-            </Grid>
-          </Stack></Box>}
+
+          <Stack spacing={1}>
+            {(asset?.asset_tracks || []).map((item) => {
+              const canRemove = item.kind === 'subtitle' ? permissions.has('media.subtitles.manage') : permissions.has('media.audio.manage');
+              const flags = [item.is_default && 'Default', item.is_forced && 'Forced', item.is_accessibility && 'Accessibility', item.is_original && 'Original', item.is_dubbed && 'Dubbed'].filter(Boolean);
+              return (
+                <Box key={item.id} sx={{ display: 'flex', alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', gap: 2, p: 1.5, border: 1, borderColor: 'divider', borderRadius: 1.5, minWidth: 0 }}>
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography variant="subtitle2" noWrap title={item.display_name || item.original_name}>{item.display_name || item.original_name}</Typography>
+                    <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mt: 0.75 }}>
+                      <Chip size="small" label={humanize(item.kind)} />
+                      <Chip size="small" variant="outlined" label={item.language?.toUpperCase() || 'Language not set'} />
+                      <Chip size="small" variant="outlined" label={humanize(item.role)} />
+                      <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>{formatBytes(item.size_bytes)}</Typography>
+                      {flags.map((flag) => <Chip key={flag} size="small" color={flag === 'Accessibility' ? 'info' : 'default'} variant="outlined" label={flag} />)}
+                    </Stack>
+                  </Box>
+                  {canRemove && <Button size="small" color="error" variant="outlined" disabled={busy} onClick={() => setTrackToRemove(item)}>Remove</Button>}
+                </Box>
+              );
+            })}
+            {!asset?.asset_tracks?.length && <Box sx={{ textAlign: 'center', py: 3, px: 2, border: 1, borderStyle: 'dashed', borderColor: 'divider', borderRadius: 1.5 }}>
+              <Typography variant="subtitle2">No additional tracks yet</Typography>
+              <Typography variant="body2" color="text.secondary">Add subtitle or audio tracks to make playback accessible to more viewers.</Typography>
+            </Box>}
+          </Stack>
+
+          {(permissions.has('media.subtitles.manage') || permissions.has('media.audio.manage')) && <Box component="form" onSubmit={addTrack} sx={{ mt: 2.5, p: { xs: 1.5, sm: 2 }, bgcolor: 'background.neutral', borderRadius: 2 }}>
+            <Stack spacing={1.75}>
+              <Box>
+                <Typography variant="subtitle1" fontWeight={600}>Add a track</Typography>
+                <Typography variant="caption" color="text.secondary">Choose the language, format, and accessibility options before uploading.</Typography>
+              </Box>
+              <Grid container spacing={1.5}>
+                <Grid item xs={12} sm={6} md={3}><TextField select fullWidth size="small" label="Track type" value={track.kind} onChange={(event) => setTrack({ ...track, kind: event.target.value, file: null })}>{['subtitle', 'audio'].filter((kind) => kind === 'subtitle' ? permissions.has('media.subtitles.manage') : permissions.has('media.audio.manage')).map((kind) => <MenuItem key={kind} value={kind}>{humanize(kind)}</MenuItem>)}</TextField></Grid>
+                <Grid item xs={12} sm={6} md={2}><TextField fullWidth size="small" required label="Language code" value={track.language} onChange={(event) => setTrack({ ...track, language: event.target.value })} inputProps={{ pattern: '[A-Za-z]{2,3}([-_][A-Za-z0-9]{2,8})?', maxLength: 16 }} helperText="For example, en or bn" /></Grid>
+                <Grid item xs={12} sm={6} md={3}><TextField fullWidth size="small" label="Display name" placeholder={track.kind === 'subtitle' ? 'English subtitles' : 'Bangla audio'} value={track.display_name} onChange={(event) => setTrack({ ...track, display_name: event.target.value })} /></Grid>
+                <Grid item xs={12} sm={6} md={2}><TextField select fullWidth size="small" label="Track role" value={track.role} onChange={(event) => setTrack({ ...track, role: event.target.value })}>{TRACK_ROLES.map((role) => <MenuItem key={role} value={role}>{humanize(role)}</MenuItem>)}</TextField></Grid>
+                <Grid item xs={12} md={2}><Button fullWidth component="label" variant="outlined" sx={{ minHeight: 40, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{track.file?.name || 'Choose file'}<input hidden type="file" accept={track.kind === 'subtitle' ? '.vtt,.srt' : 'audio/*,.m4a,.aac,.mp3,.wav,.ogg'} onChange={(event) => setTrack({ ...track, file: event.target.files?.[0] || null })} /></Button></Grid>
+                <Grid item xs={12}>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} spacing={1.5}>
+                    <Stack direction="row" flexWrap="wrap" useFlexGap gap={{ xs: 0.5, sm: 1 }}>
+                      {[
+                        ['is_default', 'Default'], ['is_forced', 'Forced'], ['is_accessibility', 'Accessibility'],
+                        ...(track.kind === 'audio' ? [['is_original', 'Original'], ['is_dubbed', 'Dubbed']] : []),
+                      ].map(([key, label]) => <FormControlLabel key={key} sx={{ mr: 1 }} control={<Switch size="small" checked={track[key]} onChange={(event) => setTrack({ ...track, [key]: event.target.checked })} />} label={<Typography variant="body2">{label}</Typography>} />)}
+                    </Stack>
+                    <Button type="submit" variant="contained" disabled={busy || !track.file || (track.kind === 'subtitle' ? !permissions.has('media.subtitles.manage') : !permissions.has('media.audio.manage'))} sx={{ flexShrink: 0 }}>
+                      {busy ? 'Uploading…' : 'Upload track'}
+                    </Button>
+                  </Stack>
+                </Grid>
+              </Grid>
+            </Stack>
+          </Box>}
         </CardContent></Card>
 
         <Dialog open={Boolean(trackToRemove)} onClose={() => setTrackToRemove(null)}>

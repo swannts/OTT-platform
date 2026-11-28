@@ -26,10 +26,15 @@ class AdminOperationsController extends Controller
         $storageByCategory = $assetsAvailable && Schema::hasColumn('media_assets', 'category')
             ? DB::table('media_assets')->whereNull('deleted_at')->selectRaw('category, SUM(size_bytes) AS bytes')->groupBy('category')->pluck('bytes', 'category')
             : null;
+        $hasDisplayName = $assetsAvailable && Schema::hasColumn('media_assets', 'display_name');
+        $recentUploadColumns = ['id', 'original_name', 'status', 'size_bytes', 'created_at'];
+        if ($hasDisplayName) $recentUploadColumns[] = 'display_name';
+        $recentFailureColumns = ['jobs.id', 'jobs.media_asset_id', 'jobs.failure_code', 'jobs.updated_at', 'assets.original_name'];
+        if ($hasDisplayName) $recentFailureColumns[] = 'assets.display_name';
         $recentFailures = $jobsAvailable
             ? DB::table('media_processing_jobs as jobs')->join('media_assets as assets', 'assets.id', '=', 'jobs.media_asset_id')
                 ->where('jobs.status', 'failed')->whereNull('assets.deleted_at')->orderByDesc('jobs.updated_at')->limit(8)
-                ->get(['jobs.id', 'jobs.media_asset_id', 'jobs.failure_code', 'jobs.updated_at', 'assets.original_name', 'assets.display_name'])
+                ->get($recentFailureColumns)
             : null;
         return response()->json(['data' => [
             'published_videos' => $this->countWhere('videos', 'status', 1),
@@ -49,7 +54,7 @@ class AdminOperationsController extends Controller
             'failed_processing_jobs' => $jobStatuses['failed'] ?? ($jobsAvailable ? 0 : null),
             'source_storage_bytes_estimated' => $assetsAvailable ? (int) (clone $baseAssets)->sum('size_bytes') : null,
             'storage_by_category_bytes_estimated' => $storageByCategory,
-            'recent_uploads' => $assetsAvailable ? (clone $baseAssets)->orderByDesc('created_at')->limit(8)->get(['id', 'display_name', 'original_name', 'status', 'size_bytes', 'created_at']) : null,
+            'recent_uploads' => $assetsAvailable ? (clone $baseAssets)->orderByDesc('created_at')->limit(8)->get($recentUploadColumns) : null,
             'recent_processing_failures' => $recentFailures,
             'storage_usage_kind' => 'application metadata estimate; not provider-reported object storage usage',
         ]]);

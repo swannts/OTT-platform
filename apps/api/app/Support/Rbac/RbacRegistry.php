@@ -106,7 +106,7 @@ final class RbacRegistry
     {
         $all = array_keys(self::permissions());
 
-        return [
+        $rolePermissions = [
             // Super Admin receives the catalog except the refund approval grant. Financial approvals
             // always require an explicit staff assignment and the maker-checker guard still applies.
             'super-admin' => array_values(array_diff($all, ['finance.refunds.approve'])),
@@ -128,6 +128,15 @@ final class RbacRegistry
             'analytics_manager' => ['admin.access', 'admin.dashboard.view', 'analytics.audience.view', 'analytics.subscriptions.view', 'analytics.content.view', 'analytics.revenue.view', 'analytics.playback.view', 'analytics.export'],
             'technical_operations_admin' => ['admin.access', 'admin.dashboard.view', 'operations.health.view', 'operations.logs.view', 'operations.jobs.view', 'operations.jobs.retry', 'operations.incidents.manage', 'analytics.playback.view', 'media.view', 'media.processing.manage', 'media.storage.view'],
         ];
+
+        // Preview is read-only and uses short-lived, asset-scoped signed URLs. Every
+        // administrative role can inspect media, while media mutations remain separately gated.
+        foreach ($rolePermissions as &$permissions) {
+            $permissions[] = 'media.preview';
+        }
+        unset($permissions);
+
+        return $rolePermissions;
     }
 
     /** @return array<string, string> Canonical role name => display title. */
